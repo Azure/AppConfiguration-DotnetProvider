@@ -1,3 +1,59 @@
+# Azure Config Store - .NET Core
+
+This package contains a .NET Core configuration provider for the Azure Config Store. The API design follows the patterns outlined by the [ASP.NET configuration](https://github.com/aspnet/configuration/) system to make switching to the Azure Config Store a familiar experience.
+
+Use this SDK to:
+
+* Add Azure Config Store data to the .NET Core configuration system
+* Listen for configuration changes
+* Format configuration values based off of content type
+
+## Examples
+
+Examples can be found [here](./examples).
+
+```c#
+    var builder = new ConfigurationBuilder();
+
+    builder.AddRemoteAppConfiguration("https://<Azure Config Store URL>", new RemoteConfigurationOptions()
+    {
+        Prefix = "App1/",
+        AcceptVersion = "2.0"
+    }
+    .Listen("AppName", 30 * 60 * 1000));
+
+    IConfiguration configuration = builder.Build();
+```
+
+## Notable API
+
+**AppConfigConfigurationExtensions**
+
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri)
+
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options)
+
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options, IAppConfigClient client)
+
+**RemoteConfigurationOptions**
+
+string AcceptVersion { get; set; }
+
+string Prefix { get; set; }
+
+IKeyValueFormatter KeyValueFormatter { get; set; }
+
+IEnumerable<KeyValueListener> ChangeListeners { get; }
+
+RemoteConfigurationOptions Listen(string key, int pollInterval)
+
+**IAppConfigClient**
+
+Task\<IEnumerable\<IKeyValue\>\> GetSettings(string appConfigUri, string prefix)
+
+Task\<IKeyValue\> GetSetting(string appConfigUri, string key)
+
+Task\<string\> GetETag(string appConfigUri, string key)
 
 # Contributing
 
