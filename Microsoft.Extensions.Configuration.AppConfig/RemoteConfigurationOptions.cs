@@ -1,6 +1,5 @@
 ﻿namespace Microsoft.Extensions.Configuration.AppConfig
 {
-    using System;
     using System.Collections.Generic;
 
     public class RemoteConfigurationOptions
