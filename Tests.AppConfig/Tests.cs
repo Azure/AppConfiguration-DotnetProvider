@@ -69,6 +69,14 @@ namespace Tests.AppConfig
         {
             string configUri = "";
 
+            //
+            // Integration test currently requires active server
+
+            if (string.IsNullOrEmpty(configUri))
+            {
+                return;
+            }
+
             var builder = new ConfigurationBuilder();
 
             builder.AddRemoteAppConfiguration(configUri);
