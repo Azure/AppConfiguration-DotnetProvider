@@ -13,30 +13,32 @@ Use this SDK to:
 Examples can be found [here](./examples).
 
 ```c#
-    var builder = new ConfigurationBuilder();
+var builder = new ConfigurationBuilder();
 
-    builder.AddRemoteAppConfiguration("https://<Azure Config Store URL>", new RemoteConfigurationOptions()
-    {
-        Prefix = "App1/",
-        AcceptVersion = "2.0"
-    }
-    .Listen("AppName", 30 * 60 * 1000));
+builder.AddRemoteAppConfiguration("https://<Azure Config Store URL>", new RemoteConfigurationOptions()
+{
+    Prefix = "App1/",
+    AcceptVersion = "2.0"
+}
+.Listen("AppName", 30 * 60 * 1000));
 
-    IConfiguration configuration = builder.Build();
+IConfiguration configuration = builder.Build();
 ```
 
 ## Notable API
 
-**AppConfigConfigurationExtensions**
+### AppConfigConfigurationExtensions
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri)
+```csharp
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri);
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options)
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options);
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options, IAppConfigClient client)
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options, IAppConfigClient client);
+```
+### RemoteConfigurationOptions
 
-**RemoteConfigurationOptions**
-
+```csharp
 string AcceptVersion { get; set; }
 
 string Prefix { get; set; }
@@ -45,15 +47,18 @@ IKeyValueFormatter KeyValueFormatter { get; set; }
 
 IEnumerable<KeyValueListener> ChangeListeners { get; }
 
-RemoteConfigurationOptions Listen(string key, int pollInterval)
+RemoteConfigurationOptions Listen(string key, int pollInterval);
+```
 
-**IAppConfigClient**
+### IAppConfigClient
 
-Task\<IEnumerable\<IKeyValue\>\> GetSettings(string appConfigUri, string prefix)
+```csharp
+Task<IEnumerable<IKeyValue>> GetSettings(string appConfigUri, string prefix)
 
-Task\<IKeyValue\> GetSetting(string appConfigUri, string key)
+Task<IKeyValue> GetSetting(string appConfigUri, string key)
 
-Task\<string\> GetETag(string appConfigUri, string key)
+Task<string> GetETag(string appConfigUri, string key)
+```
 
 # Contributing
 
