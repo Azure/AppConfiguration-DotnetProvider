@@ -18,41 +18,9 @@
 
         public async Task<IEnumerable<IKeyValue>> GetSettings(string appConfigUri, string prefix)
         {
-            using (var client = new HttpClient())
-            {
-                client.BaseAddress = new Uri(appConfigUri);
+            var start = await GetSettings(appConfigUri, prefix, null);
 
-                string listUrl = string.IsNullOrEmpty(prefix) ? "/kv" : "/kv?key=" + prefix;
-
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, listUrl);
-
-                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json; version=\"{_options.AcceptVersion}\"" }))
-                {
-                    //
-                    // Throwing mechanism
-                }
-
-                HttpResponseMessage response = await client.SendAsync(request);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    //
-                    // Throwing mechanism
-                }
-
-                var converter = new Converter();
-
-                JObject jResponse = JObject.Parse(await response.Content.ReadAsStringAsync());
-
-                var settings = new List<IKeyValue>();
-
-                foreach (var item in jResponse.Value<JArray>("items").ToObject<IEnumerable<JObject>>())
-                {
-                    settings.Add(converter.ToKeyValue(item));
-                }
-
-                return settings;
-            }
+            return await start.GetAll();
         }
 
         public async Task<IKeyValue> GetSetting(string appConfigUri, string key)
@@ -104,6 +72,67 @@
                 }
 
                 return response.Headers.GetValues("etag").First().Trim('"');
+            }
+        }
+
+        private async Task<Page<IKeyValue>> GetSettings(string appConfigUri, string prefix, Page<IKeyValue> previous)
+        {
+            if (previous == null)
+            {
+                previous = new Page<IKeyValue>();
+            }
+
+            string after = previous.Items.Count > 0 ? previous.Items[previous.Items.Count - 1].Key : string.Empty;
+
+            using (var client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(appConfigUri);
+
+                string listUrl = "/kv?after=" + after;
+
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, listUrl);
+
+                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json; version=\"{_options.AcceptVersion}\"" }))
+                {
+                    //
+                    // Throwing mechanism
+                }
+
+                HttpResponseMessage response = await client.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    //
+                    // Throwing mechanism
+                }
+
+                var converter = new Converter();
+
+                JObject jResponse = JObject.Parse(await response.Content.ReadAsStringAsync());
+
+                var page = new Page<IKeyValue>();
+
+                foreach (var item in jResponse.Value<JArray>("items").ToObject<IEnumerable<JObject>>())
+                {
+                    var kv = converter.ToKeyValue(item);
+
+                    if (!string.IsNullOrEmpty(prefix) && !kv.Key.StartsWith(prefix))
+                    {
+                        continue;
+                    }
+
+                    page.Items.Add(kv);
+                }
+
+                //
+                // If the number of items is greater than 0 we must setup the page to request the next set of items
+                // If there are no items then the last page was reached
+                if (page.Items.Count > 0)
+                {
+                    page.Next = () => GetSettings(appConfigUri, prefix, page);
+                }
+
+                return page;
             }
         }
     }
