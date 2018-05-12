@@ -11,4 +11,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Microsoft.Extensions.Configuration.AppConfig\Microsoft.Extensions.Configuration.AppConfig.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
