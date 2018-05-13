@@ -7,35 +7,33 @@
         public static IConfigurationBuilder AddRemoteAppConfiguration
         (
             this IConfigurationBuilder configurationBuilder,
-            string appConfigUri
+            string appConfigUri,
+            string secretId,
+            string secretValue
         )
         {
-            return AddRemoteAppConfiguration(configurationBuilder, appConfigUri, new RemoteConfigurationOptions());
+            return AddRemoteAppConfiguration(configurationBuilder, appConfigUri, secretId, secretValue, new RemoteConfigurationOptions());
         }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration
         (
             this IConfigurationBuilder configurationBuilder,
             string appConfigUri,
+            string secretId,
+            string secretValue,
             RemoteConfigurationOptions options
         )
         {
-            return AddRemoteAppConfiguration(configurationBuilder, appConfigUri, options, new AppConfigClient(options));
+            return AddRemoteAppConfiguration(configurationBuilder, options, new AppConfigClient(appConfigUri, secretId, secretValue, options));
         }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration
         (
             this IConfigurationBuilder configurationBuilder,
-            string appConfigUri,
             RemoteConfigurationOptions options,
             IAppConfigClient client
         )
         {
-            if (appConfigUri == null)
-            {
-                throw new ArgumentNullException(nameof(appConfigUri));
-            }
-
             if (options == null)
             {
                 throw new ArgumentNullException(nameof(options));
@@ -49,7 +47,6 @@
             configurationBuilder.Add(
                 new AppConfigConfigurationSource()
                 {
-                    AppConfigUri = appConfigUri,
                     Client = client,
                     Options = options
                 }

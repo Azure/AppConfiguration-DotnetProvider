@@ -16,7 +16,7 @@ namespace ConfigStoreDemo
         {
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddRemoteAppConfiguration("http://ReplaceWithYourConfigStoreName.azconfig.io",
+                .AddRemoteAppConfiguration("https://example.azconfig.io", "secretId", "secretValue",
                     new RemoteConfigurationOptions()
                     .Listen("Settings:BackgroundColor", 1000));
             Configuration = builder.Build();
