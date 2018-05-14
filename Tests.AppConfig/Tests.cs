@@ -23,7 +23,7 @@ namespace Tests.AppConfig
 
             var builder = new ConfigurationBuilder();
 
-            builder.AddRemoteAppConfiguration("FakeUrl", new RemoteConfigurationOptions(), testClient);
+            builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions(), testClient);
 
             var config = builder.Build();
 
@@ -43,7 +43,7 @@ namespace Tests.AppConfig
 
             var builder = new ConfigurationBuilder();
 
-            builder.AddRemoteAppConfiguration("FakeUrl", new RemoteConfigurationOptions().Listen("TestKey", 1000), testClient);
+            builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions().Listen("TestKey", 1000), testClient);
 
             var config = builder.Build();
 
@@ -68,6 +68,8 @@ namespace Tests.AppConfig
         public void Integrates()
         {
             string configUri = "";
+            string secretId = "";
+            string secretValue = "";
 
             //
             // Integration test currently requires active server
@@ -79,7 +81,7 @@ namespace Tests.AppConfig
 
             var builder = new ConfigurationBuilder();
 
-            builder.AddRemoteAppConfiguration(configUri);
+            builder.AddRemoteAppConfiguration(configUri, secretId, secretValue);
 
             var config = builder.Build();
 
@@ -100,7 +102,7 @@ namespace Tests.AppConfig
 
             var builder = new ConfigurationBuilder();
 
-            builder.AddRemoteAppConfiguration("FakeUrl", new RemoteConfigurationOptions() {
+            builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions() {
                 KeyValueFormatter = new KeyValueFormatter()
             }, testClient);
 

@@ -33,14 +33,15 @@
 
             IConfiguration configuration = builder.Build();
 
-            builder.AddRemoteAppConfiguration(configuration["config_url"], new RemoteConfigurationOptions()
-            {
-                Prefix = "App1/",
-                AcceptVersion = configuration["version"],
-                KeyValueFormatter = new KeyValueFormatter()
-            }
-            .Listen("AppName", 1000)
-            .Listen("Language", 1000));
+            builder.AddRemoteAppConfiguration(configuration["config_url"], configuration["secret_id"], configuration["secret_value"],
+                new RemoteConfigurationOptions()
+                {
+                    Prefix = "App1/",
+                    AcceptVersion = configuration["version"],
+                    KeyValueFormatter = new KeyValueFormatter()
+                }
+                .Listen("AppName", 1000)
+                .Listen("Language", 1000));
 
             Configuration = builder.Build();
         }

@@ -9,33 +9,48 @@
 
     class AppConfigClient : IAppConfigClient
     {
-        RemoteConfigurationOptions _options;
+        private Uri _appConfigUri;
+        private string _credential;
+        private byte[] _secret;
+        private RemoteConfigurationOptions _options;
 
-        public AppConfigClient(RemoteConfigurationOptions options)
+        public AppConfigClient(string appConfigUri, string secretId, string secretValue, RemoteConfigurationOptions options)
         {
+            if (string.IsNullOrWhiteSpace(appConfigUri))
+            {
+                throw new ArgumentNullException(nameof(appConfigUri));
+            }
+            if (secretValue == null)
+            {
+                throw new ArgumentNullException(nameof(secretValue));
+            }
+
+            _appConfigUri = new Uri(appConfigUri);
+            _credential = secretId ?? throw new ArgumentNullException(nameof(secretId));
+            _secret = Convert.FromBase64String(secretValue);
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        public async Task<IEnumerable<IKeyValue>> GetSettings(string appConfigUri, string prefix)
+        public async Task<IEnumerable<IKeyValue>> GetSettings(string prefix)
         {
-            var start = await GetSettings(appConfigUri, prefix, null);
+            var start = await GetSettings(prefix, null);
 
             return await start.GetAll();
         }
 
-        public async Task<IKeyValue> GetSetting(string appConfigUri, string key)
+        public async Task<IKeyValue> GetSetting(string key)
         {
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri(appConfigUri);
-
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "/kv/" + key);
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_appConfigUri, "/kv/" + key));
 
                 if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json; version=\"{_options.AcceptVersion}\"" }))
                 {
                     //
                     // Throwing mechanism
                 }
+
+                request.Sign(_credential, _secret);
 
                 HttpResponseMessage response = await client.SendAsync(request);
 
@@ -49,19 +64,20 @@
             }
         }
 
-        public async Task<string> GetETag(string appConfigUri, string key)
+        public async Task<string> GetETag(string key)
         {
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri(appConfigUri);
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, new Uri(_appConfigUri, "/kv/" + key));
 
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, "/kv/" + key);
 
                 if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { "application/json", $"version=\"{_options.AcceptVersion}\"" }))
                 {
                     //
                     // Throwing mechanism
                 }
+
+                request.Sign(_credential, _secret);
 
                 HttpResponseMessage response = await client.SendAsync(request);
 
@@ -75,7 +91,7 @@
             }
         }
 
-        private async Task<Page<IKeyValue>> GetSettings(string appConfigUri, string prefix, Page<IKeyValue> previous)
+        private async Task<Page<IKeyValue>> GetSettings(string prefix, Page<IKeyValue> previous)
         {
             if (previous == null)
             {
@@ -86,17 +102,15 @@
 
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri(appConfigUri);
-
-                string listUrl = "/kv?after=" + after;
-
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, listUrl);
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_appConfigUri, "/kv?after=" + after));
 
                 if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json; version=\"{_options.AcceptVersion}\"" }))
                 {
                     //
                     // Throwing mechanism
                 }
+
+                request.Sign(_credential, _secret);
 
                 HttpResponseMessage response = await client.SendAsync(request);
 
@@ -129,7 +143,7 @@
                 // If there are no items then the last page was reached
                 if (page.Items.Count > 0)
                 {
-                    page.Next = () => GetSettings(appConfigUri, prefix, page);
+                    page.Next = () => GetSettings(prefix, page);
                 }
 
                 return page;

@@ -15,7 +15,7 @@
             }
         }
 
-        public Task<IEnumerable<IKeyValue>> GetSettings(string appConfigUri, string prefix)
+        public Task<IEnumerable<IKeyValue>> GetSettings(string prefix)
         {
             var settings = new List<IKeyValue>();
 
@@ -27,16 +27,16 @@
             return Task.FromResult((IEnumerable<IKeyValue>)(Data.Values.Select(kv => KeyValue.Clone(kv))));
         }
 
-        public Task<IKeyValue> GetSetting(string appConfigUri, string key)
+        public Task<IKeyValue> GetSetting(string key)
         {
             return Task.FromResult(Data.ContainsKey(key) ? (IKeyValue)KeyValue.Clone(Data[key]) : null);
         }
 
-        public async Task<string> GetETag(string appConfigUri, string key)
+        public async Task<string> GetETag(string key)
         {
-            IKeyValue setting = await GetSetting(appConfigUri, key);
+            IKeyValue setting = await GetSetting(key);
 
-            return setting == null ? null : setting.ETag;
+            return setting?.ETag;
         }
     }
 }

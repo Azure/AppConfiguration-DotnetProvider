@@ -8,16 +8,13 @@
     class AppConfigConfigurationProvider : ConfigurationProvider
     {
         private readonly IAppConfigClient _client;
-        private readonly string _appConfigUri;
         private RemoteConfigurationOptions _options;
         private IDictionary<string, IKeyValue> _settings;
         private IDictionary<string, DateTimeOffset> _dueTimes;
 
-        public AppConfigConfigurationProvider(IAppConfigClient client, string appConfigUri, RemoteConfigurationOptions options)
+        public AppConfigConfigurationProvider(IAppConfigClient client, RemoteConfigurationOptions options)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
-
-            _appConfigUri = appConfigUri ?? throw new ArgumentNullException(nameof(appConfigUri));
 
             _options = options ?? throw new ArgumentNullException(nameof(options));
 
@@ -36,7 +33,7 @@
 
         private async Task LoadAsync()
         {
-            var settings = await _client.GetSettings(_appConfigUri, _options.Prefix);
+            var settings = await _client.GetSettings(_options.Prefix);
 
             var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -119,9 +116,9 @@
                     continue;
                 }
 
-                if (_settings[prefixedKey].ETag != await _client.GetETag(_appConfigUri, prefixedKey))
+                if (_settings[prefixedKey].ETag != await _client.GetETag(prefixedKey))
                 {
-                    _settings[prefixedKey] = await _client.GetSetting(_appConfigUri, prefixedKey);
+                    _settings[prefixedKey] = await _client.GetSetting(prefixedKey);
 
                     changed = true;
                     
