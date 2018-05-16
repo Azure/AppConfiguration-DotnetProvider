@@ -44,7 +44,7 @@
             {
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_appConfigUri, "/kv/" + key));
 
-                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json; version=\"{_options.AcceptVersion}\"" }))
+                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json" + (string.IsNullOrEmpty(_options.AcceptVersion) ? string.Empty : $"; version=\"{_options.AcceptVersion}\"") }))
                 {
                     //
                     // Throwing mechanism
@@ -71,7 +71,7 @@
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, new Uri(_appConfigUri, "/kv/" + key));
 
 
-                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { "application/json", $"version=\"{_options.AcceptVersion}\"" }))
+                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json" + (string.IsNullOrEmpty(_options.AcceptVersion) ? string.Empty : $"; version=\"{_options.AcceptVersion}\"") }))
                 {
                     //
                     // Throwing mechanism
@@ -104,7 +104,7 @@
             {
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_appConfigUri, "/kv?after=" + after));
 
-                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json; version=\"{_options.AcceptVersion}\"" }))
+                if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json" + (string.IsNullOrEmpty(_options.AcceptVersion) ? string.Empty : $"; version=\"{_options.AcceptVersion}\"") }))
                 {
                     //
                     // Throwing mechanism

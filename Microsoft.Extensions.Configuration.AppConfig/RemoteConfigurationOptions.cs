@@ -6,7 +6,7 @@
     {
         private Dictionary<string, KeyValueListener> _changeListeners = new Dictionary<string, KeyValueListener>();
 
-        public string AcceptVersion { get; set; } = "[1.0,1.0]";
+        public string AcceptVersion { get; set; } = null;
 
         public string Prefix { get; set; } = string.Empty;
 
