@@ -4,7 +4,6 @@
     <Version Condition="'$(CDP_PATCH_NUMBER)'!=''">1.0.0-alpha-$(CDP_PATCH_NUMBER)</Version>
     <Authors>Microsoft</Authors>
     <Company>Microsoft</Company>
-    <Description>Microsoft.Extensions.Configruation.AppConfig is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's Azconfig service as a configuration source in their applications.</Description>
     <RepositoryUrl>https://github.com/Azure/Azconfig-DotnetProvider</RepositoryUrl>
   </PropertyGroup>
 </Project>

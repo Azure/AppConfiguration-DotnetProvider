@@ -5,6 +5,22 @@ environment:
     provider: appcontainer
     image: cdpxtest.azurecr.io/global/vse2017u5-ext-win14393.1884:1.0
 
+build:
+  commands:
+    - !!buildcommand
+      name: 'Dotnet Build'
+      command: 'build.cmd'
+      logs:
+        - from: 'buildlogs'
+          to: 'Build Logs'
+          include:
+            - '**/*'
+      artifacts:
+        - from: 'src'
+          to: 'Binaries'
+          include:
+            - '*/bin/BuildOutput/**/*'
+
 package:
   commands:
     - !!buildcommand
