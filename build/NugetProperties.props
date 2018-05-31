@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <Version Condition="'$(CDP_PATCH_NUMBER)'==''">1.9.9999</Version>
+    <Version Condition="'$(CDP_PATCH_NUMBER)'!=''">1.0.0-alpha-$(CDP_PATCH_NUMBER)</Version>
+    <Authors>Microsoft</Authors>
+    <Company>Microsoft</Company>
+    <RepositoryUrl>https://github.com/Azure/Azconfig-DotnetProvider</RepositoryUrl>
+  </PropertyGroup>
+</Project>

@@ -1,7 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\build\NugetProperties.props" />
 
   <PropertyGroup>
     <TargetFramework>netstandard1.6</TargetFramework>
+    <Description>Microsoft.Extensions.Configruation.AppConfig is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's Azconfig service as a configuration source in their applications.</Description>
   </PropertyGroup>
 
   <ItemGroup>
