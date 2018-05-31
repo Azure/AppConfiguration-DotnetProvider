@@ -33,7 +33,7 @@
             string secretId=null;
             string secretValue=null;
 
-            foreach (var entry in connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            foreach (var entry in connectionString.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var segment = entry.Trim();
                 if (segment.StartsWith(EndPointSegmentId, StringComparison.OrdinalIgnoreCase))
