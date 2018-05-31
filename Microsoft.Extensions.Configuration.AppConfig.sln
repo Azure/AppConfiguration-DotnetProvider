@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Extensions.Configuration.AppConfig", "Microsoft.Extensions.Configuration.AppConfig\Microsoft.Extensions.Configuration.AppConfig.csproj", "{7B793D44-EC46-4C12-B71F-3A5005290C75}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Extensions.Configuration.AppConfig", "src\Microsoft.Extensions.Configuration.AppConfig\Microsoft.Extensions.Configuration.AppConfig.csproj", "{7B793D44-EC46-4C12-B71F-3A5005290C75}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AppConfig", "Tests.AppConfig\Tests.AppConfig.csproj", "{4CCE5AB2-A5D2-413C-A5AD-FFBE2FECC889}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AppConfig", "tests\Tests.AppConfig\Tests.AppConfig.csproj", "{4CCE5AB2-A5D2-413C-A5AD-FFBE2FECC889}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Application", "examples\Application\Application.csproj", "{31C252B7-8422-4157-B14D-9CB733563F27}"
 EndProject

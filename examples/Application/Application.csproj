@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Microsoft.Extensions.Configuration.AppConfig\Microsoft.Extensions.Configuration.AppConfig.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.Extensions.Configuration.AppConfig\Microsoft.Extensions.Configuration.AppConfig.csproj" />
   </ItemGroup>
 
   <ItemGroup>
