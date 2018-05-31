@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Extensions.Configuration.AppConfig
+﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using Newtonsoft.Json.Linq;
     using System;
@@ -7,25 +7,25 @@
     using System.Net.Http;
     using System.Threading.Tasks;
 
-    class AppConfigClient : IAppConfigClient
+    class AzconfigClient : IAzconfigClient
     {
-        private Uri _appConfigUri;
+        private Uri _azconfigUri;
         private string _credential;
         private byte[] _secret;
         private RemoteConfigurationOptions _options;
 
-        public AppConfigClient(string appConfigUri, string secretId, string secretValue, RemoteConfigurationOptions options)
+        public AzconfigClient(string azconfigUri, string secretId, string secretValue, RemoteConfigurationOptions options)
         {
-            if (string.IsNullOrWhiteSpace(appConfigUri))
+            if (string.IsNullOrWhiteSpace(azconfigUri))
             {
-                throw new ArgumentNullException(nameof(appConfigUri));
+                throw new ArgumentNullException(nameof(azconfigUri));
             }
             if (secretValue == null)
             {
                 throw new ArgumentNullException(nameof(secretValue));
             }
 
-            _appConfigUri = new Uri(appConfigUri);
+            _azconfigUri = new Uri(azconfigUri);
             _credential = secretId ?? throw new ArgumentNullException(nameof(secretId));
             _secret = Convert.FromBase64String(secretValue);
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -42,7 +42,7 @@
         {
             using (var client = new HttpClient())
             {
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_appConfigUri, "/kv/" + key));
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_azconfigUri, "/kv/" + key));
 
                 if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json" + (string.IsNullOrEmpty(_options.AcceptVersion) ? string.Empty : $"; version=\"{_options.AcceptVersion}\"") }))
                 {
@@ -68,7 +68,7 @@
         {
             using (var client = new HttpClient())
             {
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, new Uri(_appConfigUri, "/kv/" + key));
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, new Uri(_azconfigUri, "/kv/" + key));
 
 
                 if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json" + (string.IsNullOrEmpty(_options.AcceptVersion) ? string.Empty : $"; version=\"{_options.AcceptVersion}\"") }))
@@ -102,7 +102,7 @@
 
             using (var client = new HttpClient())
             {
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_appConfigUri, "/kv?after=" + after));
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, new Uri(_azconfigUri, "/kv?after=" + after));
 
                 if (!request.Headers.TryAddWithoutValidation("Accept", new string[] { $"application/json" + (string.IsNullOrEmpty(_options.AcceptVersion) ? string.Empty : $"; version=\"{_options.AcceptVersion}\"") }))
                 {

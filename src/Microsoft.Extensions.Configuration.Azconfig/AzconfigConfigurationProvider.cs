@@ -1,18 +1,18 @@
-﻿namespace Microsoft.Extensions.Configuration.AppConfig
+﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
 
-    class AppConfigConfigurationProvider : ConfigurationProvider
+    class AzconfigConfigurationProvider : ConfigurationProvider
     {
-        private readonly IAppConfigClient _client;
+        private readonly IAzconfigClient _client;
         private RemoteConfigurationOptions _options;
         private IDictionary<string, IKeyValue> _settings;
         private IDictionary<string, DateTimeOffset> _dueTimes;
 
-        public AppConfigConfigurationProvider(IAppConfigClient client, RemoteConfigurationOptions options)
+        public AzconfigConfigurationProvider(IAzconfigClient client, RemoteConfigurationOptions options)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
 

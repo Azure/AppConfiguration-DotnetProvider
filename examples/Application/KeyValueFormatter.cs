@@ -1,6 +1,6 @@
 ﻿namespace Application
 {
-    using Microsoft.Extensions.Configuration.AppConfig;
+    using Microsoft.Extensions.Configuration.Azconfig;
     using System;
     using System.Text;
 

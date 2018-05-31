@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.AppConfig;
+using Microsoft.Extensions.Configuration.Azconfig;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ConfigStoreDemo

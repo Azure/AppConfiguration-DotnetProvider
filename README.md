@@ -27,14 +27,14 @@ IConfiguration configuration = builder.Build();
 
 ## Notable API
 
-### AppConfigConfigurationExtensions
+### AzconfigConfigurationExtensions
 
 ```csharp
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri);
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string azconfigUri);
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options);
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string azconfigUri, RemoteConfigurationOptions options);
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string appConfigUri, RemoteConfigurationOptions options, IAppConfigClient client);
+static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string azconfigUri, RemoteConfigurationOptions options, IAzconfigClient client);
 ```
 ### RemoteConfigurationOptions
 
@@ -50,14 +50,14 @@ IEnumerable<KeyValueListener> ChangeListeners { get; }
 RemoteConfigurationOptions Listen(string key, int pollInterval);
 ```
 
-### IAppConfigClient
+### IAzconfigClient
 
 ```csharp
-Task<IEnumerable<IKeyValue>> GetSettings(string appConfigUri, string prefix)
+Task<IEnumerable<IKeyValue>> GetSettings(string azconfigUri, string prefix)
 
-Task<IKeyValue> GetSetting(string appConfigUri, string key)
+Task<IKeyValue> GetSetting(string azconfigUri, string key)
 
-Task<string> GetETag(string appConfigUri, string key)
+Task<string> GetETag(string azconfigUri, string key)
 ```
 
 # Contributing

@@ -5,7 +5,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Microsoft.Extensions.Configuration.AppConfig
+namespace Microsoft.Extensions.Configuration.Azconfig
 {
     static class HttpRequestMessageExtensions
     {

@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Extensions.Configuration.AppConfig
+﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     class KeyValueFormatter : IKeyValueFormatter
     {

@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 $BuildRelativePath = "bin\BuildOutput"
 $LogDirectory = "$PSScriptRoot\buildlogs"
-$Solution     = "$PSScriptRoot\Microsoft.Extensions.Configuration.AppConfig.sln"
+$Solution     = "$PSScriptRoot\Microsoft.Extensions.Configuration.Azconfig.sln"
 
 # Create the log directory.
 if ((Test-Path -Path $LogDirectory) -ne $true) {

@@ -1,7 +1,7 @@
-namespace Tests.AppConfig
+namespace Tests.Azconfig
 {
     using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AppConfig;
+    using Microsoft.Extensions.Configuration.Azconfig;
     using Microsoft.Extensions.Primitives;
     using System;
     using System.Text;
@@ -13,7 +13,7 @@ namespace Tests.AppConfig
         [Fact]
         public void AddsConfigurationValues()
         {
-            var testClient = new AppConfigClient();
+            var testClient = new AzconfigClient();
 
             testClient.Data["TestKey"] = new KeyValue()
             {
@@ -33,7 +33,7 @@ namespace Tests.AppConfig
         [Fact]
         public void TriggersChangeNotification()
         {
-            var testClient = new AppConfigClient();
+            var testClient = new AzconfigClient();
 
             testClient.Data["TestKey"] = new KeyValue()
             {
@@ -91,7 +91,7 @@ namespace Tests.AppConfig
         [Fact]
         public void FormatsKeyValue()
         {
-            var testClient = new AppConfigClient();
+            var testClient = new AzconfigClient();
 
             testClient.Data["TestKey"] = new KeyValue()
             {
