@@ -1,0 +1,22 @@
+environment:
+  host:
+    os: windows
+  runtime:
+    provider: appcontainer
+    image: cdpxtest.azurecr.io/global/vse2017u5-ext-win14393.1884:1.0
+
+package:
+  commands:
+    - !!buildcommand
+      name: 'Dotnet Pack'
+      command: 'pack.cmd'
+      logs:
+        - from: 'buildlogs'
+          to: 'Build Logs'
+          include:
+            - '**/*'
+      artifacts:
+        - from: 'src'
+          to: 'Packages'
+          include:
+            - '*/bin/PackageOutput/**/*.nupkg'
