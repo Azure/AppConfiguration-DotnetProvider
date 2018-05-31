@@ -1,11 +1,11 @@
-﻿namespace Tests.AppConfig
+﻿namespace Tests.Azconfig
 {
-    using Microsoft.Extensions.Configuration.AppConfig;
+    using Microsoft.Extensions.Configuration.Azconfig;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
 
-    class AppConfigClient : IAppConfigClient
+    class AzconfigClient : IAzconfigClient
     {
         private Dictionary<string, IKeyValue> _data = new Dictionary<string, IKeyValue>();
 

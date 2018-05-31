@@ -1,6 +1,6 @@
-﻿namespace Tests.AppConfig
+﻿namespace Tests.Azconfig
 {
-    using Microsoft.Extensions.Configuration.AppConfig;
+    using Microsoft.Extensions.Configuration.Azconfig;
     using System.Collections.Generic;
 
     class Fixture

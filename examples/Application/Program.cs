@@ -1,7 +1,7 @@
 ﻿namespace Application
 {
     using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AppConfig;
+    using Microsoft.Extensions.Configuration.Azconfig;
     using System;
     using System.Threading;
     using System.Threading.Tasks;

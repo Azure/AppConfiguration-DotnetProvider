@@ -1,9 +1,9 @@
-﻿namespace Microsoft.Extensions.Configuration.AppConfig
+﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;
 
-    public interface IAppConfigClient
+    public interface IAzconfigClient
     {
         Task<IEnumerable<IKeyValue>> GetSettings(string prefix);
 
