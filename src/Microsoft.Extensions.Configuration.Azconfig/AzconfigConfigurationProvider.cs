@@ -3,27 +3,24 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reactive.Concurrency;
+    using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azconfig.Client;
+    using Microsoft.Extensions.Configuration.Azconfig.Models;
 
     class AzconfigConfigurationProvider : ConfigurationProvider
     {
-        private readonly IAzconfigClient _client;
         private RemoteConfigurationOptions _options;
         private IDictionary<string, IKeyValue> _settings;
-        private IDictionary<string, DateTimeOffset> _dueTimes;
+        private readonly IAzconfigReader _reader;
+        private readonly IAzconfigWatcher _watcher;
 
-        public AzconfigConfigurationProvider(IAzconfigClient client, RemoteConfigurationOptions options)
+        public AzconfigConfigurationProvider(IAzconfigReader reader, IAzconfigWatcher watcher, RemoteConfigurationOptions options)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
-
+            _reader = reader ?? throw new ArgumentNullException(nameof(reader));
+            _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
             _options = options ?? throw new ArgumentNullException(nameof(options));
-
-            //
-            // Set up value watching for configuration keys
-            if (_options.ChangeListeners != null)
-            {
-                UpdateDueTimes(options.ChangeListeners.Select(cl => cl.Key));
-            }
         }
 
         public override void Load()
@@ -33,108 +30,37 @@
 
         private async Task LoadAsync()
         {
-            var settings = await _client.GetSettings(_options.Prefix);
+            var data = new Dictionary<string, IKeyValue>();
 
-            var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var setting in settings)
+            var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
             {
-                data.Add(setting.Key, setting);
-            }
+                KeyFilter = _options.LoadSettingsOptions.KeyFilter,
+                LabelFilter = _options.LoadSettingsOptions.Label
+            };
+
+            await _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data.Add(kv.Key, kv));
 
             SetData(data);
 
-            //
-            // Set up configuration watcher logic
-
-            SetupWatcher();
+            ObserveKeyvalue();
         }
 
-        private void SetupWatcher()
+        private async Task ObserveKeyvalue()
         {
-            //
-            // No-op if configuration watching is disabled
-            if (_options.ChangeListeners == null || _options.ChangeListeners.Count() == 0)
+            foreach (KeyValueListener changeListener in _options.ChangeListeners)
             {
-                return;
-            }
-
-            DateTimeOffset now = DateTime.UtcNow;
-            DateTimeOffset earliest = _dueTimes[_dueTimes.First().Key];
-
-            foreach (KeyValuePair<string, DateTimeOffset> dueTime in _dueTimes)
-            {
-                if (dueTime.Value < earliest)
+                IKeyValue retrievedKv = await _reader.GetKeyValue(changeListener.Key,
+                                                                  new QueryKeyValueOptions() { Label = changeListener.Label },
+                                                                  CancellationToken.None);
+                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(retrievedKv,
+                                                                             TimeSpan.FromMilliseconds(changeListener.PollInterval),
+                                                                             Scheduler.Default);
+                observable.Subscribe((observedKey) =>
                 {
-                    earliest = dueTime.Value;
-                }
-            }
-
-            if (earliest < now)
-            {
-                earliest = now;
-            }
-
-            List<string> targets = new List<string>();
-
-            foreach (KeyValuePair<string, DateTimeOffset> dueTime in _dueTimes)
-            {
-                //
-                // Provide interval for batching
-                if (dueTime.Value <= earliest + TimeSpan.FromMilliseconds(100))
-                {
-                    targets.Add(dueTime.Key);
-                }
-            }
-
-            UpdateDueTimes(targets);
-
-            Task.Delay((int) (earliest - now).TotalMilliseconds).ContinueWith(async (task) => {
-
-                if (await CheckForChanges(targets))
-                {
+                    _settings[changeListener.Key] = observedKey;
                     SetData(_settings);
-                }
-
-                //
-                // Continue watching
-
-                SetupWatcher();
-            });
-        }
-
-        private async Task<bool> CheckForChanges(IEnumerable<string> keys)
-        {
-            bool changed = false;
-
-            foreach (string key in keys)
-            {
-                string prefixedKey = (_options.Prefix ?? string.Empty) + key;
-
-                if (!_settings.ContainsKey(prefixedKey))
-                {
-                    continue;
-                }
-
-                if (_settings[prefixedKey].ETag != await _client.GetETag(prefixedKey))
-                {
-                    _settings[prefixedKey] = await _client.GetSetting(prefixedKey);
-
-                    changed = true;
-                    
-                    foreach (var changeListener in _options.ChangeListeners)
-                    {
-                        if (changeListener.Key == key)
-                        {
-                            changeListener.Callback?.Invoke();
-
-                            break;
-                        }
-                    }
-                }
+                });
             }
-
-            return changed;
         }
 
         private void SetData(IDictionary<string, IKeyValue> data)
@@ -145,35 +71,18 @@
 
             //
             // Set the application data for the configuration provider
-
             var applicationData = new Dictionary<string, string>();
 
             foreach (KeyValuePair<string, IKeyValue> kvp in data)
             {
-                applicationData.Add(kvp.Key.Substring((_options.Prefix ?? string.Empty).Length), _options.KeyValueFormatter?.Format(kvp.Value) ?? kvp.Value.Value);
+                applicationData.Add(kvp.Key, kvp.Value.Value);
             }
 
             Data = applicationData;
 
             //
             // Notify that the configuration has been updated
-
             OnReload();
-        }
-
-        private void UpdateDueTimes(IEnumerable<string> keys)
-        {
-            if (_dueTimes == null)
-            {
-                _dueTimes = new Dictionary<string, DateTimeOffset>();
-            }
-
-            DateTimeOffset now = DateTime.UtcNow;
-
-            foreach (KeyValueListener changeListener in _options.ChangeListeners)
-            {
-                _dueTimes[changeListener.Key] = now + TimeSpan.FromMilliseconds(changeListener.PollInterval);
-            }
         }
     }
 }

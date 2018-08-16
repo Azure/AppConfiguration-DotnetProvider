@@ -1,4 +1,5 @@
-﻿namespace Microsoft.Extensions.Configuration.Azconfig
+﻿
+namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
     using System.Collections.Generic;
 
@@ -6,27 +7,23 @@
     {
         private Dictionary<string, KeyValueListener> _changeListeners = new Dictionary<string, KeyValueListener>();
 
-        public string AcceptVersion { get; set; } = null;
-
-        public string Prefix { get; set; } = string.Empty;
-
-        public IKeyValueFormatter KeyValueFormatter { get; set; } = new KeyValueFormatter();
+        public LoadSettingsOptions LoadSettingsOptions { get; set; } = new LoadSettingsOptions() { Label = string.Empty };
 
         public IEnumerable<KeyValueListener> ChangeListeners {
-            get {
+            get
+            {
                 return _changeListeners.Values;
             }
         }
 
-        public RemoteConfigurationOptions Listen(string key, int pollInterval)
+        public RemoteConfigurationOptions Listen(string key, int pollInterval, string label = "")
         {
             _changeListeners[key] = new KeyValueListener()
             {
                 Key = key,
-                PollInterval = pollInterval,
-                Callback = null
+                Label = label,
+                PollInterval = pollInterval
             };
-
             return this;
         }
     }

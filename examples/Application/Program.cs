@@ -2,6 +2,7 @@
 {
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
+    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Threading;
     using System.Threading.Tasks;
@@ -33,15 +34,17 @@
 
             IConfiguration configuration = builder.Build();
 
-            builder.AddRemoteAppConfiguration(configuration["config_url"], configuration["secret_id"], configuration["secret_value"],
-                new RemoteConfigurationOptions()
+            RemoteConfigurationOptions remoteConfigOpt = new RemoteConfigurationOptions()
+            {
+                LoadSettingsOptions = new LoadSettingsOptions()
                 {
-                    Prefix = "App1/",
-                    AcceptVersion = configuration["version"],
-                    KeyValueFormatter = new KeyValueFormatter()
+                    KeyFilter = "App*",
+                    Label = "label1"
                 }
-                .Listen("AppName", 1000)
-                .Listen("Language", 1000));
+            };
+            remoteConfigOpt.Listen("AppName", 1000, "label1").Listen("Language", 1000, "label1");
+
+            builder.AddRemoteAppConfiguration(configuration["config_url"], configuration["secret_id"], configuration["secret_value"], remoteConfigOpt);
 
             Configuration = builder.Build();
         }

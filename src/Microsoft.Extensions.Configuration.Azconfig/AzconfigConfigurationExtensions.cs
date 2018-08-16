@@ -1,12 +1,41 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
+    using Microsoft.Azconfig.Client;
+    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
 
     public static class AzconfigConfigurationExtensions
     {
-        private const string EndPointSegmentId = "EndPoint=";
-        private const string CredentialSegmentId = "Credential=";
+        private const string EndPointSegmentId = "Endpoint=";
+        private const string CredentialSegmentId = "Id=";
         private const string SecretSegmentId = "Secret=";
+
+        public static IConfigurationBuilder AddRemoteAppConfiguration
+        (
+            this IConfigurationBuilder configurationBuilder,
+            string azconfigUri,
+            string secretId,
+            string secretValue,
+            RemoteConfigurationOptions options
+        )
+        {
+            string connectionString = EndPointSegmentId + azconfigUri + ";";
+            connectionString += CredentialSegmentId + secretId + ";";
+            connectionString += SecretSegmentId + secretValue;
+
+            return AddRemoteAppConfiguration(configurationBuilder, connectionString, options);
+        }
+
+        public static IConfigurationBuilder AddRemoteAppConfiguration
+        (
+            this IConfigurationBuilder configurationBuilder,
+            string azconfigUri,
+            string secretId,
+            string secretValue
+        )
+        {
+            return AddRemoteAppConfiguration(configurationBuilder, azconfigUri, secretId, secretValue, new RemoteConfigurationOptions());
+        }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration
         (
@@ -29,58 +58,14 @@
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            string azconfigUri=null;
-            string secretId=null;
-            string secretValue=null;
-
-            foreach (var entry in connectionString.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var segment = entry.Trim();
-                if (segment.StartsWith(EndPointSegmentId, StringComparison.OrdinalIgnoreCase))
-                {
-                    azconfigUri = segment.Substring(EndPointSegmentId.Length);
-                }
-                else if (segment.StartsWith(CredentialSegmentId, StringComparison.OrdinalIgnoreCase))
-                {
-                    secretId = segment.Substring(CredentialSegmentId.Length);
-                }
-                else if (segment.StartsWith(SecretSegmentId, StringComparison.OrdinalIgnoreCase))
-                {
-                    secretValue = segment.Substring(SecretSegmentId.Length);
-                }
-            }
-
-            return AddRemoteAppConfiguration(configurationBuilder, azconfigUri, secretId, secretValue, options);
-        }
-
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
-            this IConfigurationBuilder configurationBuilder,
-            string azconfigUri,
-            string secretId,
-            string secretValue
-        )
-        {
-            return AddRemoteAppConfiguration(configurationBuilder, azconfigUri, secretId, secretValue, new RemoteConfigurationOptions());
-        }
-
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
-            this IConfigurationBuilder configurationBuilder,
-            string azconfigUri,
-            string secretId,
-            string secretValue,
-            RemoteConfigurationOptions options
-        )
-        {
-            return AddRemoteAppConfiguration(configurationBuilder, options, new AzconfigClient(azconfigUri, secretId, secretValue, options));
+            return AddRemoteAppConfiguration(configurationBuilder, options, new AzconfigClient(connectionString));
         }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration
         (
             this IConfigurationBuilder configurationBuilder,
             RemoteConfigurationOptions options,
-            IAzconfigClient client
+            AzconfigClient client
         )
         {
             if (options == null)

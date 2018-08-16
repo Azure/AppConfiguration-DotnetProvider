@@ -1,11 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azconfig.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Azconfig;
+using Microsoft.Extensions.Configuration.Azconfig.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ConfigStoreDemo
@@ -14,12 +12,16 @@ namespace ConfigStoreDemo
     {
         public Startup(IConfiguration configuration)
         {
+            string connection_string = "Endpoint=https://contoso.azconfig.io;Id=xxxxx;Secret=abcdef=";
+
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddRemoteAppConfiguration("ConnectionString",
-                    new RemoteConfigurationOptions()
-                    .Listen("Settings:BackgroundColor", 1000));
+                .AddRemoteAppConfiguration(connection_string,
+                                           new RemoteConfigurationOptions().Listen("Settings:BackgroundColor", 1000))
+                .AddRemoteAppConfiguration(connection_string, 
+                                           new RemoteConfigurationOptions() { LoadSettingsOptions = new LoadSettingsOptions() { Label = "label1"} });
             Configuration = builder.Build();
+            AzconfigClient client = new AzconfigClient(connection_string);
         }
 
         public IConfiguration Configuration { get; }
