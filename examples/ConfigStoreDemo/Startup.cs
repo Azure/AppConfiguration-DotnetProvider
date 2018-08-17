@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azconfig.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Azconfig;
-using Microsoft.Extensions.Configuration.Azconfig.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ConfigStoreDemo
@@ -14,12 +13,12 @@ namespace ConfigStoreDemo
         {
             string connection_string = "Endpoint=https://contoso.azconfig.io;Id=xxxxx;Secret=abcdef=";
 
+            // load from local json file and remote config store.
+            // load all key-values with null label and listen one key.
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddRemoteAppConfiguration(connection_string,
-                                           new RemoteConfigurationOptions().Listen("Settings:BackgroundColor", 1000))
-                .AddRemoteAppConfiguration(connection_string, 
-                                           new RemoteConfigurationOptions() { LoadSettingsOptions = new LoadSettingsOptions() { Label = "label1"} });
+                .AddRemoteAppConfiguration(connection_string, new RemoteConfigurationOptions().Listen("Settings:BackgroundColor", 1000));
+
             Configuration = builder.Build();
             AzconfigClient client = new AzconfigClient(connection_string);
         }

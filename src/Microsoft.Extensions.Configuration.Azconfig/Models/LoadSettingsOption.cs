@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
-    public class LoadSettingsOptions
+    public class LoadSettingsOption
     {
         /// <summary>
         /// Keys that will be used to filter.
@@ -9,8 +9,8 @@
         public string KeyFilter { get; set; }
 
         /// <summary>
-        /// Label of the settings to be load.
+        /// Labels that will be used to filter.
         /// </summary>
-        public string Label { get; set; }
+        public string LabelFilter { get; set; }
     }
 }

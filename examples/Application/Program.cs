@@ -2,7 +2,6 @@
 {
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
-    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Threading;
     using System.Threading.Tasks;
@@ -30,21 +29,16 @@
         {
             var builder = new ConfigurationBuilder();
 
-            builder.AddJsonFile("appsettings.json", false, true);
+            builder.AddJsonFile("appsettings.json", false, false);
 
             IConfiguration configuration = builder.Build();
 
-            RemoteConfigurationOptions remoteConfigOpt = new RemoteConfigurationOptions()
-            {
-                LoadSettingsOptions = new LoadSettingsOptions()
-                {
-                    KeyFilter = "App*",
-                    Label = "label1"
-                }
-            };
-            remoteConfigOpt.Listen("AppName", 1000, "label1").Listen("Language", 1000, "label1");
-
-            builder.AddRemoteAppConfiguration(configuration["config_url"], configuration["secret_id"], configuration["secret_value"], remoteConfigOpt);
+            builder.AddRemoteAppConfiguration(configuration["config_url"], 
+                                              configuration["secret_id"], 
+                                              configuration["secret_value"],
+                                              new RemoteConfigurationOptions().Use("App*", "label1")
+                                                                              .Listen("AppName", 1000, "label1")
+                                                                              .Listen("Language", 1000, "label1"));
 
             Configuration = builder.Build();
         }

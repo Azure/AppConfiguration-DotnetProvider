@@ -32,15 +32,16 @@
         {
             var data = new Dictionary<string, IKeyValue>();
 
-            var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
+            foreach(var loadOption in _options.LoadSettingsOptions)
             {
-                KeyFilter = _options.LoadSettingsOptions.KeyFilter,
-                LabelFilter = _options.LoadSettingsOptions.Label
-            };
-
-            await _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data.Add(kv.Key, kv));
-
-            SetData(data);
+                var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
+                {
+                    KeyFilter = loadOption.KeyFilter,
+                    LabelFilter = loadOption.LabelFilter
+                };
+                await _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => { data[kv.Key] = kv; });
+                SetData(data);
+            }
 
             ObserveKeyvalue();
         }
