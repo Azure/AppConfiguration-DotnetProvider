@@ -14,7 +14,8 @@ namespace Tests.Azconfig
     {
         private IKeyValue _kv;
         private readonly IEnumerable<IKeyValue> _kvCollection;
-        private int _counter = 0;
+        private int _getKvCounter = 0;
+        private const int _createNewKvTrigger = 1; 
 
         public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue>  kvCollection)
         {
@@ -43,7 +44,7 @@ namespace Tests.Azconfig
         {
             // use counter to switch retrieved key value
             // used in observe key tests
-            if (_counter > 1)
+            if (_getKvCounter > _createNewKvTrigger)
             {
                 _kv = new KeyValue(_kv.Key)
                 {
@@ -57,7 +58,7 @@ namespace Tests.Azconfig
             response.StatusCode = HttpStatusCode.OK;
             string json = JsonConvert.SerializeObject(_kv);
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
-            _counter++;
+            _getKvCounter++;
 
             return Task.FromResult(response);
         }

@@ -3,7 +3,6 @@ namespace Tests.Azconfig
     using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
-    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System.Collections.Generic;
     using System.Threading;
     using Xunit;
@@ -71,7 +70,7 @@ namespace Tests.Azconfig
             {
                 var builder = new ConfigurationBuilder();
                 var remoteConfigOpt = new RemoteConfigurationOptions();
-                remoteConfigOpt.Listen("TestKey1", 1000);
+                remoteConfigOpt.Watch("TestKey1", 1000);
                 builder.AddRemoteAppConfiguration(remoteConfigOpt, testClient);
                 var config = builder.Build();
                 Assert.True(config["TestKey1"] == "TestValue1");

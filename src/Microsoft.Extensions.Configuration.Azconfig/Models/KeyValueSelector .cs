@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
-    public class LoadSettingsOption
+    public class KeyValueSelector
     {
         /// <summary>
         /// Keys that will be used to filter.

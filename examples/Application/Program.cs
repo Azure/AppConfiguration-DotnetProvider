@@ -29,17 +29,13 @@
         {
             var builder = new ConfigurationBuilder();
 
-            builder.AddJsonFile("appsettings.json", false, false);
+            builder.AddJsonFile("appsettings.json");
 
             IConfiguration configuration = builder.Build();
-
-            builder.AddRemoteAppConfiguration(configuration["config_url"], 
-                                              configuration["secret_id"], 
-                                              configuration["secret_value"],
-                                              new RemoteConfigurationOptions().Use("App*", "label1")
-                                                                              .Listen("AppName", 1000, "label1")
-                                                                              .Listen("Language", 1000, "label1"));
-
+            builder.AddRemoteAppConfiguration(configuration["connection_string"], o => {
+                o.Use("App*", "label1")
+                 .Watch("Language", 1000, "label1")
+                 .Watch("AppName", 1000, "label1"); });
             Configuration = builder.Build();
         }
 

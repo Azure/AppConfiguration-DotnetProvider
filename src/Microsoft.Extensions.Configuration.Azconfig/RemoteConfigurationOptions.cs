@@ -8,29 +8,20 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
     public class RemoteConfigurationOptions
     {
-        private Dictionary<string, KeyValueListener> _changeListeners = new Dictionary<string, KeyValueListener>();
+        private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
 
-        private bool _LoadDefaultSetting = true;
+        public List<KeyValueSelector> KeyValueSelectors { get; } = new List<KeyValueSelector>();
 
-        public List<LoadSettingsOption> LoadSettingsOptions { get; } = new List<LoadSettingsOption>()
-        {
-            // Add default option. Load all key-values with empty Label.
-            new LoadSettingsOption()
-            {
-                LabelFilter = string.Empty
-            }
-        };
-
-        public IEnumerable<KeyValueListener> ChangeListeners {
+        public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
             {
-                return _changeListeners.Values;
+                return _changeWatchers.Values;
             }
         }
 
-        public RemoteConfigurationOptions Listen(string key, int pollInterval, string label = "")
+        public RemoteConfigurationOptions Watch(string key, int pollInterval, string label = "")
         {
-            _changeListeners[key] = new KeyValueListener()
+            _changeWatchers[key] = new KeyValueWatcher()
             {
                 Key = key,
                 Label = label,
@@ -65,23 +56,16 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             // Do not support * and , for label filter for now.
             if (labelFilter.Contains('*') || labelFilter.Contains(','))
             {
-                throw new ArgumentException(string.Format("'*' and ',' are not valid characters for labelFilter."));
+                throw new ArgumentException(string.Format("'*' and ',' are not supported for labelFilter."));
             }
 
-            var loadSettingOpt = new LoadSettingsOption()
+            var keyValueSelectors = new KeyValueSelector ()
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter
             };
 
-            if (_LoadDefaultSetting)
-            {
-                // remove the default setting.
-                LoadSettingsOptions.RemoveAt(0);
-                _LoadDefaultSetting = false;
-            }
-
-            LoadSettingsOptions.Add(loadSettingOpt);
+            KeyValueSelectors.Add(keyValueSelectors);
 
             return this;
         }

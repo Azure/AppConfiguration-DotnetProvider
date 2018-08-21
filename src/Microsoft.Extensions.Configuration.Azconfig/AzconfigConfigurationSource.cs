@@ -1,5 +1,4 @@
 ﻿using Microsoft.Azconfig.Client;
-using Microsoft.Extensions.Configuration.Azconfig.Models;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {

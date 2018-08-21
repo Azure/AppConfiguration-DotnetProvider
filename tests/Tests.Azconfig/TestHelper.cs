@@ -9,7 +9,7 @@ namespace Tests.Azconfig
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
-            return $"Endpoint=https://contoso.azconfig.io;Id=b1d9b31;Secret={returnValue}";
+            return $"Endpoint=https://xxxxx;Id=b1d9b31;Secret={returnValue}";
         }
     }
 }

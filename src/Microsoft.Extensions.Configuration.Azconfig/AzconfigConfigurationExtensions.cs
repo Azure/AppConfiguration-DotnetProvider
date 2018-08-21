@@ -1,59 +1,33 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using Microsoft.Azconfig.Client;
-    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
 
     public static class AzconfigConfigurationExtensions
     {
-        private const string EndPointSegmentId = "Endpoint=";
-        private const string CredentialSegmentId = "Id=";
-        private const string SecretSegmentId = "Secret=";
-
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
+        public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            string azconfigUri,
-            string secretId,
-            string secretValue,
-            RemoteConfigurationOptions options
-        )
-        {
-            string connectionString = EndPointSegmentId + azconfigUri + ";";
-            connectionString += CredentialSegmentId + secretId + ";";
-            connectionString += SecretSegmentId + secretValue;
-
-            return AddRemoteAppConfiguration(configurationBuilder, connectionString, options);
-        }
-
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
-            this IConfigurationBuilder configurationBuilder,
-            string azconfigUri,
-            string secretId,
-            string secretValue
-        )
-        {
-            return AddRemoteAppConfiguration(configurationBuilder, azconfigUri, secretId, secretValue, new RemoteConfigurationOptions());
-        }
-
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
-            this IConfigurationBuilder configurationBuilder,
-            string connectionString
-        )
+            string connectionString)
         {
             return AddRemoteAppConfiguration(configurationBuilder, connectionString, new RemoteConfigurationOptions());
         }
 
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
+        public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
             string connectionString,
-            RemoteConfigurationOptions options
-        )
+            Action<RemoteConfigurationOptions> action)
         {
-            if (String.IsNullOrEmpty(connectionString))
+            RemoteConfigurationOptions options = new RemoteConfigurationOptions();
+            action(options);
+            return AddRemoteAppConfiguration(configurationBuilder, options, new AzconfigClient(connectionString));
+        }
+
+        public static IConfigurationBuilder AddRemoteAppConfiguration(
+            this IConfigurationBuilder configurationBuilder,
+            string connectionString,
+            RemoteConfigurationOptions options)
+        {
+            if (string.IsNullOrEmpty(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString));
             }
@@ -61,12 +35,10 @@
             return AddRemoteAppConfiguration(configurationBuilder, options, new AzconfigClient(connectionString));
         }
 
-        public static IConfigurationBuilder AddRemoteAppConfiguration
-        (
+        public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
             RemoteConfigurationOptions options,
-            AzconfigClient client
-        )
+            AzconfigClient client)
         {
             if (options == null)
             {

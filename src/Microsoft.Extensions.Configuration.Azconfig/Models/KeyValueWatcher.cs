@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
-    public class KeyValueListener
+    public class KeyValueWatcher
     {
         /// <summary>
         /// Key of the key-value to be listened

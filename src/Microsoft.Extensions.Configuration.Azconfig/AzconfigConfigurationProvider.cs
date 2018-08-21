@@ -9,10 +9,11 @@
     using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
 
-    class AzconfigConfigurationProvider : ConfigurationProvider
+    class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
     {
         private RemoteConfigurationOptions _options;
         private IDictionary<string, IKeyValue> _settings;
+        private List<IDisposable> _subscriptions = new List<IDisposable>();
         private readonly IAzconfigReader _reader;
         private readonly IAzconfigWatcher _watcher;
 
@@ -32,35 +33,58 @@
         {
             var data = new Dictionary<string, IKeyValue>();
 
-            foreach(var loadOption in _options.LoadSettingsOptions)
+            if (!_options.KeyValueSelectors.Any())
             {
-                var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
-                {
-                    KeyFilter = loadOption.KeyFilter,
-                    LabelFilter = loadOption.LabelFilter
-                };
-                await _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => { data[kv.Key] = kv; });
+                // Load all key-values by default
+                _reader.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
                 SetData(data);
             }
+            else
+            { 
+                foreach (var loadOption in _options.KeyValueSelectors)
+                {
+                    var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
+                    {
+                        KeyFilter = loadOption.KeyFilter,
+                        LabelFilter = loadOption.LabelFilter
+                    };
+                    _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                    SetData(data);
+                }
+            }
 
-            ObserveKeyvalue();
+            ObserveKeyValue();
         }
 
-        private async Task ObserveKeyvalue()
+        private async Task ObserveKeyValue()
         {
-            foreach (KeyValueListener changeListener in _options.ChangeListeners)
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                IKeyValue retrievedKv = await _reader.GetKeyValue(changeListener.Key,
-                                                                  new QueryKeyValueOptions() { Label = changeListener.Label },
-                                                                  CancellationToken.None);
-                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(retrievedKv,
-                                                                             TimeSpan.FromMilliseconds(changeListener.PollInterval),
-                                                                             Scheduler.Default);
-                observable.Subscribe((observedKey) =>
+                IKeyValue retrievedKv = null;
+                string watchedKey = changeWatcher.Key;
+                string watchedLabel = changeWatcher.Label;
+
+                if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel)
                 {
-                    _settings[changeListener.Key] = observedKey;
+                    retrievedKv = _settings[watchedKey];
+                }
+                else
+                {
+                    // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
+                    retrievedKv = await _reader.GetKeyValue(watchedKey,
+                                                            new QueryKeyValueOptions() { Label = watchedLabel },
+                                                            CancellationToken.None) ??
+                                 new KeyValue(watchedKey) { Label = watchedLabel };
+                }
+
+                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(retrievedKv,
+                                                                             TimeSpan.FromMilliseconds(changeWatcher.PollInterval),
+                                                                             Scheduler.Default);
+                _subscriptions.Add(observable.Subscribe((observedKey) =>
+                {
+                    _settings[watchedKey] = observedKey;
                     SetData(_settings);
-                });
+                }));
             }
         }
 
@@ -84,6 +108,14 @@
             //
             // Notify that the configuration has been updated
             OnReload();
+        }
+
+        public void Dispose()
+        {
+            foreach (var subscription in _subscriptions)
+            {
+                subscription.Dispose();
+            }
         }
     }
 }
