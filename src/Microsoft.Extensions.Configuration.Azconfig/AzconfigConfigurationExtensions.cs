@@ -28,7 +28,7 @@
 
             if (string.IsNullOrEmpty(connectionString))
             {
-                throw new ArgumentNullException("Connection string is null. Please invoke connection() to pass in.", nameof(connectionString));
+                throw new ArgumentNullException($"No connection has been specified. Use '{nameof(options.Connect)}()' to provide connection details.");
             }
 
             return AddRemoteAppConfiguration(configurationBuilder, 

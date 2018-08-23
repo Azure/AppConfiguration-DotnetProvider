@@ -10,11 +10,11 @@ namespace Microsoft.Extensions.Configuration.Azconfig
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
 
-        public string ConnectionString { get; set; }
-
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+
+        public string ConnectionString { get; set; }
 
         public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
