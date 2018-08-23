@@ -3,6 +3,7 @@ namespace Tests.Azconfig
     using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
+    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System.Collections.Generic;
     using System.Threading;
     using Xunit;

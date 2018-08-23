@@ -26,21 +26,15 @@
 
         public override void Load()
         {
-            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        }
-
-        private async Task LoadAsync()
-        {
             var data = new Dictionary<string, IKeyValue>();
 
             if (!_options.KeyValueSelectors.Any())
             {
                 // Load all key-values by default
                 _reader.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
-                SetData(data);
             }
             else
-            { 
+            {
                 foreach (var loadOption in _options.KeyValueSelectors)
                 {
                     var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
@@ -49,9 +43,10 @@
                         LabelFilter = loadOption.LabelFilter
                     };
                     _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
-                    SetData(data);
                 }
             }
+
+            SetData(data);
 
             ObserveKeyValue();
         }
@@ -60,29 +55,29 @@
         {
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                IKeyValue retrievedKv = null;
+                IKeyValue watchedKv = null;
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
 
                 if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel)
                 {
-                    retrievedKv = _settings[watchedKey];
+                    watchedKv = _settings[watchedKey];
                 }
                 else
                 {
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
-                    retrievedKv = await _reader.GetKeyValue(watchedKey,
+                    watchedKv = await _reader.GetKeyValue(watchedKey,
                                                             new QueryKeyValueOptions() { Label = watchedLabel },
                                                             CancellationToken.None) ??
                                  new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(retrievedKv,
+                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(watchedKv,
                                                                              TimeSpan.FromMilliseconds(changeWatcher.PollInterval),
                                                                              Scheduler.Default);
-                _subscriptions.Add(observable.Subscribe((observedKey) =>
+                _subscriptions.Add(observable.Subscribe((observedKv) =>
                 {
-                    _settings[watchedKey] = observedKey;
+                    _settings[watchedKey] = observedKv;
                     SetData(_settings);
                 }));
             }

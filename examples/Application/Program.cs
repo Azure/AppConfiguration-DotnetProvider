@@ -29,13 +29,19 @@
         {
             var builder = new ConfigurationBuilder();
 
+            // load some local configurations from files
             builder.AddJsonFile("appsettings.json");
 
             IConfiguration configuration = builder.Build();
-            builder.AddRemoteAppConfiguration(configuration["connection_string"], o => {
-                o.Use("App*", "label1")
+
+            // load key-values with prefix "App" label "label1" and listen two keys.
+            // Pull configuration connection string from environment variable
+            builder.AddRemoteAppConfiguration(o => {
+                o.Connect(configuration["connection_string"])
+                 .Use("App*", "label1")
                  .Watch("Language", 1000, "label1")
-                 .Watch("AppName", 1000, "label1"); });
+                 .Watch("AppName", 1000, "label1");
+            });
             Configuration = builder.Build();
         }
 

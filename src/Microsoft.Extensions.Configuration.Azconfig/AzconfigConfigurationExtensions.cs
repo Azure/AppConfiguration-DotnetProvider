@@ -9,24 +9,39 @@
             this IConfigurationBuilder configurationBuilder,
             string connectionString)
         {
-            return AddRemoteAppConfiguration(configurationBuilder, connectionString, new RemoteConfigurationOptions());
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new ArgumentNullException(nameof(connectionString));
+            }
+
+            return AddRemoteAppConfiguration(configurationBuilder, new RemoteConfigurationOptions(), new AzconfigClient(connectionString));
         }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            string connectionString,
             Action<RemoteConfigurationOptions> action)
         {
             RemoteConfigurationOptions options = new RemoteConfigurationOptions();
             action(options);
-            return AddRemoteAppConfiguration(configurationBuilder, options, new AzconfigClient(connectionString));
+
+            string connectionString = options.ConnectionString;
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new ArgumentNullException("Connection string is null. Please invoke connection() to pass in.", nameof(connectionString));
+            }
+
+            return AddRemoteAppConfiguration(configurationBuilder, 
+                                             options,
+                                             new AzconfigClient(connectionString));
         }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            string connectionString,
             RemoteConfigurationOptions options)
         {
+            string connectionString = options.ConnectionString;
+
             if (string.IsNullOrEmpty(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString));

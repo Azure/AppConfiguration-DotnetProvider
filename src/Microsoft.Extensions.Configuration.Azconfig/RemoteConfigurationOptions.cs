@@ -10,7 +10,11 @@ namespace Microsoft.Extensions.Configuration.Azconfig
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
 
-        public List<KeyValueSelector> KeyValueSelectors { get; } = new List<KeyValueSelector>();
+        public string ConnectionString { get; set; }
+
+        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+
+        public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
@@ -56,17 +60,23 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             // Do not support * and , for label filter for now.
             if (labelFilter.Contains('*') || labelFilter.Contains(','))
             {
-                throw new ArgumentException(string.Format("'*' and ',' are not supported for labelFilter."));
+                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            var keyValueSelectors = new KeyValueSelector ()
+            var keyValueSelectors = new KeyValueSelector()
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter
             };
 
-            KeyValueSelectors.Add(keyValueSelectors);
+            _kvSelectors.Add(keyValueSelectors);
 
+            return this;
+        }
+
+        public RemoteConfigurationOptions Connect(string connectionString)
+        {
+            ConnectionString = connectionString;
             return this;
         }
     }
