@@ -1,114 +1,84 @@
 namespace Tests.Azconfig
 {
+    using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
-    using Microsoft.Extensions.Primitives;
-    using System;
-    using System.Text;
-    using System.Threading.Tasks;
+    using Microsoft.Extensions.Configuration.Azconfig.Models;
+    using System.Collections.Generic;
+    using System.Threading;
     using Xunit;
 
     public class Tests
     {
+        string _connectionString = TestHelpers.CreateMockEndpointString();
+
+        IKeyValue _kv = new KeyValue("TestKey1")
+        {
+            Label = "test",
+            Value = "newTestValue1",
+            ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c6",
+            ContentType = "text"
+        };
+
+        IEnumerable<IKeyValue> _kvCollectionPageOne = new List<IKeyValue>
+        {
+            new KeyValue("TestKey1")
+            {
+                Label = "label",
+                Value = "TestValue1",
+                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
+                ContentType = "text"
+            },
+            new KeyValue("TestKey2")
+            {
+                Label = "label",
+                Value = "TestValue2",
+                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c2",
+                ContentType = "text"
+            },
+            new KeyValue("TestKey3")
+            {
+                Label = "label",
+                Value = "TestValue3",
+                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c3",
+                ContentType = "text"
+            },
+            new KeyValue("TestKey4")
+            {
+                Label = "label",
+                Value = "TestValue4",
+                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c4",
+                ContentType = "text"
+            }
+        };
+
         [Fact]
         public void AddsConfigurationValues()
         {
-            var testClient = new AzconfigClient();
-
-            testClient.Data["TestKey"] = new KeyValue()
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
-                Key = "TestKey",
-                Value = "TestValue",
-            };
-
-            var builder = new ConfigurationBuilder();
-
-            builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions(), testClient);
-
-            var config = builder.Build();
-
-            Assert.True(config["TestKey"] == "TestValue");
+                var builder = new ConfigurationBuilder();
+                builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions(), testClient);
+                var config = builder.Build();
+                Assert.True(config["TestKey1"] == "TestValue1");
+            }
         }
 
         [Fact]
         public void TriggersChangeNotification()
         {
-            var testClient = new AzconfigClient();
-
-            testClient.Data["TestKey"] = new KeyValue()
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
-                Key = "TestKey",
-                Value = "TestValue",
-            };
+                var builder = new ConfigurationBuilder();
+                var remoteConfigOpt = new RemoteConfigurationOptions();
+                remoteConfigOpt.Watch("TestKey1", 1000);
+                builder.AddRemoteAppConfiguration(remoteConfigOpt, testClient);
+                var config = builder.Build();
+                Assert.True(config["TestKey1"] == "TestValue1");
 
-            var builder = new ConfigurationBuilder();
-
-            builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions().Listen("TestKey", 1000), testClient);
-
-            var config = builder.Build();
-
-            bool changeNotified = false;
-
-            var tcs = new TaskCompletionSource<object>();
-
-            ChangeToken.OnChange(() => config.GetReloadToken(), () =>
-            {
-                changeNotified = true;
-                tcs.SetResult(null);
-            });
-
-            testClient.Data["TestKey"].Value = "NewValue";
-
-            tcs.Task.Wait(5000);
-
-            Assert.True(changeNotified);
-        }
-
-        [Fact]
-        public void Integrates()
-        {
-            string configUri = "";
-            string secretId = "";
-            string secretValue = "";
-
-            //
-            // Integration test currently requires active server
-
-            if (string.IsNullOrEmpty(configUri))
-            {
-                return;
+                Thread.Sleep(4000);
+                Assert.True(config["TestKey1"] == "newValue");
             }
-
-            var builder = new ConfigurationBuilder();
-
-            builder.AddRemoteAppConfiguration(configUri, secretId, secretValue);
-
-            var config = builder.Build();
-
-            Assert.True(config["connectionString"] == "3.1");
-        }
-
-        [Fact]
-        public void FormatsKeyValue()
-        {
-            var testClient = new AzconfigClient();
-
-            testClient.Data["TestKey"] = new KeyValue()
-            {
-                Key = "TestKey",
-                Value = Convert.ToBase64String(Encoding.Unicode.GetBytes("TestValue")),
-                ContentType = "text/base64"
-            };
-
-            var builder = new ConfigurationBuilder();
-
-            builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions() {
-                KeyValueFormatter = new KeyValueFormatter()
-            }, testClient);
-
-            var config = builder.Build();
-
-            Assert.True(config["TestKey"] == "TestValue");
         }
     }
 }

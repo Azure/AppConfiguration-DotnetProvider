@@ -3,138 +3,84 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reactive.Concurrency;
+    using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azconfig.Client;
+    using Microsoft.Extensions.Configuration.Azconfig.Models;
 
-    class AzconfigConfigurationProvider : ConfigurationProvider
+    class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
     {
-        private readonly IAzconfigClient _client;
         private RemoteConfigurationOptions _options;
         private IDictionary<string, IKeyValue> _settings;
-        private IDictionary<string, DateTimeOffset> _dueTimes;
+        private List<IDisposable> _subscriptions = new List<IDisposable>();
+        private readonly IAzconfigReader _reader;
+        private readonly IAzconfigWatcher _watcher;
 
-        public AzconfigConfigurationProvider(IAzconfigClient client, RemoteConfigurationOptions options)
+        public AzconfigConfigurationProvider(IAzconfigReader reader, IAzconfigWatcher watcher, RemoteConfigurationOptions options)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
-
+            _reader = reader ?? throw new ArgumentNullException(nameof(reader));
+            _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
             _options = options ?? throw new ArgumentNullException(nameof(options));
-
-            //
-            // Set up value watching for configuration keys
-            if (_options.ChangeListeners != null)
-            {
-                UpdateDueTimes(options.ChangeListeners.Select(cl => cl.Key));
-            }
         }
 
         public override void Load()
         {
-            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        }
+            var data = new Dictionary<string, IKeyValue>();
 
-        private async Task LoadAsync()
-        {
-            var settings = await _client.GetSettings(_options.Prefix);
-
-            var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var setting in settings)
+            if (!_options.KeyValueSelectors.Any())
             {
-                data.Add(setting.Key, setting);
+                // Load all key-values by default
+                _reader.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
+            }
+            else
+            {
+                foreach (var loadOption in _options.KeyValueSelectors)
+                {
+                    var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
+                    {
+                        KeyFilter = loadOption.KeyFilter,
+                        LabelFilter = loadOption.LabelFilter
+                    };
+                    _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                }
             }
 
             SetData(data);
 
-            //
-            // Set up configuration watcher logic
-
-            SetupWatcher();
+            ObserveKeyValue();
         }
 
-        private void SetupWatcher()
+        private async Task ObserveKeyValue()
         {
-            //
-            // No-op if configuration watching is disabled
-            if (_options.ChangeListeners == null || _options.ChangeListeners.Count() == 0)
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                return;
-            }
+                IKeyValue watchedKv = null;
+                string watchedKey = changeWatcher.Key;
+                string watchedLabel = changeWatcher.Label;
 
-            DateTimeOffset now = DateTime.UtcNow;
-            DateTimeOffset earliest = _dueTimes[_dueTimes.First().Key];
-
-            foreach (KeyValuePair<string, DateTimeOffset> dueTime in _dueTimes)
-            {
-                if (dueTime.Value < earliest)
+                if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel)
                 {
-                    earliest = dueTime.Value;
+                    watchedKv = _settings[watchedKey];
                 }
-            }
-
-            if (earliest < now)
-            {
-                earliest = now;
-            }
-
-            List<string> targets = new List<string>();
-
-            foreach (KeyValuePair<string, DateTimeOffset> dueTime in _dueTimes)
-            {
-                //
-                // Provide interval for batching
-                if (dueTime.Value <= earliest + TimeSpan.FromMilliseconds(100))
+                else
                 {
-                    targets.Add(dueTime.Key);
+                    // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
+                    watchedKv = await _reader.GetKeyValue(watchedKey,
+                                                            new QueryKeyValueOptions() { Label = watchedLabel },
+                                                            CancellationToken.None) ??
+                                 new KeyValue(watchedKey) { Label = watchedLabel };
                 }
-            }
 
-            UpdateDueTimes(targets);
-
-            Task.Delay((int) (earliest - now).TotalMilliseconds).ContinueWith(async (task) => {
-
-                if (await CheckForChanges(targets))
+                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(watchedKv,
+                                                                             TimeSpan.FromMilliseconds(changeWatcher.PollInterval),
+                                                                             Scheduler.Default);
+                _subscriptions.Add(observable.Subscribe((observedKv) =>
                 {
+                    _settings[watchedKey] = observedKv;
                     SetData(_settings);
-                }
-
-                //
-                // Continue watching
-
-                SetupWatcher();
-            });
-        }
-
-        private async Task<bool> CheckForChanges(IEnumerable<string> keys)
-        {
-            bool changed = false;
-
-            foreach (string key in keys)
-            {
-                string prefixedKey = (_options.Prefix ?? string.Empty) + key;
-
-                if (!_settings.ContainsKey(prefixedKey))
-                {
-                    continue;
-                }
-
-                if (_settings[prefixedKey].ETag != await _client.GetETag(prefixedKey))
-                {
-                    _settings[prefixedKey] = await _client.GetSetting(prefixedKey);
-
-                    changed = true;
-                    
-                    foreach (var changeListener in _options.ChangeListeners)
-                    {
-                        if (changeListener.Key == key)
-                        {
-                            changeListener.Callback?.Invoke();
-
-                            break;
-                        }
-                    }
-                }
+                }));
             }
-
-            return changed;
         }
 
         private void SetData(IDictionary<string, IKeyValue> data)
@@ -145,34 +91,25 @@
 
             //
             // Set the application data for the configuration provider
-
             var applicationData = new Dictionary<string, string>();
 
             foreach (KeyValuePair<string, IKeyValue> kvp in data)
             {
-                applicationData.Add(kvp.Key.Substring((_options.Prefix ?? string.Empty).Length), _options.KeyValueFormatter?.Format(kvp.Value) ?? kvp.Value.Value);
+                applicationData.Add(kvp.Key, kvp.Value.Value);
             }
 
             Data = applicationData;
 
             //
             // Notify that the configuration has been updated
-
             OnReload();
         }
 
-        private void UpdateDueTimes(IEnumerable<string> keys)
+        public void Dispose()
         {
-            if (_dueTimes == null)
+            foreach (var subscription in _subscriptions)
             {
-                _dueTimes = new Dictionary<string, DateTimeOffset>();
-            }
-
-            DateTimeOffset now = DateTime.UtcNow;
-
-            foreach (KeyValueListener changeListener in _options.ChangeListeners)
-            {
-                _dueTimes[changeListener.Key] = now + TimeSpan.FromMilliseconds(changeListener.PollInterval);
+                subscription.Dispose();
             }
         }
     }

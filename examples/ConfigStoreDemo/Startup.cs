@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -14,11 +10,15 @@ namespace ConfigStoreDemo
     {
         public Startup(IConfiguration configuration)
         {
+            // load configurations from local json file and remote config store.
+            // load all key-values with null label and listen one key.
+            // Pull configuration connection string from environment variable
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddRemoteAppConfiguration("ConnectionString",
-                    new RemoteConfigurationOptions()
-                    .Listen("Settings:BackgroundColor", 1000));
+                .AddRemoteAppConfiguration(o => {
+                    o.Connect(configuration["connection_string"])
+                     .Watch("Settings:BackgroundColor", 1000);
+                });
             Configuration = builder.Build();
         }
 
