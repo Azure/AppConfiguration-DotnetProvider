@@ -10,15 +10,23 @@ namespace ConfigStoreDemo
     {
         public Startup(IConfiguration configuration)
         {
-            // load configurations from local json file and remote config store.
-            // load all key-values with null label and listen one key.
-            // Pull configuration connection string from environment variable
+            //
+            // load configuration from local json file and environment variables.
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddRemoteAppConfiguration(o => {
-                    o.Connect(configuration["connection_string"])
-                     .Watch("Settings:BackgroundColor", 1000);
-                });
+                .AddEnvironmentVariables();
+
+            var config = builder.Build();
+
+            //
+            // Add remote configuration using intermediate configuration
+            // load all key-values with null label and listen to one key.
+            builder.AddRemoteAppConfiguration(o => {
+
+                o.Connect(configuration["ConfigurationStore__ConnectionString"])
+                    .Watch("Settings__BackgroundColor", 1000);
+            });
+
             Configuration = builder.Build();
         }
 

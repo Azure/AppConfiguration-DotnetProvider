@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: configstoredemo
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: configstoredemo
+    spec:
+      containers:
+      - name: configstoredemo
+        image: {{ .Values.imageRegistry }}/configstoredemo
+        ports:
+        - containerPort: 80
+        env:
+        - name: ConfigurationStore__ConnectionString
+          value: {{ .Values.AzconfigConnectionString }}
+# Uncomment to support pulling environment variables from a config map		  
+#        envFrom:
+#        - configMapRef:
+#            name: my-config-store
+      imagePullSecrets:
+      - name: registry-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: configstoredemo
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: configstoredemo
