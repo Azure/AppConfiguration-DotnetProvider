@@ -3,3 +3,9 @@ version:
   minor: 0
   system: buildrevision
   name: 'Azconfig-DotnetProvider'
+
+static_analysis_options:
+  moderncop_options:
+    files_to_scan:
+      - exclude:
+          - 'examples/ConfigStoreDemo/wwwroot/**/*.js'
