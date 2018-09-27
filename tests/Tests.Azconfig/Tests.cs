@@ -65,6 +65,16 @@ namespace Tests.Azconfig
         }
 
         [Fact]
+        public void OptionallyAddsConfigurationValues()
+        {
+            string wrongString = "wrongString";
+            var builder = new ConfigurationBuilder();
+            builder.AddRemoteAppConfiguration(wrongString, true);
+            var config = builder.Build();
+            Assert.True(config["TestKey1"] == null);
+        }
+
+        [Fact]
         public void TriggersChangeNotification()
         {
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
