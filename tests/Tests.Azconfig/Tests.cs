@@ -4,6 +4,7 @@ namespace Tests.Azconfig
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
+    using System;
     using System.Collections.Generic;
     using System.Threading;
     using Xunit;
@@ -65,13 +66,23 @@ namespace Tests.Azconfig
         }
 
         [Fact]
-        public void OptionallyAddsConfigurationValues()
+        public void AddsInvalidOptionalConfigurationStore()
         {
-            string wrongString = "wrongString";
+            string invalidConnectionString = "invalid-Connection-String";
             var builder = new ConfigurationBuilder();
-            builder.AddRemoteAppConfiguration(wrongString, true);
+            builder.AddRemoteAppConfiguration(invalidConnectionString, true);
             var config = builder.Build();
             Assert.True(config["TestKey1"] == null);
+        }
+
+        [Fact]
+        public void AddsInvalidConfigurationStore()
+        {
+            string invalidConnectionString = "invalid-Connection-String";
+            var builder = new ConfigurationBuilder();
+            var exception = Record.Exception(() => builder.AddRemoteAppConfiguration(invalidConnectionString, false));
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentException>(exception);
         }
 
         [Fact]

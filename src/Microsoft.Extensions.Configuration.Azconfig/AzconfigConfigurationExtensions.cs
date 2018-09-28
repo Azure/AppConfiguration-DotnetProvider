@@ -54,14 +54,9 @@
                 options.Optional = optional;
                 return configurationBuilder;
             }
-            catch(ArgumentNullException exception)
+            catch(ArgumentNullException exception) when (optional)
             {
-                if (optional)
-                {
-                    return configurationBuilder;
-                }
-
-                throw exception;
+                return configurationBuilder;
             }
         }
 
@@ -71,14 +66,9 @@
             {
                 return new AzconfigClient(connectionString);
             }
-            catch
+            catch (Exception exception) when ((exception is ArgumentException || exception is FormatException) && optional)
             {
-                if (optional)
-                {
-                    return null;
-                }
-
-                throw;
+                return null;
             }
         }
     }
