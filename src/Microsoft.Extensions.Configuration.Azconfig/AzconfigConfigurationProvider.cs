@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net.Http;
     using System.Reactive.Concurrency;
     using System.Threading;
     using System.Threading.Tasks;
@@ -27,23 +28,30 @@
         public override void Load()
         {
             var data = new Dictionary<string, IKeyValue>();
-
-            if (!_options.KeyValueSelectors.Any())
+            try
             {
-                // Load all key-values by default
-                _reader.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
-            }
-            else
-            {
-                foreach (var loadOption in _options.KeyValueSelectors)
+                if (!_options.KeyValueSelectors.Any())
                 {
-                    var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
-                    {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter
-                    };
-                    _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                    // Load all key-values by default
+                    _reader.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
                 }
+                else
+                {
+                    foreach (var loadOption in _options.KeyValueSelectors)
+                    {
+                        var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
+                        {
+                            KeyFilter = loadOption.KeyFilter,
+                            LabelFilter = loadOption.LabelFilter
+                        };
+                        _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                    }
+                }
+            }
+            catch (Exception exception) when ((exception.InnerException is HttpRequestException || 
+                                               exception.InnerException is UnauthorizedAccessException) && _options.Optional)
+            {
+                return;
             }
 
             SetData(data);

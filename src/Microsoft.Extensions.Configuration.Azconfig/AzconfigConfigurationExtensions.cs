@@ -7,73 +7,69 @@
     {
         public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            string connectionString)
-        {
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new ArgumentNullException(nameof(connectionString));
-            }
-
-            return AddRemoteAppConfiguration(configurationBuilder, new RemoteConfigurationOptions(), new AzconfigClient(connectionString));
-        }
+            string connectionString,
+            bool optional = false) => AddRemoteAppConfiguration(configurationBuilder, 
+                                                                new RemoteConfigurationOptions(), 
+                                                                GetAzconfigClient(connectionString, optional), 
+                                                                optional);
 
         public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            Action<RemoteConfigurationOptions> action)
+            Action<RemoteConfigurationOptions> action,
+            bool optional = false)
         {
             RemoteConfigurationOptions options = new RemoteConfigurationOptions();
             action(options);
-
-            string connectionString = options.ConnectionString;
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new ArgumentNullException($"No connection has been specified. Use '{nameof(options.Connect)}()' to provide connection details.");
-            }
-
-            return AddRemoteAppConfiguration(configurationBuilder, 
+            return AddRemoteAppConfiguration(configurationBuilder,
                                              options,
-                                             new AzconfigClient(connectionString));
-        }
-
-        public static IConfigurationBuilder AddRemoteAppConfiguration(
-            this IConfigurationBuilder configurationBuilder,
-            RemoteConfigurationOptions options)
-        {
-            string connectionString = options.ConnectionString;
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new ArgumentNullException(nameof(connectionString));
-            }
-
-            return AddRemoteAppConfiguration(configurationBuilder, options, new AzconfigClient(connectionString));
+                                             GetAzconfigClient(options.ConnectionString, optional),
+                                             optional);
         }
 
         public static IConfigurationBuilder AddRemoteAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
             RemoteConfigurationOptions options,
-            AzconfigClient client)
+            bool optional = false) => AddRemoteAppConfiguration(configurationBuilder, 
+                                                                new RemoteConfigurationOptions(), 
+                                                                GetAzconfigClient(options.ConnectionString, optional), 
+                                                                optional);
+
+
+        public static IConfigurationBuilder AddRemoteAppConfiguration(
+            this IConfigurationBuilder configurationBuilder,
+            RemoteConfigurationOptions options,
+            AzconfigClient client,
+            bool optional = false)
         {
-            if (options == null)
+            try
             {
-                throw new ArgumentNullException(nameof(options));
-            }
+                configurationBuilder.Add(
+                    new AzconfigConfigurationSource()
+                    {
+                        Client = client ?? throw new ArgumentNullException(nameof(client)),
+                        Options = options ?? throw new ArgumentNullException(nameof(options))
+                    }
+                );
 
-            if (client == null)
+                options.Optional = optional;
+                return configurationBuilder;
+            }
+            catch(ArgumentNullException exception) when (optional)
             {
-                throw new ArgumentNullException(nameof(client));
+                return configurationBuilder;
             }
+        }
 
-            configurationBuilder.Add(
-                new AzconfigConfigurationSource()
-                {
-                    Client = client,
-                    Options = options
-                }
-            );
-
-            return configurationBuilder;
+        private static AzconfigClient GetAzconfigClient(string connectionString, bool optional)
+        {
+            try
+            {
+                return new AzconfigClient(connectionString);
+            }
+            catch (Exception exception) when ((exception is ArgumentException || exception is FormatException) && optional)
+            {
+                return null;
+            }
         }
     }
 }

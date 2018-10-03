@@ -16,6 +16,8 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
         public string ConnectionString { get; set; }
 
+        public bool Optional { get; set; }
+
         public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
             {
