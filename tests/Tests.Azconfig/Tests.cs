@@ -3,7 +3,6 @@ namespace Tests.Azconfig
     using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
-    using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Collections.Generic;
     using System.Threading;
@@ -59,7 +58,9 @@ namespace Tests.Azconfig
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-                builder.AddRemoteAppConfiguration(new RemoteConfigurationOptions(), testClient);
+                builder.AddAzconfig(new RemoteConfigurationOptions() {
+                    Client = testClient
+                });
                 var config = builder.Build();
                 Assert.True(config["TestKey1"] == "TestValue1");
             }
@@ -70,7 +71,7 @@ namespace Tests.Azconfig
         {
             string invalidConnectionString = "invalid-Connection-String";
             var builder = new ConfigurationBuilder();
-            builder.AddRemoteAppConfiguration(invalidConnectionString, true);
+            builder.AddAzconfig(invalidConnectionString, true);
             var config = builder.Build();
             Assert.True(config["TestKey1"] == null);
         }
@@ -80,7 +81,10 @@ namespace Tests.Azconfig
         {
             string invalidConnectionString = "invalid-Connection-String";
             var builder = new ConfigurationBuilder();
-            var exception = Record.Exception(() => builder.AddRemoteAppConfiguration(invalidConnectionString, false));
+            var exception = Record.Exception(() => {
+                builder.AddAzconfig(invalidConnectionString, false);
+                builder.Build();
+            });
             Assert.NotNull(exception);
             Assert.IsType<ArgumentException>(exception);
         }
@@ -91,12 +95,13 @@ namespace Tests.Azconfig
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-                var remoteConfigOpt = new RemoteConfigurationOptions();
+                var remoteConfigOpt = new RemoteConfigurationOptions() {
+                    Client = testClient
+                };
                 remoteConfigOpt.Watch("TestKey1", 1000);
-                builder.AddRemoteAppConfiguration(remoteConfigOpt, testClient);
+                builder.AddAzconfig(remoteConfigOpt);
                 var config = builder.Build();
                 Assert.True(config["TestKey1"] == "TestValue1");
-
                 Thread.Sleep(4000);
                 Assert.True(config["TestKey1"] == "newValue");
             }

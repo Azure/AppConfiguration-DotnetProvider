@@ -1,6 +1,7 @@
 ﻿
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
+    using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Collections.Generic;
@@ -14,7 +15,15 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
+        /// <summary>
+        /// The connection string to use to connect to the configuration store.
+        /// </summary>
         public string ConnectionString { get; set; }
+
+        /// <summary>
+        /// An optional client that can be used to communicate with the configuration store. If provided, connection string will be ignored.
+        /// </summary>
+        public AzconfigClient Client { get; set; }
 
         public bool Optional { get; set; }
 

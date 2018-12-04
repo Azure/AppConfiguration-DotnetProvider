@@ -15,13 +15,11 @@
         private RemoteConfigurationOptions _options;
         private IDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions = new List<IDisposable>();
-        private readonly IAzconfigReader _reader;
-        private readonly IAzconfigWatcher _watcher;
+        private readonly AzconfigClient _client;
 
-        public AzconfigConfigurationProvider(IAzconfigReader reader, IAzconfigWatcher watcher, RemoteConfigurationOptions options)
+        public AzconfigConfigurationProvider(AzconfigClient client, RemoteConfigurationOptions options)
         {
-            _reader = reader ?? throw new ArgumentNullException(nameof(reader));
-            _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
+            _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
@@ -33,7 +31,7 @@
                 if (!_options.KeyValueSelectors.Any())
                 {
                     // Load all key-values by default
-                    _reader.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
+                    _client.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
                 }
                 else
                 {
@@ -44,7 +42,7 @@
                             KeyFilter = loadOption.KeyFilter,
                             LabelFilter = loadOption.LabelFilter
                         };
-                        _reader.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                        _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                     }
                 }
             }
@@ -74,13 +72,13 @@
                 else
                 {
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
-                    watchedKv = await _reader.GetKeyValue(watchedKey,
+                    watchedKv = await _client.GetKeyValue(watchedKey,
                                                             new QueryKeyValueOptions() { Label = watchedLabel },
                                                             CancellationToken.None) ??
                                  new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<IKeyValue> observable = _watcher.ObserveKeyValue(watchedKv,
+                IObservable<IKeyValue> observable = _client.ObserveKeyValue(watchedKv,
                                                                              TimeSpan.FromMilliseconds(changeWatcher.PollInterval),
                                                                              Scheduler.Default);
                 _subscriptions.Add(observable.Subscribe((observedKv) =>
