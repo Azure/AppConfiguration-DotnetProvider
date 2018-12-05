@@ -9,3 +9,9 @@ static_analysis_options:
     files_to_scan:
       - exclude:
           - 'examples/ConfigStoreDemo/wwwroot/**/*.js'
+
+package_sources:
+  nuget:
+    config_files:
+      - include:
+          - "NuGet.Config"
