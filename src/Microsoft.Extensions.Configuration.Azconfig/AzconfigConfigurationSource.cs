@@ -6,13 +6,13 @@ namespace Microsoft.Extensions.Configuration.Azconfig
     class AzconfigConfigurationSource : IConfigurationSource
     {
         private readonly bool _optional;
-        private readonly Func<RemoteConfigurationOptions> _optionsProvider;
+        private readonly Func<AzconfigOptions> _optionsProvider;
 
-        public AzconfigConfigurationSource(Action<RemoteConfigurationOptions> optionsInitializer, bool optional = false)
+        public AzconfigConfigurationSource(Action<AzconfigOptions> optionsInitializer, bool optional = false)
         {
             _optionsProvider = () => {
 
-                var options = new RemoteConfigurationOptions();
+                var options = new AzconfigOptions();
 
                 options.Optional = optional;
 
@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             _optional = optional;
         }
 
-        public AzconfigConfigurationSource(RemoteConfigurationOptions options, bool optional = false)
+        public AzconfigConfigurationSource(AzconfigOptions options, bool optional = false)
         {
             options.Optional = _optional = optional;
 
@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
             try
             {
-                RemoteConfigurationOptions options = _optionsProvider();
+                AzconfigOptions options = _optionsProvider();
 
                 AzconfigClient client = options.Client ?? new AzconfigClient(options.ConnectionString);
 

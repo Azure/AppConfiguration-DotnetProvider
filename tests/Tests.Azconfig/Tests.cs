@@ -58,7 +58,7 @@ namespace Tests.Azconfig
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-                builder.AddAzconfig(new RemoteConfigurationOptions() {
+                builder.AddAzconfig(new AzconfigOptions() {
                     Client = testClient
                 });
                 var config = builder.Build();
@@ -95,7 +95,7 @@ namespace Tests.Azconfig
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-                var remoteConfigOpt = new RemoteConfigurationOptions() {
+                var remoteConfigOpt = new AzconfigOptions() {
                     Client = testClient
                 };
                 remoteConfigOpt.Watch("TestKey1", 1000);

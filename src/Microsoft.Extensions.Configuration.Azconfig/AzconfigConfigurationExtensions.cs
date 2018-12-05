@@ -10,23 +10,23 @@
             bool optional = false)
         {
             return AddAzconfig(configurationBuilder,
-                                      new RemoteConfigurationOptions().Connect(connectionString),
+                                      new AzconfigOptions().Connect(connectionString),
                                       optional);
         }
 
         public static IConfigurationBuilder AddAzconfig(
             this IConfigurationBuilder configurationBuilder,
-            Action<RemoteConfigurationOptions> action,
+            Action<AzconfigOptions> action,
             bool optional = false)
         {
-            RemoteConfigurationOptions options = new RemoteConfigurationOptions();
+            AzconfigOptions options = new AzconfigOptions();
 
             return configurationBuilder.Add(new AzconfigConfigurationSource(action, optional));
         }
 
         public static IConfigurationBuilder AddAzconfig(
             this IConfigurationBuilder configurationBuilder,
-            RemoteConfigurationOptions options,
+            AzconfigOptions options,
             bool optional = false)
         {
             return configurationBuilder.Add(new AzconfigConfigurationSource(options, optional));

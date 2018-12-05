@@ -12,12 +12,12 @@
 
     class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
     {
-        private RemoteConfigurationOptions _options;
+        private AzconfigOptions _options;
         private IDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions = new List<IDisposable>();
         private readonly AzconfigClient _client;
 
-        public AzconfigConfigurationProvider(AzconfigClient client, RemoteConfigurationOptions options)
+        public AzconfigConfigurationProvider(AzconfigClient client, AzconfigOptions options)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
