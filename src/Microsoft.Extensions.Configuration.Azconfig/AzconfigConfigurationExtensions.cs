@@ -9,9 +9,7 @@
             string connectionString,
             bool optional = false)
         {
-            return AddAzconfig(configurationBuilder,
-                                      new AzconfigOptions().Connect(connectionString),
-                                      optional);
+            return configurationBuilder.AddAzconfig(new AzconfigOptions().Connect(connectionString), optional);
         }
 
         public static IConfigurationBuilder AddAzconfig(

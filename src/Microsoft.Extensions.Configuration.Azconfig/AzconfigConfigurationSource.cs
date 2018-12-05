@@ -14,8 +14,6 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
                 var options = new AzconfigOptions();
 
-                options.Optional = optional;
-
                 optionsInitializer(options);
 
                 return options;
@@ -26,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
         public AzconfigConfigurationSource(AzconfigOptions options, bool optional = false)
         {
-            options.Optional = _optional = optional;
+            _optional = optional;
 
             _optionsProvider = () => options;
         }
@@ -41,7 +39,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
                 AzconfigClient client = options.Client ?? new AzconfigClient(options.ConnectionString);
 
-                provider = new AzconfigConfigurationProvider(client, options);
+                provider = new AzconfigConfigurationProvider(client, options, _optional);
             }
             catch (ArgumentException)
             {

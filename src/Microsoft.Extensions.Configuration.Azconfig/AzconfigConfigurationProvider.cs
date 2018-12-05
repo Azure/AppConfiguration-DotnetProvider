@@ -13,14 +13,16 @@
     class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
     {
         private AzconfigOptions _options;
+        private bool _optional;
         private IDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions = new List<IDisposable>();
         private readonly AzconfigClient _client;
 
-        public AzconfigConfigurationProvider(AzconfigClient client, AzconfigOptions options)
+        public AzconfigConfigurationProvider(AzconfigClient client, AzconfigOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _optional = optional;
         }
 
         public override void Load()
@@ -47,7 +49,7 @@
                 }
             }
             catch (Exception exception) when ((exception.InnerException is HttpRequestException || 
-                                               exception.InnerException is UnauthorizedAccessException) && _options.Optional)
+                                               exception.InnerException is UnauthorizedAccessException) && _optional)
             {
                 return;
             }

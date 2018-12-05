@@ -25,8 +25,6 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         /// </summary>
         public AzconfigClient Client { get; set; }
 
-        public bool Optional { get; set; }
-
         public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
             {
