@@ -15,7 +15,7 @@ namespace ConfigStoreDemo
             // Pull configuration connection string from environment variable
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddRemoteAppConfiguration(o => {
+                .AddAzconfig(o => {
                     o.Connect(configuration["connection_string"])
                      .Watch("Settings:BackgroundColor", 1000);
                 });

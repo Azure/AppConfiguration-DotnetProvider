@@ -45,7 +45,7 @@
 
             //
             // Pull configuration connection string from environment variable
-            builder.AddRemoteAppConfiguration(o => {
+            builder.AddAzconfig(o => {
 
                 o.Connect(configuration["AzconfigConnectionString"])
                  //

@@ -15,7 +15,7 @@ Examples can be found [here](./examples).
 ```c#
 var builder = new ConfigurationBuilder();
 
-builder.AddRemoteAppConfiguration("https://<Azure Config Store URL>", new RemoteConfigurationOptions()
+builder.AddAzconfig("https://<Azure Config Store URL>", new AzconfigOptions()
 {
     Prefix = "App1/",
     AcceptVersion = "2.0"
@@ -30,13 +30,13 @@ IConfiguration configuration = builder.Build();
 ### AzconfigConfigurationExtensions
 
 ```csharp
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string azconfigUri);
+static IConfigurationBuilder AddAzconfig(this IConfigurationBuilder configurationBuilder, string azconfigUri);
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string azconfigUri, RemoteConfigurationOptions options);
+static IConfigurationBuilder AddAzconfig(this IConfigurationBuilder configurationBuilder, string azconfigUri, AzconfigOptions options);
 
-static IConfigurationBuilder AddRemoteAppConfiguration(this IConfigurationBuilder configurationBuilder, string azconfigUri, RemoteConfigurationOptions options, IAzconfigClient client);
+static IConfigurationBuilder AddAzconfig(this IConfigurationBuilder configurationBuilder, string azconfigUri, AzconfigOptions options, IAzconfigClient client);
 ```
-### RemoteConfigurationOptions
+### AzconfigOptions
 
 ```csharp
 string AcceptVersion { get; set; }
@@ -47,7 +47,7 @@ IKeyValueFormatter KeyValueFormatter { get; set; }
 
 IEnumerable<KeyValueListener> ChangeListeners { get; }
 
-RemoteConfigurationOptions Listen(string key, int pollInterval);
+AzconfigOptions Listen(string key, int pollInterval);
 ```
 
 ### IAzconfigClient

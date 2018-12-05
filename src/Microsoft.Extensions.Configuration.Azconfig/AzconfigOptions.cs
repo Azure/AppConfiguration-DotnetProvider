@@ -1,12 +1,13 @@
 ﻿
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
+    using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Collections.Generic;
     using System.Linq;
 
-    public class RemoteConfigurationOptions
+    public class AzconfigOptions
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
 
@@ -14,9 +15,15 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
+        /// <summary>
+        /// The connection string to use to connect to the configuration store.
+        /// </summary>
         public string ConnectionString { get; set; }
 
-        public bool Optional { get; set; }
+        /// <summary>
+        /// An optional client that can be used to communicate with the configuration store. If provided, connection string will be ignored.
+        /// </summary>
+        public AzconfigClient Client { get; set; }
 
         public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
@@ -25,7 +32,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             }
         }
 
-        public RemoteConfigurationOptions Watch(string key, int pollInterval, string label = "")
+        public AzconfigOptions Watch(string key, int pollInterval, string label = "")
         {
             _changeWatchers[key] = new KeyValueWatcher()
             {
@@ -41,7 +48,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         /// If no method called, load all keys with null label.
         /// </summary>
         /// <param name="keyFilter">Key filters for query key-values.</param>
-        public RemoteConfigurationOptions Use(string keyFilter)
+        public AzconfigOptions Use(string keyFilter)
         {
             Use(keyFilter, string.Empty);
             return this;
@@ -57,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         /// <param name="labelFilter">Label filters for query key-values.
         /// Do not support '*' and ',' yet.
         /// </param>
-        public RemoteConfigurationOptions Use(string keyFilter, string labelFilter)
+        public AzconfigOptions Use(string keyFilter, string labelFilter)
         {
             // Do not support * and , for label filter for now.
             if (labelFilter.Contains('*') || labelFilter.Contains(','))
@@ -76,7 +83,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             return this;
         }
 
-        public RemoteConfigurationOptions Connect(string connectionString)
+        public AzconfigOptions Connect(string connectionString)
         {
             ConnectionString = connectionString;
             return this;

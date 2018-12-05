@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="1.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="Microsoft.Azconfig.Client" Version="1.0.0-alpha-005870001-1323" />
+    <PackageReference Include="Microsoft.Azconfig.Client" Version="1.0.0-alpha-006830001" />
   </ItemGroup>
 
 </Project>

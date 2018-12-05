@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Tests.Azconfig
 {
-    class MockedGetKeyValueRequest : IHttpClient
+    class MockedGetKeyValueRequest : HttpMessageHandler
     {
         private IKeyValue _kv;
         private readonly IEnumerable<IKeyValue> _kvCollection;
@@ -23,7 +23,7 @@ namespace Tests.Azconfig
             _kvCollection = kvCollection ?? throw new ArgumentException(nameof(kvCollection));
         }
 
-        public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             HttpMethod method = request.Method;
             if (request.Method == HttpMethod.Get)
