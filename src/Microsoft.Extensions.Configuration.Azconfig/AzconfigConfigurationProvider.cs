@@ -15,7 +15,7 @@
         private AzconfigOptions _options;
         private bool _optional;
         private IDictionary<string, IKeyValue> _settings;
-        private List<IDisposable> _subscriptions = new List<IDisposable>();
+        private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
 
         public AzconfigConfigurationProvider(AzconfigClient client, AzconfigOptions options, bool optional)
@@ -23,6 +23,15 @@
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+            _subscriptions = new List<IDisposable>();
+        }
+
+        public void Dispose()
+        {
+            foreach (var subscription in _subscriptions)
+            {
+                subscription.Dispose();
+            }
         }
 
         public override void Load()
@@ -85,7 +94,15 @@
                                                                              Scheduler.Default);
                 _subscriptions.Add(observable.Subscribe((observedKv) =>
                 {
-                    _settings[watchedKey] = observedKv;
+                    if (observedKv == null)
+                    {
+                        _settings.Remove(watchedKey);
+                    }
+                    else
+                    {
+                        _settings[watchedKey] = observedKv;
+                    }
+
                     SetData(_settings);
                 }));
             }
@@ -111,14 +128,6 @@
             //
             // Notify that the configuration has been updated
             OnReload();
-        }
-
-        public void Dispose()
-        {
-            foreach (var subscription in _subscriptions)
-            {
-                subscription.Dispose();
-            }
         }
     }
 }
