@@ -62,7 +62,12 @@ namespace Tests.Azconfig
                     Client = testClient
                 });
                 var config = builder.Build();
+
                 Assert.True(config["TestKey1"] == "TestValue1");
+
+                //
+                // Case-insensitive
+                Assert.True(config["tEsTkEy1"] == "TestValue1");
             }
         }
 
