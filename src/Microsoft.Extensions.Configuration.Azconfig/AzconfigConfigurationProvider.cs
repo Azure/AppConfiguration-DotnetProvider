@@ -36,7 +36,7 @@
 
         public override void Load()
         {
-            var data = new Dictionary<string, IKeyValue>();
+            var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 if (!_options.KeyValueSelectors.Any())
@@ -116,7 +116,7 @@
 
             //
             // Set the application data for the configuration provider
-            var applicationData = new Dictionary<string, string>();
+            var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (KeyValuePair<string, IKeyValue> kvp in data)
             {
