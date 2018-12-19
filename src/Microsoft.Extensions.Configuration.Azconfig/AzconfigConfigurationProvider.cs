@@ -51,7 +51,8 @@
                         var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
                         {
                             KeyFilter = loadOption.KeyFilter,
-                            LabelFilter = loadOption.LabelFilter
+                            LabelFilter = loadOption.LabelFilter,
+                            PreferredDateTime = loadOption.PreferredDateTime
                         };
                         _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                     }

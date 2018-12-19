@@ -1,4 +1,6 @@
-﻿namespace Microsoft.Extensions.Configuration.Azconfig.Models
+﻿using System;
+
+namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
     public class KeyValueSelector
     {
@@ -12,5 +14,10 @@
         /// Labels that will be used to filter.
         /// </summary>
         public string LabelFilter { get; set; }
+
+        /// <summary>
+        /// If set, then key values will be retrieved exactly as they existed at the provided time.
+        /// </summary>
+        public DateTimeOffset? PreferredDateTime { get; set; }
     }
 }

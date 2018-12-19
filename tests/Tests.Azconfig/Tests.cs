@@ -4,9 +4,11 @@ namespace Tests.Azconfig
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
     using System;
+    using System.Net.Http;
     using System.Collections.Generic;
     using System.Threading;
     using Xunit;
+    using System.Text;
 
     public class Tests
     {
@@ -109,6 +111,42 @@ namespace Tests.Azconfig
                 Assert.True(config["TestKey1"] == "TestValue1");
                 Thread.Sleep(4000);
                 Assert.True(config["TestKey1"] == "newValue");
+            }
+        }
+
+        [Fact]
+        public void UsesPreferredDateTime()
+        {
+            DateTimeOffset filterDate = new DateTimeOffset(1592, 3, 14, 14, 3, 5, 84, TimeSpan.Zero);
+
+            bool kvsRetrieved = false;
+
+            var messageHandler = new CallbackMessageHandler(r => {
+
+                Assert.True(r.Headers.TryGetValues("Accept-Datetime", out var values));
+
+                kvsRetrieved = true;
+
+                var response = new HttpResponseMessage();
+
+                response.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+                return response;
+            });
+
+            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            {
+                var builder = new ConfigurationBuilder();
+
+                builder.AddAzconfig(new AzconfigOptions()
+                {
+                    Client = testClient
+
+                }.Use("*", null, filterDate));
+
+                var config = builder.Build();
+
+                Assert.True(kvsRetrieved);
             }
         }
     }
