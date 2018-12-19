@@ -117,8 +117,6 @@ namespace Tests.Azconfig
         [Fact]
         public void UsesPreferredDateTime()
         {
-            DateTimeOffset filterDate = new DateTimeOffset(1592, 3, 14, 14, 3, 5, 84, TimeSpan.Zero);
-
             bool kvsRetrieved = false;
 
             var messageHandler = new CallbackMessageHandler(r => {
