@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Microsoft.Extensions.Configuration.Azconfig.Models
+﻿namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
     public class KeyValueWatcher
     {
@@ -15,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig.Models
         public string Label { get; set; }
 
         /// <summary>
-        /// The interval at which the key-value will be polled for changes.
+        /// The interval, in milliseconds, at which the key-value will be polled for changes.
         /// </summary>
         public int PollInterval { get; set; }
     }
