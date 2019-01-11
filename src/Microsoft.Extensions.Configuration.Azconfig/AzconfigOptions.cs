@@ -1,5 +1,4 @@
-﻿
-namespace Microsoft.Extensions.Configuration.Azconfig
+﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
@@ -44,41 +43,44 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         }
 
         /// <summary>
-        /// Load key-values into configuration with specified key filter and null label.
-        /// If no method called, load all keys with null label.
-        /// </summary>
-        /// <param name="keyFilter">Key filters for query key-values.</param>
-        public AzconfigOptions Use(string keyFilter)
-        {
-            Use(keyFilter, string.Empty);
-            return this;
-        }
-
-        /// <summary>
-        /// Load key-values into configuration with specified key, label filter.
-        /// If no method called, load all keys with null label.
+        /// Instructs the AzconfigOptions to include all key-values with matching the specified key and label filters.
         /// </summary>
         /// <param name="keyFilter">
-        /// Key filters for query key-values.
+        /// The key filter to apply when querying the configuration store for key-values.
         /// </param>
-        /// <param name="labelFilter">Label filters for query key-values.
-        /// Do not support '*' and ',' yet.
+        /// <param name="labelFilter">
+        /// The label filter to apply when querying the configuration store for key-values.
+        /// Does not support '*' and ','.
         /// </param>
-        public AzconfigOptions Use(string keyFilter, string labelFilter)
+        /// <param name="preferredDateTime">
+        /// Used to query key-values in the state that they existed at the time provided.
+        /// </param>
+        public AzconfigOptions Use(string keyFilter, string labelFilter = null, DateTimeOffset? preferredDateTime = null)
         {
+            if (string.IsNullOrEmpty(keyFilter))
+            {
+                throw new ArgumentNullException(nameof(keyFilter));
+            }
+
+            if (labelFilter == null)
+            {
+                labelFilter = string.Empty;
+            }
+
             // Do not support * and , for label filter for now.
             if (labelFilter.Contains('*') || labelFilter.Contains(','))
             {
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            var keyValueSelectors = new KeyValueSelector()
+            var keyValueSelector = new KeyValueSelector()
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                PreferredDateTime = preferredDateTime
             };
 
-            _kvSelectors.Add(keyValueSelectors);
+            _kvSelectors.Add(keyValueSelector);
 
             return this;
         }
