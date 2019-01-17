@@ -17,8 +17,6 @@
             Action<AzconfigOptions> action,
             bool optional = false)
         {
-            AzconfigOptions options = new AzconfigOptions();
-
             return configurationBuilder.Add(new AzconfigConfigurationSource(action, optional));
         }
 

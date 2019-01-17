@@ -14,6 +14,8 @@
 
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
+        public OfflineCacheProvider OfflineCacheProvider { get; set; }
+
         /// <summary>
         /// The connection string to use to connect to the configuration store.
         /// </summary>

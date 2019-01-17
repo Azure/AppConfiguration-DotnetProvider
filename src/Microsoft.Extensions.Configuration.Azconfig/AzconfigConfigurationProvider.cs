@@ -36,7 +36,7 @@
 
         public override void Load()
         {
-            var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+            IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 if (!_options.KeyValueSelectors.Any())
@@ -58,9 +58,24 @@
                     }
                 }
             }
-            catch (Exception exception) when ((exception.InnerException is HttpRequestException || 
-                                               exception.InnerException is UnauthorizedAccessException) && _optional)
+            catch (Exception exception) when (exception.InnerException is HttpRequestException || 
+                                              exception.InnerException is UnauthorizedAccessException)
             {
+                if (_options.OfflineCacheProvider != null)
+                {
+                    IDictionary<string, IKeyValue> cache = _options.OfflineCacheProvider.GetData();
+                    if (cache != null)
+                    {
+                        SetData(cache);
+                        return;
+                    }
+                }
+
+                if (!_optional)
+                {
+                    throw;
+                }
+
                 return;
             }
 
@@ -114,6 +129,11 @@
             //
             // Update cache of settings
             this._settings = data;
+
+            if (_options.OfflineCacheProvider != null)
+            {
+                _options.OfflineCacheProvider.SetData(data);
+            }
 
             //
             // Set the application data for the configuration provider
