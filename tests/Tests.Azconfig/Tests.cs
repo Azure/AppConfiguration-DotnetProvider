@@ -140,7 +140,7 @@ namespace Tests.Azconfig
                 {
                     Client = testClient
 
-                }.Use("*", null, filterDate));
+                }.Use("*", null, DateTimeOffset.UtcNow));
 
                 var config = builder.Build();
 
