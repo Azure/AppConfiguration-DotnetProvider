@@ -8,6 +8,8 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 {
     public abstract class OfflineCacheProvider
     {
+        protected OfflineCacheOptions Options { set; get; }
+
         private class KeyValueConverter : CustomCreationConverter<IKeyValue>
         {
             public override IKeyValue Create(Type _)

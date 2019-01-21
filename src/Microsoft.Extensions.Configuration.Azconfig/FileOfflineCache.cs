@@ -1,8 +1,9 @@
 ﻿using System;
 using System.IO;
-using System.Security.Cryptography;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
@@ -13,54 +14,24 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         private const int retryMax = 20;
         private const int delayRange = 50;
 
-        public FileOfflineCache()
+        private const string dataProp = "d";
+        private const string hashProp = "h";
+        private const string scoprProp = "s";
+
+        public FileOfflineCache(OfflineCacheOptions options)
         {
-            // Generate default cahce file name
-            string homePath = Environment.GetEnvironmentVariable("HOME");
-            if (Directory.Exists(homePath))
+            _localCachePath = options.Target ?? throw new ArgumentNullException(nameof(options.Target));
+            if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
             {
-                string dataPath = Path.Combine(homePath, "data");
-                if (Directory.Exists(dataPath))
-                {
-                    string cahcePath = Path.Combine(dataPath, "azconfigCache");
-                    if (!Directory.Exists(cahcePath))
-                    {
-                        Directory.CreateDirectory(cahcePath);
-                    }
-
-                    string websiteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
-                    if (websiteName != null)
-                    {
-                        byte[] hash = new byte[0];
-                        using (var sha = SHA1.Create())
-                        {
-                            hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
-                        }
-
-                        var sb = new StringBuilder();
-                        for (var i = 0; i < hash.Length; i++)
-                        {
-                            sb.Append(hash[i].ToString("X2"));
-                        }
-
-                        _localCachePath = Path.Combine(cahcePath, $"app{sb.ToString()}.json");
-                    }
-                }
+                throw new ArgumentException("Must be full path", nameof(options.Target));
             }
 
-            if (_localCachePath == null)
+            if (!options.IsCryptoDataReady)
             {
-                throw new NotSupportedException("Only work under Azure App Service");
+                throw new ArgumentException("Crypto keys must be set");
             }
-        }
 
-        public FileOfflineCache(string path)
-        {
-            _localCachePath = path ?? throw new ArgumentNullException(nameof(path));
-            if (!Path.IsPathRooted(path) || !string.Equals(Path.GetFullPath(path), path))
-            {
-                throw new ArgumentException("Must be full path", nameof(path));
-            }
+            Options = options;
         }
 
         public override string Import()
@@ -74,7 +45,43 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             {
                 try
                 {
-                    return File.ReadAllText(_localCachePath);
+                    string json = File.ReadAllText(_localCachePath);
+
+                    JsonTextReader reader = new JsonTextReader(new StringReader(json));
+                    string data = null, dataHash = null, scopeHash = null;
+                    while (reader.Read())
+                    {
+                        if ((reader.TokenType == JsonToken.PropertyName) && (reader.Value != null))
+                        {
+                            switch (reader.Value.ToString())
+                            {
+                                case dataProp:
+                                    data = reader.ReadAsString();
+                                    break;
+                                case hashProp:
+                                    dataHash = reader.ReadAsString();
+                                    break;
+                                case scoprProp:
+                                    scopeHash = reader.ReadAsString();
+                                    break;
+                                default:
+                                    return null;
+                            }
+                        }
+                    }
+
+                    if ((data != null) && (dataHash != null) && (scopeHash != null))
+                    {
+                        string newScopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(Options.ScopeToken ?? ""), Options.SignKey);
+                        if (string.CompareOrdinal(scopeHash, newScopeHash) == 0)
+                        {
+                            string newDataHash = CryptoService.GetHash(Convert.FromBase64String(data), Options.SignKey);
+                            if (string.CompareOrdinal(dataHash, newDataHash) == 0)
+                            {
+                                return CryptoService.AESDecrypt(data, Options.Key, Options.IV);
+                            }
+                        }
+                    }
                 }
                 catch (IOException ex)
                 {
@@ -83,6 +90,8 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                         Task.Delay(new Random().Next(delayRange)).Wait();
                         return this.DoImport(++retry);
                     }
+
+                    throw;
                 }
             }
 
@@ -96,7 +105,27 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                 Task.Run(async () =>
                 {
                     string tempFile = Path.Combine(Path.GetDirectoryName(_localCachePath), $"azconfigTemp-{Path.GetRandomFileName()}");
-                    File.WriteAllText(tempFile, data);
+
+                    var dataBytes = Encoding.UTF8.GetBytes(data);
+                    var encryptedBytes = CryptoService.AESEncrypt(dataBytes, Options.Key, Options.IV);
+                    var dataHash = CryptoService.GetHash(encryptedBytes, Options.SignKey);
+                    var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(Options.ScopeToken ?? ""), Options.SignKey);
+
+                    StringBuilder sb = new StringBuilder();
+                    using (var sw = new StringWriter(sb))
+                    using (var jtw = new JsonTextWriter(sw))
+                    {
+                        jtw.WriteStartObject();
+                        jtw.WritePropertyName(dataProp);
+                        jtw.WriteValue(Convert.ToBase64String(encryptedBytes));
+                        jtw.WritePropertyName(hashProp);
+                        jtw.WriteValue(dataHash);
+                        jtw.WritePropertyName(scoprProp);
+                        jtw.WriteValue(scopeHash);
+                        jtw.WriteEndObject();
+                    }
+
+                    File.WriteAllText(tempFile, sb.ToString());
 
                     await this.DoUpdate(tempFile);
                 });
@@ -118,6 +147,10 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                     {
                         await Task.Delay(new Random().Next(delayRange));
                         await this.DoUpdate(tempFile, ++retry);
+                    }
+                    else
+                    {
+                        throw;
                     }
                 }
             }
