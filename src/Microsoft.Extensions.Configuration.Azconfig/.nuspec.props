@@ -1,0 +1,45 @@
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+
+    <!-- 
+      Template file for generating .nuspec
+      This file is only valid if using msbuild to build the project (.csproj)
+      This allows us to use msbuild properties, i.e. $(Version) for .nuspec
+     -->
+
+  <PropertyGroup>
+
+    <!-- %3b is the semi-colon character ';' -->
+
+    <NuspecContent>
+
+<![CDATA[
+
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>$(MSBuildProjectName)</id>
+        <version>$(Version)</version>
+        <authors>Microsoft</authors>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Microsoft.Extensions.Configuration.Azconfig is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's Azconfig service as a configuration source in their applications.</description>
+        <projectUrl>https://azure.microsoft.com</projectUrl>
+        <dependencies>
+            <group targetFramework=".NETStandard2.0">
+                <dependency id="Microsoft.Azconfig.Client" version="$(MicrosoftAzconfigClientVersion)" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
+                <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="./Microsoft.Extensions.Configuration.Azconfig.dll" target="lib/netstandard2.0/Microsoft.Extensions.Configuration.Azconfig.dll" />
+        <file src="./Microsoft.Azconfig.Client.dll" target="lib/netstandard2.0/Microsoft.Azconfig.Client.dll" />
+    </files>
+</package>
+        
+]]>
+
+    </NuspecContent>
+  </PropertyGroup>
+</Project>
