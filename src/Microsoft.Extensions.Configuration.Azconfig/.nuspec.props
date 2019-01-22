@@ -26,7 +26,6 @@
         <projectUrl>https://azure.microsoft.com</projectUrl>
         <dependencies>
             <group targetFramework=".NETStandard2.0">
-                <dependency id="Microsoft.Azconfig.Client" version="$(MicrosoftAzconfigClientVersion)" exclude="Build,Analyzers" />
                 <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
                 <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
             </group>
