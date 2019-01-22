@@ -30,6 +30,13 @@
           Lines="$(NuspecContent)"  
           Overwrite="true"  
           Encoding="Unicode"/>  
-  </Target>  
+  </Target>
+  
+  <!-- Ensure any package generation is done via the generated nuspec file. -->
+  <Target Name="PackCheck" AfterTargets="Pack">
+    <Error  
+      Text=" The NuspecFile property must be set to build this NuGet package."  
+      Condition="'$(NuspecFile)' == ''" />  
+  </Target>
 
 </Project>
