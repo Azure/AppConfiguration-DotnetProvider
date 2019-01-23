@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="Microsoft.Azconfig.Client" Version="$(MicrosoftAzconfigClientVersion)" />
+    <PackageReference Include="Microsoft.Azconfig.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
   </ItemGroup>
   
   <PropertyGroup>
@@ -20,6 +21,7 @@
     <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
     <MicrosoftAzconfigClientVersion>1.0.0-alpha-007520001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007340001-1161</MicrosoftAzconfigManagedIdentityConnectorVersion>
   </PropertyGroup>
 
   <!-- After the build, we write the .nuspec file to the output directory -->
