@@ -19,7 +19,7 @@ build:
         - from: 'src'
           to: 'Binaries'
           include:
-            - '*/bin/BuildOutput/**/*'
+            - '*/bin/BuildOutput/**/*Azconfig*'
 
 package:
   commands:

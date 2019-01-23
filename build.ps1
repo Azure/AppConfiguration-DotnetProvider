@@ -24,7 +24,7 @@ if ((Test-Path -Path $LogDirectory) -ne $true) {
     New-Item -ItemType Directory -Path $LogDirectory | Write-Verbose
 }
 
-# Build
-dotnet build -o "$BuildRelativePath" -c $BuildConfig "$Solution" | Tee-Object -FilePath "$LogDirectory\build.log"
+# Build (We use 'publish' to pull the Microsoft.Azconfig.Client.dll to be able to include it in the Microsoft.Extensions.Configuration.Azconfig NuGet package)
+dotnet publish -o "$BuildRelativePath" -c $BuildConfig "$Solution" /p:OutDir=$BuildRelativePath | Tee-Object -FilePath "$LogDirectory\build.log"
 
 exit $LASTEXITCODE

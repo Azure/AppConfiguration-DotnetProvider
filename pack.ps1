@@ -24,6 +24,6 @@ if ((Test-Path -Path $LogDirectory) -ne $true) {
 
 #
 # The build system expects pre-built binaries to be in the folder pointed to by 'OutDir'.
-dotnet pack -o "$PublishRelativePath" /p:OutDir=$PrebuiltBinariesDir "$Solution" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
+dotnet pack -o "$PublishRelativePath" /p:OutDir=$PrebuiltBinariesDir /p:NuspecFile="$($PrebuiltBinariesDir)\.nuspec" "$Solution" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
 
 exit $LASTEXITCODE

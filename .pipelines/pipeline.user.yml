@@ -5,6 +5,17 @@ version:
   name: 'Azconfig-DotnetProvider'
 
 static_analysis_options:
+  binskim_options:
+    files_to_scan:
+      - exclude:
+          # Exclude binaries from dependencies which trigger errors.
+          - '**/Microsoft.Azure.Management.ResourceManager.dll' # Signed with sha1 digest
+          - '**/Microsoft.Azure.Services.AppAuthentication.dll' # Signed with sha1 digest
+          - '**/Microsoft.Rest.ClientRuntime.Azure.dll' # Signed with sha1 digest
+          - '**/Microsoft.Rest.ClientRuntime.dll' # Signed with sha1 digest
+          # No need to analyze test/example binaries
+          - 'examples/**/*.*'
+          - 'tests/**/*.*'
   moderncop_options:
     files_to_scan:
       - exclude:
