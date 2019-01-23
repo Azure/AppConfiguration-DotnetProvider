@@ -23,7 +23,7 @@
         /// <summary>
         /// An optional client that can be used to communicate with the configuration store. If provided, connection string will be ignored.
         /// </summary>
-        public AzconfigClient Client { get; set; }
+        internal AzconfigClient Client { get; set; }
 
         public IEnumerable<KeyValueWatcher> ChangeWatchers {
             get
