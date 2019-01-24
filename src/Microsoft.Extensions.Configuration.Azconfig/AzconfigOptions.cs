@@ -12,6 +12,8 @@
 
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
+        private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
+
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
@@ -24,20 +26,36 @@
         /// </summary>
         public AzconfigClient Client { get; set; }
 
-        public IEnumerable<KeyValueWatcher> ChangeWatchers {
+        public IEnumerable<KeyValueWatcher> ChangeWatchers
+        {
             get
             {
                 return _changeWatchers.Values;
             }
         }
 
-        public AzconfigOptions Watch(string key, int pollInterval, string label = "")
+        public AzconfigOptions Watch(string key)
+        {
+            return Watch(key, _defaultPollInterval, "");
+        }
+
+        public AzconfigOptions Watch(string key, TimeSpan? pollInterval)
+        {
+            return Watch(key, pollInterval, "");
+        }
+
+        public AzconfigOptions Watch(string key, string label = "")
+        {
+            return Watch(key, _defaultPollInterval, label);
+        }
+
+        public AzconfigOptions Watch(string key, TimeSpan? pollInterval, string label = "")
         {
             _changeWatchers[key] = new KeyValueWatcher()
             {
                 Key = key,
                 Label = label,
-                PollInterval = pollInterval
+                PollInterval = pollInterval.HasValue ? pollInterval.Value : _defaultPollInterval
             };
             return this;
         }

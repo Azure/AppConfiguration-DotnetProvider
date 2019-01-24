@@ -91,7 +91,7 @@
                 }
 
                 IObservable<IKeyValue> observable = _client.ObserveKeyValue(watchedKv,
-                                                                             TimeSpan.FromMilliseconds(changeWatcher.PollInterval),
+                                                                             changeWatcher.PollInterval,
                                                                              Scheduler.Default);
                 _subscriptions.Add(observable.Subscribe((observedKv) =>
                 {
