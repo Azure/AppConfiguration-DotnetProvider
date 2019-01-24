@@ -88,13 +88,28 @@
 
         public AzconfigOptions Connect(string connectionString)
         {
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new ArgumentNullException(nameof(connectionString));
+            }
+
             ConnectionString = connectionString;
             return this;
         }
 
-        public AzconfigOptions ConnectWithManagedIdentity(Uri endpoint)
+        public AzconfigOptions ConnectWithManagedIdentity(string endpoint)
         {
-            Client = AzconfigClientFactory.CreateClient(endpoint, Permissions.Read).Result;
+            if (string.IsNullOrEmpty(endpoint))
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri))
+            {
+                throw new ArgumentException(nameof(endpoint));
+            }
+
+            Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
 
             return this;
         }
