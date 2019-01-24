@@ -1,6 +1,7 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using Microsoft.Azconfig.Client;
+    using Microsoft.Azconfig.ManagedIdentityConnector;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Collections.Generic;
@@ -209,6 +210,13 @@
         public AzconfigOptions Connect(string connectionString)
         {
             ConnectionString = connectionString;
+            return this;
+        }
+
+        public AzconfigOptions ConnectWithManagedIdentity(Uri endpoint)
+        {
+            Client = AzconfigClientFactory.CreateClient(endpoint, Permissions.Read).Result;
+
             return this;
         }
     }

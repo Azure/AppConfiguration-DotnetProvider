@@ -7,9 +7,38 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="1.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="Microsoft.Azconfig.Client" Version="1.0.0-alpha-006830001" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
+    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
+    <PackageReference Include="Microsoft.Azconfig.Client" Version="$(MicrosoftAzconfigClientVersion)" />
+    <PackageReference Include="Microsoft.Azconfig.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
   </ItemGroup>
+  
+  <PropertyGroup>
+    <!-- 
+      This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
+      This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
+    -->
+    <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
+    <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-alpha-007520001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007340001-1161</MicrosoftAzconfigManagedIdentityConnectorVersion>
+  </PropertyGroup>
+
+  <!-- After the build, we write the .nuspec file to the output directory -->
+  <Import Project=".\.nuspec.props" />
+  <Target Name="WriteToFile" AfterTargets="Build">  
+      <WriteLinesToFile  
+          File="$(OutDir)\.nuspec" 
+          Lines="$(NuspecContent)"  
+          Overwrite="true"  
+          Encoding="Unicode"/>  
+  </Target>
+  
+  <!-- Ensure any package generation is done via the generated nuspec file. -->
+  <Target Name="PackCheck" AfterTargets="Pack">
+    <Error  
+      Text=" The NuspecFile property must be set to build this NuGet package."  
+      Condition="'$(NuspecFile)' == ''" />  
+  </Target>
 
 </Project>

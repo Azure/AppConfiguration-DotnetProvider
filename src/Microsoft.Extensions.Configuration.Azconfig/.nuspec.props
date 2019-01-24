@@ -1,0 +1,59 @@
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+
+    <!-- 
+      Template file for generating .nuspec
+      This file is only valid if using msbuild to build the project (.csproj)
+      This allows us to use msbuild properties, i.e. $(Version) for .nuspec
+     -->
+
+  <PropertyGroup>
+
+    <!-- %3b is the semi-colon character ';' -->
+
+    <NuspecContent>
+
+<![CDATA[
+
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>$(MSBuildProjectName)</id>
+        <version>$(Version)</version>
+        <authors>Microsoft</authors>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Microsoft.Extensions.Configuration.Azconfig is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's Azconfig service as a configuration source in their applications.</description>
+        <projectUrl>https://azure.microsoft.com</projectUrl>
+        <dependencies>
+            <group targetFramework=".NETStandard2.0">
+                <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
+                <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
+
+                <!-- 
+                    The dependencies below are brought in by bundled binaries.
+                 -->
+
+                <!-- Azconfig Client dependencies -->
+                <dependency id="Microsoft.AspNetCore.Http.Extensions" version="2.1.1" exclude="Build,Analyzers" />
+                <dependency id="System.Interactive.Async" version="3.1.1" exclude="Build,Analyzers" />
+                <dependency id="System.Reactive.Linq" version="4.0.0" exclude="Build,Analyzers" />
+
+                <!-- MSI Connector dependencies -->
+                <dependency id="Microsoft.Azure.Management.ResourceManager" version="2.0.0-preview" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.Azure.Services.AppAuthentication" version="1.0.3" exclude="Build,Analyzers" />
+
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="./Microsoft.Extensions.Configuration.Azconfig.dll" target="lib/netstandard2.0/Microsoft.Extensions.Configuration.Azconfig.dll" />
+        <file src="./Microsoft.Azconfig.Client.dll" target="lib/netstandard2.0/Microsoft.Azconfig.Client.dll" />
+        <file src="./Microsoft.Azconfig.ManagedIdentityConnector.dll" target="lib/netstandard2.0/Microsoft.Azconfig.ManagedIdentityConnector.dll" />
+    </files>
+</package>
+        
+]]>
+
+    </NuspecContent>
+  </PropertyGroup>
+</Project>
