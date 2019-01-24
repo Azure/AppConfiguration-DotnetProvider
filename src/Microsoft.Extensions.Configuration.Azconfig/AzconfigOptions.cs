@@ -34,28 +34,64 @@
             }
         }
 
+        /// <summary>
+        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key in every 30s interval. 
+        /// </summary>
+        /// <param name="key">
+        /// The key used for querying the configuration store for key-values.
+        /// </param>
         public AzconfigOptions Watch(string key)
         {
-            return Watch(key, _defaultPollInterval, "");
+            return Watch(key, "", _defaultPollInterval);
         }
 
-        public AzconfigOptions Watch(string key, TimeSpan? pollInterval)
+        /// <summary>
+        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key with customized polling interval. 
+        /// </summary>
+        /// <param name="key">
+        /// The key used for querying the configuration store for key-values.
+        /// </param>
+        /// <param name="pollInterval">
+        /// The interval used to poll query the configuration store.
+        /// </param>
+        public AzconfigOptions Watch(string key, TimeSpan pollInterval)
         {
-            return Watch(key, pollInterval, "");
+            return Watch(key, "", pollInterval);
         }
 
-        public AzconfigOptions Watch(string key, string label = "")
+        /// <summary>
+        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key and label in every 30s interval. 
+        /// </summary>
+        /// <param name="key">
+        /// The key used for querying the configuration store for key-values.
+        /// </param>
+        /// <param name="label">
+        /// The label used for querying the configuration store for key-values.
+        /// </param>
+        public AzconfigOptions Watch(string key, string label)
         {
-            return Watch(key, _defaultPollInterval, label);
+            return Watch(key, label, _defaultPollInterval);
         }
 
-        public AzconfigOptions Watch(string key, TimeSpan? pollInterval, string label = "")
+        /// <summary>
+        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key and label with customized polling interval. 
+        /// </summary>
+        /// <param name="key">        
+        /// The key used for querying the configuration store for key-values.
+        /// </param>
+        /// <param name="label">
+        /// The label used for querying the configuration store for key-values.
+        /// </param>
+        /// <param name="pollInterval">
+        /// The interval used to poll query the configuration store.
+        /// </param>
+        public AzconfigOptions Watch(string key, string label, TimeSpan pollInterval)
         {
             _changeWatchers[key] = new KeyValueWatcher()
             {
                 Key = key,
                 Label = label,
-                PollInterval = pollInterval.HasValue ? pollInterval.Value : _defaultPollInterval
+                PollInterval = pollInterval
             };
             return this;
         }

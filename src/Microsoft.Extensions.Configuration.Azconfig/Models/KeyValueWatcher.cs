@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig.Models
         public string Label { get; set; }
 
         /// <summary>
-        /// The interval, in milliseconds, at which the key-value will be polled for changes.
+        /// The interval at which the key-value will be polled for changes.
         /// </summary>
         public TimeSpan PollInterval { get; set; }
     }
