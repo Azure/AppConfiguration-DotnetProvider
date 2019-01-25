@@ -92,10 +92,10 @@
         /// Instructs the AzconfigOptions to include all key-values with matching the specified key and label filters.
         /// </summary>
         /// <param name="keyFilter">
-        /// The key filter to apply when querying the App Configuration Hub for key-values.
+        /// The key filter to apply when querying the App Configuration Hub for key-values. Default key filter options: <see cref="KeyFilter"/>.
         /// </param>
         /// <param name="labelFilter">
-        /// The label filter to apply when querying the App Configuration Hub for key-values.
+        /// The label filter to apply when querying the App Configuration Hub for key-values. Default label filter options: <see cref="LabelFilter"/>.
         /// Does not support '*' and ','.
         /// </param>
         /// <param name="preferredDateTime">
