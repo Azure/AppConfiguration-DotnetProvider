@@ -1,6 +1,7 @@
 ﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
     using Microsoft.Azconfig.Client;
+    using Microsoft.Azconfig.ManagedIdentityConnector;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Collections.Generic;
@@ -27,7 +28,7 @@
         /// <summary>
         /// An optional client that can be used to communicate with the App Configuration Hub. If provided, connection string will be ignored.
         /// </summary>
-        public AzconfigClient Client { get; set; }
+        internal AzconfigClient Client { get; set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -138,7 +139,29 @@
         /// </param>
         public AzconfigOptions Connect(string connectionString)
         {
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new ArgumentNullException(nameof(connectionString));
+            }
+
             ConnectionString = connectionString;
+            return this;
+        }
+
+        public AzconfigOptions ConnectWithManagedIdentity(string endpoint)
+        {
+            if (string.IsNullOrEmpty(endpoint))
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri))
+            {
+                throw new ArgumentException(nameof(endpoint));
+            }
+
+            Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
+
             return this;
         }
     }
