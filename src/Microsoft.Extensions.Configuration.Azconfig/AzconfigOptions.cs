@@ -41,7 +41,7 @@
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key with customized polling interval. 
+        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key at the provided polling interval.
         /// </summary>
         /// <param name="key">
         /// The key used for querying the App Configuration Hub for key-values.
