@@ -21,12 +21,12 @@
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
-        /// The connection string to use to connect to the App Configuration Hub.
+        /// The connection string to use to connect to the App Configuration Hubs.
         /// </summary>
         public string ConnectionString { get; set; }
 
         /// <summary>
-        /// An optional client that can be used to communicate with the App Configuration Hub. If provided, connection string will be ignored.
+        /// An optional client that can be used to communicate with the App Configuration Hubs. If provided, connection string will be ignored.
         /// </summary>
         internal AzconfigClient Client { get; set; }
 
@@ -42,13 +42,13 @@
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key at the provided polling interval.
+        /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval.
         /// </summary>
         /// <param name="key">
-        /// The key used for querying the App Configuration Hub for key-values.
+        /// The key used for querying the App Configuration Hubs for key-values.
         /// </param>
         /// <param name="pollInterval">
-        /// The interval used to poll query the App Configuration Hub.
+        /// The interval used to poll query the App Configuration Hubs.
         /// </param>
         public AzconfigOptions Watch(string key, TimeSpan pollInterval)
         {
@@ -56,16 +56,16 @@
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to poll the key-values with matching the specified key and label with customized polling interval. 
+        /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval. 
         /// </summary>
         /// <param name="key">
-        /// The key used for querying the App Configuration Hub for key-values.
+        /// The key used for querying the App Configuration Hubs for key-values.
         /// </param>
         /// <param name="label">
-        /// The label used for querying the App Configuration Hub for key-values.
+        /// The label used for querying the App Configuration Hubs for key-values.
         /// </param>
         /// <param name="pollInterval">
-        /// The interval used to poll query the App Configuration Hub.
+        /// The interval used to poll query the App Configuration Hubs.
         /// </param>
         public AzconfigOptions Watch(string key, string label = "", TimeSpan? pollInterval = null)
         {
@@ -92,10 +92,10 @@
         /// Instructs the AzconfigOptions to include all key-values with matching the specified key and label filters.
         /// </summary>
         /// <param name="keyFilter">
-        /// The key filter to apply when querying the App Configuration Hub for key-values. Default key filter options: <see cref="KeyFilter"/>.
+        /// The key filter to apply when querying the App Configuration Hubs for key-values.
         /// </param>
         /// <param name="labelFilter">
-        /// The label filter to apply when querying the App Configuration Hub for key-values. Default label filter options: <see cref="LabelFilter"/>.
+        /// The label filter to apply when querying the App Configuration Hubs for key-values.
         /// Does not support '*' and ','.
         /// </param>
         /// <param name="preferredDateTime">
@@ -132,10 +132,10 @@
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to connect the App Configuration Hub via a connection string.
+        /// Instructs the AzconfigOptions to connect the App Configuration Hubs via a connection string.
         /// </summary>
         /// <param name="connectionString">
-        /// Used to authenticate with the App Configuration Hub.
+        /// Used to authenticate with the App Configuration Hubs.
         /// </param>
         public AzconfigOptions Connect(string connectionString)
         {
