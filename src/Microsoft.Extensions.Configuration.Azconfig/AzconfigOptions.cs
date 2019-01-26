@@ -18,7 +18,12 @@
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
-        public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// </summary>
+        internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
 
         /// <summary>
         /// The connection string to use to connect to the App Configuration Hubs.
@@ -29,17 +34,6 @@
         /// An optional client that can be used to communicate with the App Configuration Hubs. If provided, connection string will be ignored.
         /// </summary>
         internal AzconfigClient Client { get; set; }
-
-        /// <summary>
-        /// A collection of <see cref="KeyValueWatcher"/>.
-        /// </summary>
-        public IEnumerable<KeyValueWatcher> ChangeWatchers
-        {
-            get
-            {
-                return _changeWatchers.Values;
-            }
-        }
 
         /// <summary>
         /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval.
@@ -95,7 +89,7 @@
         /// The key filter to apply when querying the App Configuration Hubs for key-values. Built-in key filter options: <see cref="KeyFilter"/>
         /// </param>
         /// <param name="labelFilter">
-        /// The label filter to apply when querying the App Configuration Hubs for key-values. Built-in label filter options: <see cref="LabelFilter"/>
+        /// The label filter to apply when querying the App Configuration Hubs for key-values, if not specify, by defailt filter with empty label. Built-in label filter options: <see cref="LabelFilter"/>
         /// Does not support '*' and ','.
         /// </param>
         /// <param name="preferredDateTime">
@@ -110,7 +104,7 @@
 
             if (labelFilter == null)
             {
-                labelFilter = string.Empty;
+                labelFilter = LabelFilter.Null;
             }
 
             // Do not support * and , for label filter for now.
