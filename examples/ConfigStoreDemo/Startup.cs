@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Azconfig;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace ConfigStoreDemo
 {
@@ -15,9 +16,10 @@ namespace ConfigStoreDemo
             // Pull configuration connection string from environment variable
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddAzconfig(o => {
+                .AddAzconfig(o =>
+                {
                     o.Connect(configuration["connection_string"])
-                     .Watch("Settings:BackgroundColor", 1000);
+                     .Watch("Settings:BackgroundColor", TimeSpan.FromMilliseconds(1000));
                 });
             Configuration = builder.Build();
         }

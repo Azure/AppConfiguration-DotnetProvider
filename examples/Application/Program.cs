@@ -51,8 +51,8 @@
                  //
                  // Uncomment to filter selected key-values by key and/or label
                  //.Use("App*", "label1")
-                 .Watch("Language", 1000)
-                 .Watch("AppName", 1000);
+                 .Watch("Language", TimeSpan.FromMilliseconds(1000))
+                 .Watch("AppName", TimeSpan.FromMilliseconds(1000));
             });
 
             Configuration = builder.Build();

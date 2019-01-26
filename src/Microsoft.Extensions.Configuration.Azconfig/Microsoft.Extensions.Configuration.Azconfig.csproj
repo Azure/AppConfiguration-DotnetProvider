@@ -20,8 +20,8 @@
     -->
     <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-alpha-007520001</MicrosoftAzconfigClientVersion>
-    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007340001-1161</MicrosoftAzconfigManagedIdentityConnectorVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-alpha-007530001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007540001-1019</MicrosoftAzconfigManagedIdentityConnectorVersion>
   </PropertyGroup>
 
   <!-- After the build, we write the .nuspec file to the output directory -->

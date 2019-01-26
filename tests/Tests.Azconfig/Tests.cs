@@ -105,7 +105,7 @@ namespace Tests.Azconfig
                 var remoteConfigOpt = new AzconfigOptions() {
                     Client = testClient
                 };
-                remoteConfigOpt.Watch("TestKey1", 1000);
+                remoteConfigOpt.Watch("TestKey1", TimeSpan.FromMilliseconds(1000));
                 builder.AddAzconfig(remoteConfigOpt);
                 var config = builder.Build();
                 Assert.True(config["TestKey1"] == "TestValue1");

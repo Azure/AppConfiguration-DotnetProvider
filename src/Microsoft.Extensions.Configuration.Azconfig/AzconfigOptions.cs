@@ -18,34 +18,79 @@
 
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
+        private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueSelector"/>.
+        /// </summary>
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         public OfflineCache OfflineCache { get; set; }
 
         /// <summary>
-        /// The connection string to use to connect to the configuration store.
+        /// The connection string to use to connect to the App Configuration Hubs.
         /// </summary>
         public string ConnectionString { get; set; }
 
         /// <summary>
-        /// An optional client that can be used to communicate with the configuration store. If provided, connection string will be ignored.
+        /// An optional client that can be used to communicate with the App Configuration Hubs. If provided, connection string will be ignored.
         /// </summary>
-        public AzconfigClient Client { get; set; }
+        internal AzconfigClient Client { get; set; }
 
-        public IEnumerable<KeyValueWatcher> ChangeWatchers {
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// </summary>
+        public IEnumerable<KeyValueWatcher> ChangeWatchers
+        {
             get
             {
                 return _changeWatchers.Values;
             }
         }
 
-        public AzconfigOptions Watch(string key, int pollInterval, string label = "")
+        /// <summary>
+        /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval.
+        /// </summary>
+        /// <param name="key">
+        /// The key used for querying the App Configuration Hubs for key-values.
+        /// </param>
+        /// <param name="pollInterval">
+        /// The interval used to poll query the App Configuration Hubs.
+        /// </param>
+        public AzconfigOptions Watch(string key, TimeSpan pollInterval)
         {
+            return Watch(key, "", pollInterval);
+        }
+
+        /// <summary>
+        /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval. 
+        /// </summary>
+        /// <param name="key">
+        /// The key used for querying the App Configuration Hubs for key-values.
+        /// </param>
+        /// <param name="label">
+        /// The label used for querying the App Configuration Hubs for key-values.
+        /// </param>
+        /// <param name="pollInterval">
+        /// The interval used to poll query the App Configuration Hubs.
+        /// </param>
+        public AzconfigOptions Watch(string key, string label = "", TimeSpan? pollInterval = null)
+        {
+            TimeSpan interval;
+            if (pollInterval != null && pollInterval.HasValue)
+            {
+                interval = pollInterval.Value;
+            }
+            else
+            {
+                interval = _defaultPollInterval;
+            }
+
             _changeWatchers[key] = new KeyValueWatcher()
             {
                 Key = key,
                 Label = label,
-                PollInterval = pollInterval
+                PollInterval = interval
             };
             return this;
         }
@@ -54,10 +99,10 @@
         /// Instructs the AzconfigOptions to include all key-values with matching the specified key and label filters.
         /// </summary>
         /// <param name="keyFilter">
-        /// The key filter to apply when querying the configuration store for key-values.
+        /// The key filter to apply when querying the App Configuration Hubs for key-values.
         /// </param>
         /// <param name="labelFilter">
-        /// The label filter to apply when querying the configuration store for key-values.
+        /// The label filter to apply when querying the App Configuration Hubs for key-values.
         /// Does not support '*' and ','.
         /// </param>
         /// <param name="preferredDateTime">
@@ -185,15 +230,36 @@
             return this;
         }
 
+        /// <summary>
+        /// Instructs the AzconfigOptions to connect the App Configuration Hubs via a connection string.
+        /// </summary>
+        /// <param name="connectionString">
+        /// Used to authenticate with the App Configuration Hubs.
+        /// </param>
         public AzconfigOptions Connect(string connectionString)
         {
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new ArgumentNullException(nameof(connectionString));
+            }
+
             ConnectionString = connectionString;
             return this;
         }
 
-        public AzconfigOptions ConnectWithManagedIdentity(Uri endpoint)
+        public AzconfigOptions ConnectWithManagedIdentity(string endpoint)
         {
-            Client = AzconfigClientFactory.CreateClient(endpoint, Permissions.Read).Result;
+            if (string.IsNullOrEmpty(endpoint))
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri))
+            {
+                throw new ArgumentException(nameof(endpoint));
+            }
+
+            Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
 
             return this;
         }
