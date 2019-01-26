@@ -6,7 +6,7 @@ using Newtonsoft.Json.Converters;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
-    public abstract class OfflineCacheProvider
+    public abstract class OfflineCache
     {
         protected OfflineCacheOptions Options { set; get; }
 

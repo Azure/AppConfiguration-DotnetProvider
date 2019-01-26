@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
-    public static class CryptoService
+    internal static class CryptoService
     {
         private enum WorkerType
         {
@@ -52,7 +52,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         {
             using (var hmac = new HMACSHA256(key))
             {
-                var hash = hmac.ComputeHash(new byte[40960]);
+                var hash = hmac.ComputeHash(data);
                 return Convert.ToBase64String(hash);
             }
         }

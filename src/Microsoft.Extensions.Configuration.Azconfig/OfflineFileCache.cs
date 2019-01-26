@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
-    public class FileOfflineCache : OfflineCacheProvider
+    public class OfflineFileCache : OfflineCache
     {
         private string _localCachePath = null;
         private const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         private const string hashProp = "h";
         private const string scoprProp = "s";
 
-        public FileOfflineCache(OfflineCacheOptions options)
+        public OfflineFileCache(OfflineCacheOptions options)
         {
             _localCachePath = options.Target ?? throw new ArgumentNullException(nameof(options.Target));
             if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))

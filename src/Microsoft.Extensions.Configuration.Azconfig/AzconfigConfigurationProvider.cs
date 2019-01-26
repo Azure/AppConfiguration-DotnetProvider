@@ -61,9 +61,9 @@
             catch (Exception exception) when (exception.InnerException is HttpRequestException || 
                                               exception.InnerException is UnauthorizedAccessException)
             {
-                if (_options.OfflineCacheProvider != null)
+                if (_options.OfflineCache != null)
                 {
-                    IDictionary<string, IKeyValue> cache = _options.OfflineCacheProvider.GetData();
+                    IDictionary<string, IKeyValue> cache = _options.OfflineCache.GetData();
                     if (cache != null)
                     {
                         SetData(cache);
@@ -80,6 +80,11 @@
             }
 
             SetData(data);
+
+            if (_options.OfflineCache != null)
+            {
+                _options.OfflineCache.SetData(data);
+            }
 
             ObserveKeyValue();
         }
@@ -129,11 +134,6 @@
             //
             // Update cache of settings
             this._settings = data;
-
-            if (_options.OfflineCacheProvider != null)
-            {
-                _options.OfflineCacheProvider.SetData(data);
-            }
 
             //
             // Set the application data for the configuration provider

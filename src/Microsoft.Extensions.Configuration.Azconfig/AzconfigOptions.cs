@@ -20,7 +20,7 @@
 
         public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
-        public OfflineCacheProvider OfflineCacheProvider { get; set; }
+        public OfflineCache OfflineCache { get; set; }
 
         /// <summary>
         /// The connection string to use to connect to the configuration store.
@@ -93,30 +93,26 @@
             return this;
         }
 
-        public AzconfigOptions AddFileOfflineCache(string path)
+        public AzconfigOptions AddOfflineFileCache(string path)
         {
-            return AddFileOfflineCache(new OfflineCacheOptions() { Target = path });
+            return AddOfflineFileCache(new OfflineCacheOptions() { Target = path });
         }
 
-        public AzconfigOptions AddFileOfflineCache(OfflineCacheOptions options = null)
+        public AzconfigOptions AddOfflineFileCache(OfflineCacheOptions options = null)
         {
             if (ConnectionString == null)
             {
                 throw new InvalidOperationException("Please call Connect first.");
             }
 
-            if (options == null) options = new OfflineCacheOptions();
+            if (options == null)
+            {
+                options = new OfflineCacheOptions();
+            }
 
             if (!options.IsCryptoDataReady)
             {
-                const string secretToken = ";Secret=";
-                var index = ConnectionString.LastIndexOf(secretToken);
-                if (index < 0)
-                {
-                    throw new InvalidOperationException("Invalid connection string format.");
-                }
-
-                byte[] secret = Convert.FromBase64String(ConnectionString.Substring(index + secretToken.Length));
+                byte[] secret = Convert.FromBase64String(Utility.ParseConnectionString(ConnectionString, "Secret"));
 
                 // for AES 256 the block size must be 128 bits (16 bytes)
                 if (secret.Length < 16)
@@ -133,20 +129,7 @@
             if (options.ScopeToken == null)
             {
                 // Default would be Endpoint and KeyValueSelectors
-                const string endpointToken = "Endpoint=";
-                var startIndex = ConnectionString.IndexOf(endpointToken);
-                if (startIndex < 0)
-                {
-                    throw new InvalidOperationException("Invalid connection string format.");
-                }
-
-                var endIndex = ConnectionString.IndexOf(";", startIndex + endpointToken.Length);
-                if (endIndex < 0)
-                {
-                    throw new InvalidOperationException("Invalid connection string format.");
-                }
-
-                string endpoint = ConnectionString.Substring(startIndex + endpointToken.Length, endIndex - startIndex - endpointToken.Length);
+                string endpoint = Utility.ParseConnectionString(ConnectionString, "Endpoint");
                 if (string.IsNullOrWhiteSpace(endpoint))
                 {
                     throw new InvalidOperationException("Invalid connection string format.");
@@ -160,9 +143,10 @@
                 options.ScopeToken = sb.ToString();
             }
 
+            // While user didn't specific the cache path, we will try to use the default path if it's running inside App Service
             if (options.Target == null)
             {
-                // Generate default cahce file name under $home/data/app{instance}-{hash}.json
+                // Generate default cahce file name under $home/data/azconfigCache/app{instance}-{hash}.json
                 string homePath = Environment.GetEnvironmentVariable("HOME");
                 if (Directory.Exists(homePath))
                 {
@@ -184,26 +168,20 @@
                                 hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
                             }
 
-                            var sb = new StringBuilder();
-                            for (var i = 0; i < hash.Length; i++)
-                            {
-                                sb.Append(hash[i].ToString("X2"));
-                            }
-
                             // The instance count would help preventing multiple provider overwrite each other's cache file
                             Interlocked.Increment(ref _instance);
-                            options.Target = Path.Combine(cahcePath, $"app{_instance}-{sb.ToString()}.json");
+                            options.Target = Path.Combine(cahcePath, $"app{_instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
                         }
                     }
                 }
 
                 if (options.Target == null)
                 {
-                    throw new NotSupportedException("Only work under Azure App Service");
+                    throw new NotSupportedException("The application must be running inside of an Azure App Service to use this feature.");
                 }
             }
 
-            OfflineCacheProvider = new FileOfflineCache(options);
+            OfflineCache = new OfflineFileCache(options);
             return this;
         }
 
