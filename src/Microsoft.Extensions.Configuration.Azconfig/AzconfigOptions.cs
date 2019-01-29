@@ -89,7 +89,7 @@
         /// The key filter to apply when querying the App Configuration Hubs for key-values. Built-in key filter options: <see cref="KeyFilter"/>
         /// </param>
         /// <param name="labelFilter">
-        /// The label filter to apply when querying the App Configuration Hubs for key-values, if not specify, by defailt filter with empty label. Built-in label filter options: <see cref="LabelFilter"/>
+        /// The label filter to apply when querying the App Configuration Hubs for key-values. By defailt the null label filter will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// Does not support '*' and ','.
         /// </param>
         /// <param name="preferredDateTime">

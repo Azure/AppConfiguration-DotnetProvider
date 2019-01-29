@@ -3,7 +3,7 @@
     public class KeyFilter
     {
         /// <summary>
-        /// The key filter used to persist key-vaults with any keys.
+        /// The filter that matches key-values with any keys.
         /// </summary>
         public const string Any = "*";
     }

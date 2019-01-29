@@ -3,7 +3,7 @@
     public class LabelFilter
     {
         /// <summary>
-        /// The label filter used to filter key-values with empty label.
+        /// The filter that matches key-values with a null label.
         /// </summary>
         public const string Null = "\0";
     }
