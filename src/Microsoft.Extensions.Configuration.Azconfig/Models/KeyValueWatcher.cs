@@ -2,7 +2,7 @@
 
 namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
-    public class KeyValueWatcher
+    class KeyValueWatcher
     {
         /// <summary>
         /// Key of the key-value to be watched.
