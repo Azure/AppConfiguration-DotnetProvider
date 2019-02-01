@@ -69,7 +69,7 @@
             {
                 if (_options.OfflineCache != null)
                 {
-                    IDictionary<string, IKeyValue> cache = _options.OfflineCache.GetData();
+                    IDictionary<string, IKeyValue> cache = _options.OfflineCache.Import().ToKeyValues();
                     if (cache != null)
                     {
                         SetData(cache);
@@ -89,7 +89,7 @@
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.SetData(data);
+                _options.OfflineCache.Export(data.ToJsonString());
             }
 
             ObserveKeyValue();

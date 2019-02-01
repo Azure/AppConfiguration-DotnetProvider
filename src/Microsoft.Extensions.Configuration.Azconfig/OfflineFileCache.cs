@@ -1,29 +1,41 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
-    public class OfflineFileCache : OfflineCache
+    internal class OfflineFileCache : IOfflineCache
     {
         private string _localCachePath = null;
         private const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
         private const int retryMax = 20;
         private const int delayRange = 50;
 
+        /// <summary>
+        /// Key name for cached data
+        /// </summary>
         private const string dataProp = "d";
+
+        /// <summary>
+        /// Key name for signature
+        /// </summary>
         private const string hashProp = "h";
+
+        /// <summary>
+        /// Key name for cached data scope
+        /// </summary>
         private const string scoprProp = "s";
 
-        public OfflineFileCache(OfflineCacheOptions options)
+        private OfflineFileCacheOptions Options { set; get; }
+
+        public OfflineFileCache(OfflineFileCacheOptions options)
         {
-            _localCachePath = options.Target ?? throw new ArgumentNullException(nameof(options.Target));
+            _localCachePath = options.Path ?? throw new ArgumentNullException(nameof(options.Path));
             if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
             {
-                throw new ArgumentException("Must be full path", nameof(options.Target));
+                throw new ArgumentException("Must be full path", nameof(options.Path));
             }
 
             if (!options.IsCryptoDataReady)
@@ -34,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             Options = options;
         }
 
-        public override string Import()
+        public string Import()
         {
             return this.DoImport();
         }
@@ -98,7 +110,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             return null;
         }
 
-        public override void Export(string data)
+        public void Export(string data)
         {
             if ((DateTime.Now - File.GetLastWriteTime(_localCachePath)) > TimeSpan.FromMilliseconds(1000))
             {

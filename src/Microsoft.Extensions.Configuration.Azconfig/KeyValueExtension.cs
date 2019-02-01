@@ -6,10 +6,8 @@ using Newtonsoft.Json.Converters;
 
 namespace Microsoft.Extensions.Configuration.Azconfig
 {
-    public abstract class OfflineCache
+    internal static class KeyValueExtension
     {
-        protected OfflineCacheOptions Options { set; get; }
-
         private class KeyValueConverter : CustomCreationConverter<IKeyValue>
         {
             public override IKeyValue Create(Type _)
@@ -18,17 +16,14 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             }
         }
 
-        public abstract string Import();
-        public abstract void Export(string data);
-
-        internal void SetData(IDictionary<string, IKeyValue> data)
+        public static string ToJsonString(this IDictionary<string, IKeyValue> data)
         {
-            Export(JsonConvert.SerializeObject(data));
+            return JsonConvert.SerializeObject(data);
         }
 
-        internal IDictionary<string, IKeyValue> GetData()
+        public static IDictionary<string, IKeyValue> ToKeyValues(this string data)
         {
-            return JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(Import(), new KeyValueConverter());
+            return JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(data, new KeyValueConverter());
         }
     }
 }

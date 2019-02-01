@@ -30,7 +30,10 @@
         /// </summary>
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
 
-        public OfflineCache OfflineCache { get; set; }
+        /// <summary>
+        /// Offline cache provider
+        /// </summary>
+        public IOfflineCache OfflineCache { get; set; }
 
         /// <summary>
         /// The connection string to use to connect to the App Configuration Hubs.
@@ -132,12 +135,19 @@
             return this;
         }
 
-        public AzconfigOptions AddOfflineFileCache(string path)
+        public AzconfigOptions AddOfflineCache(IOfflineCache offlineCache)
         {
-            return AddOfflineFileCache(new OfflineCacheOptions() { Target = path });
+            if (offlineCache == null)
+            {
+                throw new ArgumentNullException(nameof(offlineCache));
+            }
+
+            OfflineCache = offlineCache;
+
+            return this;
         }
 
-        public AzconfigOptions AddOfflineFileCache(OfflineCacheOptions options = null)
+        public AzconfigOptions AddOfflineFileCache(OfflineFileCacheOptions options = null)
         {
             if (ConnectionString == null)
             {
@@ -146,7 +156,7 @@
 
             if (options == null)
             {
-                options = new OfflineCacheOptions();
+                options = new OfflineFileCacheOptions();
             }
 
             if (!options.IsCryptoDataReady)
@@ -183,7 +193,7 @@
             }
 
             // While user didn't specific the cache path, we will try to use the default path if it's running inside App Service
-            if (options.Target == null)
+            if (options.Path == null)
             {
                 // Generate default cahce file name under $home/data/azconfigCache/app{instance}-{hash}.json
                 string homePath = Environment.GetEnvironmentVariable("HOME");
@@ -209,18 +219,19 @@
 
                             // The instance count would help preventing multiple provider overwrite each other's cache file
                             Interlocked.Increment(ref _instance);
-                            options.Target = Path.Combine(cahcePath, $"app{_instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
+                            options.Path = Path.Combine(cahcePath, $"app{_instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
                         }
                     }
                 }
 
-                if (options.Target == null)
+                if (options.Path == null)
                 {
                     throw new NotSupportedException("The application must be running inside of an Azure App Service to use this feature.");
                 }
             }
 
-            OfflineCache = new OfflineFileCache(options);
+            AddOfflineCache(new OfflineFileCache(options));
+
             return this;
         }
 

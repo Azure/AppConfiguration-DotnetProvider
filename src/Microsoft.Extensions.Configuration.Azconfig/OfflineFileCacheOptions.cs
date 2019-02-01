@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Microsoft.Extensions.Configuration.Azconfig
+﻿namespace Microsoft.Extensions.Configuration.Azconfig
 {
-    public class OfflineCacheOptions
+    public class OfflineFileCacheOptions
     {
         // Target location for cache
-        public string Target { get; set; }
+        public string Path { get; set; }
 
         // Indicate if cache for the same scope
         public string ScopeToken { get; set; }
