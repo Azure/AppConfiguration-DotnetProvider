@@ -2,7 +2,7 @@
 
 namespace Microsoft.Extensions.Configuration.Azconfig.Models
 {
-    public class KeyValueSelector
+    class KeyValueSelector
     {
         /// <summary>
         /// Keys that will be used to filter.

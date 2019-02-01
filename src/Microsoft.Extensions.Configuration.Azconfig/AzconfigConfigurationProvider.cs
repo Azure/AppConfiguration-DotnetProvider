@@ -41,8 +41,14 @@
             {
                 if (!_options.KeyValueSelectors.Any())
                 {
-                    // Load all key-values by default
-                    _client.GetKeyValues(new QueryKeyValueCollectionOptions()).ForEach(kv => { data[kv.Key] = kv; });
+                    // Load all key-values by null label.
+                    _client.GetKeyValues(
+                        new QueryKeyValueCollectionOptions()
+                        {
+                            KeyFilter = KeyFilter.Any,
+                            LabelFilter = LabelFilter.Null,
+                        })
+                    .ForEach(kv => { data[kv.Key] = kv; });
                 }
                 else
                 {
@@ -58,7 +64,7 @@
                     }
                 }
             }
-            catch (Exception exception) when (exception.InnerException is HttpRequestException || 
+            catch (Exception exception) when (exception.InnerException is HttpRequestException ||
                                               exception.InnerException is UnauthorizedAccessException)
             {
                 if (_options.OfflineCache != null)
