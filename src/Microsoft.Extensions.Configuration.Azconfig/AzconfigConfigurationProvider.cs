@@ -36,6 +36,13 @@
 
         public override void Load()
         {
+            LoadAll();
+
+            ObserveKeyValue();
+        }
+
+        private void LoadAll()
+        {
             var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
             try
             {
@@ -71,8 +78,6 @@
             }
 
             SetData(data);
-
-            ObserveKeyValue();
         }
 
         private async Task ObserveKeyValue()
@@ -110,7 +115,14 @@
                         _settings[watchedKey] = observedKv;
                     }
 
-                    SetData(_settings);
+                    if (changeWatcher.ReloadAll)
+                    {
+                        LoadAll();
+                    }
+                    else
+                    {
+                        SetData(_settings);
+                    }
                 }));
             }
         }

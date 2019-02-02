@@ -36,13 +36,13 @@
         internal AzconfigClient Client { get; set; }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval.
+        /// Monitor the specified the key-value and reload it if value changed.
         /// </summary>
         /// <param name="key">
-        /// The key used for querying the App Configuration Hubs for key-values.
+        /// Key of the key-value to be watched.
         /// </param>
         /// <param name="pollInterval">
-        /// The interval used to poll query the App Configuration Hubs.
+        /// Interval used to check if the key-value has been changed.
         /// </param>
         public AzconfigOptions Watch(string key, TimeSpan pollInterval)
         {
@@ -50,36 +50,49 @@
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to poll the key-values matching the specified key at the provided polling interval. 
+        /// Monitor the specified the key-value and reload it if value changed.
         /// </summary>
         /// <param name="key">
-        /// The key used for querying the App Configuration Hubs for key-values.
+        /// Key of the key-value to be watched.
         /// </param>
         /// <param name="label">
-        /// The label used for querying the App Configuration Hubs for key-values.
+        /// Label of the key-value to be watched.
         /// </param>
         /// <param name="pollInterval">
-        /// The interval used to poll query the App Configuration Hubs.
+        /// Interval used to check if the key-value has been changed.
         /// </param>
         public AzconfigOptions Watch(string key, string label = "", TimeSpan? pollInterval = null)
         {
-            TimeSpan interval;
-            if (pollInterval != null && pollInterval.HasValue)
-            {
-                interval = pollInterval.Value;
-            }
-            else
-            {
-                interval = _defaultPollInterval;
-            }
+            return WatchKeyValue(key, label, pollInterval, false);
+        }
 
-            _changeWatchers[key] = new KeyValueWatcher()
-            {
-                Key = key,
-                Label = label,
-                PollInterval = interval
-            };
-            return this;
+        /// <summary>
+        /// Monitor the specified the key-value and reload all key-values if value changed.
+        /// <param name="key">
+        /// Key of the key-value to be watched.
+        /// </param>
+        /// <param name="pollInterval">
+        /// Interval used to check if the key-value has been changed.
+        /// </param>
+        public AzconfigOptions WatchAndReloadAll(string key, TimeSpan pollInterval)
+        {
+            return WatchAndReloadAll(key, "", pollInterval);
+        }
+
+        /// <summary>
+        /// Monitor the specified the key-value and reload all key-values if value changed.
+        /// <param name="key">
+        /// Key of the key-value to be watched.
+        /// </param>
+        /// <param name="label">
+        /// Label of the key-value to be watched.
+        /// </param>
+        /// <param name="pollInterval">
+        /// Interval used to check if the key-value has been changed.
+        /// </param>
+        public AzconfigOptions WatchAndReloadAll(string key, string label = "", TimeSpan? pollInterval = null)
+        {
+            return WatchKeyValue(key, label, pollInterval, true);
         }
 
         /// <summary>
@@ -155,6 +168,29 @@
             }
 
             Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
+
+            return this;
+        }
+
+        private AzconfigOptions WatchKeyValue(string key, string label, TimeSpan? pollInterval, bool refreshAll)
+        {
+            TimeSpan interval;
+            if (pollInterval != null && pollInterval.HasValue)
+            {
+                interval = pollInterval.Value;
+            }
+            else
+            {
+                interval = _defaultPollInterval;
+            }
+
+            _changeWatchers[key] = new KeyValueWatcher()
+            {
+                Key = key,
+                Label = label,
+                PollInterval = interval,
+                ReloadAll = refreshAll
+            };
 
             return this;
         }
