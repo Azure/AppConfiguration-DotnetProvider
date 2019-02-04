@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -15,6 +16,7 @@ namespace Tests.Azconfig
         private IKeyValue _kv;
         private readonly IEnumerable<IKeyValue> _kvCollection;
         private int _getKvCounter = 0;
+        private int _getKvsCounter = 0;
         private const int _createNewKvTrigger = 1; 
 
         public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue>  kvCollection)
@@ -44,7 +46,7 @@ namespace Tests.Azconfig
         {
             // use counter to switch retrieved key value
             // used in observe key tests
-            if (_getKvCounter > _createNewKvTrigger)
+            if (_getKvCounter >= _createNewKvTrigger)
             {
                 _kv = new KeyValue(_kv.Key)
                 {
@@ -66,13 +68,26 @@ namespace Tests.Azconfig
         private Task<HttpResponseMessage> GetKeyValues(HttpRequestMessage request)
         {
 
-            HttpResponseMessage response = new HttpResponseMessage();
+            HttpResponseMessage response = new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            };
 
-            response.StatusCode = HttpStatusCode.OK;
-            string json = JsonConvert.SerializeObject(new { items = _kvCollection });
+            IEnumerable<IKeyValue> keyvalues = _kvCollection;
+            if (_getKvCounter >= _createNewKvTrigger)
+            {
+                keyvalues = _kvCollection.Select(x => new KeyValue(x.Key)
+                {
+                    Value = "newValue",
+                    Label = x.Label,
+                    ContentType = x.ContentType,
+                    Tags = x.Tags});
+            }
+
+            string json = JsonConvert.SerializeObject(new { items = keyvalues });
 
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
-
+            _getKvsCounter++;
             return Task.FromResult(response);
         }
 
