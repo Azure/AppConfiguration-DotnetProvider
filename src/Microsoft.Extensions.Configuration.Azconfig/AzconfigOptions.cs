@@ -46,7 +46,7 @@
         /// </param>
         public AzconfigOptions Watch(string key, TimeSpan pollInterval)
         {
-            return Watch(key, "", pollInterval);
+            return Watch(key, LabelFilter.Null, pollInterval);
         }
 
         /// <summary>
@@ -61,7 +61,7 @@
         /// <param name="pollInterval">
         /// Interval used to check if the key-value has been changed.
         /// </param>
-        public AzconfigOptions Watch(string key, string label = "", TimeSpan? pollInterval = null)
+        public AzconfigOptions Watch(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
         {
             return WatchKeyValue(key, label, pollInterval, false);
         }
@@ -76,7 +76,7 @@
         /// </param>
         public AzconfigOptions WatchAndReloadAll(string key, TimeSpan pollInterval)
         {
-            return WatchAndReloadAll(key, "", pollInterval);
+            return WatchAndReloadAll(key, LabelFilter.Null, pollInterval);
         }
 
         /// <summary>
@@ -90,7 +90,7 @@
         /// <param name="pollInterval">
         /// Interval used to check if the key-value has been changed.
         /// </param>
-        public AzconfigOptions WatchAndReloadAll(string key, string label = "", TimeSpan? pollInterval = null)
+        public AzconfigOptions WatchAndReloadAll(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
         {
             return WatchKeyValue(key, label, pollInterval, true);
         }
@@ -108,7 +108,7 @@
         /// <param name="preferredDateTime">
         /// Used to query key-values in the state that they existed at the time provided.
         /// </param>
-        public AzconfigOptions Use(string keyFilter, string labelFilter = null, DateTimeOffset? preferredDateTime = null)
+        public AzconfigOptions Use(string keyFilter, string labelFilter = LabelFilter.Null, DateTimeOffset? preferredDateTime = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -172,7 +172,7 @@
             return this;
         }
 
-        private AzconfigOptions WatchKeyValue(string key, string label, TimeSpan? pollInterval, bool refreshAll)
+        private AzconfigOptions WatchKeyValue(string key, string label, TimeSpan? pollInterval, bool reloadAll)
         {
             TimeSpan interval;
             if (pollInterval != null && pollInterval.HasValue)
@@ -189,7 +189,7 @@
                 Key = key,
                 Label = label,
                 PollInterval = interval,
-                ReloadAll = refreshAll
+                ReloadAll = reloadAll
             };
 
             return this;

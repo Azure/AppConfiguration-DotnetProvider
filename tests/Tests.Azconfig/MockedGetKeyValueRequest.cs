@@ -46,7 +46,7 @@ namespace Tests.Azconfig
         {
             // use counter to switch retrieved key value
             // used in observe key tests
-            if (_getKvCounter > _createNewKvTrigger)
+            if (_getKvCounter >= _createNewKvTrigger)
             {
                 _kv = new KeyValue(_kv.Key)
                 {
@@ -74,7 +74,7 @@ namespace Tests.Azconfig
             };
 
             IEnumerable<IKeyValue> keyvalues = _kvCollection;
-            if (_getKvCounter > _createNewKvTrigger)
+            if (_getKvCounter >= _createNewKvTrigger)
             {
                 keyvalues = _kvCollection.Select(x => new KeyValue(x.Key)
                 {
