@@ -5,25 +5,17 @@
     using Microsoft.Extensions.Configuration.Azconfig.Models;
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System.Threading;
 
     public class AzconfigOptions
     {
-        private static int _instance = 0;
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
-
-        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
-
         private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
-        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+        public List<KeyValueSelector> KeyValueSelectors { get; } = new List<KeyValueSelector>();
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -130,7 +122,7 @@
                 PreferredDateTime = preferredDateTime
             };
 
-            _kvSelectors.Add(keyValueSelector);
+            KeyValueSelectors.Add(keyValueSelector);
 
             return this;
         }
@@ -143,94 +135,6 @@
             }
 
             OfflineCache = offlineCache;
-
-            return this;
-        }
-
-        public AzconfigOptions AddOfflineFileCache(OfflineFileCacheOptions options = null)
-        {
-            if (ConnectionString == null)
-            {
-                throw new InvalidOperationException("Please call Connect first.");
-            }
-
-            if (options == null)
-            {
-                options = new OfflineFileCacheOptions();
-            }
-
-            if (!options.IsCryptoDataReady)
-            {
-                byte[] secret = Convert.FromBase64String(Utility.ParseConnectionString(ConnectionString, "Secret"));
-
-                // for AES 256 the block size must be 128 bits (16 bytes)
-                if (secret.Length < 16)
-                {
-                    throw new InvalidOperationException("Invalid connection string length.");
-                }
-
-                options.Key = secret;
-                options.SignKey = secret;
-                options.IV = new byte[16];
-                Array.Copy(secret, options.IV, 16);
-            }
-
-            if (options.ScopeToken == null)
-            {
-                // Default would be Endpoint and KeyValueSelectors
-                string endpoint = Utility.ParseConnectionString(ConnectionString, "Endpoint");
-                if (string.IsNullOrWhiteSpace(endpoint))
-                {
-                    throw new InvalidOperationException("Invalid connection string format.");
-                }
-
-                var sb = new StringBuilder($"{endpoint}\0");
-                _kvSelectors.ForEach(selector => {
-                    sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0{selector.PreferredDateTime.GetValueOrDefault().ToUnixTimeSeconds()}\0");
-                });
-
-                options.ScopeToken = sb.ToString();
-            }
-
-            // While user didn't specific the cache path, we will try to use the default path if it's running inside App Service
-            if (options.Path == null)
-            {
-                // Generate default cahce file name under $home/data/azconfigCache/app{instance}-{hash}.json
-                string homePath = Environment.GetEnvironmentVariable("HOME");
-                if (Directory.Exists(homePath))
-                {
-                    string dataPath = Path.Combine(homePath, "data");
-                    if (Directory.Exists(dataPath))
-                    {
-                        string cahcePath = Path.Combine(dataPath, "azconfigCache");
-                        if (!Directory.Exists(cahcePath))
-                        {
-                            Directory.CreateDirectory(cahcePath);
-                        }
-
-                        string websiteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
-                        if (websiteName != null)
-                        {
-                            byte[] hash = new byte[0];
-                            using (var sha = SHA1.Create())
-                            {
-                                hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
-                            }
-
-                            // The instance count would help preventing multiple provider overwrite each other's cache file
-                            Interlocked.Increment(ref _instance);
-                            options.Path = Path.Combine(cahcePath, $"app{_instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
-                        }
-                    }
-                }
-
-                if (options.Path == null)
-                {
-                    throw new NotSupportedException("The application must be running inside of an Azure App Service to use this feature.");
-                }
-            }
-
-            AddOfflineCache(new OfflineFileCache(options));
 
             return this;
         }

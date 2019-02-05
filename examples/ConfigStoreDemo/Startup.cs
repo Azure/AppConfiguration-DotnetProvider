@@ -1,9 +1,9 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Azconfig;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace ConfigStoreDemo
 {
@@ -11,6 +11,8 @@ namespace ConfigStoreDemo
     {
         public Startup(IConfiguration configuration)
         {
+            configuration["connection_string"] = "Endpoint=https://garywang-demo-store.azconfig.io;Id=1733fe435bb07b21;Secret=jCWt+aXO3IfJvEtFzvqMirXv7CAOKc01Lu3SuQGK6vo=";
+
             // load configurations from local json file and remote config store.
             // load all key-values with null label and listen one key.
             // Pull configuration connection string from environment variable
@@ -19,6 +21,7 @@ namespace ConfigStoreDemo
                 .AddAzconfig(o =>
                 {
                     o.Connect(configuration["connection_string"])
+                     .AddOfflineCache(new OfflineFileCache())
                      .Watch("Settings:BackgroundColor", TimeSpan.FromMilliseconds(1000));
                 });
             Configuration = builder.Build();

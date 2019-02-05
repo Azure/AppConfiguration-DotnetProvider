@@ -9,6 +9,7 @@
     using System.Threading.Tasks;
     using Microsoft.Azconfig.Client;
     using Microsoft.Extensions.Configuration.Azconfig.Models;
+    using Newtonsoft.Json;
 
     class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
     {
@@ -69,7 +70,7 @@
             {
                 if (_options.OfflineCache != null)
                 {
-                    IDictionary<string, IKeyValue> cache = _options.OfflineCache.Import().ToKeyValues();
+                    IDictionary<string, IKeyValue> cache = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
                     if (cache != null)
                     {
                         SetData(cache);
@@ -89,7 +90,7 @@
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.Export(data.ToJsonString());
+                _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
             }
 
             ObserveKeyValue();

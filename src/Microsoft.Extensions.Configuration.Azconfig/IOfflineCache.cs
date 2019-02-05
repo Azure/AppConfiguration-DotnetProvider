@@ -2,7 +2,7 @@
 {
     public interface IOfflineCache
     {
-        string Import();
-        void Export(string data);
+        string Import(AzconfigOptions options);
+        void Export(AzconfigOptions options, string data);
     }
 }

@@ -3,6 +3,8 @@
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Azconfig;
     using System;
+    using System.IO;
+    using System.Security.Cryptography;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -36,18 +38,19 @@
 
             IConfiguration configuration = builder.Build();
 
+            configuration["AzconfigConnectionString"] = "Endpoint=https://aks-demo-store.azconfig.io;Id=2-l1-s0:iibGkoAkXGan0pfluhPe;Secret=Vdyg+oRE2ndktolfB458J02NIDW+jpNI1aHsJfHRr10=";
+
             if (string.IsNullOrEmpty(configuration["AzconfigConnectionString"]))
             {
                 Console.WriteLine("Connection string not found.");
                 Console.WriteLine("Please set the AzconfigConnectionString environment variable to a valid Azconfig connection string to and re-run this example.");
                 return;
             }
-
             //
             // Pull configuration connection string from environment variable
             builder.AddAzconfig(o => {
-
                 o.Connect(configuration["AzconfigConnectionString"])
+                 .AddOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions() { Path = Path.Combine(Path.GetTempPath(), "cache.json") }))
                  //
                  // Uncomment to filter selected key-values by key and/or label
                  //.Use("App*", "label1")

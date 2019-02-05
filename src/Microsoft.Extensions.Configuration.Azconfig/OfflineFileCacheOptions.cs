@@ -12,8 +12,5 @@
         public byte[] Key { get; set; }
         public byte[] IV { get; set; }
         public byte[] SignKey { get; set; }
-
-        // Helper 
-        public bool IsCryptoDataReady => ((Key != null) && (IV != null) && (SignKey != null));
     }
 }
