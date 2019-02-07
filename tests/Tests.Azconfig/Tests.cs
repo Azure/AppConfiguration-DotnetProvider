@@ -105,11 +105,11 @@ namespace Tests.Azconfig
                 var remoteConfigOpt = new AzconfigOptions() {
                     Client = testClient
                 };
-                remoteConfigOpt.Watch("TestKey1", TimeSpan.FromMilliseconds(1000));
+                remoteConfigOpt.Watch("TestKey1", TimeSpan.FromMilliseconds(500));
                 builder.AddAzconfig(remoteConfigOpt);
                 var config = builder.Build();
                 Assert.True(config["TestKey1"] == "TestValue1");
-                Thread.Sleep(4000);
+                Thread.Sleep(1500);
                 Assert.True(config["TestKey1"] == "newValue");
             }
         }
@@ -145,6 +145,28 @@ namespace Tests.Azconfig
                 var config = builder.Build();
 
                 Assert.True(kvsRetrieved);
+            }
+        }
+
+        [Fact]
+        public void WatchAndReloadAll()
+        {
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            {
+                var builder = new ConfigurationBuilder();
+                var remoteConfigOpt = new AzconfigOptions()
+                {
+                    Client = testClient
+                };
+                remoteConfigOpt.WatchAndReloadAll("TestKey1", TimeSpan.FromMilliseconds(500));
+                builder.AddAzconfig(remoteConfigOpt);
+                var config = builder.Build();
+                Assert.True(config["TestKey1"] == "TestValue1");
+                Thread.Sleep(1500);
+                Assert.True(config["TestKey1"] == "newValue");
+                Assert.True(config["TestKey2"] == "newValue");
+                Assert.True(config["TestKey3"] == "newValue");
+                Assert.True(config["TestKey4"] == "newValue");
             }
         }
     }

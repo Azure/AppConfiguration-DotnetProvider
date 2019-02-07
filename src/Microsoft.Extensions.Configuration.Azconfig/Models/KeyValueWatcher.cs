@@ -18,5 +18,10 @@ namespace Microsoft.Extensions.Configuration.Azconfig.Models
         /// The interval at which the key-value will be polled for changes.
         /// </summary>
         public TimeSpan PollInterval { get; set; }
+
+        /// <summary>
+        /// A flag to reload all key-values.
+        /// </summary>
+        public bool ReloadAll { get; set; }
     }
 }

@@ -37,7 +37,15 @@
 
         public override void Load()
         {
+            LoadAll();
+
+            ObserveKeyValue();
+        }
+
+        private void LoadAll()
+        {
             IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+
             try
             {
                 if (!_options.KeyValueSelectors.Any())
@@ -92,8 +100,6 @@
             {
                 _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
             }
-
-            ObserveKeyValue();
         }
 
         private async Task ObserveKeyValue()
@@ -131,7 +137,14 @@
                         _settings[watchedKey] = observedKv;
                     }
 
-                    SetData(_settings);
+                    if (changeWatcher.ReloadAll)
+                    {
+                        LoadAll();
+                    }
+                    else
+                    {
+                        SetData(_settings);
+                    }
                 }));
             }
         }
