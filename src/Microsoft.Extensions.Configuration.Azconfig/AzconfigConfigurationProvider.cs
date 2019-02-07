@@ -78,10 +78,10 @@
             {
                 if (_options.OfflineCache != null)
                 {
-                    IDictionary<string, IKeyValue> cache = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
-                    if (cache != null)
+                    data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    if (data != null)
                     {
-                        SetData(cache);
+                        SetData(data);
                         return;
                     }
                 }

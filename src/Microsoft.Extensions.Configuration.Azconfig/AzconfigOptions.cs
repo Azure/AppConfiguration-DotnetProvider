@@ -11,11 +11,12 @@
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
+        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
-        public List<KeyValueSelector> KeyValueSelectors { get; } = new List<KeyValueSelector>();
+        public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -135,7 +136,7 @@
                 PreferredDateTime = preferredDateTime
             };
 
-            KeyValueSelectors.Add(keyValueSelector);
+            _kvSelectors.Add(keyValueSelector);
 
             return this;
         }

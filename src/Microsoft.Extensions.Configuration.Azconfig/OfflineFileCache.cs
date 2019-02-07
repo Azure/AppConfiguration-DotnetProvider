@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -29,10 +30,14 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         /// <summary>
         /// Key name for cached data scope
         /// </summary>
-        private const string scoprProp = "s";
+        private const string scopeProp = "s";
 
         private OfflineFileCacheOptions _options = null;
 
+        /// <summary>
+        /// Use the cache on file system with encryption support
+        /// </summary>
+        /// <param name="options">Optional. Specific the initial parameters or null to use default value for App Service</param>
         public OfflineFileCache(OfflineFileCacheOptions options = null)
         {
             if (options != null)
@@ -40,12 +45,12 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                 _localCachePath = options.Path ?? throw new ArgumentNullException(nameof(options.Path));
                 if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
                 {
-                    throw new ArgumentException("Must be full path", nameof(options.Path));
+                    throw new ArgumentException("The path must be a full path", nameof(options.Path));
                 }
 
                 if ((options.Key == null) || (options.IV == null) || (options.SignKey == null))
                 {
-                    throw new ArgumentException("All crypto keys must be set");
+                    throw new ArgumentException("The 'Key', 'IV', and 'SignKey' properties are required");
                 }
             }
 
@@ -77,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                                 case hashProp:
                                     dataHash = reader.ReadAsString();
                                     break;
-                                case scoprProp:
+                                case scopeProp:
                                     scopeHash = reader.ReadAsString();
                                     break;
                                 default:
@@ -132,7 +137,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                         jtw.WriteValue(Convert.ToBase64String(encryptedBytes));
                         jtw.WritePropertyName(hashProp);
                         jtw.WriteValue(dataHash);
-                        jtw.WritePropertyName(scoprProp);
+                        jtw.WritePropertyName(scopeProp);
                         jtw.WriteValue(scopeHash);
                         jtw.WriteEndObject();
                     }
@@ -186,23 +191,21 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
             if (azconfigOptions.ConnectionString == null)
             {
-                throw new InvalidOperationException("Please call Connect first.");
+                throw new InvalidOperationException("Please make sure you have setup connection string first.");
             }
 
             _options = new OfflineFileCacheOptions();
 
             byte[] secret = Convert.FromBase64String(Utility.ParseConnectionString(azconfigOptions.ConnectionString, "Secret"));
 
-            // for AES 256 the block size must be 128 bits (16 bytes)
-            if (secret.Length < 16)
+            using (SHA256 sha256 = SHA256.Create())
             {
-                throw new InvalidOperationException("Invalid connection string length.");
-            }
+                byte[] hash = sha256.ComputeHash(secret);
 
-            _options.Key = secret;
-            _options.SignKey = secret;
-            _options.IV = new byte[16];
-            Array.Copy(secret, _options.IV, 16);
+                _options.Key = hash;
+                _options.SignKey = hash;
+                _options.IV = hash.Take(16).ToArray();
+            }
 
             if (_options.ScopeToken == null)
             {
@@ -214,9 +217,10 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                 }
 
                 var sb = new StringBuilder($"{endpoint}\0");
-                azconfigOptions.KeyValueSelectors.ForEach(selector => {
+                foreach(var selector in azconfigOptions.KeyValueSelectors)
+                {
                     sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0{selector.PreferredDateTime.GetValueOrDefault().ToUnixTimeSeconds()}\0");
-                });
+                }
 
                 _options.ScopeToken = sb.ToString();
             }
