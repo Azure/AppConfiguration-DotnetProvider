@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Extensions.Configuration.Azconfig.Models
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     class KeyValueSelector
     {

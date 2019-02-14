@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace Tests.Azconfig
+namespace Tests.AzureAppConfiguration
 {
     class TestHelpers
     {
