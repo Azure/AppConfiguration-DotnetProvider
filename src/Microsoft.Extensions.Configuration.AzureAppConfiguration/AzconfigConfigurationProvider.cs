@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Extensions.Configuration.Azconfig
+﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     using System;
     using System.Collections.Generic;
@@ -7,8 +7,8 @@
     using System.Reactive.Concurrency;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Azconfig.Client;
-    using Microsoft.Extensions.Configuration.Azconfig.Models;
+    using Microsoft.Azure.AppConfiguration.Azconfig;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 
     class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
     {

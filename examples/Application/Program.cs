@@ -1,7 +1,7 @@
 ﻿namespace Application
 {
     using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.Azconfig;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
     using System;
     using System.Text;
     using System.Threading;
@@ -36,10 +36,10 @@
 
             IConfiguration configuration = builder.Build();
 
-            if (string.IsNullOrEmpty(configuration["AzconfigConnectionString"]))
+            if (string.IsNullOrEmpty(configuration["connection_string"]))
             {
                 Console.WriteLine("Connection string not found.");
-                Console.WriteLine("Please set the AzconfigConnectionString environment variable to a valid Azconfig connection string to and re-run this example.");
+                Console.WriteLine("Please set the connection_string environment variable to a valid AppConfiguration connection string to and re-run this example.");
                 return;
             }
 
@@ -47,7 +47,7 @@
             // Pull configuration connection string from environment variable
             builder.AddAzconfig(o => {
 
-                o.Connect(configuration["AzconfigConnectionString"])
+                o.Connect(configuration["connection_string"])
                  //
                  // Uncomment to filter selected key-values by key and/or label
                  //.Use("App*", "label1")

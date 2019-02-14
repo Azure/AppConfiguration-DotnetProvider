@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Microsoft.Extensions.Configuration.Azconfig\Microsoft.Extensions.Configuration.Azconfig.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj" />
   </ItemGroup>
 
   <ItemGroup>

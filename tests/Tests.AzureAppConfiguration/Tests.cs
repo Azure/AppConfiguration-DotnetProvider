@@ -1,8 +1,8 @@
-namespace Tests.Azconfig
+namespace Tests.AzureAppConfiguration
 {
-    using Microsoft.Azconfig.Client;
+    using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.Azconfig;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
     using System;
     using System.Net.Http;
     using System.Collections.Generic;

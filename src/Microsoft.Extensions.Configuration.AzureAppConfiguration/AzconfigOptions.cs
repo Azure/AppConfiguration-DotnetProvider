@@ -1,8 +1,8 @@
-﻿namespace Microsoft.Extensions.Configuration.Azconfig
+﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Azconfig.Client;
-    using Microsoft.Azconfig.ManagedIdentityConnector;
-    using Microsoft.Extensions.Configuration.Azconfig.Models;
+    using Microsoft.Azure.AppConfiguration.Azconfig;
+    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using System;
     using System.Collections.Generic;
     using System.Linq;

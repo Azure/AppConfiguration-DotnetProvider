@@ -6,4 +6,4 @@ install:
 - dotnet restore
 script:
 - dotnet build
-- dotnet test Tests.Azconfig/Tests.Azconfig.csproj
+- dotnet test Tests.AzureAppConfiguration/Tests.AzureAppConfiguration.csproj

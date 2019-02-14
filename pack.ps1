@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 $PrebuiltBinariesDir = "bin\BuildOutput"
 $PublishRelativePath = "bin\PackageOutput"
 $LogDirectory = "$PSScriptRoot\buildlogs"
-$Solution     = "$PSScriptRoot\Microsoft.Extensions.Configuration.Azconfig.sln"
+$Solution     = "$PSScriptRoot\Microsoft.Extensions.Configuration.AzureAppConfiguration.sln"
 
 # Create the log directory.
 if ((Test-Path -Path $LogDirectory) -ne $true) {

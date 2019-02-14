@@ -1,7 +1,7 @@
-﻿using Microsoft.Azconfig.Client;
+﻿using Microsoft.Azure.AppConfiguration.Azconfig;
 using System;
 
-namespace Microsoft.Extensions.Configuration.Azconfig
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     class AzconfigConfigurationSource : IConfigurationSource
     {
