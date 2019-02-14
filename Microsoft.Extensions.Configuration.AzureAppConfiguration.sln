@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConfigStoreDemo", "examples\ConfigStoreDemo\ConfigStoreDemo.csproj", "{FEEB5694-F3A1-4B01-86DF-15B7CC43390A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Application", "examples\Application\Application.csproj", "{6725B058-185F-4393-9A0A-9D8B568B99C9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApplication", "examples\ConsoleApplication\ConsoleApplication.csproj", "{6725B058-185F-4393-9A0A-9D8B568B99C9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

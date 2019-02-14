@@ -7,7 +7,7 @@
     using System.Collections.Generic;
     using System.Linq;
 
-    public class AzconfigOptions
+    public class AzureAppConfigurationOptions
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
 
@@ -26,17 +26,17 @@
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
 
         /// <summary>
-        /// The connection string to use to connect to the App Configuration Hubs.
+        /// The connection string to use to connect to Azure App Configuration.
         /// </summary>
         public string ConnectionString { get; set; }
 
         /// <summary>
-        /// An optional client that can be used to communicate with the App Configuration Hubs. If provided, connection string will be ignored.
+        /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
         internal AzconfigClient Client { get; set; }
 
         /// <summary>
-        /// Monitor the specified the key-value and reload it if value changed.
+        /// Monitor the specified the key-value and reload it if the value has changed.
         /// </summary>
         /// <param name="key">
         /// Key of the key-value to be watched.
@@ -44,13 +44,13 @@
         /// <param name="pollInterval">
         /// Interval used to check if the key-value has been changed.
         /// </param>
-        public AzconfigOptions Watch(string key, TimeSpan pollInterval)
+        public AzureAppConfigurationOptions Watch(string key, TimeSpan pollInterval)
         {
             return Watch(key, LabelFilter.Null, pollInterval);
         }
 
         /// <summary>
-        /// Monitor the specified the key-value and reload it if value changed.
+        /// Monitor the specified the key-value and reload it if the value has changed.
         /// </summary>
         /// <param name="key">
         /// Key of the key-value to be watched.
@@ -61,26 +61,26 @@
         /// <param name="pollInterval">
         /// Interval used to check if the key-value has been changed.
         /// </param>
-        public AzconfigOptions Watch(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
+        public AzureAppConfigurationOptions Watch(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
         {
             return WatchKeyValue(key, label, pollInterval, false);
         }
 
         /// <summary>
-        /// Monitor the specified the key-value and reload all key-values if value changed.
+        /// Monitor the specified key-value and reload all key-values if any property of the key-value has changed.
         /// <param name="key">
         /// Key of the key-value to be watched.
         /// </param>
         /// <param name="pollInterval">
         /// Interval used to check if the key-value has been changed.
         /// </param>
-        public AzconfigOptions WatchAndReloadAll(string key, TimeSpan pollInterval)
+        public AzureAppConfigurationOptions WatchAndReloadAll(string key, TimeSpan pollInterval)
         {
             return WatchAndReloadAll(key, LabelFilter.Null, pollInterval);
         }
 
         /// <summary>
-        /// Monitor the specified the key-value and reload all key-values if value changed.
+        /// Monitor the specified the key-value and reload all key-values if any property of the key-value has changed.
         /// <param name="key">
         /// Key of the key-value to be watched.
         /// </param>
@@ -90,25 +90,26 @@
         /// <param name="pollInterval">
         /// Interval used to check if the key-value has been changed.
         /// </param>
-        public AzconfigOptions WatchAndReloadAll(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
+        public AzureAppConfigurationOptions WatchAndReloadAll(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
         {
             return WatchKeyValue(key, label, pollInterval, true);
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to include all key-values with matching the specified key and label filters.
+        /// Specify what key-values to include in the configuration provider.
+        /// <see cref="Use"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
         /// <param name="keyFilter">
-        /// The key filter to apply when querying the App Configuration Hubs for key-values. Built-in key filter options: <see cref="KeyFilter"/>
+        /// The key filter to apply when querying Azure App Configuration for key-values. Built-in key filter options: <see cref="KeyFilter"/>
         /// </param>
         /// <param name="labelFilter">
-        /// The label filter to apply when querying the App Configuration Hubs for key-values. By default the null label filter will be used. Built-in label filter options: <see cref="LabelFilter"/>
+        /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// Does not support '*' and ','.
         /// </param>
         /// <param name="preferredDateTime">
         /// Used to query key-values in the state that they existed at the time provided.
         /// </param>
-        public AzconfigOptions Use(string keyFilter, string labelFilter = LabelFilter.Null, DateTimeOffset? preferredDateTime = null)
+        public AzureAppConfigurationOptions Use(string keyFilter, string labelFilter = LabelFilter.Null, DateTimeOffset? preferredDateTime = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -139,12 +140,12 @@
         }
 
         /// <summary>
-        /// Instructs the AzconfigOptions to connect the App Configuration Hubs via a connection string.
+        /// Connect the provider to the Azure App Configuration service via a connection string.
         /// </summary>
         /// <param name="connectionString">
-        /// Used to authenticate with the App Configuration Hubs.
+        /// Used to authenticate with Azure App Configuration.
         /// </param>
-        public AzconfigOptions Connect(string connectionString)
+        public AzureAppConfigurationOptions Connect(string connectionString)
         {
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -155,7 +156,14 @@
             return this;
         }
 
-        public AzconfigOptions ConnectWithManagedIdentity(string endpoint)
+
+        /// <summary>
+        /// Connect the provider to Azure App Configuration via a connection string.
+        /// </summary>
+        /// <param name="endpoint">
+        /// The endpoint of the Azure App Configuration store to connect to.
+        /// </param>
+        public AzureAppConfigurationOptions ConnectWithManagedIdentity(string endpoint)
         {
             if (string.IsNullOrEmpty(endpoint))
             {
@@ -172,7 +180,7 @@
             return this;
         }
 
-        private AzconfigOptions WatchKeyValue(string key, string label, TimeSpan? pollInterval, bool reloadAll)
+        private AzureAppConfigurationOptions WatchKeyValue(string key, string label, TimeSpan? pollInterval, bool reloadAll)
         {
             TimeSpan interval;
             if (pollInterval != null && pollInterval.HasValue)
