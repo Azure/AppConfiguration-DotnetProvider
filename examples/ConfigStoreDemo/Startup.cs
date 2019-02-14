@@ -15,12 +15,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
             // Sets up the provider to listen for changes to the background color key-value in Azure App Configuration.
             // Retrieves the Azure App Configuration connection string from an environment variable
             var builder = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json");
-                //.AddAzureAppConfiguration(o =>
-                //{
-                //    o.Connect(configuration["connection_string"])
-                //     .Watch("Settings:BackgroundColor", TimeSpan.FromMilliseconds(1000));
-                //});
+                .AddJsonFile("appsettings.json")
+                .AddAzureAppConfiguration(o =>
+                {
+                    o.Connect(configuration["connection_string"])
+                     .Watch("Settings:BackgroundColor", TimeSpan.FromMilliseconds(1000));
+                });
             Configuration = builder.Build();
         }
 
