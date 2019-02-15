@@ -1,4 +1,4 @@
-﻿namespace ConfigStoreDemo
+﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConfigStoreDemo
 {
     public class Settings
     {

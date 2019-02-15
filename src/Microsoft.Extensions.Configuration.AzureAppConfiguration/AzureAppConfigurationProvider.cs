@@ -10,15 +10,15 @@
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 
-    class AzconfigConfigurationProvider : ConfigurationProvider, IDisposable
+    class AzureAppConfigurationProvider : ConfigurationProvider, IDisposable
     {
-        private AzconfigOptions _options;
+        private AzureAppConfigurationOptions _options;
         private bool _optional;
         private IDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
 
-        public AzconfigConfigurationProvider(AzconfigClient client, AzconfigOptions options, bool optional)
+        public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
