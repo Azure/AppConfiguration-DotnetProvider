@@ -40,7 +40,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="options">Optional. Specific the initial parameters or null to use default value for App Service</param>
         public OfflineFileCache(OfflineFileCacheOptions options = null)
         {
-            _options = options;
+            _options = options ?? new OfflineFileCacheOptions();
+
+            // While user didn't specific the cache path, we will try to use the default path if it's running inside App Service
+            if (_options.Path == null)
+            {
+                // Generate default cahce file name under $home/data/azconfigCache/app{instance}-{hash}.json
+                string homePath = Environment.GetEnvironmentVariable("HOME");
+                if (Directory.Exists(homePath))
+                {
+                    string dataPath = Path.Combine(homePath, "data");
+                    if (Directory.Exists(dataPath))
+                    {
+                        string cahcePath = Path.Combine(dataPath, "azconfigCache");
+                        if (!Directory.Exists(cahcePath))
+                        {
+                            Directory.CreateDirectory(cahcePath);
+                        }
+
+                        string websiteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
+                        if (websiteName != null)
+                        {
+                            byte[] hash = new byte[0];
+                            using (var sha = SHA1.Create())
+                            {
+                                hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
+                            }
+
+                            // The instance count would help preventing multiple provider overwrite each other's cache file
+                            Interlocked.Increment(ref instance);
+                            _options.Path = Path.Combine(cahcePath, $"app{instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
+                        }
+                    }
+                }
+
+                if (_options.Path == null)
+                {
+                    throw new NotSupportedException("The application must be running inside of an Azure App Service if the path is not specific.");
+                }
+            }
+
+            _localCachePath = _options.Path ?? throw new ArgumentNullException(nameof(_options.Path));
+            if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
+            {
+                throw new ArgumentException("The path must be a full path", nameof(_options.Path));
+            }
         }
 
         public string Import(AzureAppConfigurationOptions options)
@@ -206,50 +250,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 _options.ScopeToken = sb.ToString();
-            }
-
-            // While user didn't specific the cache path, we will try to use the default path if it's running inside App Service
-            if (_options.Path == null)
-            {
-                // Generate default cahce file name under $home/data/azconfigCache/app{instance}-{hash}.json
-                string homePath = Environment.GetEnvironmentVariable("HOME");
-                if (Directory.Exists(homePath))
-                {
-                    string dataPath = Path.Combine(homePath, "data");
-                    if (Directory.Exists(dataPath))
-                    {
-                        string cahcePath = Path.Combine(dataPath, "azconfigCache");
-                        if (!Directory.Exists(cahcePath))
-                        {
-                            Directory.CreateDirectory(cahcePath);
-                        }
-
-                        string websiteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
-                        if (websiteName != null)
-                        {
-                            byte[] hash = new byte[0];
-                            using (var sha = SHA1.Create())
-                            {
-                                hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
-                            }
-
-                            // The instance count would help preventing multiple provider overwrite each other's cache file
-                            Interlocked.Increment(ref instance);
-                            _options.Path = Path.Combine(cahcePath, $"app{instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
-                        }
-                    }
-                }
-
-                if (_options.Path == null)
-                {
-                    throw new NotSupportedException("The application must be running inside of an Azure App Service if the path is not specific.");
-                }
-            }
-
-            _localCachePath = _options.Path ?? throw new ArgumentNullException(nameof(_options.Path));
-            if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
-            {
-                throw new ArgumentException("The path must be a full path", nameof(_options.Path));
             }
         }
     }
