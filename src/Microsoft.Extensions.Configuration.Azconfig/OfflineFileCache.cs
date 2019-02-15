@@ -40,20 +40,6 @@ namespace Microsoft.Extensions.Configuration.Azconfig
         /// <param name="options">Optional. Specific the initial parameters or null to use default value for App Service</param>
         public OfflineFileCache(OfflineFileCacheOptions options = null)
         {
-            if (options != null)
-            {
-                _localCachePath = options.Path ?? throw new ArgumentNullException(nameof(options.Path));
-                if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
-                {
-                    throw new ArgumentException("The path must be a full path", nameof(options.Path));
-                }
-
-                if ((options.Key == null) || (options.IV == null) || (options.SignKey == null))
-                {
-                    throw new ArgumentException("The 'Key', 'IV', and 'SignKey' properties are required");
-                }
-            }
-
             _options = options;
         }
 
@@ -179,11 +165,6 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
         private void EnsureOptions(AzconfigOptions azconfigOptions)
         {
-            if (_options != null)
-            {
-                return;
-            }
-
             if (azconfigOptions == null)
             {
                 throw new ArgumentNullException(nameof(azconfigOptions));
@@ -194,17 +175,19 @@ namespace Microsoft.Extensions.Configuration.Azconfig
                 throw new InvalidOperationException("Please make sure you have setup connection string first.");
             }
 
-            _options = new OfflineFileCacheOptions();
+            _options = _options ?? new OfflineFileCacheOptions();
 
-            byte[] secret = Convert.FromBase64String(Utility.ParseConnectionString(azconfigOptions.ConnectionString, "Secret"));
-
-            using (SHA256 sha256 = SHA256.Create())
+            if ((_options.Key == null) || (_options.SignKey == null) || (_options.IV == null))
             {
-                byte[] hash = sha256.ComputeHash(secret);
+                byte[] secret = Convert.FromBase64String(Utility.ParseConnectionString(azconfigOptions.ConnectionString, "Secret"));
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] hash = sha256.ComputeHash(secret);
 
-                _options.Key = hash;
-                _options.SignKey = hash;
-                _options.IV = hash.Take(16).ToArray();
+                    _options.Key = _options.Key ?? hash;
+                    _options.SignKey = _options.SignKey ?? hash;
+                    _options.IV = _options.IV ?? hash.Take(16).ToArray();
+                }
             }
 
             if (_options.ScopeToken == null)
@@ -259,8 +242,14 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
                 if (_options.Path == null)
                 {
-                    throw new NotSupportedException("The application must be running inside of an Azure App Service to use this feature.");
+                    throw new NotSupportedException("The application must be running inside of an Azure App Service if the path is not specific.");
                 }
+            }
+
+            _localCachePath = _options.Path ?? throw new ArgumentNullException(nameof(_options.Path));
+            if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
+            {
+                throw new ArgumentException("The path must be a full path", nameof(_options.Path));
             }
         }
     }
