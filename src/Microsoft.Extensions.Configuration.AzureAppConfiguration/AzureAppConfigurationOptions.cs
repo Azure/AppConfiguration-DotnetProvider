@@ -158,7 +158,7 @@
 
 
         /// <summary>
-        /// Connect the provider to Azure App Configuration via a connection string.
+        /// Connect the provider to Azure App Configuration using the managed identity of an Azure resource.
         /// </summary>
         /// <param name="endpoint">
         /// The endpoint of the Azure App Configuration store to connect to.

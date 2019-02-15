@@ -31,7 +31,7 @@
             var builder = new ConfigurationBuilder();
 
             //
-            // load a subset of the application's configuration from a json file.
+            // load a subset of the application's configuration from a json file and environment variables.
             builder.AddJsonFile("appsettings.json")
                 .AddEnvironmentVariables();
 
