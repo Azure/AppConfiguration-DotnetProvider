@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Extensions.Configuration.Azconfig
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class Utility
     {

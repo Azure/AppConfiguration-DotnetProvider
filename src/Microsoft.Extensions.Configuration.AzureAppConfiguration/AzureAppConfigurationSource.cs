@@ -1,18 +1,18 @@
-﻿using Microsoft.Azconfig.Client;
+﻿using Microsoft.Azure.AppConfiguration.Azconfig;
 using System;
 
-namespace Microsoft.Extensions.Configuration.Azconfig
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    class AzconfigConfigurationSource : IConfigurationSource
+    class AzureAppConfigurationSource : IConfigurationSource
     {
         private readonly bool _optional;
-        private readonly Func<AzconfigOptions> _optionsProvider;
+        private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
 
-        public AzconfigConfigurationSource(Action<AzconfigOptions> optionsInitializer, bool optional = false)
+        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
             _optionsProvider = () => {
 
-                var options = new AzconfigOptions();
+                var options = new AzureAppConfigurationOptions();
 
                 optionsInitializer(options);
 
@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             _optional = optional;
         }
 
-        public AzconfigConfigurationSource(AzconfigOptions options, bool optional = false)
+        public AzureAppConfigurationSource(AzureAppConfigurationOptions options, bool optional = false)
         {
             _optional = optional;
 
@@ -35,11 +35,11 @@ namespace Microsoft.Extensions.Configuration.Azconfig
 
             try
             {
-                AzconfigOptions options = _optionsProvider();
+                AzureAppConfigurationOptions options = _optionsProvider();
 
                 AzconfigClient client = options.Client ?? new AzconfigClient(options.ConnectionString);
 
-                provider = new AzconfigConfigurationProvider(client, options, _optional);
+                provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
             catch (ArgumentException)
             {

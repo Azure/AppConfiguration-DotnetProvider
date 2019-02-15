@@ -3,7 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Microsoft.Extensions.Configuration.Azconfig
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class CryptoService
     {

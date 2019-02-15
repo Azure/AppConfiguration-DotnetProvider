@@ -1,22 +1,22 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Azconfig;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 
-namespace ConfigStoreDemo
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConfigStoreDemo
 {
     public class Startup
     {
         public Startup(IConfiguration configuration)
         {
-            // load configurations from local json file and remote config store.
-            // load all key-values with null label and listen one key.
-            // Pull configuration connection string from environment variable
+            //
+            // This example:
+            // Loads settings from a json file and Azure App Configuration.
+            // Sets up the provider to listen for changes to the background color key-value in Azure App Configuration.
+            // Retrieves the Azure App Configuration connection string from an environment variable
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddAzconfig(o =>
+                .AddAzureAppConfiguration(o =>
                 {
                     o.Connect(configuration["connection_string"])
                      .Watch("Settings:BackgroundColor", TimeSpan.FromMilliseconds(1000));

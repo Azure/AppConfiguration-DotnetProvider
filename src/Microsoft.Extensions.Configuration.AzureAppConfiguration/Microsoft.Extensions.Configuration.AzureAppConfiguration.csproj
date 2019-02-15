@@ -3,14 +3,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>Microsoft.Extensions.Configuration.Azconfig is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's Azconfig service as a configuration source in their applications.</Description>
+    <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's App Configuration service as a configuration source in their applications.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
-    <PackageReference Include="Microsoft.Azconfig.Client" Version="$(MicrosoftAzconfigClientVersion)" />
-    <PackageReference Include="Microsoft.Azconfig.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
   </ItemGroup>
   
   <PropertyGroup>
@@ -20,8 +20,8 @@
     -->
     <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-alpha-007530001</MicrosoftAzconfigClientVersion>
-    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007540001-1019</MicrosoftAzconfigManagedIdentityConnectorVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-alpha-007740001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007740001-1407</MicrosoftAzconfigManagedIdentityConnectorVersion>
   </PropertyGroup>
 
   <!-- After the build, we write the .nuspec file to the output directory -->

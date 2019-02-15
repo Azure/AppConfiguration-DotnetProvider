@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Tests.Azconfig
+namespace Tests.AzureAppConfiguration
 {
     class CallbackMessageHandler : HttpMessageHandler
     {

@@ -1,8 +1,8 @@
 ﻿using System;
-using Microsoft.Azconfig.Client;
+using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json.Converters;
 
-namespace Microsoft.Extensions.Configuration.Azconfig
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class KeyValueConverter : CustomCreationConverter<IKeyValue>
     {

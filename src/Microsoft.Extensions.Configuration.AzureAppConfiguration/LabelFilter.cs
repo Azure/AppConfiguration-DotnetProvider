@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Extensions.Configuration.Azconfig
+﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     public class LabelFilter
     {

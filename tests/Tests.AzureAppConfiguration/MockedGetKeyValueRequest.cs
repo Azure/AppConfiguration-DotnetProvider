@@ -1,4 +1,4 @@
-﻿using Microsoft.Azconfig.Client;
+﻿using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Tests.Azconfig
+namespace Tests.AzureAppConfiguration
 {
     class MockedGetKeyValueRequest : HttpMessageHandler
     {

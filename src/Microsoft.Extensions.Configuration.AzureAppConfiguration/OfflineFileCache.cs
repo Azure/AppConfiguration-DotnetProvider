@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace Microsoft.Extensions.Configuration.Azconfig
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     public class OfflineFileCache : IOfflineCache
     {
@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             _options = options;
         }
 
-        public string Import(AzconfigOptions options)
+        public string Import(AzureAppConfigurationOptions options)
         {
             EnsureOptions(options);
 
@@ -99,7 +99,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             return null;
         }
 
-        public void Export(AzconfigOptions options, string data)
+        public void Export(AzureAppConfigurationOptions options, string data)
         {
             EnsureOptions(options);
 
@@ -163,7 +163,7 @@ namespace Microsoft.Extensions.Configuration.Azconfig
             }
         }
 
-        private void EnsureOptions(AzconfigOptions azconfigOptions)
+        private void EnsureOptions(AzureAppConfigurationOptions azconfigOptions)
         {
             if (azconfigOptions == null)
             {
