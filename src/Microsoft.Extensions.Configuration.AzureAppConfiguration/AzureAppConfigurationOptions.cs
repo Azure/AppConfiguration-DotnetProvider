@@ -10,20 +10,23 @@
     public class AzureAppConfigurationOptions
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
-
-        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
-
         private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
+        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
-        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+        public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
+
+        /// <summary>
+        /// Offline cache provider
+        /// </summary>
+        public IOfflineCache OfflineCache { get; set; }
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -135,6 +138,18 @@
             };
 
             _kvSelectors.Add(keyValueSelector);
+
+            return this;
+        }
+
+        public AzureAppConfigurationOptions AddOfflineCache(IOfflineCache offlineCache)
+        {
+            if (offlineCache == null)
+            {
+                throw new ArgumentNullException(nameof(offlineCache));
+            }
+
+            OfflineCache = offlineCache;
 
             return this;
         }

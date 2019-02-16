@@ -34,8 +34,6 @@
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            AzureAppConfigurationOptions options = new AzureAppConfigurationOptions();
-
             return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
         }
 

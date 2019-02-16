@@ -9,6 +9,7 @@
     using System.Threading.Tasks;
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+    using Newtonsoft.Json;
 
     class AzureAppConfigurationProvider : ConfigurationProvider, IDisposable
     {
@@ -43,7 +44,8 @@
 
         private void LoadAll()
         {
-            var data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+            IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+
             try
             {
                 if (!_options.KeyValueSelectors.Any())
@@ -71,13 +73,33 @@
                     }
                 }
             }
-            catch (Exception exception) when ((exception.InnerException is HttpRequestException ||
-                                               exception.InnerException is UnauthorizedAccessException) && _optional)
+            catch (Exception exception) when (exception.InnerException is HttpRequestException ||
+                                              exception.InnerException is UnauthorizedAccessException)
             {
+                if (_options.OfflineCache != null)
+                {
+                    data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    if (data != null)
+                    {
+                        SetData(data);
+                        return;
+                    }
+                }
+
+                if (!_optional)
+                {
+                    throw;
+                }
+
                 return;
             }
 
             SetData(data);
+
+            if (_options.OfflineCache != null)
+            {
+                _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
+            }
         }
 
         private async Task ObserveKeyValue()

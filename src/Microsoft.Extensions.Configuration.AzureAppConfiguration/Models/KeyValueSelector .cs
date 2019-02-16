@@ -2,7 +2,7 @@
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
-    class KeyValueSelector
+    public class KeyValueSelector
     {
         /// <summary>
         /// A filter that determines the set of keys that are included in the configuration provider.
