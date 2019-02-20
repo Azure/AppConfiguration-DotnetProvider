@@ -35,27 +35,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private OfflineFileCacheOptions _options = null;
 
         /// <summary>
-        /// Use the cache on file system with encryption support
+        /// A cache used for storing Azure App Configuration data using the file system.
+        /// Supports encryption of the stored data.
         /// </summary>
-        /// <param name="options">Optional. Specific the initial parameters or null to use default value for App Service</param>
+        /// <param name="options">
+        /// Options dictating the behavior of the offline cache.
+        /// If the options are null or the encryption keys are omitted, they will be derived from the store's connection string.
+        /// <see cref="OfflineFileCache.Path"/> is required unless the application is running inside of an Azure App Service instance, in which case it can be populated automatically.
+        /// </param>
         public OfflineFileCache(OfflineFileCacheOptions options = null)
         {
-            _options = options ?? new OfflineFileCacheOptions();
+            OfflineFileCacheOptions opts = options ?? new OfflineFileCacheOptions();
 
-            // While user didn't specific the cache path, we will try to use the default path if it's running inside App Service
-            if (_options.Path == null)
+            // If the user does not specify the cache path, we will try to use the default path
+            // For the moment, default path is only supported when running inside Azure App Service
+            if (opts.Path == null)
             {
-                // Generate default cahce file name under $home/data/azconfigCache/app{instance}-{hash}.json
+                // Generate default cache file name under $home/data/azureAppConfigCache/app{instance}-{hash}.json
                 string homePath = Environment.GetEnvironmentVariable("HOME");
                 if (Directory.Exists(homePath))
                 {
                     string dataPath = Path.Combine(homePath, "data");
                     if (Directory.Exists(dataPath))
                     {
-                        string cahcePath = Path.Combine(dataPath, "azconfigCache");
-                        if (!Directory.Exists(cahcePath))
+                        string cachePath = Path.Combine(dataPath, "azureAppConfigCache");
+                        if (!Directory.Exists(cachePath))
                         {
-                            Directory.CreateDirectory(cahcePath);
+                            Directory.CreateDirectory(cachePath);
                         }
 
                         string websiteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
@@ -67,24 +73,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
                             }
 
-                            // The instance count would help preventing multiple provider overwrite each other's cache file
+                            // The instance count will help prevent multiple providers from overwriting each other's cache file
                             Interlocked.Increment(ref instance);
-                            _options.Path = Path.Combine(cahcePath, $"app{instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
+                            opts.Path = Path.Combine(cachePath, $"app{instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
                         }
                     }
                 }
 
-                if (_options.Path == null)
+                if (opts.Path == null)
                 {
-                    throw new NotSupportedException("The application must be running inside of an Azure App Service if the path is not specific.");
+                    throw new ArgumentNullException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Path)}", "Default cache path is only supported when running inside of an Azure App Service.");
                 }
             }
 
-            _localCachePath = _options.Path ?? throw new ArgumentNullException(nameof(_options.Path));
+            _localCachePath = opts.Path ?? throw new ArgumentNullException(nameof(opts.Path));
+
             if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
             {
-                throw new ArgumentException("The path must be a full path", nameof(_options.Path));
+                throw new ArgumentException("The path must be a full path.", nameof(opts.Path));
             }
+
+            _options = opts;
         }
 
         public string Import(AzureAppConfigurationOptions options)
@@ -123,7 +132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if ((data != null) && (dataHash != null) && (scopeHash != null))
                     {
-                        string newScopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_options.ScopeToken ?? ""), _options.SignKey);
+                        string newScopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_options.QueryToken ?? ""), _options.SignKey);
                         if (string.CompareOrdinal(scopeHash, newScopeHash) == 0)
                         {
                             string newDataHash = CryptoService.GetHash(Convert.FromBase64String(data), _options.SignKey);
@@ -156,7 +165,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var dataBytes = Encoding.UTF8.GetBytes(data);
                     var encryptedBytes = CryptoService.AESEncrypt(dataBytes, _options.Key, _options.IV);
                     var dataHash = CryptoService.GetHash(encryptedBytes, _options.SignKey);
-                    var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_options.ScopeToken ?? ""), _options.SignKey);
+                    var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_options.QueryToken ?? ""), _options.SignKey);
 
                     StringBuilder sb = new StringBuilder();
                     using (var sw = new StringWriter(sb))
@@ -216,28 +225,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (azconfigOptions.ConnectionString == null)
             {
-                throw new InvalidOperationException("Please make sure you have setup connection string first.");
+                throw new InvalidOperationException("An Azure App Configuration connection string is required.");
             }
 
-            _options = _options ?? new OfflineFileCacheOptions();
+            OfflineFileCacheOptions options = _options ?? new OfflineFileCacheOptions();
 
-            if ((_options.Key == null) || (_options.SignKey == null) || (_options.IV == null))
+            if ((options.Key == null) || (options.SignKey == null) || (options.IV == null))
             {
-                byte[] secret = Convert.FromBase64String(Utility.ParseConnectionString(azconfigOptions.ConnectionString, "Secret"));
+                byte[] secret = Convert.FromBase64String(ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Secret"));
                 using (SHA256 sha256 = SHA256.Create())
                 {
                     byte[] hash = sha256.ComputeHash(secret);
 
-                    _options.Key = _options.Key ?? hash;
-                    _options.SignKey = _options.SignKey ?? hash;
-                    _options.IV = _options.IV ?? hash.Take(16).ToArray();
+                    options.Key = options.Key ?? hash;
+                    options.SignKey = options.SignKey ?? hash;
+                    options.IV = options.IV ?? hash.Take(16).ToArray();
                 }
             }
 
-            if (_options.ScopeToken == null)
+            if (options.QueryToken == null)
             {
                 // Default would be Endpoint and KeyValueSelectors
-                string endpoint = Utility.ParseConnectionString(azconfigOptions.ConnectionString, "Endpoint");
+                string endpoint = ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Endpoint");
                 if (string.IsNullOrWhiteSpace(endpoint))
                 {
                     throw new InvalidOperationException("Invalid connection string format.");
@@ -249,8 +258,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0{selector.PreferredDateTime.GetValueOrDefault().ToUnixTimeSeconds()}\0");
                 }
 
-                _options.ScopeToken = sb.ToString();
+                options.QueryToken = sb.ToString();
             }
+
+            _options = options;
         }
     }
 }
