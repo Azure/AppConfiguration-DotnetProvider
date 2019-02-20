@@ -9,11 +9,6 @@
         /// The file path to use for persisting cached data.
         /// </summary>
         public string Path { get; set; }
-
-        /// <summary>
-        /// An opaque token representing the query for Azure App Configuration data used for comparison when storing and retrieving data.
-        /// </summary>
-        public string QueryToken { get; set; }
         
         /// <summary>
         /// Key used for encrypting data stored in the offline file cache.
