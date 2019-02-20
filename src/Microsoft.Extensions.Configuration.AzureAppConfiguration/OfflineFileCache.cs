@@ -32,6 +32,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         private const string scopeProp = "s";
 
+        /// <summary>
+        /// An opaque token representing a query for Azure App Configuration data.
+        /// The token is used to test if cached data matches the request being issued to Azure App Configuration.
+        /// </summary>
+        private string _scopeToken;
+
         private OfflineFileCacheOptions _options = null;
 
         /// <summary>
@@ -100,8 +106,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             EnsureOptions(options);
 
-            string scopeToken = GenerateScopeToken(options);
-
             int retry = 0;
             while (retry++ <= retryMax)
             {
@@ -134,7 +138,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if ((data != null) && (dataHash != null) && (scopeHash != null))
                     {
-                        string newScopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(scopeToken), _options.SignKey);
+                        string newScopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_scopeToken), _options.SignKey);
                         if (string.CompareOrdinal(scopeHash, newScopeHash) == 0)
                         {
                             string newDataHash = CryptoService.GetHash(Convert.FromBase64String(data), _options.SignKey);
@@ -158,8 +162,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             EnsureOptions(options);
 
-            string scopeToken = GenerateScopeToken(options);
-
             if ((DateTime.Now - File.GetLastWriteTime(_localCachePath)) > TimeSpan.FromMilliseconds(1000))
             {
                 Task.Run(async () =>
@@ -169,7 +171,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var dataBytes = Encoding.UTF8.GetBytes(data);
                     var encryptedBytes = CryptoService.AESEncrypt(dataBytes, _options.Key, _options.IV);
                     var dataHash = CryptoService.GetHash(encryptedBytes, _options.SignKey);
-                    var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(scopeToken), _options.SignKey);
+                    var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_scopeToken), _options.SignKey);
 
                     StringBuilder sb = new StringBuilder();
                     using (var sw = new StringWriter(sb))
@@ -220,37 +222,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Generates an opaque token representing a query for Azure App Configuration data.
-        /// The token is used to test if cached data matches the request being issued to Azure App Configuration.
-        /// </summary>
-        private string GenerateScopeToken(AzureAppConfigurationOptions azconfigOptions)
-        {
-            if (azconfigOptions == null)
-            {
-                return string.Empty;
-            }
-
-            //
-            // The default scope token is the configuration store endpoint combined with all of the key-value filters
-
-            string endpoint = ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Endpoint");
-
-            if (string.IsNullOrWhiteSpace(endpoint))
-            {
-                throw new InvalidOperationException("Invalid connection string format.");
-            }
-
-            var sb = new StringBuilder($"{endpoint}\0");
-
-            foreach (var selector in azconfigOptions.KeyValueSelectors)
-            {
-                sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0{selector.PreferredDateTime.GetValueOrDefault().ToUnixTimeSeconds()}\0");
-            }
-
-            return sb.ToString();
-        }
-
         private void EnsureOptions(AzureAppConfigurationOptions azconfigOptions)
         {
             if (azconfigOptions == null)
@@ -276,6 +247,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     options.SignKey = options.SignKey ?? hash;
                     options.IV = options.IV ?? hash.Take(16).ToArray();
                 }
+            }
+
+            if (string.IsNullOrEmpty(_scopeToken))
+            {
+                //
+                // The default scope token is the configuration store endpoint combined with all of the key-value filters
+
+                string endpoint = ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Endpoint");
+
+                if (string.IsNullOrWhiteSpace(endpoint))
+                {
+                    throw new InvalidOperationException("Invalid connection string format.");
+                }
+
+                var sb = new StringBuilder($"{endpoint}\0");
+
+                foreach (var selector in azconfigOptions.KeyValueSelectors)
+                {
+                    sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0{selector.PreferredDateTime.GetValueOrDefault().ToUnixTimeSeconds()}\0");
+                }
+
+                _scopeToken = sb.ToString();
             }
 
             _options = options;
