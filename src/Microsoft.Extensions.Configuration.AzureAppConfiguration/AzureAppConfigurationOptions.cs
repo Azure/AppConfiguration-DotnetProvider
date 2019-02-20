@@ -24,9 +24,9 @@
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
 
         /// <summary>
-        /// Offline cache provider
+        /// An offline cache provider which can be used to enable offline data retrieval and storage.
         /// </summary>
-        public IOfflineCache OfflineCache { get; set; }
+        public IOfflineCache OfflineCache { get; private set; }
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -142,14 +142,13 @@
             return this;
         }
 
-        public AzureAppConfigurationOptions AddOfflineCache(IOfflineCache offlineCache)
+        /// <summary>
+        /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
+        /// </summary>
+        /// <param name="offlineCache">The offline file cache to use for storing/retrieving Azure App Configuration data.</param>
+        public AzureAppConfigurationOptions SetOfflineCache(IOfflineCache offlineCache)
         {
-            if (offlineCache == null)
-            {
-                throw new ArgumentNullException(nameof(offlineCache));
-            }
-
-            OfflineCache = offlineCache;
+            OfflineCache = offlineCache ?? throw new ArgumentNullException(nameof(offlineCache));
 
             return this;
         }
