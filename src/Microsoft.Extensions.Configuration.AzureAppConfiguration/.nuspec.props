@@ -24,6 +24,9 @@
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's App Configuration service as a configuration source in their applications.</description>
         <projectUrl>https://azure.microsoft.com</projectUrl>
+        <iconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</iconUrl>
+        <licenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</licenseUrl>
+        <copyright>© Microsoft Corporation. All rights reserved.</copyright>
         <dependencies>
             <group targetFramework=".NETStandard2.0">
                 <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
