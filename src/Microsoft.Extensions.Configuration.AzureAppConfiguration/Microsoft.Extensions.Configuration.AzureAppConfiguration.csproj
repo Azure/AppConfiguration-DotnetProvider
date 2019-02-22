@@ -4,6 +4,9 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's App Configuration service as a configuration source in their applications.</Description>
+    <SignAssembly>true</SignAssembly>
+    <DelaySign>false</DelaySign>
+    <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,25 +23,19 @@
     -->
     <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-alpha-007740001</MicrosoftAzconfigClientVersion>
-    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-alpha-007740001-1407</MicrosoftAzconfigManagedIdentityConnectorVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-preview-007830001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-007830001-1266</MicrosoftAzconfigManagedIdentityConnectorVersion>
   </PropertyGroup>
 
   <!-- After the build, we write the .nuspec file to the output directory -->
   <Import Project=".\.nuspec.props" />
   <Target Name="WriteToFile" AfterTargets="Build">  
-      <WriteLinesToFile  
-          File="$(OutDir)\.nuspec" 
-          Lines="$(NuspecContent)"  
-          Overwrite="true"  
-          Encoding="Unicode"/>  
+      <WriteLinesToFile File="$(OutDir)\.nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />  
   </Target>
   
   <!-- Ensure any package generation is done via the generated nuspec file. -->
   <Target Name="PackCheck" AfterTargets="Pack">
-    <Error  
-      Text=" The NuspecFile property must be set to build this NuGet package."  
-      Condition="'$(NuspecFile)' == ''" />  
+    <Error Text=" The NuspecFile property must be set to build this NuGet package." Condition="'$(NuspecFile)' == ''" />  
   </Target>
 
 </Project>
