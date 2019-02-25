@@ -1,7 +1,9 @@
 <Project>
   <PropertyGroup>
     <Version Condition="'$(CDP_PATCH_NUMBER)'==''">1.9.9999</Version>
-    <Version Condition="'$(CDP_PATCH_NUMBER)'!=''">1.0.0-preview-$(CDP_PATCH_NUMBER)</Version>
+    <Version Condition="'$(CDP_PATCH_NUMBER)'!=''">1.0.0-preview</Version>
+    <!-- Add suffix for pre-release builds -->
+    <Version Condition="'$(CDP_BUILD_TYPE)'!='Official'">$(Version)-$(CDP_PATCH_NUMBER)</Version>
     <Authors>Microsoft</Authors>
     <Company>Microsoft</Company>
     <RepositoryUrl>https://github.com/Azure/Azconfig-DotnetProvider</RepositoryUrl>
