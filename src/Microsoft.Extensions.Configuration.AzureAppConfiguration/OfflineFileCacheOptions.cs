@@ -16,7 +16,7 @@
         public byte[] Key { get; set; }
 
         /// <summary>
-        /// Initilization vector used for encryptiong within the offline file cache.
+        /// Initilization vector used for encryption within the offline file cache.
         /// </summary>
         public byte[] IV { get; set; }
 
