@@ -9,6 +9,9 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
+    /// <summary>
+    /// An offline cache provider for Azure App Configuration that uses the file system to store data.
+    /// </summary>
     public class OfflineFileCache : IOfflineCache
     {
         private string _localCachePath = null;
@@ -47,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="options">
         /// Options dictating the behavior of the offline cache.
         /// If the options are null or the encryption keys are omitted, they will be derived from the store's connection string.
-        /// <see cref="OfflineFileCache.Path"/> is required unless the application is running inside of an Azure App Service instance, in which case it can be populated automatically.
+        /// <see cref="OfflineFileCacheOptions.Path"/> is required unless the application is running inside of an Azure App Service instance, in which case it can be populated automatically.
         /// </param>
         public OfflineFileCache(OfflineFileCacheOptions options = null)
         {
@@ -102,6 +105,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = opts;
         }
 
+        /// <summary>
+        /// An implementation of <see cref="IOfflineCache.Import(AzureAppConfigurationOptions)"/> that retrieves the cached data from the file system.
+        /// </summary>
         public string Import(AzureAppConfigurationOptions options)
         {
             EnsureOptions(options);
@@ -158,6 +164,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return null;
         }
 
+
+        /// <summary>
+        /// An implementation of <see cref="IOfflineCache.Export(AzureAppConfigurationOptions, string)"/> that caches the data in the file system.
+        /// </summary>
         public void Export(AzureAppConfigurationOptions options, string data)
         {
             EnsureOptions(options);

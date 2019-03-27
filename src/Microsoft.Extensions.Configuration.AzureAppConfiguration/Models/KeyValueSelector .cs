@@ -2,6 +2,9 @@
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
+    /// <summary>
+    /// A selector used to control what key-values are retrieved from Azure App Configuration.
+    /// </summary>
     public class KeyValueSelector
     {
         /// <summary>

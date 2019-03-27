@@ -7,6 +7,9 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    /// <summary>
+    /// Options used to configure the behavior of an Azure App Configuration provider.
+    /// </summary>
     public class AzureAppConfigurationOptions
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
@@ -71,6 +74,7 @@
 
         /// <summary>
         /// Monitor the specified key-value and reload all key-values if any property of the key-value has changed.
+        /// </summary>
         /// <param name="key">
         /// Key of the key-value to be watched.
         /// </param>
@@ -84,6 +88,7 @@
 
         /// <summary>
         /// Monitor the specified the key-value and reload all key-values if any property of the key-value has changed.
+        /// </summary>
         /// <param name="key">
         /// Key of the key-value to be watched.
         /// </param>
