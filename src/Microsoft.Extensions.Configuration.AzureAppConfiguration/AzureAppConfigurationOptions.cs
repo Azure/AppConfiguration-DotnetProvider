@@ -2,6 +2,7 @@
 {
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using System;
     using System.Collections.Generic;
@@ -13,6 +14,8 @@
     public class AzureAppConfigurationOptions
     {
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
+        private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
         private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
@@ -25,6 +28,16 @@
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// </summary>
+        internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// </summary>
+        internal IEnumerable<IKeyValueAdapter> Adapters => _adapters;
 
         /// <summary>
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
@@ -143,6 +156,40 @@
             };
 
             _kvSelectors.Add(keyValueSelector);
+
+            return this;
+        }
+
+        /// <summary>
+        /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
+        /// </summary>
+        /// <param name="configure">A callback used to configure feature flag options.</param>
+        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        {
+            FeatureFlagOptions options = new FeatureFlagOptions();
+
+            configure?.Invoke(options);
+
+            if (!(_kvSelectors.Any(selector => selector.KeyFilter.Equals(FeatureManagementConstants.FeatureFlagMarker)) &&
+                    _kvSelectors.Any(selector => selector.LabelFilter.Equals(options.Label))))
+            {
+                Use(FeatureManagementConstants.FeatureFlagMarker, options.Label);
+            }
+
+            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
+            {
+                _adapters.Add(new FeatureManagementKeyValueAdapter());
+            }
+
+            if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
+            {
+                _multiKeyWatchers.Add(new KeyValueWatcher
+                {
+                    PollInterval = options.PollInterval ?? _defaultPollInterval,
+                    Key = FeatureManagementConstants.FeatureFlagMarker,
+                    Label = options.Label
+                });
+            }
 
             return this;
         }

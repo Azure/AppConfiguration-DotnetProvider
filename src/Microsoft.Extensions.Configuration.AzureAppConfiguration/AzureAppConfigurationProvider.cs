@@ -1,6 +1,7 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Net.Http;
@@ -15,7 +16,7 @@
     {
         private AzureAppConfigurationOptions _options;
         private bool _optional;
-        private IDictionary<string, IKeyValue> _settings;
+        private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
 
@@ -39,7 +40,7 @@
         {
             LoadAll();
 
-            ObserveKeyValue();
+            ObserveKeyValues();
         }
 
         private void LoadAll()
@@ -102,7 +103,7 @@
             }
         }
 
-        private async Task ObserveKeyValue()
+        private async Task ObserveKeyValues()
         {
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -123,19 +124,13 @@
                                  new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<IKeyValue> observable = _client.ObserveKeyValue(watchedKv,
+                IObservable<KeyValueChange> observable = _client.ObserveKeyValue(watchedKv,
                                                                              changeWatcher.PollInterval,
                                                                              Scheduler.Default);
-                _subscriptions.Add(observable.Subscribe((observedKv) =>
+
+                _subscriptions.Add(observable.Subscribe((observedChange) =>
                 {
-                    if (observedKv == null)
-                    {
-                        _settings.Remove(watchedKey);
-                    }
-                    else
-                    {
-                        _settings[watchedKey] = observedKv;
-                    }
+                    ProcessChanges(Enumerable.Repeat(observedChange, 1));
 
                     if (changeWatcher.ReloadAll)
                     {
@@ -147,13 +142,40 @@
                     }
                 }));
             }
+
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                IEnumerable<IKeyValue> existing = _settings.Values.Where(kv => {
+
+                    return kv.Key.StartsWith(changeWatcher.Key) && ((changeWatcher.Label == LabelFilter.Null && kv.Label == null) || kv.Label.Equals(changeWatcher.Label));
+
+                });
+
+                IObservable<IEnumerable<KeyValueChange>> observable = _client.ObserveKeyValueCollection(
+                    new ObserveKeyValueCollectionOptions
+                    {
+                        Prefix = changeWatcher.Key,
+                        Label = changeWatcher.Label == LabelFilter.Null ? null : changeWatcher.Label,
+                        PollInterval = changeWatcher.PollInterval,
+                        Scheduler = Scheduler.Default
+                    },
+                    existing);
+
+                _subscriptions.Add(observable.Subscribe((observedChanges) =>
+                {
+                    ProcessChanges(observedChanges);
+
+                    SetData(_settings);
+                }));
+            }
         }
 
         private void SetData(IDictionary<string, IKeyValue> data)
         {
             //
             // Update cache of settings
-            this._settings = data;
+            this._settings = data as ConcurrentDictionary<string, IKeyValue> ?? 
+                new ConcurrentDictionary<string, IKeyValue>(data, StringComparer.OrdinalIgnoreCase);
 
             //
             // Set the application data for the configuration provider
@@ -161,14 +183,55 @@
 
             foreach (KeyValuePair<string, IKeyValue> kvp in data)
             {
-                applicationData.Add(kvp.Key, kvp.Value.Value);
+                foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
+                {
+                    applicationData[kv.Key] = kv.Value;
+                }
             }
 
             Data = applicationData;
-
+            
             //
             // Notify that the configuration has been updated
             OnReload();
+        }
+
+        private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(IKeyValue keyValue)
+        {
+            List<KeyValuePair<string, string>> keyValues = null;
+
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                IEnumerable<KeyValuePair<string, string>> kvs = adapter.GetKeyValues(keyValue);
+
+                if (kvs != null)
+                {
+                    keyValues = keyValues ?? new List<KeyValuePair<string, string>>();
+
+                    keyValues.AddRange(kvs);
+                }
+            }
+
+            return keyValues != null ?
+                keyValues :
+                Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
+        }
+
+        private void ProcessChanges(IEnumerable<KeyValueChange> changes)
+        {
+            foreach (KeyValueChange change in changes)
+            {
+                if (change.ChangeType == KeyValueChangeType.Deleted)
+                {
+                    _settings.TryRemove(change.Key, out IKeyValue removed);
+                }
+                else if (change.ChangeType == KeyValueChangeType.Modified)
+                {
+                    _settings.TryRemove(change.Key, out IKeyValue removed);
+
+                    _settings[change.Key] = change.Current;
+                }
+            }
         }
     }
 }
