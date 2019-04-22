@@ -173,7 +173,7 @@
             if (!(_kvSelectors.Any(selector => selector.KeyFilter.Equals(FeatureManagementConstants.FeatureFlagMarker)) &&
                     _kvSelectors.Any(selector => selector.LabelFilter.Equals(options.Label))))
             {
-                Use(FeatureManagementConstants.FeatureFlagMarker, options.Label);
+                Use(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
             }
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
@@ -181,11 +181,11 @@
                 _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
-            if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
+            if (options.PollInterval != null && !_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
             {
                 _multiKeyWatchers.Add(new KeyValueWatcher
                 {
-                    PollInterval = options.PollInterval ?? _defaultPollInterval,
+                    PollInterval = options.PollInterval.Value,
                     Key = FeatureManagementConstants.FeatureFlagMarker,
                     Label = options.Label
                 });
