@@ -12,7 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="1.0.0-preview-008380001" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
   </ItemGroup>
   
@@ -23,7 +23,7 @@
     -->
     <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-preview-007830001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-preview-008420001</MicrosoftAzconfigClientVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-007830001-1266</MicrosoftAzconfigManagedIdentityConnectorVersion>
   </PropertyGroup>
 
