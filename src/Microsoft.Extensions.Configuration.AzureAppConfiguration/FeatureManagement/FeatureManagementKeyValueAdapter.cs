@@ -7,10 +7,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
+        private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
+
         public IEnumerable<KeyValuePair<string, string>> GetKeyValues(IKeyValue keyValue)
         {
-            if (keyValue == null ||
-                !string.Equals(keyValue.ContentType.Replace(" ", string.Empty), FeatureManagementConstants.ContentType) ||
+            string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
+
+            if (!string.Equals(contentType, FeatureManagementConstants.ContentType) ||
                 !keyValue.Key.Contains(FeatureManagementConstants.FeatureFlagMarker))
             {
                 return null;
@@ -18,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             //
             // TODO error handling
-            FeatureFlag featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value);
+            FeatureFlag featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
 
             var keyValues = new List<KeyValuePair<string, string>>();
 

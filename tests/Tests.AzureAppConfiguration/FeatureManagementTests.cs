@@ -42,7 +42,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
-            ContentType = FeatureManagementConstants.ContentType
+            ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
         private KeyValue _kv2 = new KeyValue(FeatureManagementConstants.FeatureFlagMarker + "myFeature2")
@@ -63,7 +63,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
-            ContentType = FeatureManagementConstants.ContentType
+            ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
         [Fact]

@@ -227,8 +227,6 @@
                 }
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
-                    _settings.TryRemove(change.Key, out IKeyValue removed);
-
                     _settings[change.Key] = change.Current;
                 }
             }

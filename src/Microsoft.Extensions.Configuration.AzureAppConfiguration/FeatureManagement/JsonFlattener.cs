@@ -53,6 +53,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 case JTokenType.Bytes:
                 case JTokenType.Raw:
                 case JTokenType.Null:
+                case JTokenType.Guid:
+                case JTokenType.TimeSpan:
                     VisitPrimitive(token.Value<JValue>());
                     break;
 
