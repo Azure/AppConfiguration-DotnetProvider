@@ -13,27 +13,17 @@
 
         static void Main(string[] args)
         {
-            //Configure();
+            Configure();
 
-            //var cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource();
 
-            //var t = Run(cts.Token);
+            var t = Run(cts.Token);
 
-            ////
-            //// Finish on key press
-            //Console.ReadKey();
+            //
+            // Finish on key press
+            Console.ReadKey();
 
-            //cts.Cancel();'
-
-            var builder = new ConfigurationBuilder();
-
-            builder.AddAzureAppConfiguration(o => o.ConnectWithManagedIdentity("https://jimmyca-wus-appconfig.azconfig.io"));
-
-            var config = builder.Build();
-
-            Console.WriteLine($"Configuration abc: {config["abc"]}");
-
-            Console.ReadLine();
+            cts.Cancel();
         }
 
         private static void Configure()
