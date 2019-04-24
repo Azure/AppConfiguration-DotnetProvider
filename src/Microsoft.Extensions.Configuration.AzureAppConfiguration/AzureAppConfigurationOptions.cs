@@ -2,6 +2,7 @@
 {
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using System;
     using System.Collections.Generic;
@@ -12,8 +13,11 @@
     /// </summary>
     public class AzureAppConfigurationOptions
     {
+        internal static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(30);
+
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
-        private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
+        private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
         /// <summary>
@@ -25,6 +29,16 @@
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// </summary>
+        internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// </summary>
+        internal IEnumerable<IKeyValueAdapter> Adapters => _adapters;
 
         /// <summary>
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
@@ -148,6 +162,39 @@
         }
 
         /// <summary>
+        /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
+        /// </summary>
+        /// <param name="configure">A callback used to configure feature flag options.</param>
+        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        {
+            FeatureFlagOptions options = new FeatureFlagOptions();
+
+            configure?.Invoke(options);
+
+            if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
+            {
+                Use(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
+            }
+
+            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
+            {
+                _adapters.Add(new FeatureManagementKeyValueAdapter());
+            }
+
+            if (options.PollInterval != null && !_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
+            {
+                _multiKeyWatchers.Add(new KeyValueWatcher
+                {
+                    PollInterval = options.PollInterval.Value,
+                    Key = FeatureManagementConstants.FeatureFlagMarker,
+                    Label = options.Label
+                });
+            }
+
+            return this;
+        }
+
+        /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>
         /// <param name="offlineCache">The offline file cache to use for storing/retrieving Azure App Configuration data.</param>
@@ -208,7 +255,7 @@
             }
             else
             {
-                interval = _defaultPollInterval;
+                interval = DefaultPollInterval;
             }
 
             _changeWatchers[key] = new KeyValueWatcher()

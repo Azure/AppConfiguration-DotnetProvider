@@ -4,6 +4,13 @@ environment:
   runtime:
     provider: appcontainer
     image: cdpxtest.azurecr.io/global/vse2017u5-ext-win14393.1884:1.0
+  
+restore:
+  commands:
+    - !!defaultcommand
+      name: 'Restore'
+      command: 'build.cmd'
+      arguments: 'RestoreOnly'
 
 build:
   commands:
