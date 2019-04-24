@@ -13,10 +13,11 @@
     /// </summary>
     public class AzureAppConfigurationOptions
     {
+        internal static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(30);
+
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
-        private readonly TimeSpan _defaultPollInterval = TimeSpan.FromSeconds(30);
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
 
         /// <summary>
@@ -170,8 +171,7 @@
 
             configure?.Invoke(options);
 
-            if (!(_kvSelectors.Any(selector => selector.KeyFilter.Equals(FeatureManagementConstants.FeatureFlagMarker)) &&
-                    _kvSelectors.Any(selector => selector.LabelFilter.Equals(options.Label))))
+            if (!(_kvSelectors.Any(selector => selector.KeyFilter.Contains(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
             {
                 Use(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
             }
@@ -255,7 +255,7 @@
             }
             else
             {
-                interval = _defaultPollInterval;
+                interval = DefaultPollInterval;
             }
 
             _changeWatchers[key] = new KeyValueWatcher()

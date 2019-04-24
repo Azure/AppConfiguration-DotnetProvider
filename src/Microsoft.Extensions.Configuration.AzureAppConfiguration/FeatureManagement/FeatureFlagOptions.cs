@@ -12,6 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// Interval used to check if any feature flags have been changed.
         /// </summary>
-        public TimeSpan? PollInterval { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan? PollInterval { get; set; } = AzureAppConfigurationOptions.DefaultPollInterval;
     }
 }
