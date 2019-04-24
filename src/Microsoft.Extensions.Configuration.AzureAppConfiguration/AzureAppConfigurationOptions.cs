@@ -171,7 +171,7 @@
 
             configure?.Invoke(options);
 
-            if (!(_kvSelectors.Any(selector => selector.KeyFilter.Contains(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
+            if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
             {
                 Use(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
             }

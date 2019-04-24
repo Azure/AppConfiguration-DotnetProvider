@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
 
             if (!string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                !keyValue.Key.Contains(FeatureManagementConstants.FeatureFlagMarker))
+                !keyValue.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
             {
                 return null;
             }
