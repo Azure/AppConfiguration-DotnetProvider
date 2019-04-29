@@ -9,6 +9,7 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.AppConfiguration.Azconfig;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using Newtonsoft.Json;
 
@@ -49,9 +50,12 @@
 
             try
             {
-                if (!_options.KeyValueSelectors.Any())
+                bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
+
+                if (useDefaultQuery)
                 {
-                    // Load all key-values by null label.
+                    //
+                    // Load all key-values with the null label.
                     _client.GetKeyValues(
                         new QueryKeyValueCollectionOptions()
                         {
@@ -60,18 +64,26 @@
                         })
                     .ForEach(kv => { data[kv.Key] = kv; });
                 }
-                else
+
+                foreach (var loadOption in _options.KeyValueSelectors)
                 {
-                    foreach (var loadOption in _options.KeyValueSelectors)
+                    if ((useDefaultQuery && string.Equals(loadOption.LabelFilter, LabelFilter.Null)) ||
+                        _options.KeyValueSelectors.Any(s => s != loadOption && string.Equals(s.KeyFilter, KeyFilter.Any) && string.Equals(s.LabelFilter, loadOption.LabelFilter)))
                     {
-                        var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
-                        {
-                            KeyFilter = loadOption.KeyFilter,
-                            LabelFilter = loadOption.LabelFilter,
-                            PreferredDateTime = loadOption.PreferredDateTime
-                        };
-                        _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                        //
+                        // This selection was already encapsulated by a wildcard query
+                        // We skip it to prevent unnecessary requests
+                        continue;
                     }
+
+                    var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions()
+                    {
+                        KeyFilter = loadOption.KeyFilter,
+                        LabelFilter = loadOption.LabelFilter,
+                        PreferredDateTime = loadOption.PreferredDateTime
+                    };
+
+                    _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
