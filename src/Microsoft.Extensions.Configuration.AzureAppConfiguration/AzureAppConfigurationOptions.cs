@@ -149,14 +149,15 @@
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            var keyValueSelector = new KeyValueSelector()
+            if (!_kvSelectors.Any(s => s.KeyFilter.Equals(keyFilter) && s.LabelFilter.Equals(labelFilter) && Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, preferredDateTime)))
             {
-                KeyFilter = keyFilter,
-                LabelFilter = labelFilter,
-                PreferredDateTime = preferredDateTime
-            };
-
-            _kvSelectors.Add(keyValueSelector);
+                _kvSelectors.Add(new KeyValueSelector
+                {
+                    KeyFilter = keyFilter,
+                    LabelFilter = labelFilter,
+                    PreferredDateTime = preferredDateTime
+                });
+            }
 
             return this;
         }

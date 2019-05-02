@@ -67,8 +67,11 @@
 
                 foreach (var loadOption in _options.KeyValueSelectors)
                 {
-                    if ((useDefaultQuery && string.Equals(loadOption.LabelFilter, LabelFilter.Null)) ||
-                        _options.KeyValueSelectors.Any(s => s != loadOption && string.Equals(s.KeyFilter, KeyFilter.Any) && string.Equals(s.LabelFilter, loadOption.LabelFilter)))
+                    if ((useDefaultQuery && LabelFilter.Null.Equals(loadOption.LabelFilter)) ||
+                        _options.KeyValueSelectors.Any(s => s != loadOption && 
+                           string.Equals(s.KeyFilter, KeyFilter.Any) && 
+                           string.Equals(s.LabelFilter, loadOption.LabelFilter) && 
+                           Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, loadOption.PreferredDateTime)))
                     {
                         //
                         // This selection was already encapsulated by a wildcard query
