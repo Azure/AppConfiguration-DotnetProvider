@@ -2,8 +2,12 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -153,6 +157,71 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
                 Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
                 Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            }
+        }
+
+        [Fact]
+        public void PreservesDefaultQuery()
+        {
+            bool performedDefaultQuery = false;
+            bool queriedFeatureFlags = false;
+
+            var handler = new CallbackMessageHandler((req) => {
+
+                performedDefaultQuery = performedDefaultQuery || req.RequestUri.PathAndQuery == "/kv/?key=*&label=%00";
+
+                queriedFeatureFlags = queriedFeatureFlags || req.RequestUri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+
+                HttpResponseMessage response = new HttpResponseMessage();
+
+                response.StatusCode = HttpStatusCode.OK;
+
+                response.Content = new StringContent(JsonConvert.SerializeObject(new { items = new object[] { } }), Encoding.UTF8, "application/json");
+
+                return response;
+            });
+
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), handler))
+            {
+                var builder = new ConfigurationBuilder();
+
+                var options = new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                };
+
+                options.UseFeatureFlags();
+
+                builder.AddAzureAppConfiguration(options);
+
+                var config = builder.Build();
+
+                Assert.True(performedDefaultQuery);
+                Assert.False(queriedFeatureFlags);
+            }
+
+            //
+            // Reset
+            performedDefaultQuery = false;
+            queriedFeatureFlags = false;
+
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), handler))
+            {
+                var builder = new ConfigurationBuilder();
+
+                var options = new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                };
+
+                options.UseFeatureFlags(o => o.Label = "myLabel");
+
+                builder.AddAzureAppConfiguration(options);
+
+                var config = builder.Build();
+
+                Assert.True(performedDefaultQuery);
+                Assert.True(queriedFeatureFlags);
             }
         }
     }
