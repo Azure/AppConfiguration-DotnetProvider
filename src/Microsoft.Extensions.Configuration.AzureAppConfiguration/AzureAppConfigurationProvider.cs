@@ -203,7 +203,7 @@
                     var key = kv.Key;
                     foreach (var prefix in _options.KeyPrefixes)
                     {
-                        if (key.StartsWith(prefix))
+                        if (key.ToLower().StartsWith(prefix.ToLower()))
                         {
                             key = key.Substring(prefix.Length);
                         }
