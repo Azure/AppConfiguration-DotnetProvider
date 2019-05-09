@@ -44,7 +44,7 @@
         /// <summary>
         /// A collection of key prefixes to be trimmed.
         /// </summary>
-        internal IEnumerable<string> KeyPrefix => _keyPrefixes;
+        internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
@@ -254,11 +254,16 @@
         }
 
         /// <summary>
-        /// The prefix to trim from keys.
+        /// Trims the provided prefix from the keys of all key-values retrieved from Azure App Configuration.
         /// </summary>
         /// <param name="prefix">The prefix to be trimmed.</param>
         public AzureAppConfigurationOptions TrimKeyPrefix(string prefix)
         {
+            if (string.IsNullOrEmpty(prefix))
+            {
+                throw new ArgumentNullException(nameof(prefix));
+            }
+
             _keyPrefixes.Add(prefix);
             return this;
         }

@@ -201,7 +201,7 @@
                 foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
                 {
                     var key = kv.Key;
-                    foreach (var prefix in _options.KeyPrefix)
+                    foreach (var prefix in _options.KeyPrefixes)
                     {
                         if (key.StartsWith(prefix))
                         {
