@@ -200,8 +200,8 @@
             {
                 foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
                 {
-                    var key = kv.Key;
-                    foreach (var prefix in _options.KeyPrefixes)
+                    string key = kv.Key;
+                    foreach (string prefix in _options.KeyPrefixes)
                     {
                         if (key.ToLower().StartsWith(prefix.ToLower()))
                         {
