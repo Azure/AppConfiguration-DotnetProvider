@@ -206,6 +206,7 @@
                         if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                         {
                             key = key.Substring(prefix.Length);
+                            break;
                         }
                     }
 

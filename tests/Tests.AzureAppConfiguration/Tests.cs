@@ -51,6 +51,13 @@ namespace Tests.AzureAppConfiguration
                 Value = "TestValue4",
                 ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c4",
                 ContentType = "text"
+            },
+            new KeyValue("App2/TestKey1")
+            {
+                Label = "label",
+                Value = "TestValue2.1",
+                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c4",
+                ContentType = "text"
             }
         };
 
@@ -177,19 +184,21 @@ namespace Tests.AzureAppConfiguration
             {
                 var builder = new ConfigurationBuilder();
                 
-                // Trim "Test" from all keys in the configuration.
-                var keyPrefix = "Test";
+                // Trim following prefixes from all keys in the configuration.
+                var keyPrefix1 = "App2/";
+                var keyPrefix2 = "Test";
 
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
                 {
                     Client = testClient
-                }.TrimKeyPrefix(keyPrefix));
+                }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2));
 
                 var config = builder.Build();
                 Assert.True(config["Key1"] == "TestValue1");
                 Assert.True(config["Key2"] == "TestValue2");
                 Assert.True(config["Key3"] == "TestValue3");
                 Assert.True(config["Key4"] == "TestValue4");
+                Assert.True(config["TestKey1"] == "TestValue2.1");
             }
         }
     }

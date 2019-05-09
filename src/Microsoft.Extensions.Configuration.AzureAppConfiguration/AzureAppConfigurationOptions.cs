@@ -19,7 +19,7 @@
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
-        private List<string> _keyPrefixes = new List<string>();
+        private HashSet<string> _keyPrefixes = new HashSet<string>();
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
