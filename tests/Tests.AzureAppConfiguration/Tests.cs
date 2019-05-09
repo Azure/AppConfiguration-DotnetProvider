@@ -169,5 +169,28 @@ namespace Tests.AzureAppConfiguration
                 Assert.True(config["TestKey4"] == "newValue");
             }
         }
+
+        [Fact]
+        public void TrimKeyPrefix()
+        {
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            {
+                var builder = new ConfigurationBuilder();
+                
+                // Trim "Test" from all keys in the configuration.
+                var keyPrefix = "Test";
+
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                }.TrimKeyPrefix(keyPrefix));
+
+                var config = builder.Build();
+                Assert.True(config["Key1"] == "TestValue1");
+                Assert.True(config["Key2"] == "TestValue2");
+                Assert.True(config["Key3"] == "TestValue3");
+                Assert.True(config["Key4"] == "TestValue4");
+            }
+        }
     }
 }

@@ -19,6 +19,7 @@
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private List<string> _keyPrefixes = new List<string>();
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -39,6 +40,11 @@
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<IKeyValueAdapter> Adapters => _adapters;
+
+        /// <summary>
+        /// A collection of key prefixes to be trimmed.
+        /// </summary>
+        internal IEnumerable<string> KeyPrefix => _keyPrefixes;
 
         /// <summary>
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
@@ -244,6 +250,16 @@
 
             Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
 
+            return this;
+        }
+
+        /// <summary>
+        /// The prefix to trim from keys.
+        /// </summary>
+        /// <param name="prefix">The prefix to be trimmed.</param>
+        public AzureAppConfigurationOptions TrimKeyPrefix(string prefix)
+        {
+            _keyPrefixes.Add(prefix);
             return this;
         }
 
