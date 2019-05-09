@@ -183,15 +183,16 @@ namespace Tests.AzureAppConfiguration
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-                
+
                 // Trim following prefixes from all keys in the configuration.
-                var keyPrefix1 = "App2/";
-                var keyPrefix2 = "Test";
+                var keyPrefix1 = "T";
+                var keyPrefix2 = "App2/";
+                var keyPrefix3 = "Test";
 
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
                 {
                     Client = testClient
-                }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2));
+                }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3));
 
                 var config = builder.Build();
                 Assert.True(config["Key1"] == "TestValue1");

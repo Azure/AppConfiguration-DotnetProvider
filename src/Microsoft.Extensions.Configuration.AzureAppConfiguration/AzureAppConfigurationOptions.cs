@@ -19,7 +19,7 @@
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
-        private HashSet<string> _keyPrefixes = new HashSet<string>();
+        private SortedSet<string> _keyPrefixes;
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -60,6 +60,26 @@
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
         internal AzconfigClient Client { get; set; }
+
+        /// <summary>
+        /// Initialize sorted set used to trim prefixes from watched keys.
+        /// </summary>
+        public AzureAppConfigurationOptions()
+        {
+            _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) =>
+            {
+                // For 2 distinct, equal length strings, relative ordering doesn't matter.
+                if (k1.Length == k2.Length &&
+                    false == k1.Equals(k2, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return 1;
+                }
+
+                // For 2 distinct strings, the string larger length is placed before the smaller one.
+                // For 2 equal (case-insensitive) strings, 0 is returned, and duplicate entries are avoided.
+                return k2.Length.CompareTo(k1.Length);
+            }));
+        }
 
         /// <summary>
         /// Monitor the specified the key-value and reload it if the value has changed.
