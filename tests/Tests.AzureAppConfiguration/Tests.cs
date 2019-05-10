@@ -28,35 +28,35 @@ namespace Tests.AzureAppConfiguration
             {
                 Label = "label",
                 Value = "TestValue1",
-                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
+                ETag = "0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63",
                 ContentType = "text"
             },
             new KeyValue("TestKey2")
             {
                 Label = "label",
                 Value = "TestValue2",
-                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c2",
+                ETag = "31c38369-831f-4bf1-b9ad-79db56c8b989",
                 ContentType = "text"
             },
             new KeyValue("TestKey3")
             {
                 Label = "label",
                 Value = "TestValue3",
-                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c3",
+                ETag = "bb203f2b-c113-44fc-995d-b933c2143339",
                 ContentType = "text"
             },
             new KeyValue("TestKey4")
             {
                 Label = "label",
                 Value = "TestValue4",
-                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c4",
+                ETag = "3ca43b3e-d544-4b0c-b3a2-e7a7284217a2",
                 ContentType = "text"
             },
             new KeyValue("App2/TestKey1")
             {
                 Label = "label",
                 Value = "TestValue2.1",
-                ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c4",
+                ETag = "88c8c740-f998-4c88-85cb-fe95e93e2263",
                 ContentType = "text"
             }
         };
