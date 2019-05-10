@@ -200,6 +200,18 @@ namespace Tests.AzureAppConfiguration
                 Assert.True(config["Key3"] == "TestValue3");
                 Assert.True(config["Key4"] == "TestValue4");
                 Assert.True(config["TestKey1"] == "TestValue2.1");
+
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                }.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1));
+
+                var config2 = builder.Build();
+                Assert.True(config2["Key1"] == "TestValue1");
+                Assert.True(config2["Key2"] == "TestValue2");
+                Assert.True(config2["Key3"] == "TestValue3");
+                Assert.True(config2["Key4"] == "TestValue4");
+                Assert.True(config2["TestKey1"] == "TestValue2.1");
             }
         }
     }
