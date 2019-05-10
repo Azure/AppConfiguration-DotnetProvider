@@ -200,7 +200,17 @@
             {
                 foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
                 {
-                    applicationData[kv.Key] = kv.Value;
+                    string key = kv.Key;
+                    foreach (string prefix in _options.KeyPrefixes)
+                    {
+                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            key = key.Substring(prefix.Length);
+                            break;
+                        }
+                    }
+
+                    applicationData[key] = kv.Value;
                 }
             }
 
