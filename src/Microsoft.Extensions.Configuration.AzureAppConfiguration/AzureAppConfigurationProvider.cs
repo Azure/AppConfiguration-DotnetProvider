@@ -21,7 +21,6 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
-        // private AddTelemetryRequestMessageHandler _handler;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
