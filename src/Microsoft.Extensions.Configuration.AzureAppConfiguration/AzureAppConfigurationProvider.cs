@@ -6,6 +6,7 @@
     using System.Linq;
     using System.Net.Http;
     using System.Reactive.Concurrency;
+    using System.Reactive.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.AppConfiguration.Azconfig;
@@ -20,6 +21,7 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
+        // private AddTelemetryRequestMessageHandler _handler;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -27,7 +29,14 @@
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
             _subscriptions = new List<IDisposable>();
+            // _handler = new AddTelemetryRequestMessageHandler() { LogRequestType = true, RequestType = RequestType.None };
         }
+
+        /* private RequestType RequestType
+        {
+            get => _handler.RequestType;
+            set => _handler.RequestType = value;
+        }*/
 
         public void Dispose()
         {
@@ -37,15 +46,19 @@
             }
         }
 
-        public override void Load()
+        public override async void Load()
         {
             LoadAll();
 
-            ObserveKeyValues();
+            await ObserveKeyValues().ConfigureAwait(false);
         }
 
         private void LoadAll()
         {
+            //
+            // Set the request type to indicate app initialization query.
+            // this.RequestType = RequestType.Startup;
+
             IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
             try
@@ -61,6 +74,8 @@
                         {
                             KeyFilter = KeyFilter.Any,
                             LabelFilter = LabelFilter.Null,
+                            ClientRequestType = Enum.GetName(typeof(RequestTypes), RequestTypes.Startup),
+                            LogClientRequestType = true
                         })
                     .ForEach(kv => { data[kv.Key] = kv; });
                 }
@@ -83,7 +98,9 @@
                     {
                         KeyFilter = loadOption.KeyFilter,
                         LabelFilter = loadOption.LabelFilter,
-                        PreferredDateTime = loadOption.PreferredDateTime
+                        PreferredDateTime = loadOption.PreferredDateTime,
+                        ClientRequestType = Enum.GetName(typeof(RequestTypes), RequestTypes.Startup),
+                        LogClientRequestType = true
                     };
 
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
@@ -120,6 +137,10 @@
 
         private async Task ObserveKeyValues()
         {
+            //
+            // Update request type to indicate that the it's listening for updates.
+            // this.RequestType = RequestType.Watch;
+
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
                 IKeyValue watchedKv = null;
@@ -134,14 +155,17 @@
                 {
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
                     watchedKv = await _client.GetKeyValue(watchedKey,
-                                                            new QueryKeyValueOptions() { Label = watchedLabel },
+                                                            new QueryKeyValueOptions()
+                                                            {
+                                                                Label = watchedLabel,
+                                                                ClientRequestType = Enum.GetName(typeof(RequestTypes), RequestTypes.Watch),
+                                                                LogClientRequestType = true
+                                                            },
                                                             CancellationToken.None) ??
                                  new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<KeyValueChange> observable = _client.ObserveKeyValue(watchedKv,
-                                                                             changeWatcher.PollInterval,
-                                                                             Scheduler.Default);
+                IObservable<KeyValueChange> observable = this.GetObservablesForKeyValue(watchedKv, changeWatcher.PollInterval, Scheduler.Default);
 
                 _subscriptions.Add(observable.Subscribe((observedChange) =>
                 {
@@ -166,7 +190,7 @@
 
                 });
 
-                IObservable<IEnumerable<KeyValueChange>> observable = _client.ObserveKeyValueCollection(
+                IObservable<IEnumerable<KeyValueChange>> observable = this.GetObservableCollection(
                     new ObserveKeyValueCollectionOptions
                     {
                         Prefix = changeWatcher.Key,
@@ -220,7 +244,7 @@
             // Notify that the configuration has been updated
             OnReload();
         }
-
+        
         private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(IKeyValue keyValue)
         {
             List<KeyValuePair<string, string>> keyValues = null;
@@ -237,9 +261,7 @@
                 }
             }
 
-            return keyValues != null ?
-                keyValues :
-                Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
+            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
         }
 
         private void ProcessChanges(IEnumerable<KeyValueChange> changes)
@@ -255,6 +277,178 @@
                     _settings[change.Key] = change.Current;
                 }
             }
+        }
+
+        private IObservable<KeyValueChange> GetObservablesForKeyValue(IKeyValue keyValue, TimeSpan pollInterval, IScheduler scheduler = null)
+        {
+            scheduler = scheduler ?? Scheduler.Default;
+            var options = new QueryKeyValueOptions()
+            {
+                Label = keyValue.Label,
+                ClientRequestType = Enum.GetName(typeof(RequestTypes), RequestTypes.Watch),
+                LogClientRequestType = true
+            };
+
+            return Observable
+                .Timer(pollInterval, scheduler)
+                .SelectMany(_ => Observable
+                    .FromAsync((cancellationToken) => _client.GetKeyValue(keyValue.Key, options, cancellationToken))
+                    .Delay(pollInterval, scheduler)
+                    .Repeat()
+                    .Where(kv => kv != keyValue)
+                    .Select(kv =>
+                    {
+                        keyValue = kv ?? new KeyValue(keyValue.Key)
+                        {
+                            Label = keyValue.Label
+                        };
+
+                        return new KeyValueChange()
+                        {
+                            ChangeType = kv == null ? KeyValueChangeType.Deleted : KeyValueChangeType.Modified,
+                            Current = kv,
+                            Key = keyValue.Key,
+                            Label = keyValue.Label
+                        };
+                    }));
+        }
+
+        private IObservable<IEnumerable<KeyValueChange>> GetObservableCollection(ObserveKeyValueCollectionOptions options, IEnumerable<IKeyValue> keyValues)
+        {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            if (keyValues == null)
+            {
+                keyValues = Enumerable.Empty<IKeyValue>();
+            }
+
+            if (options.Prefix == null)
+            {
+                options.Prefix = string.Empty;
+            }
+
+            if (options.Prefix.Contains("*"))
+            {
+                throw new ArgumentException("The prefix cannot contain '*'", $"{nameof(options)}.{nameof(options.Prefix)}");
+            }
+
+            if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
+            {
+                throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
+            }
+
+            if (string.IsNullOrEmpty(options.Prefix) && keyValues.Any(k => !k.Key.StartsWith(options.Prefix)))
+            {
+                throw new ArgumentException("All observed key-values must start with the provided prefix.", $"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
+            }
+
+            if (keyValues.Any(k => !string.Equals(NormalizeNull(k.Label), NormalizeNull(options.Label))))
+            {
+                throw new ArgumentException("All observed key-values must use the same label.", $"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
+            }
+
+            if (keyValues.Any(k => k.Label != null && k.Label.Contains("*")))
+            {
+                throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Label)}");
+            }
+
+            var scheduler = options.Scheduler ?? Scheduler.Default;
+            Dictionary<string, string> currentEtags = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
+
+            return Observable
+                .Timer(options.PollInterval, scheduler)
+                .SelectMany(_ => Observable
+                    .FromAsync((cancellationToken) => _client.GetKeyValues(
+                        new QueryKeyValueCollectionOptions()
+                        {
+                            KeyFilter = options.Prefix + "*",
+                            LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
+                            FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key,
+                            ClientRequestType = Enum.GetName(typeof(RequestTypes), RequestTypes.Watch),
+                            LogClientRequestType = true
+                        })
+                        .ToEnumerableAsync(cancellationToken))
+                        .Delay(options.PollInterval, scheduler)
+                        .Repeat()
+                        .Where(kvs =>
+                        {
+                            bool changed = false;
+                            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
+                            foreach (IKeyValue kv in kvs)
+                            {
+                                if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                                {
+                                    changed = true;
+                                    break;
+                                }
+
+                                etags.Remove(kv.Key);
+                            }
+
+                            if (!changed && etags.Any())
+                            {
+                                changed = true;
+                            }
+
+                            return changed;
+                        }))
+                        .SelectMany(_ => Observable.FromAsync(async cancellationToken =>
+                        {
+                            IEnumerable<IKeyValue> kvs = await _client.GetKeyValues(
+                                new QueryKeyValueCollectionOptions()
+                                {
+                                    KeyFilter = options.Prefix + "*",
+                                    LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label,
+                                    ClientRequestType = Enum.GetName(typeof(RequestTypes), RequestTypes.Watch),
+                                    LogClientRequestType = true
+                                }).ToEnumerableAsync(cancellationToken);
+
+                            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
+                            currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
+                            var changes = new List<KeyValueChange>();
+
+                            foreach (IKeyValue kv in kvs)
+                            {
+                                if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                                {
+                                    changes.Add(new KeyValueChange()
+                                    {
+                                        ChangeType = KeyValueChangeType.Modified,
+                                        Key = kv.Key,
+                                        Label = NormalizeNull(options.Label),
+                                        Current = kv
+                                    });
+                                }
+
+                                etags.Remove(kv.Key);
+                            }
+
+                            foreach (var kvp in etags)
+                            {
+                                changes.Add(new KeyValueChange()
+                                {
+                                    ChangeType = KeyValueChangeType.Deleted,
+                                    Key = kvp.Key,
+                                    Label = NormalizeNull(options.Label),
+                                    Current = null
+                                });
+                            }
+
+                            return changes;
+                        }));
+        }
+
+        public string NormalizeNull(string s)
+        {
+            if (s == null || s == LabelFilter.Null)
+            {
+                return null;
+            }
+
+            return s;
         }
     }
 }
