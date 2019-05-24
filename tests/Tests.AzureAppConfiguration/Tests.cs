@@ -216,39 +216,5 @@ namespace Tests.AzureAppConfiguration
                 Assert.True(config2["TestKey1"] == "TestValue2.1");
             }
         }
-
-        [Fact]
-        public void VerifyTelemetryHeadersForObserves()
-        {
-            HttpRequestHeaders headers = null;
-            const string CorrelationContextHeader = "Correlation-Context";
-
-            var handler = new CallbackMessageHandler(r =>
-            {
-                headers = r.Headers;
-                return new HttpResponseMessage()
-                {
-                    Content = new StringContent("{}", Encoding.UTF8, "application/json")
-                };
-            });
-
-            using (var testClient = new AzconfigClient(_connectionString, handler))
-            {
-                var builder = new ConfigurationBuilder();
-
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-
-                }.Use("*", null, DateTimeOffset.UtcNow));
-                var config = builder.Build();
-
-                Assert.NotNull(headers);
-                Assert.True(headers.TryGetValues(CorrelationContextHeader, out IEnumerable<string> headerValues));
-
-                string headerValue = headerValues.First();
-                Assert.Contains("RequestType=Watch", headerValue, StringComparison.InvariantCultureIgnoreCase);
-            }
-        }
     }
 }
