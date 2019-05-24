@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Azure.AppConfiguration.Azconfig;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -12,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 const string RequestTypeKey = "RequestType";
                 string requestTypeValue = Enum.GetName(typeof(RequestType), requestType);
 
-                requestOptions.CorrelationContext.Add(Tuple.Create<string, string>(RequestTypeKey, requestTypeValue));
+                requestOptions.CorrelationContext.Add(new KeyValuePair<string, string>(RequestTypeKey, requestTypeValue));
             }
 
             return requestOptions;
