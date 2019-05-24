@@ -5,12 +5,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class RequestOptionsExtensions
     {
-        public static IRequestOptions AddRequestType(this IRequestOptions requestOptions, RequestTypes requestType)
+        public static IRequestOptions AddRequestType(this IRequestOptions requestOptions, RequestType requestType)
         {
-            if (requestType != RequestTypes.None)
+            if (requestType != RequestType.None)
             {
                 const string RequestTypeKey = "RequestType";
-                string requestTypeValue = Enum.GetName(typeof(RequestTypes), requestType);
+                string requestTypeValue = Enum.GetName(typeof(RequestType), requestType);
 
                 requestOptions.CorrelationContext.Add(Tuple.Create<string, string>(RequestTypeKey, requestTypeValue));
             }

@@ -88,7 +88,7 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    queryKeyValueCollectionOptions.AddRequestType(RequestTypes.Startup);
+                    queryKeyValueCollectionOptions.AddRequestType(RequestType.Startup);
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
@@ -136,7 +136,7 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    options.AddRequestType(RequestTypes.Watch);
+                    options.AddRequestType(RequestType.Watch);
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
@@ -260,7 +260,7 @@
         {
             scheduler = scheduler ?? Scheduler.Default;
             var options = new QueryKeyValueOptions() { Label = keyValue.Label };
-            options.AddRequestType(RequestTypes.Watch);
+            options.AddRequestType(RequestType.Watch);
 
             return Observable
                 .Timer(pollInterval, scheduler)
@@ -337,7 +337,7 @@
                 FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key
             };
 
-            queryOptions.AddRequestType(RequestTypes.Watch);
+            queryOptions.AddRequestType(RequestType.Watch);
 
             return Observable
                 .Timer(options.PollInterval, scheduler)
@@ -376,7 +376,7 @@
                                 LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
                             };
 
-                            queryOptions.AddRequestType(RequestTypes.Watch);
+                            queryOptions.AddRequestType(RequestType.Watch);
 
                             IEnumerable<IKeyValue> kvs = await _client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken);
 
