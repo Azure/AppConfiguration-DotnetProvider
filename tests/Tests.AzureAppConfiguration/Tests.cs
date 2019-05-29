@@ -236,7 +236,7 @@ namespace Tests.AzureAppConfiguration
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
                 {
                     Client = testClient
-                }.Use("*", null, DateTimeOffset.UtcNow));
+                }.Use("*", null));
 
                 var config = builder.Build();
 
