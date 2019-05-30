@@ -62,6 +62,11 @@
         internal AzconfigClient Client { get; set; }
 
         /// <summary>
+        /// Flag to prevent data collection or tracking for telemetry.
+        /// </summary>
+        internal bool CollectDataForTelemetry { get; set; } = true;
+
+        /// <summary>
         /// Monitor the specified the key-value and reload it if the value has changed.
         /// </summary>
         /// <param name="key">
@@ -265,6 +270,15 @@
             }
 
             _keyPrefixes.Add(prefix);
+            return this;
+        }
+
+        /// <summary>
+        /// Prevents request from being tracked for telemetry data gathering.
+        /// </summary>
+        public AzureAppConfigurationOptions DoNotCollectTelemetryData()
+        {
+            CollectDataForTelemetry = false;
             return this;
         }
 

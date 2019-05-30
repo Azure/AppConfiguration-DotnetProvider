@@ -6,18 +6,13 @@
     internal enum RequestType
     {
         /// <summary>
-        /// Default type. Also used to imply not to log the type of request.
+        /// Indicate read for app initialization/startup.
         /// </summary>
-        None,
+        Startup,
 
         /// <summary>
         /// Indicate watch/observe type request.
         /// </summary>
-        Watch,
-
-        /// <summary>
-        /// Indicate read for app initialization/startup.
-        /// </summary>
-        Startup
+        Watch
     }
 }

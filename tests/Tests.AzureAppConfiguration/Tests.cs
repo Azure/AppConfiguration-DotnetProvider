@@ -244,5 +244,32 @@ namespace Tests.AzureAppConfiguration
                 Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
             }
         }
+
+        [Fact]
+        public void TestOptOutOfTelemetryGathering()
+        {
+            string correlationHeader = null;
+
+            var messageHandler = new CallbackMessageHandler(r => {
+                Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
+                correlationHeader = corrHeader.FirstOrDefault();
+
+                var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+                return response;
+            });
+
+            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            {
+                var builder = new ConfigurationBuilder();
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                }.Use("*", null).DoNotCollectTelemetryData());
+
+                var config = builder.Build();
+
+                Assert.Null(correlationHeader);
+            }
+        }
     }
 }
