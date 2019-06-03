@@ -246,7 +246,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TestOptOutOfTelemetryGathering()
+        public void TestTurnOffRequestTracing()
         {
             string correlationHeader = null;
 
