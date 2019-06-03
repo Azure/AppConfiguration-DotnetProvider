@@ -21,6 +21,7 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
+        private bool _collectRequestData = true;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -28,6 +29,16 @@
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
             _subscriptions = new List<IDisposable>();
+
+            string collectRequestDataEnvVar = Environment.GetEnvironmentVariable("AZURE_APP_CONFIGURATION_TRACING_DISABLED");
+            if (collectRequestDataEnvVar != null)
+            {
+                try
+                {
+                    _collectRequestData = !Convert.ToBoolean(collectRequestDataEnvVar);
+                }
+                catch(Exception) { }
+            }
         }
 
         public void Dispose()
@@ -40,12 +51,12 @@
 
         public override async void Load()
         {
-            LoadAll();
+            LoadAll(RequestType.Startup);
 
             await ObserveKeyValues().ConfigureAwait(false);
         }
 
-        private void LoadAll()
+        private void LoadAll(RequestType requestType)
         {
              IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -87,9 +98,9 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    if (_options.CollectDataForTelemetry)
+                    if (_collectRequestData)
                     {
-                        queryKeyValueCollectionOptions.AddRequestType(RequestType.Startup);
+                        queryKeyValueCollectionOptions.AddRequestType(requestType);
                     }
 
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
@@ -139,7 +150,7 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    if (_options.CollectDataForTelemetry)
+                    if (_collectRequestData)
                     {
                         options.AddRequestType(RequestType.Watch);
                     }
@@ -156,7 +167,7 @@
 
                     if (changeWatcher.ReloadAll)
                     {
-                        LoadAll();
+                        LoadAll(RequestType.Watch);
                     }
                     else
                     {
@@ -266,7 +277,7 @@
         {
             scheduler = scheduler ?? Scheduler.Default;
             var options = new QueryKeyValueOptions() { Label = keyValue.Label };
-            if (_options.CollectDataForTelemetry)
+            if (_collectRequestData)
             {
                 options.AddRequestType(RequestType.Watch);
             }
@@ -274,7 +285,7 @@
             return Observable
                 .Timer(pollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => _client.GetKeyValue(keyValue.Key, options, cancellationToken))
+                    .FromAsync((cancellationToken) => _client.GetCurrentKeyValue(keyValue, cancellationToken))
                     .Delay(pollInterval, scheduler)
                     .Repeat()
                     .Where(kv => kv != keyValue)
@@ -346,7 +357,7 @@
                 FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key
             };
 
-            if (_options.CollectDataForTelemetry)
+            if (_collectRequestData)
             {
                 queryOptions.AddRequestType(RequestType.Watch);
             }
@@ -388,7 +399,7 @@
                                 LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
                             };
 
-                            if (_options.CollectDataForTelemetry)
+                            if (_collectRequestData)
                             {
                                 queryOptions.AddRequestType(RequestType.Watch);
                             }

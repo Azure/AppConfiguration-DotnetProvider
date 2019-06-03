@@ -252,7 +252,7 @@ namespace Tests.AzureAppConfiguration
 
             var messageHandler = new CallbackMessageHandler(r => {
                 Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-                correlationHeader = corrHeader.FirstOrDefault();
+                correlationHeader = corrHeader?.FirstOrDefault();
 
                 var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
                 return response;
@@ -260,11 +260,12 @@ namespace Tests.AzureAppConfiguration
 
             using (var testClient = new AzconfigClient(_connectionString, messageHandler))
             {
+                Environment.SetEnvironmentVariable("AZURE_APP_CONFIGURATION_TRACING_DISABLED", "True");
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
                 {
                     Client = testClient
-                }.Use("*", null).DoNotCollectTelemetryData());
+                }.Use("*", null));
 
                 var config = builder.Build();
 
