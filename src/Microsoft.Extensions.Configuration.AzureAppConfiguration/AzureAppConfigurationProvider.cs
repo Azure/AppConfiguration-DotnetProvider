@@ -164,7 +164,7 @@
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<KeyValueChange> observable = this.GetObservablesForKeyValue(watchedKv, changeWatcher.PollInterval, Scheduler.Default);
+                IObservable<KeyValueChange> observable = _client.GetObservablesForKeyValue(watchedKv, changeWatcher.PollInterval, Scheduler.Default);
 
                 _subscriptions.Add(observable.Subscribe((observedChange) =>
                 {
@@ -189,7 +189,7 @@
 
                 });
 
-                IObservable<IEnumerable<KeyValueChange>> observable = this.GetObservableCollection(
+                IObservable<IEnumerable<KeyValueChange>> observable = _client.GetObservableCollection(
                     new ObserveKeyValueCollectionOptions
                     {
                         Prefix = changeWatcher.Key,
@@ -276,184 +276,6 @@
                     _settings[change.Key] = change.Current;
                 }
             }
-        }
-
-        private IObservable<KeyValueChange> GetObservablesForKeyValue(IKeyValue keyValue, TimeSpan pollInterval, IScheduler scheduler = null)
-        {
-            scheduler = scheduler ?? Scheduler.Default;
-            var options = new QueryKeyValueOptions() { Label = keyValue.Label };
-            if (_requestTracingEnabled)
-            {
-                options.AddRequestType(RequestType.Watch);
-            }
-
-            return Observable
-                .Timer(pollInterval, scheduler)
-                .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => _client.GetCurrentKeyValue(keyValue, cancellationToken))
-                    .Delay(pollInterval, scheduler)
-                    .Repeat()
-                    .Where(kv => kv != keyValue)
-                    .Select(kv =>
-                    {
-                        keyValue = kv ?? new KeyValue(keyValue.Key)
-                        {
-                            Label = keyValue.Label
-                        };
-
-                        return new KeyValueChange()
-                        {
-                            ChangeType = kv == null ? KeyValueChangeType.Deleted : KeyValueChangeType.Modified,
-                            Current = kv,
-                            Key = keyValue.Key,
-                            Label = keyValue.Label
-                        };
-                    }));
-        }
-
-        private IObservable<IEnumerable<KeyValueChange>> GetObservableCollection(ObserveKeyValueCollectionOptions options, IEnumerable<IKeyValue> keyValues)
-        {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
-
-            if (keyValues == null)
-            {
-                keyValues = Enumerable.Empty<IKeyValue>();
-            }
-
-            if (options.Prefix == null)
-            {
-                options.Prefix = string.Empty;
-            }
-
-            if (options.Prefix.Contains("*"))
-            {
-                throw new ArgumentException("The prefix cannot contain '*'", $"{nameof(options)}.{nameof(options.Prefix)}");
-            }
-
-            if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
-            {
-                throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
-            }
-
-            if (string.IsNullOrEmpty(options.Prefix) && keyValues.Any(k => !k.Key.StartsWith(options.Prefix)))
-            {
-                throw new ArgumentException("All observed key-values must start with the provided prefix.", $"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
-            }
-
-            if (keyValues.Any(k => !string.Equals(NormalizeNull(k.Label), NormalizeNull(options.Label))))
-            {
-                throw new ArgumentException("All observed key-values must use the same label.", $"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
-            }
-
-            if (keyValues.Any(k => k.Label != null && k.Label.Contains("*")))
-            {
-                throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Label)}");
-            }
-
-            var scheduler = options.Scheduler ?? Scheduler.Default;
-            Dictionary<string, string> currentEtags = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
-            var queryOptions = new QueryKeyValueCollectionOptions()
-            {
-                KeyFilter = options.Prefix + "*",
-                LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
-                FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key
-            };
-
-            if (_requestTracingEnabled)
-            {
-                queryOptions.AddRequestType(RequestType.Watch);
-            }
-
-            return Observable
-                .Timer(options.PollInterval, scheduler)
-                .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => _client.GetKeyValues(queryOptions)
-                        .ToEnumerableAsync(cancellationToken))
-                        .Delay(options.PollInterval, scheduler)
-                        .Repeat()
-                        .Where(kvs =>
-                        {
-                            bool changed = false;
-                            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
-                            foreach (IKeyValue kv in kvs)
-                            {
-                                if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
-                                {
-                                    changed = true;
-                                    break;
-                                }
-
-                                etags.Remove(kv.Key);
-                            }
-
-                            if (!changed && etags.Any())
-                            {
-                                changed = true;
-                            }
-
-                            return changed;
-                        }))
-                        .SelectMany(_ => Observable.FromAsync(async cancellationToken =>
-                        {
-                            queryOptions = new QueryKeyValueCollectionOptions()
-                            {
-                                KeyFilter = options.Prefix + "*",
-                                LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
-                            };
-
-                            if (_requestTracingEnabled)
-                            {
-                                queryOptions.AddRequestType(RequestType.Watch);
-                            }
-
-                            IEnumerable<IKeyValue> kvs = await _client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken);
-
-                            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
-                            currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
-                            var changes = new List<KeyValueChange>();
-
-                            foreach (IKeyValue kv in kvs)
-                            {
-                                if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
-                                {
-                                    changes.Add(new KeyValueChange()
-                                    {
-                                        ChangeType = KeyValueChangeType.Modified,
-                                        Key = kv.Key,
-                                        Label = NormalizeNull(options.Label),
-                                        Current = kv
-                                    });
-                                }
-
-                                etags.Remove(kv.Key);
-                            }
-
-                            foreach (var kvp in etags)
-                            {
-                                changes.Add(new KeyValueChange()
-                                {
-                                    ChangeType = KeyValueChangeType.Deleted,
-                                    Key = kvp.Key,
-                                    Label = NormalizeNull(options.Label),
-                                    Current = null
-                                });
-                            }
-
-                            return changes;
-                        }));
-        }
-
-        public string NormalizeNull(string s)
-        {
-            if (s == null || s == LabelFilter.Null)
-            {
-                return null;
-            }
-
-            return s;
         }
     }
 }
