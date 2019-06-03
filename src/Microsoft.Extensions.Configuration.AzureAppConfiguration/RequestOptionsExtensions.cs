@@ -8,10 +8,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         public static IRequestOptions AddRequestType(this IRequestOptions requestOptions, RequestType requestType)
         {
-            const string RequestTypeKey = "RequestType";
             string requestTypeValue = Enum.GetName(typeof(RequestType), requestType);
-
-            requestOptions.CorrelationContext.Add(new KeyValuePair<string, string>(RequestTypeKey, requestTypeValue));
+            requestOptions.CorrelationContext.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, requestTypeValue));
 
             return requestOptions;
         }

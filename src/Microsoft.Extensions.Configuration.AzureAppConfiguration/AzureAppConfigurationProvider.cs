@@ -7,6 +7,7 @@
     using System.Net.Http;
     using System.Reactive.Concurrency;
     using System.Reactive.Linq;
+    using System.Security;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.AppConfiguration.Azconfig;
@@ -21,7 +22,7 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
-        private bool _collectRequestData = true;
+        private bool _requestTracingEnabled;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -30,14 +31,18 @@
             _optional = optional;
             _subscriptions = new List<IDisposable>();
 
-            string collectRequestDataEnvVar = Environment.GetEnvironmentVariable("AZURE_APP_CONFIGURATION_TRACING_DISABLED");
-            if (collectRequestDataEnvVar != null)
+            string requestTracingDisabled = null;
+            try
             {
-                try
-                {
-                    _collectRequestData = !Convert.ToBoolean(collectRequestDataEnvVar);
-                }
-                catch(Exception) { }
+                requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
+            }
+            catch (Exception ex) when (ex is ArgumentNullException || ex is SecurityException) { }
+
+            if (!Boolean.TryParse(requestTracingDisabled, out _requestTracingEnabled))
+            {
+                //
+                // Enable request tracing by default (if no valid environmental variable option is specified).
+                _requestTracingEnabled = true;
             }
         }
 
@@ -98,7 +103,7 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    if (_collectRequestData)
+                    if (_requestTracingEnabled)
                     {
                         queryKeyValueCollectionOptions.AddRequestType(requestType);
                     }
@@ -150,7 +155,7 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    if (_collectRequestData)
+                    if (_requestTracingEnabled)
                     {
                         options.AddRequestType(RequestType.Watch);
                     }
@@ -277,7 +282,7 @@
         {
             scheduler = scheduler ?? Scheduler.Default;
             var options = new QueryKeyValueOptions() { Label = keyValue.Label };
-            if (_collectRequestData)
+            if (_requestTracingEnabled)
             {
                 options.AddRequestType(RequestType.Watch);
             }
@@ -357,7 +362,7 @@
                 FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key
             };
 
-            if (_collectRequestData)
+            if (_requestTracingEnabled)
             {
                 queryOptions.AddRequestType(RequestType.Watch);
             }
@@ -399,7 +404,7 @@
                                 LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
                             };
 
-                            if (_collectRequestData)
+                            if (_requestTracingEnabled)
                             {
                                 queryOptions.AddRequestType(RequestType.Watch);
                             }

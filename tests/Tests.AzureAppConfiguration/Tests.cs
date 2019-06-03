@@ -260,7 +260,7 @@ namespace Tests.AzureAppConfiguration
 
             using (var testClient = new AzconfigClient(_connectionString, messageHandler))
             {
-                Environment.SetEnvironmentVariable("AZURE_APP_CONFIGURATION_TRACING_DISABLED", "True");
+                Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
                 {
