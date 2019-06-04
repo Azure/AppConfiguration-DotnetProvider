@@ -14,6 +14,8 @@
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
+    <PackageReference Include="System.Interactive.Async" Version="3.1.1" />
+    <PackageReference Include="System.Reactive.Linq" Version="4.0.0" />
   </ItemGroup>
   
   <PropertyGroup>
@@ -23,7 +25,7 @@
     -->
     <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-preview-008790001</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-preview-008850001</MicrosoftAzconfigClientVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-008520001-22</MicrosoftAzconfigManagedIdentityConnectorVersion>
   </PropertyGroup>
 
