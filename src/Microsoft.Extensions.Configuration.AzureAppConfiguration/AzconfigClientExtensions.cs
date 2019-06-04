@@ -13,31 +13,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class AzconfigClientExtensions
     {
-        public static async Task<IKeyValue> GetCurrentKeyValue(this AzconfigClient client, IKeyValue keyValue, CancellationToken cancellationToken)
-        {
-            SetETag(keyValue.ETag);
-
-            var options = new QueryKeyValueOptions() { Label = keyValue.Label };
-            IKeyValue kv = await client.GetKeyValue(keyValue.Key, options, cancellationToken);
-
-            ClearETag();
-
-            return kv;
-        }
-
-        public static IObservable<KeyValueChange> GetObservablesForKeyValue(this AzconfigClient client, IKeyValue keyValue, TimeSpan pollInterval, IScheduler scheduler = null, bool requestTracingEnabled = true)
+        public static IObservable<KeyValueChange> Observe(this AzconfigClient client, IKeyValue keyValue, TimeSpan pollInterval, IScheduler scheduler = null, bool requestTracingEnabled = true)
         {
             scheduler = scheduler ?? Scheduler.Default;
-            var options = new QueryKeyValueOptions() { Label = keyValue.Label };
+            RequestOptionsBase options = null;
             if (requestTracingEnabled)
             {
+                options = new RequestOptionsBase();
                 options.AddRequestType(RequestType.Watch);
             }
 
             return Observable
                 .Timer(pollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => client.GetCurrentKeyValue(keyValue, cancellationToken))
+                    .FromAsync((cancellationToken) => client.GetCurrentKeyValue(keyValue, cancellationToken, options))
                     .Delay(pollInterval, scheduler)
                     .Repeat()
                     .Where(kv => kv != keyValue)
@@ -58,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }));
         }
 
-        public static IObservable<IEnumerable<KeyValueChange>> GetObservableCollection(this AzconfigClient client, ObserveKeyValueCollectionOptions options, IEnumerable<IKeyValue> keyValues, bool requestTracingEnabled = true)
+        public static IObservable<IEnumerable<KeyValueChange>> ObserveKeyValueCollection(this AzconfigClient client, ObserveKeyValueCollectionOptions options, IEnumerable<IKeyValue> keyValues, bool requestTracingEnabled = true)
         {
             if (options == null)
             {
@@ -100,7 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Label)}");
             }
 
-            var scheduler = options.Scheduler ?? Scheduler.Default;
+            var scheduler = Scheduler.Default;
             Dictionary<string, string> currentEtags = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
             var queryOptions = new QueryKeyValueCollectionOptions()
             {
@@ -201,18 +190,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return s;
-        }
-
-        private static void SetETag(string ETag)
-        {
-            RequestWithETagOptimizationDelegatingHandler.UseETag = true;
-            RequestWithETagOptimizationDelegatingHandler.ETag = ETag;
-        }
-
-        private static void ClearETag()
-        {
-            RequestWithETagOptimizationDelegatingHandler.UseETag = false;
-            RequestWithETagOptimizationDelegatingHandler.ETag = null;
         }
     }
 }

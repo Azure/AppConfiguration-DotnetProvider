@@ -36,7 +36,7 @@
             {
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
             }
-            catch (Exception ex) when (ex is ArgumentNullException || ex is SecurityException) { }
+            catch (SecurityException) { }
 
             if (!Boolean.TryParse(requestTracingDisabled, out _requestTracingEnabled))
             {
@@ -58,7 +58,7 @@
         {
             LoadAll(RequestType.Startup);
 
-            await ObserveKeyValues().ConfigureAwait(false);
+            ObserveKeyValues();
         }
 
         private void LoadAll(RequestType requestType)
@@ -77,6 +77,11 @@
                         LabelFilter = LabelFilter.Null
                     };
                     
+                    if (_requestTracingEnabled)
+                    {
+                        options.AddRequestType(requestType);
+                    }
+
                     //
                     // Load all key-values with the null label.
                     _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
@@ -164,7 +169,7 @@
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<KeyValueChange> observable = _client.GetObservablesForKeyValue(watchedKv, changeWatcher.PollInterval, Scheduler.Default);
+                IObservable<KeyValueChange> observable = _client.Observe(watchedKv, changeWatcher.PollInterval, Scheduler.Default, _requestTracingEnabled);
 
                 _subscriptions.Add(observable.Subscribe((observedChange) =>
                 {
@@ -189,15 +194,15 @@
 
                 });
 
-                IObservable<IEnumerable<KeyValueChange>> observable = _client.GetObservableCollection(
+                IObservable<IEnumerable<KeyValueChange>> observable = _client.ObserveKeyValueCollection(
                     new ObserveKeyValueCollectionOptions
                     {
                         Prefix = changeWatcher.Key,
                         Label = changeWatcher.Label == LabelFilter.Null ? null : changeWatcher.Label,
-                        PollInterval = changeWatcher.PollInterval,
-                        Scheduler = Scheduler.Default
+                        PollInterval = changeWatcher.PollInterval
                     },
-                    existing);
+                    existing,
+                    _requestTracingEnabled);
 
                 _subscriptions.Add(observable.Subscribe((observedChanges) =>
                 {

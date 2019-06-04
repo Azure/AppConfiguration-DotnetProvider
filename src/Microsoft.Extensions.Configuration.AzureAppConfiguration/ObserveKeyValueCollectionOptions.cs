@@ -21,10 +21,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The interval used to poll for changes.
         /// </summary>
         public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(500);
-
-        /// <summary>
-        /// An optional scheduler which can be used to control the scheduling of callbacks.
-        /// </summary>
-        public IScheduler Scheduler { get; set; } = null;
     }
 }
