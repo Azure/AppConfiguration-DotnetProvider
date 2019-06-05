@@ -235,7 +235,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             //
-            // For retriable exceptions, with no more retries left, skip retry, and ignore the exception.
+            // For retriable exceptions with no more retries left, skip retry and ignore the exception.
             return default(T);
         }
 
