@@ -22,7 +22,7 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
-        private bool _requestTracingEnabled;
+        private readonly bool _requestTracingEnabled;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -38,12 +38,9 @@
             }
             catch (SecurityException) { }
 
-            if (!Boolean.TryParse(requestTracingDisabled, out _requestTracingEnabled))
-            {
-                //
-                // Enable request tracing by default (if no valid environmental variable option is specified).
-                _requestTracingEnabled = true;
-            }
+            //
+            // Enable request tracing by default (if no valid environmental variable option is specified).
+            _requestTracingEnabled = Boolean.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
         }
 
         public void Dispose()

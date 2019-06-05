@@ -14,8 +14,9 @@
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
-    <PackageReference Include="System.Interactive.Async" Version="3.1.1" />
-    <PackageReference Include="System.Reactive.Linq" Version="4.0.0" />
+    <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
+    <PackageReference Include="System.Reactive.Linq" Version="$(SystemReactiveLinqVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.1.1" />
   </ItemGroup>
   
   <PropertyGroup>
@@ -27,6 +28,9 @@
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
     <MicrosoftAzconfigClientVersion>1.0.0-preview-008850001</MicrosoftAzconfigClientVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-008520001-22</MicrosoftAzconfigManagedIdentityConnectorVersion>
+    <SystemInteractiveAsyncVersion>3.1.1</SystemInteractiveAsyncVersion>
+    <SystemReactiveLinqVersion>4.0.0</SystemReactiveLinqVersion>
+    <MicrosoftAspNetCoreHttpExtensionsVersion>2.1.1</MicrosoftAspNetCoreHttpExtensionsVersion>
   </PropertyGroup>
 
   <!-- After the build, we write the .nuspec file to the output directory -->
