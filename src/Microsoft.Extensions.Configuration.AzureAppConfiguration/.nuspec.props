@@ -37,9 +37,9 @@
                  -->
 
                 <!-- Azconfig Client dependencies -->
-                <dependency id="Microsoft.AspNetCore.Http.Extensions" version="2.1.1" exclude="Build,Analyzers" />
-                <dependency id="System.Interactive.Async" version="3.1.1" exclude="Build,Analyzers" />
-                <dependency id="System.Reactive.Linq" version="4.0.0" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.AspNetCore.Http.Extensions" version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" exclude="Build,Analyzers" />
+                <dependency id="System.Interactive.Async" version="$(SystemInteractiveAsyncVersion)" exclude="Build,Analyzers" />
+                <dependency id="System.Reactive.Linq" version="$(SystemReactiveLinqVersion)" exclude="Build,Analyzers" />
 
                 <!-- MSI Connector dependencies -->
                 <dependency id="Microsoft.Azure.Management.ResourceManager" version="2.0.0-preview" exclude="Build,Analyzers" />
