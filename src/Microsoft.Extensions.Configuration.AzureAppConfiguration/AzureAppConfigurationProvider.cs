@@ -62,33 +62,13 @@
                 {
                     //
                     // Load all key-values with the null label.
-                    int attempts = 0;
-                    while (true)
-                    {
-                        try
+                    _client.GetKeyValues(
+                        new QueryKeyValueCollectionOptions()
                         {
-                            _client.GetKeyValues(
-                                new QueryKeyValueCollectionOptions()
-                                {
-                                    KeyFilter = KeyFilter.Any,
-                                    LabelFilter = LabelFilter.Null,
-                                })
-                            .ForEach(kv => { data[kv.Key] = kv; });
-
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            if (++attempts > _client.RetryOptions.MaxRetries
-                                || !IsRetriableException(ex))
-                            {
-                                throw;
-                            }
-
-                            var waitTime = (int)Math.Max(_client.RetryOptions.MaxRetryWaitTime.TotalMilliseconds, 0);
-                            Thread.Sleep(waitTime);
-                        }
-                    }
+                            KeyFilter = KeyFilter.Any,
+                            LabelFilter = LabelFilter.Null,
+                        })
+                    .ForEach(kv => { data[kv.Key] = kv; });
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -112,26 +92,7 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    int attempts = 0;
-                    while (true)
-                    {
-                        try
-                        {
-                            _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            if (++attempts > _client.RetryOptions.MaxRetries
-                                || !IsRetriableException(ex))
-                            {
-                                throw;
-                            }
-
-                            var waitTime = (int)Math.Max(_client.RetryOptions.MaxRetryWaitTime.TotalMilliseconds, 0);
-                            Thread.Sleep(waitTime);
-                        }
-                    }
+                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
@@ -179,29 +140,10 @@
                 else
                 {
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
-                    attempts = 0;
-                    while (true)
-                    {
-                        try
-                        {
-                            watchedKv = await _client.GetKeyValue(watchedKey,
-                                                                    new QueryKeyValueOptions() { Label = watchedLabel },
-                                                                    CancellationToken.None) ??
-                                         new KeyValue(watchedKey) { Label = watchedLabel };
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            if (++attempts > _client.RetryOptions.MaxRetries
-                                || !IsRetriableException(ex))
-                            {
-                                throw;
-                            }
-
-                            var waitTime = (int)Math.Max(_client.RetryOptions.MaxRetryWaitTime.TotalMilliseconds, 0);
-                            Thread.Sleep(waitTime);
-                        }
-                    }
+                    watchedKv = await _client.GetKeyValue(watchedKey,
+                                                            new QueryKeyValueOptions() { Label = watchedLabel },
+                                                            CancellationToken.None) ??
+                                    new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
                 attempts = 0;
@@ -374,11 +316,11 @@
             {
                 return true;
             }
-            else if (ex is AggregateException)
+            else if (ex is AggregateException aggregateException)
             {
                 //
                 // If any of the inner exceptions is retriable.
-                return ((AggregateException)ex).InnerExceptions.Any(innerEx => IsRetriableException(innerEx));
+                return aggregateException.InnerExceptions.Any(innerEx => IsRetriableException(innerEx));
             }
 
             return false;
