@@ -9,6 +9,8 @@ namespace Tests.AzureAppConfiguration
     using System.Threading;
     using Xunit;
     using System.Text;
+    using System.Net.Http.Headers;
+    using System.Linq;
 
     public class Tests
     {
@@ -212,6 +214,62 @@ namespace Tests.AzureAppConfiguration
                 Assert.True(config2["Key3"] == "TestValue3");
                 Assert.True(config2["Key4"] == "TestValue4");
                 Assert.True(config2["TestKey1"] == "TestValue2.1");
+            }
+        }
+
+        [Fact]
+        public void TestCorrelationContextInHeader()
+        {
+            string correlationHeader = null;
+
+            var messageHandler = new CallbackMessageHandler(r => {
+                Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
+                correlationHeader = corrHeader.First();
+
+                var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+                return response;
+            });
+
+            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            {
+                var builder = new ConfigurationBuilder();
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                }.Use("*", null));
+
+                var config = builder.Build();
+
+                Assert.NotNull(correlationHeader);
+                Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
+            }
+        }
+
+        [Fact]
+        public void TestTurnOffRequestTracing()
+        {
+            string correlationHeader = null;
+
+            var messageHandler = new CallbackMessageHandler(r => {
+                Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
+                correlationHeader = corrHeader?.FirstOrDefault();
+
+                var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+                return response;
+            });
+
+            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            {
+                Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
+                var builder = new ConfigurationBuilder();
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                }.Use("*", null));
+
+                var config = builder.Build();
+
+                Assert.Null(correlationHeader);
             }
         }
     }

@@ -5,8 +5,9 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Net.Http;
-    using System.Net.Sockets;
     using System.Reactive.Concurrency;
+    using System.Reactive.Linq;
+    using System.Security;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.AppConfiguration.Azconfig;
@@ -21,6 +22,7 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
+        private readonly bool _requestTracingEnabled;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -29,10 +31,16 @@
             _optional = optional;
             _subscriptions = new List<IDisposable>();
 
+            string requestTracingDisabled = null;
+            try
+            {
+                requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
+            }
+            catch (SecurityException) { }
+
             //
-            // Set retry options
-            _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(2);
-            _client.RetryOptions.MaxRetries = 24;
+            // Enable request tracing by default (if no valid environmental variable option is specified).
+            _requestTracingEnabled = Boolean.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
         }
 
         public void Dispose()
@@ -43,16 +51,16 @@
             }
         }
 
-        public override void Load()
+        public override async void Load()
         {
-            LoadAll();
+            LoadAll(RequestType.Startup);
 
             ObserveKeyValues();
         }
 
-        private void LoadAll()
+        private void LoadAll(RequestType requestType)
         {
-            IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+             IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
@@ -60,15 +68,20 @@
 
                 if (useDefaultQuery)
                 {
+                    var options = new QueryKeyValueCollectionOptions()
+                    {
+                        KeyFilter = KeyFilter.Any,
+                        LabelFilter = LabelFilter.Null
+                    };
+                    
+                    if (_requestTracingEnabled)
+                    {
+                        options.AddRequestType(requestType);
+                    }
+
                     //
                     // Load all key-values with the null label.
-                    _client.GetKeyValues(
-                        new QueryKeyValueCollectionOptions()
-                        {
-                            KeyFilter = KeyFilter.Any,
-                            LabelFilter = LabelFilter.Null,
-                        })
-                    .ForEach(kv => { data[kv.Key] = kv; });
+                    _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -92,7 +105,12 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                    if (_requestTracingEnabled)
+                    {
+                        queryKeyValueCollectionOptions.AddRequestType(requestType);
+                    }
+
+                    _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
@@ -131,7 +149,6 @@
                 IKeyValue watchedKv = null;
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
-                int attempts;
 
                 if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel)
                 {
@@ -139,36 +156,17 @@
                 }
                 else
                 {
+                    var options = new QueryKeyValueOptions() { Label = watchedLabel };
+                    if (_requestTracingEnabled)
+                    {
+                        options.AddRequestType(RequestType.Watch);
+                    }
+
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
-                    watchedKv = await _client.GetKeyValue(watchedKey,
-                                                            new QueryKeyValueOptions() { Label = watchedLabel },
-                                                            CancellationToken.None) ??
-                                    new KeyValue(watchedKey) { Label = watchedLabel };
+                    watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                attempts = 0;
-                IObservable<KeyValueChange> observable;
-                while (true)
-                {
-                    try
-                    {
-                        observable = _client.ObserveKeyValue(watchedKv,
-                                                                                     changeWatcher.PollInterval,
-                                                                                     Scheduler.Default);
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (++attempts > _client.RetryOptions.MaxRetries
-                            || !IsRetriableException(ex))
-                        {
-                            throw;
-                        }
-
-                        var waitTime = (int)Math.Max(_client.RetryOptions.MaxRetryWaitTime.TotalMilliseconds, 0);
-                        Thread.Sleep(waitTime);
-                    }
-                }
+                IObservable<KeyValueChange> observable = _client.Observe(watchedKv, changeWatcher.PollInterval, Scheduler.Default, _requestTracingEnabled);
 
                 _subscriptions.Add(observable.Subscribe((observedChange) =>
                 {
@@ -176,7 +174,7 @@
 
                     if (changeWatcher.ReloadAll)
                     {
-                        LoadAll();
+                        LoadAll(RequestType.Watch);
                     }
                     else
                     {
@@ -193,35 +191,15 @@
 
                 });
 
-                IObservable<IEnumerable<KeyValueChange>> observable;
-                int attempts = 0;
-                while (true)
-                {
-                    try
+                IObservable<IEnumerable<KeyValueChange>> observable = _client.ObserveKeyValueCollection(
+                    new ObserveKeyValueCollectionOptions
                     {
-                        observable = _client.ObserveKeyValueCollection(
-                            new ObserveKeyValueCollectionOptions
-                            {
-                                Prefix = changeWatcher.Key,
-                                Label = changeWatcher.Label == LabelFilter.Null ? null : changeWatcher.Label,
-                                PollInterval = changeWatcher.PollInterval,
-                                Scheduler = Scheduler.Default
-                            },
-                            existing);
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (++attempts > _client.RetryOptions.MaxRetries
-                            || !IsRetriableException(ex))
-                        {
-                            throw;
-                        }
-
-                        var waitTime = (int)Math.Max(_client.RetryOptions.MaxRetryWaitTime.TotalMilliseconds, 0);
-                        Thread.Sleep(waitTime);
-                    }
-                }
+                        Prefix = changeWatcher.Key,
+                        Label = changeWatcher.Label == LabelFilter.Null ? null : changeWatcher.Label,
+                        PollInterval = changeWatcher.PollInterval
+                    },
+                    existing,
+                    _requestTracingEnabled);
 
                 _subscriptions.Add(observable.Subscribe((observedChanges) =>
                 {
@@ -267,7 +245,7 @@
             // Notify that the configuration has been updated
             OnReload();
         }
-
+        
         private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(IKeyValue keyValue)
         {
             List<KeyValuePair<string, string>> keyValues = null;
@@ -284,9 +262,7 @@
                 }
             }
 
-            return keyValues != null ?
-                keyValues :
-                Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
+            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
         }
 
         private void ProcessChanges(IEnumerable<KeyValueChange> changes)
@@ -302,28 +278,6 @@
                     _settings[change.Key] = change.Current;
                 }
             }
-        }
-
-        private bool IsRetriableException(Exception ex)
-        {
-            //
-            // List of retriable exceptions.
-            if (ex is ArgumentException
-                || ex is HttpRequestException
-                || ex is SocketException
-                || ex is TimeoutException
-                || ex is AzconfigException)
-            {
-                return true;
-            }
-            else if (ex is AggregateException aggregateException)
-            {
-                //
-                // If any of the inner exceptions is retriable.
-                return aggregateException.InnerExceptions.Any(innerEx => IsRetriableException(innerEx));
-            }
-
-            return false;
         }
     }
 }
