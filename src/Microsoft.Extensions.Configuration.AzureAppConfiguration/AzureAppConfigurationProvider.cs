@@ -41,6 +41,11 @@
             //
             // Enable request tracing by default (if no valid environmental variable option is specified).
             _requestTracingEnabled = Boolean.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
+
+            //
+            // Initialize retry options.
+            _client.RetryOptions.MaxRetries = 24;
+            _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(2);
         }
 
         public void Dispose()

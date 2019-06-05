@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.AppConfiguration.Azconfig;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -22,7 +27,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(pollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => client.GetCurrentKeyValue(keyValue, options, cancellationToken))
+                    .FromAsync((cancellationToken) => {
+                        return SafeInvoke<Task<IKeyValue>>(
+                            client,
+                            "GetCurrentKeyValue",
+                            new object[] { keyValue, options, cancellationToken },
+                            client.RetryOptions.MaxRetries,
+                            client.RetryOptions.MaxRetryWaitTime);
+                    })
                     .Delay(pollInterval, scheduler)
                     .Repeat()
                     .Where(kv => kv != keyValue)
@@ -102,7 +114,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(options.PollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => client.GetKeyValues(queryOptions)
+                    .FromAsync((cancellationToken) =>
+                        SafeInvoke<IAsyncEnumerable<IKeyValue>>(
+                            client,
+                            "GetKeyValues",
+                            new object[] { queryOptions },
+                            client.RetryOptions.MaxRetries,
+                            client.RetryOptions.MaxRetryWaitTime)
                         .ToEnumerableAsync(cancellationToken))
                         .Delay(options.PollInterval, scheduler)
                         .Repeat()
@@ -186,6 +204,62 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return s;
+        }
+
+        private static T SafeInvoke<T>(Object obj, string methodName, object[] args, int maxRetries, TimeSpan retryAfter)
+        {
+            int attempts = 0;
+            while (true)
+            {
+                try
+                {
+                    Type type = obj.GetType();
+                    MethodInfo method = type.GetMethod(methodName);
+                    return (T)method.Invoke(obj, args);
+                }
+                catch (Exception ex)
+                {
+                    if (!IsRetriableException(ex))
+                    {
+                        throw;
+                    }
+                    else if (++attempts <= maxRetries)
+                    {
+                        Thread.Sleep(retryAfter);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            //
+            // For retriable exceptions, with no more retries left, skip retry, and ignore the exception.
+            return default(T);
+        }
+
+        private static bool IsRetriableException(Exception ex)
+        {
+            //
+            // List of retriable exceptions.
+            if (ex is ArgumentException
+                || ex is HttpRequestException
+                || ex is SocketException
+                || ex is TimeoutException
+                || ex is AzconfigException)
+            {
+                return true;
+            }
+
+            //
+            // If aggregate exception, check list of inner exceptions.
+            if (ex is AggregateException aggregateEx)
+            {
+                return aggregateEx.InnerExceptions.Any(innerEx => IsRetriableException(innerEx));
+            }
+
+            return false;
         }
     }
 }
