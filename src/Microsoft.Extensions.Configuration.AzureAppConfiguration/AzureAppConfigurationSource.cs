@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
 
-                AzconfigClient client = options.Client ?? new AzconfigClient(options.ConnectionString, new RequestWithETagOptimizationDelegatingHandler());
+                AzconfigClient client = options.Client ?? new AzconfigClient(options.ConnectionString);
 
                 provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
