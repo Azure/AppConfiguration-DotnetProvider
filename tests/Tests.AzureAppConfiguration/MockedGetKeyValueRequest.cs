@@ -91,6 +91,6 @@ namespace Tests.AzureAppConfiguration
             return Task.FromResult(response);
         }
 
-        public void Dispose() { }
+        //public void Dispose() { }
     }
 }

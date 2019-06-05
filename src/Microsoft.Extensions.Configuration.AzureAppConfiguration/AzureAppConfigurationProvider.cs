@@ -6,6 +6,8 @@
     using System.Linq;
     using System.Net.Http;
     using System.Reactive.Concurrency;
+    using System.Reactive.Linq;
+    using System.Security;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.AppConfiguration.Azconfig;
@@ -20,6 +22,7 @@
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
+        private readonly bool _requestTracingEnabled;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -27,6 +30,17 @@
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
             _subscriptions = new List<IDisposable>();
+
+            string requestTracingDisabled = null;
+            try
+            {
+                requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
+            }
+            catch (SecurityException) { }
+
+            //
+            // Enable request tracing by default (if no valid environmental variable option is specified).
+            _requestTracingEnabled = Boolean.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
         }
 
         public void Dispose()
@@ -37,16 +51,16 @@
             }
         }
 
-        public override void Load()
+        public override async void Load()
         {
-            LoadAll();
+            LoadAll(RequestType.Startup);
 
             ObserveKeyValues();
         }
 
-        private void LoadAll()
+        private void LoadAll(RequestType requestType)
         {
-            IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+             IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
@@ -54,15 +68,20 @@
 
                 if (useDefaultQuery)
                 {
+                    var options = new QueryKeyValueCollectionOptions()
+                    {
+                        KeyFilter = KeyFilter.Any,
+                        LabelFilter = LabelFilter.Null
+                    };
+                    
+                    if (_requestTracingEnabled)
+                    {
+                        options.AddRequestType(requestType);
+                    }
+
                     //
                     // Load all key-values with the null label.
-                    _client.GetKeyValues(
-                        new QueryKeyValueCollectionOptions()
-                        {
-                            KeyFilter = KeyFilter.Any,
-                            LabelFilter = LabelFilter.Null,
-                        })
-                    .ForEach(kv => { data[kv.Key] = kv; });
+                    _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -85,6 +104,11 @@
                         LabelFilter = loadOption.LabelFilter,
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
+
+                    if (_requestTracingEnabled)
+                    {
+                        queryKeyValueCollectionOptions.AddRequestType(requestType);
+                    }
 
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
@@ -132,16 +156,17 @@
                 }
                 else
                 {
+                    var options = new QueryKeyValueOptions() { Label = watchedLabel };
+                    if (_requestTracingEnabled)
+                    {
+                        options.AddRequestType(RequestType.Watch);
+                    }
+
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
-                    watchedKv = await _client.GetKeyValue(watchedKey,
-                                                            new QueryKeyValueOptions() { Label = watchedLabel },
-                                                            CancellationToken.None) ??
-                                 new KeyValue(watchedKey) { Label = watchedLabel };
+                    watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 }
 
-                IObservable<KeyValueChange> observable = _client.ObserveKeyValue(watchedKv,
-                                                                             changeWatcher.PollInterval,
-                                                                             Scheduler.Default);
+                IObservable<KeyValueChange> observable = _client.Observe(watchedKv, changeWatcher.PollInterval, Scheduler.Default, _requestTracingEnabled);
 
                 _subscriptions.Add(observable.Subscribe((observedChange) =>
                 {
@@ -149,7 +174,7 @@
 
                     if (changeWatcher.ReloadAll)
                     {
-                        LoadAll();
+                        LoadAll(RequestType.Watch);
                     }
                     else
                     {
@@ -171,10 +196,10 @@
                     {
                         Prefix = changeWatcher.Key,
                         Label = changeWatcher.Label == LabelFilter.Null ? null : changeWatcher.Label,
-                        PollInterval = changeWatcher.PollInterval,
-                        Scheduler = Scheduler.Default
+                        PollInterval = changeWatcher.PollInterval
                     },
-                    existing);
+                    existing,
+                    _requestTracingEnabled);
 
                 _subscriptions.Add(observable.Subscribe((observedChanges) =>
                 {
@@ -220,7 +245,7 @@
             // Notify that the configuration has been updated
             OnReload();
         }
-
+        
         private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(IKeyValue keyValue)
         {
             List<KeyValuePair<string, string>> keyValues = null;
@@ -237,9 +262,7 @@
                 }
             }
 
-            return keyValues != null ?
-                keyValues :
-                Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
+            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
         }
 
         private void ProcessChanges(IEnumerable<KeyValueChange> changes)
