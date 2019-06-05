@@ -31,15 +31,13 @@
             <group targetFramework=".NETStandard2.0">
                 <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
                 <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.AspNetCore.Http.Extensions" version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" exclude="Build,Analyzers" />
+                <dependency id="System.Interactive.Async" version="$(SystemInteractiveAsyncVersion)" exclude="Build,Analyzers" />
+                <dependency id="System.Reactive.Linq" version="$(SystemReactiveLinqVersion)" exclude="Build,Analyzers" />
 
                 <!-- 
                     The dependencies below are brought in by bundled binaries.
                  -->
-
-                <!-- Azconfig Client dependencies -->
-                <dependency id="Microsoft.AspNetCore.Http.Extensions" version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" exclude="Build,Analyzers" />
-                <dependency id="System.Interactive.Async" version="$(SystemInteractiveAsyncVersion)" exclude="Build,Analyzers" />
-                <dependency id="System.Reactive.Linq" version="$(SystemReactiveLinqVersion)" exclude="Build,Analyzers" />
 
                 <!-- MSI Connector dependencies -->
                 <dependency id="Microsoft.Azure.Management.ResourceManager" version="2.0.0-preview" exclude="Build,Analyzers" />
