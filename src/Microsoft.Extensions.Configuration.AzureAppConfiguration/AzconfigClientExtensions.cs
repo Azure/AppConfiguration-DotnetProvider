@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 .Timer(pollInterval, scheduler)
                 .SelectMany(_ => Observable
                     .FromAsync(async (cancellationToken) => {
-                        (bool success, IKeyValue kv) = await SafeInvokeAsync(() => client.GetCurrentKeyValue(keyValue, options, cancellationToken));
+                        (bool success, IKeyValue kv) = await SafeInvoke(() => client.GetCurrentKeyValue(keyValue, options, cancellationToken));
                         return success ? kv : keyValue;
                     })
                     .Delay(pollInterval, scheduler)
@@ -108,17 +108,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(options.PollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync(async (cancellationToken) => await (SafeInvoke(() => client.GetKeyValues(queryOptions))).Item2.ToEnumerableAsync(cancellationToken))
+                    .FromAsync(async (cancellationToken) => {
+                            (bool success, IEnumerable<IKeyValue> kvs) = await SafeInvoke(() => client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
+                            return success ? kvs : null;
+                        })
                         .Delay(options.PollInterval, scheduler)
                         .Repeat()
                         .Where((kvs) =>
                         {
-                            bool changed = false;
-                            if (kvs == default(IEnumerable<IKeyValue>))
+                            if (kvs == null)
                             {
-                                return changed;
+                                return false;
                             }
 
+                            bool changed = false;
                             var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
                             foreach (IKeyValue kv in kvs)
                             {
@@ -151,7 +154,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 queryOptions.AddRequestType(RequestType.Watch);
                             }
 
-                            (bool success, IEnumerable<IKeyValue> kvs) = await SafeInvokeAsync(async () => await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
+                            (bool success, IEnumerable<IKeyValue> kvs) = await SafeInvoke(async () => await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
 
                             var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
                             currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
@@ -201,25 +204,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return s;
         }
 
-        private static async Task<(bool, T)> SafeInvokeAsync<T>(Func<Task<T>> func)
+        private static async Task<(bool, T)> SafeInvoke<T>(Func<Task<T>> func)
         {
             try
             {
                 T result = await func();
-                return (true, result);
-            }
-            catch (Exception ex) when (IsIgnorableException(ex))
-            {
-            }
-
-            return (false, default(T));
-        }
-
-        private static (bool, T) SafeInvoke<T>(Func<T> func)
-        {
-            try
-            {
-                T result = func();
                 return (true, result);
             }
             catch (Exception ex) when (IsIgnorableException(ex))
