@@ -23,6 +23,8 @@
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
+        private const int MaxRetries = 12;
+        private const int RetryWaitMinutes = 1;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -44,8 +46,8 @@
 
             //
             // Initialize retry options.
-            _client.RetryOptions.MaxRetries = 24;
-            _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(2);
+            _client.RetryOptions.MaxRetries = MaxRetries;
+            _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(RetryWaitMinutes);
         }
 
         public void Dispose()
