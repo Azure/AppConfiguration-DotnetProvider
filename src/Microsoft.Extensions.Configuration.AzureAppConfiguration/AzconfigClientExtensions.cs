@@ -108,16 +108,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(options.PollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync(async (cancellationToken) => {
-                            (bool success, IAsyncEnumerable<IKeyValue> keyValue) = SafeInvoke(() => client.GetKeyValues(queryOptions));
-                            return success ? await keyValue.ToEnumerableAsync(cancellationToken) : null;
-                        })
+                    .FromAsync(async (cancellationToken) => await (SafeInvoke(() => client.GetKeyValues(queryOptions))).Item2.ToEnumerableAsync(cancellationToken))
                         .Delay(options.PollInterval, scheduler)
                         .Repeat()
                         .Where((kvs) =>
                         {
                             bool changed = false;
-                            if (kvs == null)
+                            if (kvs == default(IEnumerable<IKeyValue>))
                             {
                                 return changed;
                             }
