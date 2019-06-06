@@ -155,13 +155,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
 
                             (bool success, IEnumerable<IKeyValue> kvs) = await SafeInvoke(async () => await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
-
-                            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
-                            currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
                             var changes = new List<KeyValueChange>();
 
                             if (success)
                             {
+                                var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
+                                currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
                                 foreach (IKeyValue kv in kvs)
                                 {
                                     if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
