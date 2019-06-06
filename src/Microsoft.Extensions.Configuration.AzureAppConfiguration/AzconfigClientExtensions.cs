@@ -27,14 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(pollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => {
-                        return SafeInvoke<Task<IKeyValue>>(
-                            client,
-                            "GetCurrentKeyValue",
-                            new object[] { keyValue, options, cancellationToken },
-                            client.RetryOptions.MaxRetries,
-                            client.RetryOptions.MaxRetryWaitTime);
-                    })
+                    .FromAsync((cancellationToken) => SafeInvoke(async () => await client.GetCurrentKeyValue(keyValue, options, cancellationToken)))
                     .Delay(pollInterval, scheduler)
                     .Repeat()
                     .Where(kv => kv != keyValue)
@@ -114,13 +107,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(options.PollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) =>
-                        SafeInvoke<IAsyncEnumerable<IKeyValue>>(
-                            client,
-                            "GetKeyValues",
-                            new object[] { queryOptions },
-                            client.RetryOptions.MaxRetries,
-                            client.RetryOptions.MaxRetryWaitTime)
+                    .FromAsync((cancellationToken) => SafeInvoke(() => client.GetKeyValues(queryOptions))
                         .ToEnumerableAsync(cancellationToken))
                         .Delay(options.PollInterval, scheduler)
                         .Repeat()
@@ -159,7 +146,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 queryOptions.AddRequestType(RequestType.Watch);
                             }
 
-                            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken);
+                            IEnumerable<IKeyValue> kvs = await SafeInvoke(async () => await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
 
                             var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
                             currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
@@ -206,40 +193,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return s;
         }
 
-        private static T SafeInvoke<T>(Object obj, string methodName, object[] args, int maxRetries, TimeSpan retryAfter)
+        private static T SafeInvoke<T>(Func<T> func)
         {
-            int attempts = 0;
-            while (true)
+            try
             {
-                try
+                return func();
+            }
+            catch (Exception ex)
+            {
+                if (!IgnorableException(ex))
                 {
-                    Type type = obj.GetType();
-                    MethodInfo method = type.GetMethod(methodName);
-                    return (T)method.Invoke(obj, args);
-                }
-                catch (Exception ex)
-                {
-                    if (!IsRetriableException(ex))
-                    {
-                        throw;
-                    }
-                    else if (++attempts <= maxRetries)
-                    {
-                        Thread.Sleep(retryAfter);
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    throw; 
                 }
             }
 
-            //
-            // For retriable exceptions with no more retries left, skip retry and ignore the exception.
             return default(T);
         }
 
-        private static bool IsRetriableException(Exception ex)
+        private static bool IgnorableException(Exception ex)
         {
             //
             // List of retriable exceptions.
@@ -256,7 +227,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // If aggregate exception, check list of inner exceptions.
             if (ex is AggregateException aggregateEx)
             {
-                return aggregateEx.InnerExceptions.Any(innerEx => IsRetriableException(innerEx));
+                return aggregateEx.InnerExceptions.Any(innerEx => IgnorableException(innerEx));
             }
 
             return false;
