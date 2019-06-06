@@ -23,6 +23,7 @@
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
+        private readonly HostType _hostType;
         private const int MaxRetries = 12;
         private const int RetryWaitMinutes = 1;
 
@@ -32,6 +33,11 @@
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
             _subscriptions = new List<IDisposable>();
+            _hostType =  Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
+                ? HostType.AzureFunction
+                : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
+                    ? HostType.AzureWebApp
+                    : HostType.Default;
 
             string requestTracingDisabled = null;
             try
@@ -84,6 +90,7 @@
                     if (_requestTracingEnabled)
                     {
                         options.AddRequestType(requestType);
+                        options.AddHostType(_hostType);
                     }
 
                     //
@@ -115,6 +122,7 @@
                     if (_requestTracingEnabled)
                     {
                         queryKeyValueCollectionOptions.AddRequestType(requestType);
+                        queryKeyValueCollectionOptions.AddHostType(_hostType);
                     }
 
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
@@ -167,6 +175,7 @@
                     if (_requestTracingEnabled)
                     {
                         options.AddRequestType(RequestType.Watch);
+                        options.AddHostType(_hostType);
                     }
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.

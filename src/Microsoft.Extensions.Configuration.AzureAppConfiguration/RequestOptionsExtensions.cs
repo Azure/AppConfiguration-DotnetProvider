@@ -13,5 +13,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             return requestOptions;
         }
+
+        public static IRequestOptions AddHostType(this IRequestOptions requestOptions, HostType hostType)
+        {
+            string hostTypeValue = Enum.GetName(typeof(HostType), hostType);
+            requestOptions.CorrelationContext.Add(new KeyValuePair<string, string>(RequestTracingConstants.HostTypeKey, hostTypeValue));
+
+            return requestOptions;
+        }
     }
 }
