@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.AppConfiguration.Azconfig;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -22,7 +25,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(pollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => client.GetCurrentKeyValue(keyValue, options, cancellationToken))
+                    .FromAsync(async (cancellationToken) => {
+                        (bool success, IKeyValue kv) = await SafeInvoke(() => client.GetCurrentKeyValue(keyValue, options, cancellationToken));
+                        return success ? kv : keyValue;
+                    })
                     .Delay(pollInterval, scheduler)
                     .Repeat()
                     .Where(kv => kv != keyValue)
@@ -102,12 +108,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return Observable
                 .Timer(options.PollInterval, scheduler)
                 .SelectMany(_ => Observable
-                    .FromAsync((cancellationToken) => client.GetKeyValues(queryOptions)
-                        .ToEnumerableAsync(cancellationToken))
+                    .FromAsync(async (cancellationToken) => {
+                            (bool success, IEnumerable<IKeyValue> kvs) = await SafeInvoke(() => client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
+                            return success ? kvs : null;
+                        })
                         .Delay(options.PollInterval, scheduler)
                         .Repeat()
-                        .Where(kvs =>
+                        .Where((kvs) =>
                         {
+                            if (kvs == null)
+                            {
+                                return false;
+                            }
+
                             bool changed = false;
                             var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
                             foreach (IKeyValue kv in kvs)
@@ -141,37 +154,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 queryOptions.AddRequestType(RequestType.Watch);
                             }
 
-                            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken);
-
-                            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
-                            currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
+                            (bool success, IEnumerable<IKeyValue> kvs) = await SafeInvoke(async () => await client.GetKeyValues(queryOptions).ToEnumerableAsync(cancellationToken));
                             var changes = new List<KeyValueChange>();
 
-                            foreach (IKeyValue kv in kvs)
+                            if (success)
                             {
-                                if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                                var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
+                                currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
+                                foreach (IKeyValue kv in kvs)
+                                {
+                                    if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                                    {
+                                        changes.Add(new KeyValueChange()
+                                        {
+                                            ChangeType = KeyValueChangeType.Modified,
+                                            Key = kv.Key,
+                                            Label = NormalizeNull(options.Label),
+                                            Current = kv
+                                        });
+                                    }
+
+                                    etags.Remove(kv.Key);
+                                }
+
+                                foreach (var kvp in etags)
                                 {
                                     changes.Add(new KeyValueChange()
                                     {
-                                        ChangeType = KeyValueChangeType.Modified,
-                                        Key = kv.Key,
+                                        ChangeType = KeyValueChangeType.Deleted,
+                                        Key = kvp.Key,
                                         Label = NormalizeNull(options.Label),
-                                        Current = kv
+                                        Current = null
                                     });
                                 }
-
-                                etags.Remove(kv.Key);
-                            }
-
-                            foreach (var kvp in etags)
-                            {
-                                changes.Add(new KeyValueChange()
-                                {
-                                    ChangeType = KeyValueChangeType.Deleted,
-                                    Key = kvp.Key,
-                                    Label = NormalizeNull(options.Label),
-                                    Current = null
-                                });
                             }
 
                             return changes;
@@ -186,6 +201,43 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return s;
+        }
+
+        private static async Task<(bool, T)> SafeInvoke<T>(Func<Task<T>> func)
+        {
+            try
+            {
+                T result = await func();
+                return (true, result);
+            }
+            catch (Exception ex) when (IsIgnorableException(ex))
+            {
+            }
+
+            return (false, default(T));
+        }
+
+        private static bool IsIgnorableException(Exception ex)
+        {
+            //
+            // List of retriable exceptions.
+            if (ex is ArgumentException
+                || ex is HttpRequestException
+                || ex is SocketException
+                || ex is TimeoutException
+                || ex is AzconfigException)
+            {
+                return true;
+            }
+
+            //
+            // If aggregate exception, check list of inner exceptions.
+            if (ex is AggregateException aggregateEx)
+            {
+                return aggregateEx.InnerExceptions.Any(innerEx => IsIgnorableException(innerEx));
+            }
+
+            return false;
         }
     }
 }
