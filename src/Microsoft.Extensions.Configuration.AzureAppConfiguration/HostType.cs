@@ -4,8 +4,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         None,
 
-        Other,
-
         AzureWebApp,
 
         AzureFunction

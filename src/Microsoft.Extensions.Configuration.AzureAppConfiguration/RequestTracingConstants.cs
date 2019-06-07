@@ -10,6 +10,6 @@
 
         public const string RequestTypeKey = "RequestType";
 
-        public const string HostTypeKey = "HostType";
+        public const string HostTypeKey = "Host";
     }
 }

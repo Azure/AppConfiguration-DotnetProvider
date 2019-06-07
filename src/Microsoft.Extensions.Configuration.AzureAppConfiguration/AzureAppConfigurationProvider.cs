@@ -23,7 +23,8 @@
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
-        private readonly HostType _hostType;
+        private HostType _hostType;
+        private RequestType _requestType;
         private const int MaxRetries = 12;
         private const int RetryWaitMinutes = 1;
 
@@ -42,7 +43,7 @@
                     ? HostType.AzureFunction
                     : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
                         ? HostType.AzureWebApp
-                        : HostType.Other;
+                        : HostType.None;
             }
             catch (SecurityException) { }
 
@@ -66,12 +67,12 @@
 
         public override async void Load()
         {
-            LoadAll(RequestType.Startup, _hostType);
-
+            _requestType = RequestType.Startup;
+            LoadAll();
             ObserveKeyValues();
         }
 
-        private void LoadAll(RequestType requestType, HostType hostType = HostType.None)
+        private void LoadAll()
         {
              IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -87,14 +88,7 @@
                         LabelFilter = LabelFilter.Null
                     };
                     
-                    if (_requestTracingEnabled)
-                    {
-                        options.AddRequestType(requestType);
-                        if (hostType != HostType.None)
-                        {
-                            options.AddHostType(hostType);
-                        }
-                    }
+                    AddRequestTracingOptions(options);
 
                     //
                     // Load all key-values with the null label.
@@ -122,12 +116,7 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    if (_requestTracingEnabled)
-                    {
-                        queryKeyValueCollectionOptions.AddRequestType(requestType);
-                        queryKeyValueCollectionOptions.AddHostType(_hostType);
-                    }
-
+                    AddRequestTracingOptions(queryKeyValueCollectionOptions);
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
@@ -175,10 +164,8 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    if (_requestTracingEnabled)
-                    {
-                        options.AddRequestType(RequestType.Watch);
-                    }
+                    _requestType = RequestType.Watch;
+                    AddRequestTracingOptions(options);
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
@@ -192,7 +179,8 @@
 
                     if (changeWatcher.ReloadAll)
                     {
-                        LoadAll(RequestType.Watch);
+                        _requestType = RequestType.Watch;
+                        LoadAll();
                     }
                     else
                     {
@@ -294,6 +282,21 @@
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
                     _settings[change.Key] = change.Current;
+                }
+            }
+        }
+
+        private void AddRequestTracingOptions(IRequestOptions options)
+        {
+            if (_requestTracingEnabled)
+            {
+                options.AddRequestType(_requestType);
+                if (_hostType != HostType.None)
+                {
+                    //
+                    // Add Host Type and set it to None to prevent it from being added again.
+                    options.AddHostType(_hostType);
+                    _hostType = HostType.None;
                 }
             }
         }
