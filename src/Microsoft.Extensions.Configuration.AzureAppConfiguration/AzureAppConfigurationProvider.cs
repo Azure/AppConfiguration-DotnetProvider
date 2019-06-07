@@ -42,7 +42,7 @@
                     ? HostType.AzureFunction
                     : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
                         ? HostType.AzureWebApp
-                        : HostType.Default;
+                        : HostType.Other;
             }
             catch (SecurityException) { }
 
@@ -66,12 +66,12 @@
 
         public override async void Load()
         {
-            LoadAll(RequestType.Startup);
+            LoadAll(RequestType.Startup, _hostType);
 
             ObserveKeyValues();
         }
 
-        private void LoadAll(RequestType requestType)
+        private void LoadAll(RequestType requestType, HostType hostType = HostType.None)
         {
              IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -90,7 +90,10 @@
                     if (_requestTracingEnabled)
                     {
                         options.AddRequestType(requestType);
-                        options.AddHostType(_hostType);
+                        if (hostType != HostType.None)
+                        {
+                            options.AddHostType(hostType);
+                        }
                     }
 
                     //
@@ -175,7 +178,6 @@
                     if (_requestTracingEnabled)
                     {
                         options.AddRequestType(RequestType.Watch);
-                        options.AddHostType(_hostType);
                     }
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
