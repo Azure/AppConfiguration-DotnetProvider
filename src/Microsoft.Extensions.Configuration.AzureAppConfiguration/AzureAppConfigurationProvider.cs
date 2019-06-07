@@ -17,12 +17,17 @@
 
     class AzureAppConfigurationProvider : ConfigurationProvider, IDisposable
     {
-        private AzureAppConfigurationOptions _options;
+        private bool _initialized = false;
         private bool _optional;
+
+        private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
+
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
+        private readonly HostType _hostType;
+
         private const int MaxRetries = 12;
         private const int RetryWaitMinutes = 1;
 
@@ -37,6 +42,11 @@
             try
             {
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
+                _hostType =  Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
+                    ? HostType.AzureFunction
+                    : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
+                        ? HostType.AzureWebApp
+                        : HostType.None;
             }
             catch (SecurityException) { }
 
@@ -60,12 +70,16 @@
 
         public override async void Load()
         {
-            LoadAll(RequestType.Startup);
+            LoadAll();
+
+            //
+            // Mark all settings have loaded at startup.
+            _initialized = true;
 
             ObserveKeyValues();
         }
 
-        private void LoadAll(RequestType requestType)
+        private void LoadAll()
         {
              IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -81,10 +95,7 @@
                         LabelFilter = LabelFilter.Null
                     };
                     
-                    if (_requestTracingEnabled)
-                    {
-                        options.AddRequestType(requestType);
-                    }
+                    ConfigureRequestTracingOptions(options);
 
                     //
                     // Load all key-values with the null label.
@@ -112,11 +123,7 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    if (_requestTracingEnabled)
-                    {
-                        queryKeyValueCollectionOptions.AddRequestType(requestType);
-                    }
-
+                    ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
@@ -164,10 +171,7 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    if (_requestTracingEnabled)
-                    {
-                        options.AddRequestType(RequestType.Watch);
-                    }
+                    ConfigureRequestTracingOptions(options);
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
@@ -181,7 +185,7 @@
 
                     if (changeWatcher.ReloadAll)
                     {
-                        LoadAll(RequestType.Watch);
+                        LoadAll();
                     }
                     else
                     {
@@ -283,6 +287,18 @@
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
                     _settings[change.Key] = change.Current;
+                }
+            }
+        }
+
+        private void ConfigureRequestTracingOptions(IRequestOptions options)
+        {
+            if (_requestTracingEnabled)
+            {
+                options.AddRequestType(_initialized ? RequestType.Watch : RequestType.Startup);
+                if (_hostType != HostType.None)
+                {
+                    options.AddHostType(_hostType);
                 }
             }
         }

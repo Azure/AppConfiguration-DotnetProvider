@@ -272,5 +272,32 @@ namespace Tests.AzureAppConfiguration
                 Assert.Null(correlationHeader);
             }
         }
+
+        [Fact]
+        public void TestHostTypeTracing()
+        {
+            string correlationContext = null;
+            var messageHandler = new CallbackMessageHandler(r => {
+                Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
+                correlationContext = corrHeader.First();
+
+                return new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+            });
+
+            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            {
+                Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
+                var builder = new ConfigurationBuilder();
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                }.Use("*", null));
+
+                var config = builder.Build();
+
+                Assert.NotNull(correlationContext);
+                Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
+            }
+        }
     }
 }
