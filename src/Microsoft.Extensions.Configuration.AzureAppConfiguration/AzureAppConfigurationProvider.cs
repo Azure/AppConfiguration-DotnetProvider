@@ -23,7 +23,7 @@
         private List<IDisposable> _subscriptions;
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
-        private HostType _hostType;
+        private readonly HostType _hostType;
         private RequestType _requestType;
         private const int MaxRetries = 12;
         private const int RetryWaitMinutes = 1;
@@ -291,13 +291,7 @@
             if (_requestTracingEnabled)
             {
                 options.AddRequestType(_requestType);
-                if (_hostType != HostType.None)
-                {
-                    //
-                    // Add Host Type and set it to None to prevent it from being added again.
-                    options.AddHostType(_hostType);
-                    _hostType = HostType.None;
-                }
+                options.AddHostType(_hostType);
             }
         }
     }
