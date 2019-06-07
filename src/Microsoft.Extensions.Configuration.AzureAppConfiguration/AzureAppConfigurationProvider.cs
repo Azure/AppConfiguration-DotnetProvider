@@ -296,7 +296,10 @@
             if (_requestTracingEnabled)
             {
                 options.AddRequestType(_initialized ? RequestType.Watch : RequestType.Startup);
-                options.AddHostType(_hostType);
+                if (_hostType != HostType.None)
+                {
+                    options.AddHostType(_hostType);
+                }
             }
         }
     }
