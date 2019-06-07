@@ -17,16 +17,19 @@
 
     class AzureAppConfigurationProvider : ConfigurationProvider, IDisposable
     {
-        private AzureAppConfigurationOptions _options;
+        private bool _initialized = false;
+        private const int MaxRetries = 12;
+        private const int RetryWaitMinutes = 1;
         private bool _optional;
+
+        private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, IKeyValue> _settings;
         private List<IDisposable> _subscriptions;
+
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
         private readonly HostType _hostType;
-        private RequestType _requestType;
-        private const int MaxRetries = 12;
-        private const int RetryWaitMinutes = 1;
+        
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -67,8 +70,12 @@
 
         public override async void Load()
         {
-            _requestType = RequestType.Startup;
             LoadAll();
+
+            //
+            // Mark all settings have loaded at startup.
+            _initialized = true;
+
             ObserveKeyValues();
         }
 
@@ -164,7 +171,6 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    _requestType = RequestType.Watch;
                     AddRequestTracingOptions(options);
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
@@ -179,7 +185,6 @@
 
                     if (changeWatcher.ReloadAll)
                     {
-                        _requestType = RequestType.Watch;
                         LoadAll();
                     }
                     else
@@ -290,7 +295,7 @@
         {
             if (_requestTracingEnabled)
             {
-                options.AddRequestType(_requestType);
+                options.AddRequestType(_initialized ? RequestType.Watch : RequestType.Startup);
                 options.AddHostType(_hostType);
             }
         }
