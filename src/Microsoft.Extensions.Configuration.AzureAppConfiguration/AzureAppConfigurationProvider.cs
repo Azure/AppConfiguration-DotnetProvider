@@ -95,7 +95,7 @@
                         LabelFilter = LabelFilter.Null
                     };
                     
-                    AddRequestTracingOptions(options);
+                    ConfigureRequestTracingOptions(options);
 
                     //
                     // Load all key-values with the null label.
@@ -123,7 +123,7 @@
                         PreferredDateTime = loadOption.PreferredDateTime
                     };
 
-                    AddRequestTracingOptions(queryKeyValueCollectionOptions);
+                    ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
                 }
             }
@@ -171,7 +171,7 @@
                 else
                 {
                     var options = new QueryKeyValueOptions() { Label = watchedLabel };
-                    AddRequestTracingOptions(options);
+                    ConfigureRequestTracingOptions(options);
 
                     // Send out another request to retrieved observed kv, since it may not be loaded or with a different label.
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
@@ -291,7 +291,7 @@
             }
         }
 
-        private void AddRequestTracingOptions(IRequestOptions options)
+        private void ConfigureRequestTracingOptions(IRequestOptions options)
         {
             if (_requestTracingEnabled)
             {
