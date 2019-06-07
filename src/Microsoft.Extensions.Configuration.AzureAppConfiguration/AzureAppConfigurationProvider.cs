@@ -18,8 +18,6 @@
     class AzureAppConfigurationProvider : ConfigurationProvider, IDisposable
     {
         private bool _initialized = false;
-        private const int MaxRetries = 12;
-        private const int RetryWaitMinutes = 1;
         private bool _optional;
 
         private AzureAppConfigurationOptions _options;
@@ -29,7 +27,9 @@
         private readonly AzconfigClient _client;
         private readonly bool _requestTracingEnabled;
         private readonly HostType _hostType;
-        
+
+        private const int MaxRetries = 12;
+        private const int RetryWaitMinutes = 1;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
