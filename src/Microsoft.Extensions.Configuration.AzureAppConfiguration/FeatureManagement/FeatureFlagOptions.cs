@@ -2,6 +2,9 @@
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
+    /// <summary>
+    /// Options used to configure the feature flags to be parsed.
+    /// </summary>
     public class FeatureFlagOptions
     {
         /// <summary>
@@ -10,8 +13,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string Label { get; set; } = LabelFilter.Null;
 
         /// <summary>
-        /// Interval used to check if any feature flags have been changed.
+        /// The time after which the cached values of the feature flags expire.  Must be greater than 1000 ms.
         /// </summary>
-        public TimeSpan? PollInterval { get; set; } = AzureAppConfigurationOptions.DefaultPollInterval;
+        public TimeSpan CacheExpirationTime { get; set; } = AzureAppConfigurationOptions.DefaultFeatureFlagsCacheExpiration;
     }
 }

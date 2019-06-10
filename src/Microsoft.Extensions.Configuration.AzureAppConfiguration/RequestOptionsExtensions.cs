@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Azure.AppConfiguration.Azconfig;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
