@@ -13,12 +13,15 @@
     /// </summary>
     public class AzureAppConfigurationOptions
     {
-        internal static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan DefaultFeatureFlagsCacheExpiration = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan MinimumFeatureFlagsCacheExpiration = TimeSpan.FromMilliseconds(1000);
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private IAzureAppConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
+
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
         /// <summary>
@@ -60,68 +63,6 @@
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
         internal AzconfigClient Client { get; set; }
-
-        /// <summary>
-        /// Monitor the specified the key-value and reload it if the value has changed.
-        /// </summary>
-        /// <param name="key">
-        /// Key of the key-value to be watched.
-        /// </param>
-        /// <param name="pollInterval">
-        /// Interval used to check if the key-value has been changed.
-        /// </param>
-        public AzureAppConfigurationOptions Watch(string key, TimeSpan pollInterval)
-        {
-            return Watch(key, LabelFilter.Null, pollInterval);
-        }
-
-        /// <summary>
-        /// Monitor the specified the key-value and reload it if the value has changed.
-        /// </summary>
-        /// <param name="key">
-        /// Key of the key-value to be watched.
-        /// </param>
-        /// <param name="label">
-        /// Label of the key-value to be watched.
-        /// </param>
-        /// <param name="pollInterval">
-        /// Interval used to check if the key-value has been changed.
-        /// </param>
-        public AzureAppConfigurationOptions Watch(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
-        {
-            return WatchKeyValue(key, label, pollInterval, false);
-        }
-
-        /// <summary>
-        /// Monitor the specified key-value and reload all key-values if any property of the key-value has changed.
-        /// </summary>
-        /// <param name="key">
-        /// Key of the key-value to be watched.
-        /// </param>
-        /// <param name="pollInterval">
-        /// Interval used to check if the key-value has been changed.
-        /// </param>
-        public AzureAppConfigurationOptions WatchAndReloadAll(string key, TimeSpan pollInterval)
-        {
-            return WatchAndReloadAll(key, LabelFilter.Null, pollInterval);
-        }
-
-        /// <summary>
-        /// Monitor the specified the key-value and reload all key-values if any property of the key-value has changed.
-        /// </summary>
-        /// <param name="key">
-        /// Key of the key-value to be watched.
-        /// </param>
-        /// <param name="label">
-        /// Label of the key-value to be watched.
-        /// </param>
-        /// <param name="pollInterval">
-        /// Interval used to check if the key-value has been changed.
-        /// </param>
-        public AzureAppConfigurationOptions WatchAndReloadAll(string key, string label = LabelFilter.Null, TimeSpan? pollInterval = null)
-        {
-            return WatchKeyValue(key, label, pollInterval, true);
-        }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -175,8 +116,13 @@
         public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
         {
             FeatureFlagOptions options = new FeatureFlagOptions();
-
             configure?.Invoke(options);
+
+            if (options.CacheExpirationTime < MinimumFeatureFlagsCacheExpiration)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationTime), options.CacheExpirationTime.TotalMilliseconds,
+                    string.Format(Constants.ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpiration.TotalMilliseconds));
+            }
 
             if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
             {
@@ -188,13 +134,13 @@
                 _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
-            if (options.PollInterval != null && !_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
+            if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
             {
                 _multiKeyWatchers.Add(new KeyValueWatcher
                 {
-                    PollInterval = options.PollInterval.Value,
                     Key = FeatureManagementConstants.FeatureFlagMarker,
-                    Label = options.Label
+                    Label = options.Label,
+                    CacheExpirationTime = options.CacheExpirationTime
                 });
             }
 
@@ -268,27 +214,31 @@
             return this;
         }
 
-        private AzureAppConfigurationOptions WatchKeyValue(string key, string label, TimeSpan? pollInterval, bool reloadAll)
+        /// <summary>
+        /// Configure refresh for key-values in the configuration provider.
+        /// </summary>
+        /// <param name="configure">>A callback used to configure Azure App Configuration refresh options.</param>
+        public AzureAppConfigurationOptions ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> configure)
         {
-            TimeSpan interval;
-            if (pollInterval != null && pollInterval.HasValue)
-            {
-                interval = pollInterval.Value;
-            }
-            else
-            {
-                interval = DefaultPollInterval;
-            }
+            var options = new AzureAppConfigurationRefreshOptions();
+            configure?.Invoke(options);
 
-            _changeWatchers[key] = new KeyValueWatcher()
+            foreach (var item in options.RefreshRegistrations)
             {
-                Key = key,
-                Label = label,
-                PollInterval = interval,
-                ReloadAll = reloadAll
-            };
+                item.Value.CacheExpirationTime = options.CacheExpirationTime;
+                _changeWatchers[item.Key] = item.Value;
+            }
 
             return this;
+        }
+
+        /// <summary>
+        /// Get an instance of <see cref="IAzureAppConfigurationRefresher"/> that can be used to trigger a refresh for the configured key-values.
+        /// </summary>
+        /// <returns>An instance of <see cref="IAzureAppConfigurationRefresher"/>.</returns>
+        public IAzureAppConfigurationRefresher GetRefresher()
+        {
+            return _refresher;
         }
     }
 }

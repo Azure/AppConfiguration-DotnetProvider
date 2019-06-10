@@ -10,19 +10,17 @@
     class Program
     {
         static IConfiguration Configuration { get; set; }
+        static IAzureAppConfigurationRefresher _refresher;
 
         static void Main(string[] args)
         {
             Configure();
 
             var cts = new CancellationTokenSource();
+            Run(cts.Token);
 
-            var t = Run(cts.Token);
-
-            //
             // Finish on key press
             Console.ReadKey();
-
             cts.Cancel();
         }
 
@@ -30,10 +28,9 @@
         {
             var builder = new ConfigurationBuilder();
 
-            //
-            // load a subset of the application's configuration from a json file and environment variables.
+            // Load a subset of the application's configuration from a json file and environment variables
             builder.AddJsonFile("appsettings.json")
-                .AddEnvironmentVariables();
+                   .AddEnvironmentVariables();
 
             IConfiguration configuration = builder.Build();
 
@@ -44,17 +41,22 @@
                 return;
             }
 
-            //
             // Augment the configuration builder with Azure App Configuration
             // Pull the connection string from an environment variable
-            builder.AddAzureAppConfiguration(o => {
+            builder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(configuration["connection_string"])
+                       .Use("AppName")
+                       .Use("Settings:BackgroundColor")
+                       .ConfigureRefresh(refresh =>
+                       {
+                           refresh.Register("AppName")
+                                  .Register("Language", refreshAll: true)
+                                  .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                       });
 
-                o.Connect(configuration["connection_string"])
-                 //
-                 // Uncomment to filter selected key-values by key and/or label
-                 //.Use("App*", "label1")
-                 .Watch("Language", TimeSpan.FromMilliseconds(1000))
-                 .Watch("AppName", TimeSpan.FromMilliseconds(1000));
+                // Get an instance of the refresher that can be used to refresh data
+                _refresher = options.GetRefresher();
             });
 
             Configuration = builder.Build();
@@ -67,6 +69,9 @@
 
             while (!token.IsCancellationRequested)
             {
+                // Refresh the data configured for AzureAppConfigurationProvider when needed
+                _refresher.Refresh();
+
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();
 
@@ -74,7 +79,6 @@
                 sb.AppendLine();
 
                 sb.AppendLine("Press any key to exit...");
-
                 await Task.Delay(1000);
 
                 if (!sb.ToString().Equals(display))
@@ -82,7 +86,6 @@
                     display = sb.ToString();
 
                     Console.Clear();
-
                     Console.Write(display);
                 }
 

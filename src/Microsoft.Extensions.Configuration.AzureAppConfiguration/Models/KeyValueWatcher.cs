@@ -15,13 +15,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string Label { get; set; }
 
         /// <summary>
-        /// The interval at which the key-value will be polled for changes.
+        /// A flag to refresh all key-values.
         /// </summary>
-        public TimeSpan PollInterval { get; set; }
+        public bool RefreshAll { get; set; }
 
         /// <summary>
-        /// A flag to reload all key-values.
+        /// The minimum time that must elapse before the key-value is refreshed.
         /// </summary>
-        public bool ReloadAll { get; set; }
+        public TimeSpan CacheExpirationTime { get; set; }
     }
 }

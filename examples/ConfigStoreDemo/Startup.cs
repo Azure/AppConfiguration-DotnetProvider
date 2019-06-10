@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConfigStoreDemo
 {
@@ -9,19 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
     {
         public Startup(IConfiguration configuration)
         {
-            //
-            // This example:
-            // Loads settings from a json file and Azure App Configuration.
-            // Sets up the provider to listen for changes to the background color key-value in Azure App Configuration.
-            // Retrieves the Azure App Configuration connection string from an environment variable
-            var builder = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .AddAzureAppConfiguration(o =>
-                {
-                    o.Connect(configuration["connection_string"])
-                     .Watch("Settings:BackgroundColor", TimeSpan.FromMilliseconds(1000));
-                });
-            Configuration = builder.Build();
+            Configuration = configuration;
         }
 
         public IConfiguration Configuration { get; }
@@ -47,7 +34,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
             }
 
             app.UseStaticFiles();
-
             app.UseMvc();
         }
     }
