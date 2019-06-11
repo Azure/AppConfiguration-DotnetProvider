@@ -128,6 +128,7 @@
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
+                                              exception.InnerException is OperationCanceledException ||
                                               exception.InnerException is UnauthorizedAccessException)
             {
                 if (_options.OfflineCache != null)
