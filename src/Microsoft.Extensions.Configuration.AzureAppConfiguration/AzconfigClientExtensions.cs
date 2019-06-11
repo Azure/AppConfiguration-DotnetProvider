@@ -225,6 +225,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 || ex is HttpRequestException
                 || ex is SocketException
                 || ex is TimeoutException
+                || ex is OperationCanceledException
                 || ex is AzconfigException)
             {
                 return true;
