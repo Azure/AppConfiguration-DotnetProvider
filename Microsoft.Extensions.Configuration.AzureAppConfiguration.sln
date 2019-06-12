@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConfigStoreDemo", "examples
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApplication", "examples\ConsoleApplication\ConsoleApplication.csproj", "{6725B058-185F-4393-9A0A-9D8B568B99C9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AzureAppConfiguration.AspNetCore", "src\Microsoft.AzureAppConfiguration.AspNetCore\Microsoft.AzureAppConfiguration.AspNetCore.csproj", "{6EAA6031-57AB-4FD0-B36A-019A259846B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{6725B058-185F-4393-9A0A-9D8B568B99C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6725B058-185F-4393-9A0A-9D8B568B99C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6725B058-185F-4393-9A0A-9D8B568B99C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EAA6031-57AB-4FD0-B36A-019A259846B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6EAA6031-57AB-4FD0-B36A-019A259846B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EAA6031-57AB-4FD0-B36A-019A259846B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6EAA6031-57AB-4FD0-B36A-019A259846B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
