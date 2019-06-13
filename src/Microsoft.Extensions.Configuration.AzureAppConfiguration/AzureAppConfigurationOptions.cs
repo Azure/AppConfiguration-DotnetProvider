@@ -4,9 +4,15 @@
     using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+    using Microsoft.Extensions.Primitives;
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
+    using System.Runtime.InteropServices;
+    using System.Runtime.Versioning;
+    using System.Text;
 
     /// <summary>
     /// Options used to configure the behavior of an Azure App Configuration provider.
@@ -248,7 +254,16 @@
                 throw new ArgumentException(nameof(endpoint));
             }
 
-            Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
+            Client = AzconfigClientFactory.CreateClient(
+                uri,
+                new AzconfigClientFactoryOptions()
+                {
+                    Permissions = Permissions.Read,
+                    RequestOptions = new RequestOptions()
+                    {
+                        UserAgent = GenerateUserAgent()
+                    }
+                }).Result;
 
             return this;
         }
@@ -289,6 +304,26 @@
             };
 
             return this;
+        }
+
+        private static string GenerateUserAgent()
+        {
+            Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
+            var userAgent = new StringBuilder($"{assembly.GetName().Name}/{assembly.GetName().Version}");
+            IEnumerable<TargetFrameworkAttribute> targetFrameworkAttributes = assembly.GetCustomAttributes(true).OfType<TargetFrameworkAttribute>();
+            if (targetFrameworkAttributes != null && targetFrameworkAttributes.Any())
+            {
+                var frameworkName = new FrameworkName(targetFrameworkAttributes.First().FrameworkName);
+                userAgent.Append($" {frameworkName.Identifier}/{frameworkName.Version}");
+            }
+
+            string comment = RuntimeInformation.OSDescription;
+            if (!string.IsNullOrEmpty(comment))
+            {
+                userAgent.Append($" ({comment})");
+            }
+
+            return userAgent.ToString();
         }
     }
 }
