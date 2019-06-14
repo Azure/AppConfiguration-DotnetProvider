@@ -74,8 +74,8 @@
 
         internal async Task RefreshKeyValues()
         {
-            await RefreshKeyValuesWithSpecificKey();
-            await RefreshKeyValuesWithKeyPrefix();
+            await RefreshIndividualKeyValues();
+            await RefreshKeyValueCollections();
         }
 
         private void LoadAll()
@@ -179,12 +179,12 @@
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                var watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 data[watchedKey] = watchedKv;
             }
         }
 
-        private async Task RefreshKeyValuesWithSpecificKey()
+        private async Task RefreshIndividualKeyValues()
         {
             bool shouldRefreshAll = false;
 
@@ -192,7 +192,7 @@
             {
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
-                bool hasLastRefreshTime = _changeWatcherTimeMap.TryGetValue(watchedKey, out var lastRefreshTime);
+                bool hasLastRefreshTime = _changeWatcherTimeMap.TryGetValue(watchedKey, out DateTimeOffset lastRefreshTime);
 
                 // If the cache for the key hasn't expired, skip the refresh for this key
                 if (hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime)
@@ -200,16 +200,17 @@
                     continue;
                 }
 
-                // Update the last refresh time since we plan to refresh the key-value with the server
-                _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
-
                 bool hasChanged = false;
                 IKeyValue watchedKv = null;
 
                 if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
                 {
                     watchedKv = _settings[watchedKey];
-                    var keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None, _requestTracingEnabled, _hostType);
+                    var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
+                    options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
+
+                    KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None);
+                    _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
 
                     // Check if a change has been detected in the key-value registered for refresh
                     if (keyValueChange != null)
@@ -227,6 +228,7 @@
 
                     // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                     watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                    _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
 
                     // Add the key-value if it is not loaded, or update it if it was loaded with a different label
                     _settings[watchedKey] = watchedKv;
@@ -256,11 +258,11 @@
             }
         }
 
-        private async Task RefreshKeyValuesWithKeyPrefix()
+        private async Task RefreshKeyValueCollections()
         {
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                bool hasLastRefreshTime = _multiKeyWatcherTimeMap.TryGetValue(changeWatcher.Key, out var lastRefreshTime);
+                bool hasLastRefreshTime = _multiKeyWatcherTimeMap.TryGetValue(changeWatcher.Key, out DateTimeOffset lastRefreshTime);
 
                 // If the cache for the key-prefix hasn't expired, skip the refresh for this key-prefix
                 if (hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime)
@@ -276,7 +278,7 @@
                     return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
                 });
 
-                var keyValueChanges = await _client.GetKeyValueChangeCollection(new GetKeyValueChangeCollectionOptions
+                IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(new GetKeyValueChangeCollectionOptions
                 {
                     Prefix = changeWatcher.Key,
                     Label = changeWatcher.Label.NormalizeNull()
@@ -359,7 +361,8 @@
 
         private void ConfigureRequestTracingOptions(IRequestOptions options)
         {
-            options.ConfigureRequestTracingOptions(_requestTracingEnabled, _isInitialLoadComplete, _hostType);
+            var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
+            options.ConfigureRequestTracing(_requestTracingEnabled, requestType, _hostType);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class AzconfigClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this AzconfigClient client, IKeyValue keyValue, CancellationToken cancellationToken, bool requestTracingEnabled = true, HostType hostType = HostType.None)
+        public static async Task<KeyValueChange> GetKeyValueChange(this AzconfigClient client, IKeyValue keyValue, IRequestOptions options, CancellationToken cancellationToken)
         {
             if (keyValue == null)
             {
@@ -21,8 +21,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException($"{nameof(keyValue)}.{nameof(keyValue.Key)}");
             }
 
-            RequestOptionsBase options = requestTracingEnabled ? new RequestOptionsBase() : null;
-            options.ConfigureRequestTracingOptions(requestTracingEnabled, true, hostType);
             var currentKeyValue = await client.GetCurrentKeyValue(keyValue, options, cancellationToken);
 
             if (currentKeyValue == keyValue)
@@ -40,21 +38,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this AzconfigClient client, GetKeyValueChangeCollectionOptions options, IEnumerable<IKeyValue> keyValues, bool requestTracingEnabled = true, HostType hostType = HostType.None)
-        {
-            ValidateInputForGetKeyValueChangeCollection(options, keyValues);
-
-            IEnumerable<KeyValueChange> changes = null;
-            var currentEtags = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
-
-            if (await HasKeyValueCollectionChanged(client, options, currentEtags, requestTracingEnabled, hostType))
-            {
-                changes = await GetKeyValueChangeCollectionHelper(client, options, keyValues, currentEtags, requestTracingEnabled, hostType);
-            }
-
-            return changes;
-        }
-
-        private static void ValidateInputForGetKeyValueChangeCollection(GetKeyValueChangeCollectionOptions options, IEnumerable<IKeyValue> keyValues)
         {
             if (options == null)
             {
@@ -95,10 +78,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Label)}");
             }
-        }
 
-        private static async Task<bool> HasKeyValueCollectionChanged(AzconfigClient client, GetKeyValueChangeCollectionOptions options, Dictionary<string, string> eTagMap, bool requestTracingEnabled, HostType hostType)
-        {
+            var hasKeyValueCollectionChanged = false;
             var queryOptions = new QueryKeyValueCollectionOptions
             {
                 KeyFilter = options.Prefix + "*",
@@ -106,77 +87,73 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key
             };
 
-            queryOptions.ConfigureRequestTracingOptions(requestTracingEnabled, true, hostType);
-            var keyValues = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
+            queryOptions.ConfigureRequestTracing(requestTracingEnabled, RequestType.Watch, hostType);
 
-            // Copy of eTags that we write to and use for comparison
-            var eTags = eTagMap.ToDictionary(kv => kv.Key, kv => kv.Value);
+            // Fetch e-tags for prefixed key-values that can be used to detect changes
+            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
 
+            // Dictionary of eTags that we write to and use for comparison
+            var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.Value);
+            
             // Check for any modifications/creations
-            foreach (IKeyValue kv in keyValues)
+            foreach (IKeyValue kv in kvs)
             {
-                if (!eTags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                if (!eTagMap.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
                 {
-                    return true;
+                    hasKeyValueCollectionChanged = true;
+                    break;
                 }
 
-                eTags.Remove(kv.Key);
+                eTagMap.Remove(kv.Key);
             }
 
             // Check for any deletions
-            if (eTags.Any())
+            if (eTagMap.Any())
             {
-                return true;
+                hasKeyValueCollectionChanged = true;
             }
 
-            return false;
-        }
-
-        private static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollectionHelper(AzconfigClient client, GetKeyValueChangeCollectionOptions options, IEnumerable<IKeyValue> keyValues, Dictionary<string, string> currentEtags, bool requestTracingEnabled, HostType hostType)
-        {
             var changes = new List<KeyValueChange>();
-            var queryOptions = new QueryKeyValueCollectionOptions
+
+            // If changes have been observed, refresh prefixed key-values
+            if (hasKeyValueCollectionChanged)
             {
-                KeyFilter = options.Prefix + "*",
-                LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
-            };
+                queryOptions = new QueryKeyValueCollectionOptions
+                {
+                    KeyFilter = options.Prefix + "*",
+                    LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
+                };
 
-            queryOptions.ConfigureRequestTracingOptions(requestTracingEnabled, true, hostType);
+                queryOptions.ConfigureRequestTracing(requestTracingEnabled, RequestType.Watch, hostType);
+                kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
+                eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
 
-            // Changes have been observed, refresh prefixed key-values
-            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
+                foreach (IKeyValue kv in kvs)
+                {
+                    if (!eTagMap.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                    {
+                        changes.Add(new KeyValueChange
+                        {
+                            ChangeType = KeyValueChangeType.Modified,
+                            Key = kv.Key,
+                            Label = options.Label.NormalizeNull(),
+                            Current = kv
+                        });
+                    }
 
-            // Copy for current eTags for comparison, since we plan to edit them
-            var etags = currentEtags.ToDictionary(kv => kv.Key, kv => kv.Value);
+                    eTagMap.Remove(kv.Key);
+                }
 
-            // Update current etags with the latest value seen from the server
-            currentEtags = kvs.ToDictionary(kv => kv.Key, kv => kv.ETag);
-
-            foreach (IKeyValue kv in kvs)
-            {
-                if (!etags.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
+                foreach (var kvp in eTagMap)
                 {
                     changes.Add(new KeyValueChange
                     {
-                        ChangeType = KeyValueChangeType.Modified,
-                        Key = kv.Key,
+                        ChangeType = KeyValueChangeType.Deleted,
+                        Key = kvp.Key,
                         Label = options.Label.NormalizeNull(),
-                        Current = kv
+                        Current = null
                     });
                 }
-
-                etags.Remove(kv.Key);
-            }
-
-            foreach (var kvp in etags)
-            {
-                changes.Add(new KeyValueChange
-                {
-                    ChangeType = KeyValueChangeType.Deleted,
-                    Key = kvp.Key,
-                    Label = options.Label.NormalizeNull(),
-                    Current = null
-                });
             }
 
             return changes;
