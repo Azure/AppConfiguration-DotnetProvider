@@ -248,7 +248,16 @@
                 throw new ArgumentException(nameof(endpoint));
             }
 
-            Client = AzconfigClientFactory.CreateClient(uri, Permissions.Read).Result;
+            Client = AzconfigClientFactory.CreateClient(
+                uri,
+                new AzconfigClientFactoryOptions()
+                {
+                    Permissions = Permissions.Read,
+                    RequestOptions = new RequestOptions()
+                    {
+                        UserAgent = TracingUtils.GenerateUserAgent()
+                    }
+                }).Result;
 
             return this;
         }
