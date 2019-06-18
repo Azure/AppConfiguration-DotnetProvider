@@ -9,7 +9,7 @@
 
     internal static class TracingUtils
     {
-        internal static string GenerateUserAgent()
+        public static string GenerateUserAgent()
         {
             Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
             var userAgent = new StringBuilder($"{assembly.GetName().Name}/{assembly.GetName().Version}");
