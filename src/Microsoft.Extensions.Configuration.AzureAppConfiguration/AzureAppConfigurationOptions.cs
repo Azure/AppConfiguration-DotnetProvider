@@ -261,7 +261,7 @@
                     Permissions = Permissions.Read,
                     RequestOptions = new RequestOptions()
                     {
-                        UserAgent = GenerateUserAgent()
+                        UserAgent = TracingUtils.GenerateUserAgent()
                     }
                 }).Result;
 
@@ -304,26 +304,6 @@
             };
 
             return this;
-        }
-
-        private static string GenerateUserAgent()
-        {
-            Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
-            var userAgent = new StringBuilder($"{assembly.GetName().Name}/{assembly.GetName().Version}");
-            IEnumerable<TargetFrameworkAttribute> targetFrameworkAttributes = assembly.GetCustomAttributes(true).OfType<TargetFrameworkAttribute>();
-            if (targetFrameworkAttributes != null && targetFrameworkAttributes.Any())
-            {
-                var frameworkName = new FrameworkName(targetFrameworkAttributes.First().FrameworkName);
-                userAgent.Append($" {frameworkName.Identifier}/{frameworkName.Version}");
-            }
-
-            string comment = RuntimeInformation.OSDescription;
-            if (!string.IsNullOrEmpty(comment))
-            {
-                userAgent.Append($" ({comment})");
-            }
-
-            return userAgent.ToString();
         }
     }
 }
