@@ -69,7 +69,7 @@
 
             while (!token.IsCancellationRequested)
             {
-                // Refresh the data configured for AzureAppConfigurationProvider when needed
+                // Trigger an async refresh for registered configuration settings without wait
                 _refresher.Refresh();
 
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");

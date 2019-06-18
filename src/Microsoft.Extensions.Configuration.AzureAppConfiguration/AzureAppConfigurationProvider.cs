@@ -15,7 +15,10 @@
     using System.Threading;
     using System.Threading.Tasks;
 
-    class AzureAppConfigurationProvider : ConfigurationProvider
+    /// <summary>
+    /// Implementation of <see cref="IConfigurationProvider"/> for Azure App Configuration.
+    /// </summary>
+    public class AzureAppConfigurationProvider : ConfigurationProvider
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
@@ -32,7 +35,7 @@
         private IDictionary<string, DateTimeOffset> _changeWatcherTimeMap;
         private IDictionary<string, DateTimeOffset> _multiKeyWatcherTimeMap;
 
-        public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
+        internal AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -61,6 +64,9 @@
             _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
         }
 
+        /// <summary>
+        /// Loads (or reloads) the data for this provider.
+        /// </summary>
         public override void Load()
         {
             var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
@@ -70,6 +76,15 @@
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
+        }
+
+        /// <summary>
+        /// Get an instance of <see cref="IConfigurationRefresher"/> that can be used to trigger a refresh for the registered key-values.
+        /// </summary>
+        /// <returns>An instance of <see cref="IConfigurationRefresher"/>.</returns>
+        public IConfigurationRefresher GetRefresher()
+        {
+            return _options.GetRefresher();
         }
 
         internal async Task RefreshKeyValues()
@@ -278,11 +293,13 @@
                     return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
                 });
 
-                IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(new GetKeyValueChangeCollectionOptions
+                IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(currentKeyValues, new GetKeyValueChangeCollectionOptions
                 {
                     Prefix = changeWatcher.Key,
-                    Label = changeWatcher.Label.NormalizeNull()
-                }, currentKeyValues, _requestTracingEnabled, _hostType);
+                    Label = changeWatcher.Label.NormalizeNull(),
+                    RequestTracingEnabled = _requestTracingEnabled,
+                    HostType = _hostType
+                });
 
                 if (keyValueChanges?.Any() == true)
                 {

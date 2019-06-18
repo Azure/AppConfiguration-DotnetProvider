@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string Label { get; set; } = LabelFilter.Null;
 
         /// <summary>
-        /// The time after which the cached values of the feature flags expire.  Must be greater than 1000 ms.
+        /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
         public TimeSpan CacheExpirationTime { get; set; } = AzureAppConfigurationOptions.DefaultFeatureFlagsCacheExpiration;
     }

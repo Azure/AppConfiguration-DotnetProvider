@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this AzconfigClient client, GetKeyValueChangeCollectionOptions options, IEnumerable<IKeyValue> keyValues, bool requestTracingEnabled = true, HostType hostType = HostType.None)
+        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this AzconfigClient client, IEnumerable<IKeyValue> keyValues, GetKeyValueChangeCollectionOptions options)
         {
             if (options == null)
             {
@@ -87,7 +87,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 FieldsSelector = KeyValueFields.ETag | KeyValueFields.Key
             };
 
-            queryOptions.ConfigureRequestTracing(requestTracingEnabled, RequestType.Watch, hostType);
+            queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
             IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
@@ -124,7 +124,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilters.Null : options.Label
                 };
 
-                queryOptions.ConfigureRequestTracing(requestTracingEnabled, RequestType.Watch, hostType);
+                queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
                 kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
 
