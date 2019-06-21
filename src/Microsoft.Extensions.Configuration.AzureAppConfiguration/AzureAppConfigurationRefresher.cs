@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private AzureAppConfigurationProvider _provider = null;
 
-        internal void SetProvider(AzureAppConfigurationProvider provider)
+        public void SetProvider(AzureAppConfigurationProvider provider)
         {
             _provider = provider;
         }
@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException("Refresh operation cannot be invoked before Azure App Configuration Provider is initialized.");
             }
 
-            await _provider.RefreshKeyValues();
+            await _provider.Refresh();
         }
     }
 }

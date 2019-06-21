@@ -15,10 +15,7 @@
     using System.Threading;
     using System.Threading.Tasks;
 
-    /// <summary>
-    /// Implementation of <see cref="IConfigurationProvider"/> for Azure App Configuration.
-    /// </summary>
-    public class AzureAppConfigurationProvider : ConfigurationProvider
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
@@ -35,7 +32,7 @@
         private IDictionary<string, DateTimeOffset> _changeWatcherTimeMap;
         private IDictionary<string, DateTimeOffset> _multiKeyWatcherTimeMap;
 
-        internal AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -78,16 +75,7 @@
             _isInitialLoadComplete = true;
         }
 
-        /// <summary>
-        /// Get an instance of <see cref="IConfigurationRefresher"/> that can be used to trigger a refresh for the registered key-values.
-        /// </summary>
-        /// <returns>An instance of <see cref="IConfigurationRefresher"/>.</returns>
-        public IConfigurationRefresher GetRefresher()
-        {
-            return _options.GetRefresher();
-        }
-
-        internal async Task RefreshKeyValues()
+        public async Task Refresh()
         {
             await RefreshIndividualKeyValues();
             await RefreshKeyValueCollections();
