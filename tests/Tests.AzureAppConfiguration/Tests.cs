@@ -3,14 +3,14 @@ namespace Tests.AzureAppConfiguration
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
     using System;
-    using System.Net.Http;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Net.Http;
+    using System.Text;
     using System.Threading;
     using Xunit;
-    using System.Text;
-    using System.Net.Http.Headers;
-    using System.Linq;
 
     public class Tests
     {
@@ -106,24 +106,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TriggersChangeNotification()
-        {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
-            {
-                var builder = new ConfigurationBuilder();
-                var remoteConfigOpt = new AzureAppConfigurationOptions() {
-                    Client = testClient
-                };
-                remoteConfigOpt.Watch("TestKey1", TimeSpan.FromMilliseconds(500));
-                builder.AddAzureAppConfiguration(remoteConfigOpt);
-                var config = builder.Build();
-                Assert.True(config["TestKey1"] == "TestValue1");
-                Thread.Sleep(1500);
-                Assert.True(config["TestKey1"] == "newValue");
-            }
-        }
-
-        [Fact]
         public void UsesPreferredDateTime()
         {
             bool kvsRetrieved = false;
@@ -158,62 +140,52 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void WatchAndReloadAll()
+        public void TrimKeyPrefix_TestCase1()
         {
             using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
-                var builder = new ConfigurationBuilder();
-                var remoteConfigOpt = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
-                remoteConfigOpt.WatchAndReloadAll("TestKey1", TimeSpan.FromMilliseconds(500));
-                builder.AddAzureAppConfiguration(remoteConfigOpt);
-                var config = builder.Build();
-                Assert.True(config["TestKey1"] == "TestValue1");
-                Thread.Sleep(1500);
-                Assert.True(config["TestKey1"] == "newValue");
-                Assert.True(config["TestKey2"] == "newValue");
-                Assert.True(config["TestKey3"] == "newValue");
-                Assert.True(config["TestKey4"] == "newValue");
-            }
-        }
-
-        [Fact]
-        public void TrimKeyPrefix()
-        {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
-            {
-                var builder = new ConfigurationBuilder();
-
                 // Trim following prefixes from all keys in the configuration.
                 var keyPrefix1 = "T";
                 var keyPrefix2 = "App2/";
                 var keyPrefix3 = "Test";
 
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3));
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                    {
+                        Client = testClient
+                    }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3))
+                    .Build();
 
-                var config = builder.Build();
                 Assert.True(config["Key1"] == "TestValue1");
                 Assert.True(config["Key2"] == "TestValue2");
                 Assert.True(config["Key3"] == "TestValue3");
                 Assert.True(config["Key4"] == "TestValue4");
                 Assert.True(config["TestKey1"] == "TestValue2.1");
+            }
+        }
 
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                }.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1));
+        [Fact]
+        public void TrimKeyPrefix_TestCase2()
+        {
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            {
+                // Trim following prefixes from all keys in the configuration.
+                var keyPrefix1 = "T";
+                var keyPrefix2 = "App2/";
+                var keyPrefix3 = "Test";
 
-                var config2 = builder.Build();
-                Assert.True(config2["Key1"] == "TestValue1");
-                Assert.True(config2["Key2"] == "TestValue2");
-                Assert.True(config2["Key3"] == "TestValue3");
-                Assert.True(config2["Key4"] == "TestValue4");
-                Assert.True(config2["TestKey1"] == "TestValue2.1");
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                    {
+                        Client = testClient
+                    }.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1))
+                    .Build();
+
+                Assert.True(config["Key1"] == "TestValue1");
+                Assert.True(config["Key2"] == "TestValue2");
+                Assert.True(config["Key3"] == "TestValue3");
+                Assert.True(config["Key4"] == "TestValue4");
+                Assert.True(config["TestKey1"] == "TestValue2.1");
             }
         }
 
@@ -249,7 +221,6 @@ namespace Tests.AzureAppConfiguration
         public void TestTurnOffRequestTracing()
         {
             string correlationHeader = null;
-
             var messageHandler = new CallbackMessageHandler(r => {
                 Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
                 correlationHeader = corrHeader?.FirstOrDefault();
@@ -271,13 +242,14 @@ namespace Tests.AzureAppConfiguration
 
                 Assert.Null(correlationHeader);
             }
-        }
 
-        [Fact]
-        public void TestHostTypeTracing()
-        {
+            // Delete the request tracing environment variable
+            Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
+
+            // Verify the correlation context in the same test to avoid issues due to environment variable conflict with above code when run in parallel
+
             string correlationContext = null;
-            var messageHandler = new CallbackMessageHandler(r => {
+            messageHandler = new CallbackMessageHandler(r => {
                 Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
                 correlationContext = corrHeader.First();
 
@@ -298,6 +270,9 @@ namespace Tests.AzureAppConfiguration
                 Assert.NotNull(correlationContext);
                 Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
             }
+
+            // Delete the azure function environment variable
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
         }
     }
 }

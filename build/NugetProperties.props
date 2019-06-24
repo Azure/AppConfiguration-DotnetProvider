@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'==''">
-    <Version>1.9.9999</Version>
+    <Version>2.9.9999</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!=''">
@@ -20,6 +20,6 @@
     <MinutesSinceMidnight>$([MSBuild]::Divide($(TicksSinceMidnight), 600000000))</MinutesSinceMidnight>
     <Floored>$([System.Math]::Floor($(MinutesSinceMidnight)))</Floored>
     <Revision>$(Floored)</Revision>
-    <Version>1.0.0-preview-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+    <Version>2.0.0-preview-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
   </PropertyGroup>
 </Project>

@@ -15,7 +15,6 @@
     <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
     <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
-    <PackageReference Include="System.Reactive.Linq" Version="$(SystemReactiveLinqVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" />
   </ItemGroup>
   
@@ -24,12 +23,11 @@
       This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
       This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
     -->
-    <MicrosoftExtensionsConfigurationVersion>1.0.0</MicrosoftExtensionsConfigurationVersion>
+    <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
     <MicrosoftAzconfigClientVersion>1.0.0-preview-008870001-1052</MicrosoftAzconfigClientVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-008910001-1350</MicrosoftAzconfigManagedIdentityConnectorVersion>
     <SystemInteractiveAsyncVersion>3.1.1</SystemInteractiveAsyncVersion>
-    <SystemReactiveLinqVersion>4.0.0</SystemReactiveLinqVersion>
     <MicrosoftAspNetCoreHttpExtensionsVersion>2.1.1</MicrosoftAspNetCoreHttpExtensionsVersion>
   </PropertyGroup>
 
