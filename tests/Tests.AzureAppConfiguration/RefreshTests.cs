@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -246,6 +247,47 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal("TestValue2", config["TestKey2"]);
                 Assert.Null(config["TestKey3"]);
             }
+        }
+
+        [Fact]
+        public void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
+        {
+            var kvCollection = new List<IKeyValue>(_kvCollection);
+            var mockedHttpRequestHandler = new MockedGetKeyValueRequest(kvCollection.First(), kvCollection, 6000);
+
+            using (var testClient = new AzconfigClient(_connectionString, mockedHttpRequestHandler))
+            {
+                var options = new AzureAppConfigurationOptions { Client = testClient };
+
+                options.ConfigureRefresh(refresh => {
+                           refresh.Register("TestKey1", "label")
+                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                       });
+
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options)
+                    .Build();
+
+                Assert.Equal("TestValue1", config["TestKey1"]);
+                Assert.Equal(1, mockedHttpRequestHandler.RequestCount);
+
+                kvCollection.First().Value = "newValue";
+
+                // Simulate simultaneous refresh calls with expired cache from multiple threads
+                var task1 = Task.Run(() => WaitAndRefresh(options, 1500));
+                var task2 = Task.Run(() => WaitAndRefresh(options, 3000));
+                var task3 = Task.Run(() => WaitAndRefresh(options, 4500));
+                Task.WaitAll(task1, task2, task3);
+
+                Assert.Equal("newValue", config["TestKey1"]);
+                Assert.Equal(2, mockedHttpRequestHandler.RequestCount);
+            }
+        }
+
+        private void WaitAndRefresh(AzureAppConfigurationOptions options, int millisecondsDelay)
+        {
+            Task.Delay(millisecondsDelay).Wait();
+            options.GetRefresher().Refresh().Wait();
         }
     }
 }

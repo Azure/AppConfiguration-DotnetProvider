@@ -27,10 +27,7 @@
         private readonly HostType _hostType;
         private readonly AzconfigClient _client;
         private AzureAppConfigurationOptions _options;
-
         private ConcurrentDictionary<string, IKeyValue> _settings;
-        private IDictionary<string, DateTimeOffset> _changeWatcherTimeMap;
-        private IDictionary<string, DateTimeOffset> _multiKeyWatcherTimeMap;
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -41,9 +38,6 @@
             // Initialize retry options.
             _client.RetryOptions.MaxRetries = MaxRetries;
             _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(RetryWaitMinutes);
-
-            _changeWatcherTimeMap = new Dictionary<string, DateTimeOffset>();
-            _multiKeyWatcherTimeMap = new Dictionary<string, DateTimeOffset>();
 
             string requestTracingDisabled = null;
             try
@@ -180,7 +174,7 @@
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                 IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
-                _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
+                changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
                 data[watchedKey] = watchedKv;
             }
         }
@@ -193,11 +187,10 @@
             {
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
-                bool hasLastRefreshTime = _changeWatcherTimeMap.TryGetValue(watchedKey, out DateTimeOffset lastRefreshTime);
-                bool isCachedValueNotExpired = hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime;
+                var timeElapsedSinceLastRefresh = DateTimeOffset.UtcNow - changeWatcher.LastRefreshTime;
 
                 // Skip the refresh for this key if the cached value has not expired or a refresh operation is in progress
-                if (isCachedValueNotExpired || !changeWatcher.Semaphore.Wait(0))
+                if (timeElapsedSinceLastRefresh < changeWatcher.CacheExpirationTime || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
@@ -214,7 +207,7 @@
                         options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
                         KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None);
-                        _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
+                        changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
                         if (keyValueChange != null)
@@ -232,7 +225,7 @@
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                         watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
-                        _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
+                        changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Add the key-value if it is not loaded, or update it if it was loaded with a different label
                         _settings[watchedKey] = watchedKv;
@@ -271,11 +264,10 @@
         {
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                bool hasLastRefreshTime = _multiKeyWatcherTimeMap.TryGetValue(changeWatcher.Key, out DateTimeOffset lastRefreshTime);
-                bool isCachedValueNotExpired = hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime;
+                var timeElapsedSinceLastRefresh = DateTimeOffset.UtcNow - changeWatcher.LastRefreshTime;
 
                 // Skip the refresh for this key-prefix if the cached value has not expired or a refresh operation is in progress
-                if (isCachedValueNotExpired || !changeWatcher.Semaphore.Wait(0))
+                if (timeElapsedSinceLastRefresh < changeWatcher.CacheExpirationTime || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
@@ -295,7 +287,7 @@
                         HostType = _hostType
                     });
 
-                    _multiKeyWatcherTimeMap[changeWatcher.Key] = DateTimeOffset.UtcNow;
+                    changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                     if (keyValueChanges?.Any() == true)
                     {

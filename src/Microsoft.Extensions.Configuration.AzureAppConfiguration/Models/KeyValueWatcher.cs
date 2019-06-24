@@ -26,6 +26,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public TimeSpan CacheExpirationTime { get; set; }
 
         /// <summary>
+        /// The most-recent time when the key-value was refreshed.
+        /// </summary>
+        public DateTimeOffset LastRefreshTime { get; set; }
+
+        /// <summary>
         /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.
         /// </summary>
         public SemaphoreSlim Semaphore { get; } = new SemaphoreSlim(1);
