@@ -175,14 +175,12 @@
                     return;
                 }
 
-                // Update the last refresh time since we plan to refresh the key-value with the server
-                _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
-
                 var options = new QueryKeyValueOptions { Label = watchedLabel };
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                 IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
                 data[watchedKey] = watchedKv;
             }
         }
@@ -196,61 +194,69 @@
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
                 bool hasLastRefreshTime = _changeWatcherTimeMap.TryGetValue(watchedKey, out DateTimeOffset lastRefreshTime);
+                bool isCachedValueNotExpired = hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime;
 
-                // If the cache for the key hasn't expired, skip the refresh for this key
-                if (hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime)
+                // Skip the refresh for this key if the cached value has not expired or a refresh operation is in progress
+                if (isCachedValueNotExpired || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
 
-                bool hasChanged = false;
-                IKeyValue watchedKv = null;
-
-                if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
+                try
                 {
-                    watchedKv = _settings[watchedKey];
-                    var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
-                    options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
+                    bool hasChanged = false;
+                    IKeyValue watchedKv = null;
 
-                    KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None);
-                    _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
-
-                    // Check if a change has been detected in the key-value registered for refresh
-                    if (keyValueChange != null)
+                    if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
                     {
-                        ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
-                        hasChanged = true;
-                    }
-                }
-                else
-                {
-                    // Load the key-value in case the previous load attempts had failed
+                        watchedKv = _settings[watchedKey];
+                        var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
+                        options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
-                    var options = new QueryKeyValueOptions { Label = watchedLabel };
-                    ConfigureRequestTracingOptions(options);
+                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None);
+                        _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
 
-                    // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                    watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
-                    _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
-
-                    // Add the key-value if it is not loaded, or update it if it was loaded with a different label
-                    _settings[watchedKey] = watchedKv;
-                    hasChanged = true;
-                }
-
-                if (hasChanged)
-                {
-                    if (changeWatcher.RefreshAll)
-                    {
-                        shouldRefreshAll = true;
-
-                        // Skip refresh for other key-values since refreshAll will populate configuration from scratch
-                        break;
+                        // Check if a change has been detected in the key-value registered for refresh
+                        if (keyValueChange != null)
+                        {
+                            ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
+                            hasChanged = true;
+                        }
                     }
                     else
                     {
-                        SetData(_settings);
+                        // Load the key-value in case the previous load attempts had failed
+
+                        var options = new QueryKeyValueOptions { Label = watchedLabel };
+                        ConfigureRequestTracingOptions(options);
+
+                        // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
+                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                        _changeWatcherTimeMap[watchedKey] = DateTimeOffset.UtcNow;
+
+                        // Add the key-value if it is not loaded, or update it if it was loaded with a different label
+                        _settings[watchedKey] = watchedKv;
+                        hasChanged = true;
                     }
+
+                    if (hasChanged)
+                    {
+                        if (changeWatcher.RefreshAll)
+                        {
+                            shouldRefreshAll = true;
+
+                            // Skip refresh for other key-values since refreshAll will populate configuration from scratch
+                            break;
+                        }
+                        else
+                        {
+                            SetData(_settings);
+                        }
+                    }
+                }
+                finally
+                {
+                    changeWatcher.Semaphore.Release();
                 }
             }
 
@@ -266,33 +272,40 @@
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
                 bool hasLastRefreshTime = _multiKeyWatcherTimeMap.TryGetValue(changeWatcher.Key, out DateTimeOffset lastRefreshTime);
+                bool isCachedValueNotExpired = hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime;
 
-                // If the cache for the key-prefix hasn't expired, skip the refresh for this key-prefix
-                if (hasLastRefreshTime && DateTimeOffset.UtcNow - lastRefreshTime < changeWatcher.CacheExpirationTime)
+                // Skip the refresh for this key-prefix if the cached value has not expired or a refresh operation is in progress
+                if (isCachedValueNotExpired || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
 
-                // If we reach here, update the last refresh time since we plan to refresh the key-values with the server
-                _multiKeyWatcherTimeMap[changeWatcher.Key] = DateTimeOffset.UtcNow;
-
-                IEnumerable<IKeyValue> currentKeyValues = _settings.Values.Where(kv =>
+                try
                 {
-                    return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
-                });
+                    IEnumerable<IKeyValue> currentKeyValues = _settings.Values.Where(kv =>
+                    {
+                        return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
+                    });
 
-                IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(currentKeyValues, new GetKeyValueChangeCollectionOptions
-                {
-                    Prefix = changeWatcher.Key,
-                    Label = changeWatcher.Label.NormalizeNull(),
-                    RequestTracingEnabled = _requestTracingEnabled,
-                    HostType = _hostType
-                });
+                    IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(currentKeyValues, new GetKeyValueChangeCollectionOptions
+                    {
+                        Prefix = changeWatcher.Key,
+                        Label = changeWatcher.Label.NormalizeNull(),
+                        RequestTracingEnabled = _requestTracingEnabled,
+                        HostType = _hostType
+                    });
 
-                if (keyValueChanges?.Any() == true)
+                    _multiKeyWatcherTimeMap[changeWatcher.Key] = DateTimeOffset.UtcNow;
+
+                    if (keyValueChanges?.Any() == true)
+                    {
+                        ProcessChanges(keyValueChanges);
+                        SetData(_settings);
+                    }
+                }
+                finally
                 {
-                    ProcessChanges(keyValueChanges);
-                    SetData(_settings);
+                    changeWatcher.Semaphore.Release();
                 }
             }
         }

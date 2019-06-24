@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -23,5 +24,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// The minimum time that must elapse before the key-value is refreshed.
         /// </summary>
         public TimeSpan CacheExpirationTime { get; set; }
+
+        /// <summary>
+        /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.
+        /// </summary>
+        public SemaphoreSlim Semaphore { get; } = new SemaphoreSlim(1);
     }
 }
