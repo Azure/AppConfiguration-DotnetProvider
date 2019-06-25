@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -12,28 +13,31 @@ namespace Microsoft.AzureAppConfiguration.AspNetCore
     class AzureAppConfigurationRefreshMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IList<IConfigurationRefresher> _refreshers;
+        public IList<IConfigurationRefresher> Refreshers { get; private set; }
 
         public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfiguration configuration)
         {
             _next = next;
-            _refreshers = new List<IConfigurationRefresher>();
+            Refreshers = new List<IConfigurationRefresher>();
+            var configurationRoot = configuration as IConfigurationRoot;
 
-            var configurationRoot = (IConfigurationRoot)configuration;
-            var providers = configurationRoot.Providers;
+            if (configurationRoot == null)
+            {
+                throw new InvalidOperationException("Unable to access custom configuration providers. Please ensure that the configuration provider has been added correctly.");
+            }
 
-            foreach (var provider in providers)
+            foreach (var provider in configurationRoot.Providers)
             {
                 if (provider is IConfigurationRefresher refresher)
                 {
-                    _refreshers.Add(refresher);
+                    Refreshers.Add(refresher);
                 }
             }
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            foreach (var refresher in _refreshers)
+            foreach (var refresher in Refreshers)
             {
                 refresher.Refresh();
             }
