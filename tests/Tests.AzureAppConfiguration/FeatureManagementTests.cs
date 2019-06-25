@@ -224,5 +224,37 @@ namespace Tests.AzureAppConfiguration
                 Assert.True(queriedFeatureFlags);
             }
         }
+
+        [Fact]
+        public void UsesFeatureFlagsWithLabel()
+        {
+            var testLabel = "TestLabel";
+            _kv.Label = testLabel;
+            IEnumerable<IKeyValue> featureFlags = new List<IKeyValue> { _kv };
+
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
+            {
+                var builder = new ConfigurationBuilder();
+
+                var options = new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                };
+
+                options.UseFeatureFlags(label: testLabel);
+
+                builder.AddAzureAppConfiguration(options);
+
+                var config = builder.Build();
+
+                Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+                Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+                Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+                Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
+                Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
+                Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
+                Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            }
+        }
     }
 }

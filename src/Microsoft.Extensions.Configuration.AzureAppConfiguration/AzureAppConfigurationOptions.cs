@@ -172,9 +172,10 @@
         /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
-        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        /// <param name="label">Label to filter.</param>
+        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null, string label = LabelFilter.Null)
         {
-            FeatureFlagOptions options = new FeatureFlagOptions();
+            FeatureFlagOptions options = new FeatureFlagOptions() { Label = label };
 
             configure?.Invoke(options);
 
