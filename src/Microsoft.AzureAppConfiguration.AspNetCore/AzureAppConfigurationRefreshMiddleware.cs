@@ -23,7 +23,7 @@ namespace Microsoft.AzureAppConfiguration.AspNetCore
 
             if (configurationRoot == null)
             {
-                throw new InvalidOperationException("Unable to access custom configuration providers. Please ensure that the configuration provider has been added correctly.");
+                throw new InvalidOperationException("Unable to access the Azure App Configuration provider. Please ensure that it has been configured correctly.");
             }
 
             foreach (var provider in configurationRoot.Providers)

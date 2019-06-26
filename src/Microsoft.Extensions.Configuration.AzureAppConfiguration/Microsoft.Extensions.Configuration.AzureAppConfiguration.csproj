@@ -34,7 +34,7 @@
   <!-- After the build, we write the .nuspec file to the output directory -->
   <Import Project=".\.nuspec.props" />
   <Target Name="WriteToFile" AfterTargets="Build">  
-      <WriteLinesToFile File="$(OutDir)\.nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />  
+      <WriteLinesToFile File="$(OutDir)\$(ProjectName).nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />
   </Target>
   
   <!-- Ensure any package generation is done via the generated nuspec file. -->
