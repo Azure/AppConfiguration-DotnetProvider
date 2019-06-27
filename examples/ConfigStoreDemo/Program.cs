@@ -6,16 +6,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
 {
     public class Program
     {
-        private static IConfigurationRefresher _refresher;
-
         public static void Main(string[] args)
         {
-            // Temporary code to trigger refresh in the web application
-            // TODO (abarora) : Remove this code and use a middleware for refresh
-            var timer = new System.Timers.Timer(2000);
-            timer.Elapsed += (sender, e) => _refresher.Refresh();
-            timer.Enabled = true;
-
             BuildWebHost(args).Run();
         }
 
@@ -34,11 +26,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                         options.Connect(settings["connection_string"])
                                .ConfigureRefresh(refresh =>
                                {
-                                   refresh.Register("Settings:BackgroundColor", refreshAll: false)
+                                   refresh.Register("Settings:BackgroundColor")
                                           .SetCacheExpiration(TimeSpan.FromSeconds(10));
                                });
-
-                        _refresher = options.GetRefresher();
                     });
                 })
                 .UseStartup<Startup>()

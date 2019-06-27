@@ -1,6 +1,9 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.AppConfiguration.Azconfig;
+using Microsoft.AzureAppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -282,6 +285,62 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal("newValue", config["TestKey1"]);
                 Assert.Equal(2, mockedHttpRequestHandler.RequestCount);
             }
+        }
+
+        [Fact]
+        public void RefreshMiddlewareTests_MiddlewareConstructorParsesIConfigurationRefresher()
+        {
+            // Arrange
+            var delegateMock = new Mock<RequestDelegate>();
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
+                })
+                .Build();
+
+            // Act
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+
+            // Assert
+            Assert.NotNull(middleware.Refreshers);
+            Assert.Equal(1, middleware.Refreshers.Count);
+        }
+
+        [Fact]
+        public void RefreshMiddlewareTests_MiddlewareConstructorParsesMultipleIConfigurationRefreshers()
+        {
+            // Arrange
+            var delegateMock = new Mock<RequestDelegate>();
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
+                })
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.Last(), _kvCollection))
+                })
+                .Build();
+
+            // Act
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+
+            // Assert
+            Assert.NotNull(middleware.Refreshers);
+            Assert.Equal(2, middleware.Refreshers.Count);
+        }
+
+        [Fact]
+        public void RefreshMiddlewareTests_InvalidOperationExceptionOnIConfigurationCastFailure()
+        {
+            // Arrange
+            var delegateMock = new Mock<RequestDelegate>();
+            var configMock = new Mock<IConfiguration>();
+            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object);
+
+            // Act and Assert
+            Assert.Throws<InvalidOperationException>(action);
         }
 
         private void WaitAndRefresh(AzureAppConfigurationOptions options, int millisecondsDelay)

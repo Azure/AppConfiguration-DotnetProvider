@@ -3,7 +3,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure's App Configuration service as a configuration source in their applications.</Description>
+    <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications.</Description>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
@@ -34,7 +34,7 @@
   <!-- After the build, we write the .nuspec file to the output directory -->
   <Import Project=".\.nuspec.props" />
   <Target Name="WriteToFile" AfterTargets="Build">  
-      <WriteLinesToFile File="$(OutDir)\.nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />  
+      <WriteLinesToFile File="$(OutDir)\$(ProjectName).nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />
   </Target>
   
   <!-- Ensure any package generation is done via the generated nuspec file. -->

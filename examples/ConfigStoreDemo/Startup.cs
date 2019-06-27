@@ -33,6 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                 app.UseExceptionHandler("/Error");
             }
 
+            app.UseAzureAppConfiguration();
             app.UseStaticFiles();
             app.UseMvc();
         }
