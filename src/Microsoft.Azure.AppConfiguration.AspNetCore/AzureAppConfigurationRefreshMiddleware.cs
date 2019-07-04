@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Microsoft.AzureAppConfiguration.AspNetCore
+namespace Microsoft.Azure.AppConfiguration.AspNetCore
 {
     /// <summary>
     /// Middleware for Azure App Configuration to use activity-based refresh for key-values registered in the provider.

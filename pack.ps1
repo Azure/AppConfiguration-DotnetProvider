@@ -19,7 +19,7 @@ $LogDirectory = "$PSScriptRoot\buildlogs"
 $AzureAppConfigurationProjectName = "Microsoft.Extensions.Configuration.AzureAppConfiguration"
 $AzureAppConfigurationProjectPath = "$PSScriptRoot\src\$AzureAppConfigurationProjectName\$AzureAppConfigurationProjectName.csproj"
 
-$AzureAppConfigurationAspNetCoreProjectName = "Microsoft.AzureAppConfiguration.AspNetCore"
+$AzureAppConfigurationAspNetCoreProjectName = "Microsoft.Azure.AppConfiguration.AspNetCore"
 $AzureAppConfigurationAspNetCoreProjectPath = "$PSScriptRoot\src\$AzureAppConfigurationAspNetCoreProjectName\$AzureAppConfigurationAspNetCoreProjectName.csproj"
 
 # Create the log directory.
