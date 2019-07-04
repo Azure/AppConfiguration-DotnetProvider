@@ -3,12 +3,12 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>Microsoft.AzureAppConfiguration.AspNetCore allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications. This package adds additional features for ASP.NET Core applications to the existing package Microsoft.Extensions.Configuration.AzureAppConfiguration.</Description>
+    <Description>Microsoft.Azure.AppConfiguration.AspNetCore allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications. This package adds additional features for ASP.NET Core applications to the existing package Microsoft.Extensions.Configuration.AzureAppConfiguration.</Description>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AssemblyName>Microsoft.AzureAppConfiguration.AspNetCore</AssemblyName>
+    <AssemblyName>Microsoft.Azure.AppConfiguration.AspNetCore</AssemblyName>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
     <PackageProjectUrl>https://azure.microsoft.com</PackageProjectUrl>
     <PackageLicenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</PackageLicenseUrl>

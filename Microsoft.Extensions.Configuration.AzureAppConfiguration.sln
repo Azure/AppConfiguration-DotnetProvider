@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Extensions.Configuration.AzureAppConfiguration", "src\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj", "{7B793D44-EC46-4C12-B71F-3A5005290C75}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.AzureAppConfiguration.AspNetCore", "src\Microsoft.AzureAppConfiguration.AspNetCore\Microsoft.AzureAppConfiguration.AspNetCore.csproj", "{6EAA6031-57AB-4FD0-B36A-019A259846B1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.AppConfiguration.AspNetCore", "src\Microsoft.Azure.AppConfiguration.AspNetCore\Microsoft.Azure.AppConfiguration.AspNetCore.csproj", "{6EAA6031-57AB-4FD0-B36A-019A259846B1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration", "tests\Tests.AzureAppConfiguration\Tests.AzureAppConfiguration.csproj", "{4CCE5AB2-A5D2-413C-A5AD-FFBE2FECC889}"
 EndProject
