@@ -1,4 +1,4 @@
-﻿using Microsoft.AzureAppConfiguration.AspNetCore;
+﻿using Microsoft.Azure.AppConfiguration.AspNetCore;
 
 namespace Microsoft.AspNetCore.Builder
 {

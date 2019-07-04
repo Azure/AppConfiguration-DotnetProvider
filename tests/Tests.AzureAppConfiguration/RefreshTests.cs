@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.AppConfiguration.Azconfig;
-using Microsoft.AzureAppConfiguration.AspNetCore;
+using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
