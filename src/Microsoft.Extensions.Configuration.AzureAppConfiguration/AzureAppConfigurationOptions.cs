@@ -2,6 +2,7 @@
 {
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using System;
@@ -17,7 +18,7 @@
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() { new AzureKeyVaultKeyValueAdapter() };
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
@@ -201,6 +202,7 @@
             return this;
         }
 
+       
         /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>

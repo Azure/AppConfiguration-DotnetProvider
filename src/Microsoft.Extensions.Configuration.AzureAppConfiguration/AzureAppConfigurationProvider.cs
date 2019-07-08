@@ -68,9 +68,9 @@
             }
         }
 
-        public override async void Load()
+        public override void Load()
         {
-            LoadAll();
+            LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
 
             //
             // Mark all settings have loaded at startup.
@@ -79,7 +79,7 @@
             ObserveKeyValues();
         }
 
-        private void LoadAll()
+        private async Task LoadAll()
         {
              IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -124,7 +124,7 @@
                     };
 
                     ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
-                    _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+                    _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => data[kv.Key] = kv);
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
@@ -136,7 +136,7 @@
                     data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
                     if (data != null)
                     {
-                        SetData(data);
+                        await SetData(data);
                         return;
                     }
                 }
@@ -149,7 +149,7 @@
                 return;
             }
 
-            SetData(data);
+            await SetData(data);
 
             if (_options.OfflineCache != null)
             {
@@ -180,17 +180,17 @@
 
                 IObservable<KeyValueChange> observable = _client.Observe(watchedKv, changeWatcher.PollInterval, Scheduler.Default, _requestTracingEnabled);
 
-                _subscriptions.Add(observable.Subscribe((observedChange) =>
+                _subscriptions.Add(observable.Subscribe(async (observedChange) =>
                 {
                     ProcessChanges(Enumerable.Repeat(observedChange, 1));
 
                     if (changeWatcher.ReloadAll)
                     {
-                        LoadAll();
+                       await LoadAll();
                     }
                     else
                     {
-                        SetData(_settings);
+                        await SetData(_settings);
                     }
                 }));
             }
@@ -213,16 +213,16 @@
                     existing,
                     _requestTracingEnabled);
 
-                _subscriptions.Add(observable.Subscribe((observedChanges) =>
+                _subscriptions.Add(observable.Subscribe(async (observedChanges) =>
                 {
                     ProcessChanges(observedChanges);
 
-                    SetData(_settings);
+                    await SetData(_settings);
                 }));
             }
         }
 
-        private void SetData(IDictionary<string, IKeyValue> data)
+        private async Task SetData(IDictionary<string, IKeyValue> data)
         {
             //
             // Update cache of settings
@@ -235,7 +235,7 @@
 
             foreach (KeyValuePair<string, IKeyValue> kvp in data)
             {
-                foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
+                foreach (KeyValuePair<string, string> kv in await ProcessAdapters(kvp.Value))
                 {
                     string key = kv.Key;
                     foreach (string prefix in _options.KeyPrefixes)
@@ -258,13 +258,13 @@
             OnReload();
         }
         
-        private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(IKeyValue keyValue)
+        private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(IKeyValue keyValue)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                IEnumerable<KeyValuePair<string, string>> kvs = adapter.GetKeyValues(keyValue);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.GetKeyValues(keyValue);
 
                 if (kvs != null)
                 {

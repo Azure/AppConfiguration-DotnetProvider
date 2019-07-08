@@ -1,8 +1,12 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
+    using Microsoft.Azure.KeyVault;
+    using Microsoft.Azure.KeyVault.Models;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+    using Microsoft.IdentityModel.Clients.ActiveDirectory;
     using System;
+    using System.Collections.Generic;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -11,9 +15,33 @@
     {
         static IConfiguration Configuration { get; set; }
 
+
+       
+
         static void Main(string[] args)
         {
-            Configure();
+
+
+
+            ///Version 1
+            /////////////////////////////////////////////////////////////
+            var builder = new ConfigurationBuilder(); //new config builder
+
+            builder.AddAzureAppConfiguration(Environment.GetEnvironmentVariable("ConnectionString")); //get the connecting string
+
+            IConfigurationRoot config = builder.Build(); //call the build method in config builder
+
+            string value = config[".appconfig.keyvault/TheTrialSecret"];
+            Console.WriteLine(value);
+
+            /*AzureKeyVaultKeyValueAdapter azureKeyVaultKeyValueAdapter = new AzureKeyVaultKeyValueAdapter();
+            azureKeyVaultKeyValueAdapter.GetSecretFromKeyVault(value);*/
+            /////////////////////////////////////////////////////////////
+
+
+            ///version 0
+            /////////////////////////////////////////////////////////////
+           /* Configure();
 
             var cts = new CancellationTokenSource();
 
@@ -23,8 +51,12 @@
             // Finish on key press
             Console.ReadKey();
 
-            cts.Cancel();
+            cts.Cancel();*/
+            /////////////////////////////////////////////////////////////
         }
+
+        /// version 0
+        /////////////////////////////////////////////////////////////
 
         private static void Configure()
         {
@@ -47,7 +79,8 @@
             //
             // Augment the configuration builder with Azure App Configuration
             // Pull the connection string from an environment variable
-            builder.AddAzureAppConfiguration(o => {
+            builder.AddAzureAppConfiguration(o =>
+            {
 
                 o.Connect(configuration["connection_string"])
                  //
