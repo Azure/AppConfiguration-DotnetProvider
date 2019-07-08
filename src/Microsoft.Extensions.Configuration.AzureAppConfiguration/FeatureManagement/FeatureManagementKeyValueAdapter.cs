@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json;
 
@@ -8,20 +10,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
+        private static readonly Task<IEnumerable<KeyValuePair<string, string>>> NullResult = Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(null);
+        private FeatureFlag featureFlag;
 
-        public IEnumerable<KeyValuePair<string, string>> GetKeyValues(IKeyValue keyValue)
+        public Task<IEnumerable<KeyValuePair<string, string>>> GetKeyValues(IKeyValue keyValue)
         {
             string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
 
             if (!string.Equals(contentType, FeatureManagementConstants.ContentType) ||
                 !keyValue.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
             {
-                return null;
+                return NullResult;
             }
 
-            //
-            // TODO error handling
-            FeatureFlag featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+            try
+            {
+                featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+
+            }
+            catch (NullReferenceException e)
+            {
+
+                Console.WriteLine("The FeatureFlag is Empty", e.Message);
+            }
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -59,7 +70,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
             }
 
-            return keyValues;
+            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
         }
+
+
     }
 }

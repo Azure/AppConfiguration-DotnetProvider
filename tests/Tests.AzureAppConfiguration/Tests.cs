@@ -293,7 +293,7 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 }.Use("*", null));
 
-                var config = builder.Build();
+                IConfigurationRoot config = builder.Build();
 
                 Assert.NotNull(correlationContext);
                 Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
