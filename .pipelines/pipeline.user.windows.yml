@@ -3,7 +3,7 @@ environment:
     os: windows
   runtime:
     provider: appcontainer
-    image: cdpxtest.azurecr.io/global/vse2017u5-ext-win14393.1884:1.0
+    image: cdpxwin.azurecr.io/global/vse2017u5-external-azsdk-ext-win14393.1884:4.2
   
 restore:
   commands:

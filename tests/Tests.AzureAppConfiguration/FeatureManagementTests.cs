@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -109,16 +108,12 @@ namespace Tests.AzureAppConfiguration
             {
                 var builder = new ConfigurationBuilder();
 
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient }
+                    .UseFeatureFlags(o => o.CacheExpirationTime = TimeSpan.FromSeconds(1));
 
-                options.UseFeatureFlags(o => o.PollInterval = TimeSpan.FromMilliseconds(500));
-
-                builder.AddAzureAppConfiguration(options);
-
-                var config = builder.Build();
+                var config = builder
+                    .AddAzureAppConfiguration(options)
+                    .Build();
 
                 Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
                 Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
@@ -148,10 +143,8 @@ namespace Tests.AzureAppConfiguration
                     ";
 
                 _kv.ETag += "f";
-
                 featureFlags.Add(_kv2);
-
-                Task.Delay(1500).Wait();
+                options.GetRefresher().Refresh();
 
                 Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
                 Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
