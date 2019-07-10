@@ -15,33 +15,10 @@
     {
         static IConfiguration Configuration { get; set; }
 
-
-       
-
         static void Main(string[] args)
         {
 
-
-
-            ///Version 1
-            /////////////////////////////////////////////////////////////
-            var builder = new ConfigurationBuilder(); //new config builder
-
-            builder.AddAzureAppConfiguration(Environment.GetEnvironmentVariable("ConnectionString")); //get the connecting string
-
-            IConfigurationRoot config = builder.Build(); //call the build method in config builder
-
-            string value = config[".appconfig.keyvault/TheTrialSecret"];
-            Console.WriteLine(value);
-
-            /*AzureKeyVaultKeyValueAdapter azureKeyVaultKeyValueAdapter = new AzureKeyVaultKeyValueAdapter();
-            azureKeyVaultKeyValueAdapter.GetSecretFromKeyVault(value);*/
-            /////////////////////////////////////////////////////////////
-
-
-            ///version 0
-            /////////////////////////////////////////////////////////////
-           /* Configure();
+           Configure();
 
             var cts = new CancellationTokenSource();
 
@@ -51,12 +28,8 @@
             // Finish on key press
             Console.ReadKey();
 
-            cts.Cancel();*/
-            /////////////////////////////////////////////////////////////
+            cts.Cancel();
         }
-
-        /// version 0
-        /////////////////////////////////////////////////////////////
 
         private static void Configure()
         {

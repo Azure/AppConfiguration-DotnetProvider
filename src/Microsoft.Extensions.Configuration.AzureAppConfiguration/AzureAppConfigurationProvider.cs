@@ -222,7 +222,7 @@
             }
         }
 
-        private async Task SetData(IDictionary<string, IKeyValue> data)
+        private async Task SetData(IDictionary<string, IKeyValue> data, CancellationToken cancellationToken = default(CancellationToken))
         {
             //
             // Update cache of settings
@@ -235,7 +235,7 @@
 
             foreach (KeyValuePair<string, IKeyValue> kvp in data)
             {
-                foreach (KeyValuePair<string, string> kv in await ProcessAdapters(kvp.Value))
+                foreach (KeyValuePair<string, string> kv in await ProcessAdapters(kvp.Value, cancellationToken))
                 {
                     string key = kv.Key;
                     foreach (string prefix in _options.KeyPrefixes)
@@ -258,13 +258,13 @@
             OnReload();
         }
         
-        private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(IKeyValue keyValue)
+        private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(IKeyValue keyValue, CancellationToken cancellationToken)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.GetKeyValues(keyValue);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(keyValue, cancellationToken);
 
                 if (kvs != null)
                 {

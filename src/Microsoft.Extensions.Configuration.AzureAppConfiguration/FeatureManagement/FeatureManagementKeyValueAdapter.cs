@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json;
@@ -13,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private static readonly Task<IEnumerable<KeyValuePair<string, string>>> NullResult = Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(null);
         private FeatureFlag featureFlag;
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> GetKeyValues(IKeyValue keyValue)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
         {
             string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
 

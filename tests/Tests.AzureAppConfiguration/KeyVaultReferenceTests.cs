@@ -19,42 +19,41 @@ namespace Tests.AzureAppConfiguration
 {
     public class KeyVaultReferenceTests
     {
-        private KeyValue _kv = new KeyValue("mySecret")
+        IKeyValue _kv = new KeyValue("mySecret")
         {
             Value = @"
                     {
-                        ""uri"":""https://keyvault-theclassics.vault.azure.net/TheTrialSecret""
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
                     }
                    ",
             ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
             ContentType = KeyVaultConstants.ContentType + "; charset=utf-8"
         };
 
-        //Check successfull result for GetSecretFromKeyVault method
-        [Fact]
-        public async Task GetSecretFromKeyVault_Success()
+       [Fact]
+        public void KeyVaultUse()
         {
-            var azureKeyVaultKeyValueAdapter = new AzureKeyVaultKeyValueAdapter();
+            IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
+            string secretValue = "SecretValue from KeyVault";
 
-            var builder = new ConfigurationBuilder();
-            var config = builder.Build();
-            //KeyVaultSecretReference secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(keyValue.Value, s_SerializationSettings);
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
+                                                       new MockedGetKeyValueRequest(_kv, KeyValues)))
+            {
+                var builder = new ConfigurationBuilder();
 
-            string secretUri = ".appconfig.keyvault/TheTrialSecret";
-            // string expected = await azureKeyVaultKeyValueAdapter.GetSecretFromKeyVault(secretRef.Uri);
-            var expected = await azureKeyVaultKeyValueAdapter.GetSecretFromKeyVault(secretUri, async () => await Task.Run(() => new SecretBundle() { Value = "newVersion" } ));
-            var actual = "newVersion";
-            Assert.Equal(actual, expected);
-        }
+                var options = new AzureAppConfigurationOptions()
+                {
+                    Client = testClient
+                };
 
-        
-    }
+                options.UsesAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
 
-    public static class MockedKeyVaultClient
-    {
-        public static Task<SecretBundle> GetSecretAsync(this KeyVaultClient client, string secretIdentifier)
-        {
-            return Task.FromResult(new SecretBundle() { Value = "newVersion" });
+                builder.AddAzureAppConfiguration(options);
+
+                var config = builder.Build();
+
+                Assert.Equal(secretValue, config[_kv.Key]);
+            }
         }
     }
 }

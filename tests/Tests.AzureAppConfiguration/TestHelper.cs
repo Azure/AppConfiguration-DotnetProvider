@@ -9,7 +9,6 @@ namespace Tests.AzureAppConfiguration
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
-            //return $"Endpoint=https://xxxxx;Id=b1d9b31;Secret={returnValue}";
             return $"Endpoint=https://t-sebyusecondresource.azconfig.io;Id=2-l4-s0:OWhCnARLzy2wGn1/+nEz;Secret={returnValue}";
         }
     }

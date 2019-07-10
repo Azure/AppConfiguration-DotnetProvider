@@ -22,6 +22,7 @@
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
+       
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
@@ -173,7 +174,7 @@
         /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
-        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        public AzureAppConfigurationOptions UsesFeatureFlags(Action<FeatureFlagOptions> configure = null)
         {
             FeatureFlagOptions options = new FeatureFlagOptions();
 
@@ -202,7 +203,22 @@
             return this;
         }
 
-       
+        internal AzureAppConfigurationOptions UsesAzureKeyVault(IAzureKeyVaultClient client)
+        {
+            _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
+
+            if (client != null)
+            {
+                _adapters.Add(new AzureKeyVaultKeyValueAdapter(client, false));
+            }
+            else
+            {
+                _adapters.Add(new AzureKeyVaultKeyValueAdapter());
+            }
+
+            return this;
+        }
+
         /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>
