@@ -84,7 +84,7 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                options.UsesFeatureFlags();
+                options.UseFeatureFlags();
 
                 builder.AddAzureAppConfiguration(options);
 
@@ -114,7 +114,7 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                options.UsesFeatureFlags(o => o.PollInterval = TimeSpan.FromMilliseconds(500));
+                options.UseFeatureFlags(o => o.PollInterval = TimeSpan.FromMilliseconds(500));
 
                 builder.AddAzureAppConfiguration(options);
 
@@ -190,7 +190,7 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                options.UsesFeatureFlags();
+                options.UseFeatureFlags();
 
                 builder.AddAzureAppConfiguration(options);
 
@@ -214,7 +214,7 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                options.UsesFeatureFlags(o => o.Label = "myLabel");
+                options.UseFeatureFlags(o => o.Label = "myLabel");
 
                 builder.AddAzureAppConfiguration(options);
 

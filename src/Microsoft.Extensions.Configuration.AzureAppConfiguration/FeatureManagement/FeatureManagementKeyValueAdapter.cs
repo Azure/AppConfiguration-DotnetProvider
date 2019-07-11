@@ -24,16 +24,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return NullResult;
             }
 
-            try
-            {
-                featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+            featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
 
-            }
-            catch (NullReferenceException e)
-            {
-
-                Console.WriteLine("The FeatureFlag is Empty", e.Message);
-            }
 
             var keyValues = new List<KeyValuePair<string, string>>();
 

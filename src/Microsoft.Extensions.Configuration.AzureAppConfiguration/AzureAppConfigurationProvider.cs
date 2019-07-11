@@ -99,7 +99,7 @@
 
                     //
                     // Load all key-values with the null label.
-                    _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
+                    await _client.GetKeyValues(options).ForEachAsync(kv => { data[kv.Key] = kv; });
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)

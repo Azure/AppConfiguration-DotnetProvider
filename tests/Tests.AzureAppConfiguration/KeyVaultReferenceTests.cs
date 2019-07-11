@@ -30,7 +30,7 @@ namespace Tests.AzureAppConfiguration
             ContentType = KeyVaultConstants.ContentType + "; charset=utf-8"
         };
 
-       [Fact]
+        [Fact]
         public void KeyVaultUse()
         {
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
@@ -46,7 +46,7 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                options.UsesAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
+                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
 
                 builder.AddAzureAppConfiguration(options);
 

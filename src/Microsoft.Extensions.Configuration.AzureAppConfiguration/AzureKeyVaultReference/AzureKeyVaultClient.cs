@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 throw new ArgumentNullException(nameof(secretUri));
             }
 
-            EzureClientInitialized();
+            EnsureInitialized();
 
             SecretBundle secretBundle = await _keyVaultClient.GetSecretAsync(secretUri.ToString(), cancellationToken);
 
@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             _keyVaultClient?.Dispose();
         }
 
-        private void EzureClientInitialized()
+        private void EnsureInitialized()
         {
             if (_keyVaultClient != null)
             {

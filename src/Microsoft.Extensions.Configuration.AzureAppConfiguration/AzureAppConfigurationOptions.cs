@@ -174,7 +174,7 @@
         /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
-        public AzureAppConfigurationOptions UsesFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
         {
             FeatureFlagOptions options = new FeatureFlagOptions();
 
@@ -203,7 +203,7 @@
             return this;
         }
 
-        internal AzureAppConfigurationOptions UsesAzureKeyVault(IAzureKeyVaultClient client)
+        internal AzureAppConfigurationOptions UseAzureKeyVault(IAzureKeyVaultClient client)
         {
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
 
