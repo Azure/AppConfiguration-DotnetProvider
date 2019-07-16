@@ -31,7 +31,7 @@ namespace Tests.AzureAppConfiguration
         };
 
         [Fact]
-        public void KeyVaultUse()
+        public void UseSecret()
         {
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
             string secretValue = "SecretValue from KeyVault";

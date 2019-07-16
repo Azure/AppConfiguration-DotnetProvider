@@ -2,6 +2,6 @@
 {
     internal class KeyVaultConstants
     {
-        public const string ContentType = "application/vnd.microsoft.appconfig.keyvault.secretref+json";
+        public const string ContentType = "application/vnd.microsoft.appconfig.keyvaultref+json";
     }
 }

@@ -124,7 +124,7 @@
                     };
 
                     ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
-                    _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => data[kv.Key] = kv);
+                    await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv);
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
@@ -264,6 +264,11 @@
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
+                if (!adapter.CanProcess(keyValue))
+                {
+                    continue;
+                }
+
                 IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(keyValue, cancellationToken);
 
                 if (kvs != null)

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter, IDisposable
+    class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
         private readonly IAzureKeyVaultClient _keyVaultClient;
@@ -23,27 +23,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             _disposeClient = disposeClient;
         }
 
-        public void Dispose()
-        {
-            if (_disposeClient)
-            {
-                (_keyVaultClient as IDisposable)?.Dispose();
-            }
-        }
-
         /// <summary> Uses the managed identity to retrieve the actual value </summary>
         /// <param KeyValue ="IKeyValue">  inputs the IKeyValue </param>
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
         {
-            string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
-
-            //Checking if the content type is our type (If not we return null)
-            if (!string.Equals(contentType, KeyVaultConstants.ContentType))
-            {
-                return null;
-            }
-
             KeyVaultSecretReference secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(keyValue.Value, s_SerializationSettings);
 
             //Get secret from KeyVault
@@ -55,6 +39,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             keyValues.Add(new KeyValuePair<string, string>(keyValue.Key, secret));
 
             return keyValues;
+        }
+
+        public bool CanProcess(IKeyValue kv)
+        {
+            string contentType = kv?.ContentType?.Split(';')[0].Trim();
+
+            return string.Equals(contentType, KeyVaultConstants.ContentType);
         }
     }
 }

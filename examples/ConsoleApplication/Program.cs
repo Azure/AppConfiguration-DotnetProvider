@@ -1,12 +1,8 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
-    using Microsoft.Azure.KeyVault;
-    using Microsoft.Azure.KeyVault.Models;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-    using Microsoft.IdentityModel.Clients.ActiveDirectory;
     using System;
-    using System.Collections.Generic;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -17,8 +13,7 @@
 
         static void Main(string[] args)
         {
-
-           Configure();
+            Configure();
 
             var cts = new CancellationTokenSource();
 
@@ -52,8 +47,7 @@
             //
             // Augment the configuration builder with Azure App Configuration
             // Pull the connection string from an environment variable
-            builder.AddAzureAppConfiguration(o =>
-            {
+            builder.AddAzureAppConfiguration(o => {
 
                 o.Connect(configuration["connection_string"])
                  //

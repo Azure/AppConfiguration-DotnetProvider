@@ -11,21 +11,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
-        private static readonly Task<IEnumerable<KeyValuePair<string, string>>> NullResult = Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(null);
         private FeatureFlag featureFlag;
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
         {
-            string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
-
-            if (!string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                !keyValue.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
-            {
-                return NullResult;
-            }
-
             featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
-
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -66,6 +56,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
         }
 
+        public bool CanProcess(IKeyValue kv)
+        {
+            string contentType = kv?.ContentType?.Split(';')[0].Trim();
 
+            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
+                                 kv.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+        }
     }
 }
