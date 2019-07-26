@@ -38,7 +38,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 AzureAppConfigurationOptions options = _optionsProvider();
 
                 AzconfigClient client = options.Client ?? new AzconfigClient(options.ConnectionString);
-                client.UserAgent = TracingUtils.GenerateUserAgent();
+                client.UserAgent = TracingUtils.GenerateUserAgent(client.UserAgent);
 
                 provider = new AzureAppConfigurationProvider(client, options, _optional);
             }

@@ -9,10 +9,19 @@
 
     internal static class TracingUtils
     {
-        public static string GenerateUserAgent()
+        public static string GenerateUserAgent(string currentUserAgent = null)
         {
             Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
             var userAgent = new StringBuilder($"{assembly.GetName().Name}/{assembly.GetName().Version}");
+
+            //
+            // If currentUserAgent is not null, prepend current assembly name and version to it,
+            // and return any further processing.
+            if (!string.IsNullOrWhiteSpace(currentUserAgent))
+            {
+                 return $"{userAgent.ToString()} {currentUserAgent}";
+            }
+
             IEnumerable<TargetFrameworkAttribute> targetFrameworkAttributes = assembly.GetCustomAttributes(true)?.OfType<TargetFrameworkAttribute>();
             if (targetFrameworkAttributes != null && targetFrameworkAttributes.Any())
             {
