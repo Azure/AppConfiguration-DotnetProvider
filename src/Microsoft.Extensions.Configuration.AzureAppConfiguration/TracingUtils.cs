@@ -16,7 +16,7 @@
 
             //
             // If currentUserAgent is not null, prepend current assembly name and version to it,
-            // and return any further processing.
+            // and return without any further processing.
             if (!string.IsNullOrWhiteSpace(currentUserAgent))
             {
                  return $"{userAgent.ToString()} {currentUserAgent}";
