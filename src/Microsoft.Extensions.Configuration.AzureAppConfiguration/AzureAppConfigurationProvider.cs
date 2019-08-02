@@ -71,8 +71,8 @@
 
         public async Task Refresh()
         {
-            await RefreshIndividualKeyValues();
-            await RefreshKeyValueCollections();
+            await RefreshIndividualKeyValues().ConfigureAwait(false);
+            await RefreshKeyValueCollections().ConfigureAwait(false);
         }
 
         private void LoadAll()
@@ -122,7 +122,7 @@
                     _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                    LoadKeyValuesRegisteredForRefresh(data).Wait();
+                    LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
@@ -173,7 +173,7 @@
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
                 data[watchedKey] = watchedKv;
             }
@@ -206,7 +206,7 @@
                         var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
                         options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
-                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None);
+                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None).ConfigureAwait(false);
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
@@ -224,7 +224,7 @@
                         ConfigureRequestTracingOptions(options);
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Add the key-value if it is not loaded, or update it if it was loaded with a different label
@@ -285,7 +285,7 @@
                         Label = changeWatcher.Label.NormalizeNull(),
                         RequestTracingEnabled = _requestTracingEnabled,
                         HostType = _hostType
-                    });
+                    }).ConfigureAwait(false);
 
                     changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 

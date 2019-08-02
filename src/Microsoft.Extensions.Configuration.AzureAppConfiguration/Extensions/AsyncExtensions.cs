@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             var iter = enumerable.GetEnumerator();
             var items = new List<T>();
 
-            while (await iter.MoveNext(cancellationToken))
+            while (await iter.MoveNext(cancellationToken).ConfigureAwait(false))
             {
                 items.Add(iter.Current);
             }

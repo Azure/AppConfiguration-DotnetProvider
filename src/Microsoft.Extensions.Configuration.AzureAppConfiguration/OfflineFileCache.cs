@@ -157,7 +157,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (IOException ex) when (ex.HResult == ERROR_SHARING_VIOLATION)
                 {
-                    Task.Delay(new Random().Next(delayRange)).Wait();
+                    Task.Delay(new Random().Next(delayRange)).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
             }
 
@@ -199,7 +199,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     File.WriteAllText(tempFile, sb.ToString());
 
-                    await this.DoUpdate(tempFile);
+                    await this.DoUpdate(tempFile).ConfigureAwait(false);
                 });
             }
         }
@@ -217,8 +217,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (ex.HResult == ERROR_SHARING_VIOLATION)
                     {
-                        await Task.Delay(new Random().Next(delayRange));
-                        await this.DoUpdate(tempFile, ++retry);
+                        await Task.Delay(new Random().Next(delayRange)).ConfigureAwait(false);
+                        await this.DoUpdate(tempFile, ++retry).ConfigureAwait(false);
                     }
                     else
                     {
