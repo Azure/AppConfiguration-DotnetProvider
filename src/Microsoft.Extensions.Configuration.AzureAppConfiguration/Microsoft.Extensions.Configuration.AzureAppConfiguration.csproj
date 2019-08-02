@@ -25,7 +25,7 @@
     -->
     <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-preview-008870001-1052</MicrosoftAzconfigClientVersion>
+    <MicrosoftAzconfigClientVersion>1.0.0-preview-009440001-1345</MicrosoftAzconfigClientVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-008930001-1422</MicrosoftAzconfigManagedIdentityConnectorVersion>
     <SystemInteractiveAsyncVersion>3.1.1</SystemInteractiveAsyncVersion>
     <MicrosoftAspNetCoreHttpExtensionsVersion>2.1.1</MicrosoftAspNetCoreHttpExtensionsVersion>
