@@ -197,7 +197,7 @@
             Client = AzconfigClientFactory.CreateClient(uri, new AzconfigClientFactoryOptions()
             {
                 Permissions = Permissions.Read
-            }).Result;
+            }).ConfigureAwait(false).GetAwaiter().GetResult();
 
             return this;
         }

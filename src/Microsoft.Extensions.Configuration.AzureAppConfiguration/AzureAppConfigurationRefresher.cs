@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException("Refresh operation cannot be invoked before Azure App Configuration Provider is initialized.");
             }
 
-            await _provider.Refresh();
+            await _provider.Refresh().ConfigureAwait(false);
         }
     }
 }

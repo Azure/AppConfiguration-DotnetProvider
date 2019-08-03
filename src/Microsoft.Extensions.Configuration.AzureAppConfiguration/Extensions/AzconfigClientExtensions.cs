@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException($"{nameof(keyValue)}.{nameof(keyValue.Key)}");
             }
 
-            var currentKeyValue = await client.GetCurrentKeyValue(keyValue, options, cancellationToken);
+            var currentKeyValue = await client.GetCurrentKeyValue(keyValue, options, cancellationToken).ConfigureAwait(false);
 
             if (currentKeyValue == keyValue)
             {
@@ -90,7 +90,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
-            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
+            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None).ConfigureAwait(false);
 
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 };
 
                 queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
-                kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None);
+                kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None).ConfigureAwait(false);
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
 
                 foreach (IKeyValue kv in kvs)

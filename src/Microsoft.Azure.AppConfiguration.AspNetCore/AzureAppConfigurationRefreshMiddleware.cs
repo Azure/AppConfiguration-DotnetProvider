@@ -43,7 +43,7 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
             }
 
             // Call the next delegate/middleware in the pipeline
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
         }
     }
 }
