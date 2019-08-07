@@ -72,7 +72,6 @@
         {
             LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
 
-            //
             // Mark all settings have loaded at startup.
             _initialized = true;
 

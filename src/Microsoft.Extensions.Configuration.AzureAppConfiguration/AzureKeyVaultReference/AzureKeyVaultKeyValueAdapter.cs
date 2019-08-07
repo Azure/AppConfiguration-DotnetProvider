@@ -28,15 +28,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
         {
-            KeyVaultSecretReference secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(keyValue.Value, s_SerializationSettings);
+
+            var keyValues = new List<KeyValuePair<string, string>>();
+
+            string value = keyValue.Value;
+
+            KeyVaultSecretReference secretRef = new KeyVaultSecretReference();
+            try
+            {
+                secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(keyValue.Value, s_SerializationSettings);
+
+            }
+            catch (JsonReaderException)
+            {
+                string message = "Secret Reference was not initialized";
+                Exception inner = new Exception();
+                throw new KeyVaultReferenceException(message, inner);
+            }
+
 
             //Get secret from KeyVault
             string secret = await _keyVaultClient.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken);
 
-            var keyValues = new List<KeyValuePair<string, string>>();
-
             // add the key and it's value in the keyvaluePair
             keyValues.Add(new KeyValuePair<string, string>(keyValue.Key, secret));
+
+
+
 
             return keyValues;
         }

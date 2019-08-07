@@ -219,6 +219,16 @@
             return this;
         }
 
+      /*  internal AzureAppConfigurationOptions UseKeyVauleAdapter(IKeyValueAdapter adapter)
+        {
+            _adapters.RemoveAll(a => a.GetType() == adapter.GetType());
+
+            _adapters.Add(adapter);
+
+            return this;
+        }*/
+
+
         /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>

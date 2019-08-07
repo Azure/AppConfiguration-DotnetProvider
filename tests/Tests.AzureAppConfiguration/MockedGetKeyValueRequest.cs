@@ -17,6 +17,8 @@ namespace Tests.AzureAppConfiguration
         private readonly IEnumerable<IKeyValue> _kvCollection;
         private int _getKvCounter = 0;
         private int _getKvsCounter = 0;
+       /// private IKeyValueURI kv;
+        //private IEnumerable<IKeyValueURI> kvCollectionPageOne;
         private const int _createNewKvTrigger = 1; 
 
         public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue>  kvCollection)
@@ -33,6 +35,7 @@ namespace Tests.AzureAppConfiguration
                 if (request.RequestUri.AbsolutePath.StartsWith($"/kv/{_kv.Key}"))
                 {
                     return GetKeyValue(request);
+
                 }
                 else if (request.RequestUri.AbsolutePath.StartsWith($"/kv"))
                 {
@@ -41,6 +44,8 @@ namespace Tests.AzureAppConfiguration
             }
             return Task.FromResult(new HttpResponseMessage());
         }
+
+
 
         private Task<HttpResponseMessage> GetKeyValue(HttpRequestMessage request)
         {
@@ -74,6 +79,7 @@ namespace Tests.AzureAppConfiguration
             };
 
             IEnumerable<IKeyValue> keyvalues = _kvCollection;
+
             if (_getKvCounter >= _createNewKvTrigger)
             {
                 keyvalues = _kvCollection.Select(x => new KeyValue(x.Key)
@@ -88,7 +94,8 @@ namespace Tests.AzureAppConfiguration
 
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
             _getKvsCounter++;
-            return Task.FromResult(response);
+            Task<HttpResponseMessage> res = Task.FromResult(response);
+            return res;
         }
 
         //public void Dispose() { }

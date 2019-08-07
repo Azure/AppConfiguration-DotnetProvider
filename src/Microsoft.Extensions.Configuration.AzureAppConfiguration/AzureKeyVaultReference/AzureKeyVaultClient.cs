@@ -2,10 +2,9 @@
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.AppConfiguration.Azconfig;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
@@ -17,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             if (secretUri == null)
             {
-                throw new ArgumentNullException(nameof(secretUri));
+                 throw new ArgumentNullException(nameof(secretUri));
             }
 
             EnsureInitialized();
