@@ -16,6 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
             IConfigurationRoot config = builder.Build(); //call the build method in config builder
 
+            //
            Console.WriteLine(config["OutlookPassword"]);
         }
     }
