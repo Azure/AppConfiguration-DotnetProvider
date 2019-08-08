@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (JsonReaderException e)
             {
-                throw new KeyVaultReferenceException("Invalid KeyValult reference", e);
+                throw new KeyVaultReferenceException("Invalid Key Vault reference", e);
             }
 
 
