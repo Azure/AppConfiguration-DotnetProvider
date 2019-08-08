@@ -10,10 +10,12 @@ using System.Net;
 using Newtonsoft.Json;
 using System.Text;
 using Microsoft.Azure.KeyVault.Models;
+using Microsoft.Rest.Azure;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
 namespace Tests.AzureAppConfiguration
 {
-    class MockedAzureKeyVaultClient : IAzureKeyVaultClient  //HttpMessageHandler,
+    class MockedAzureKeyVaultClient : MockedAzureKeyVaultClientBase
     {
         private readonly string _secretValue;
         private readonly IEnumerable<KeyValuePair<string, string>> _keyValues;
@@ -41,13 +43,8 @@ namespace Tests.AzureAppConfiguration
             _kvCollectionPageOne = kvCollectionPageOne;
         }
 
-        public Task<string> GetSecretValue(Uri secretUri, CancellationToken cancellationToken)
+        public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(string vaultBaseUrl, string secretName, string secretVersion, Dictionary<string, List<string>> customHeaders = null, CancellationToken cancellationToken = default)
         {
-            if (secretUri == null)
-            {
-                throw new ArgumentNullException(nameof(secretUri));
-            }
-
             if (IsEnabled == false)
             {
                 throw new KeyVaultErrorException();
@@ -62,8 +59,13 @@ namespace Tests.AzureAppConfiguration
             {
                 throw new KeyVaultErrorException();
             }
+            var response = new AzureOperationResponse<SecretBundle>()
+            {
+                RequestId = Guid.NewGuid().ToString(),
+                Body = new SecretBundle(_secretValue)
+            };
 
-            return Task.FromResult(_secretValue);
+            return Task.FromResult(response);
         }
     }
 }

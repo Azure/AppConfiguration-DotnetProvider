@@ -2,6 +2,7 @@
 {
     using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Azure.KeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -19,7 +20,7 @@
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() { new AzureKeyVaultKeyValueAdapter() };
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() { new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()) };
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
@@ -149,32 +150,21 @@
             return this;
         }
 
-        internal AzureAppConfigurationOptions UseAzureKeyVault(IAzureKeyVaultClient client)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        public AzureAppConfigurationOptions UseAzureKeyVault(IKeyVaultClient client)
         {
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
 
-            if (client != null)
-            {
-                _adapters.Add(new AzureKeyVaultKeyValueAdapter(client, false));
-            }
-            else
-            {
-                _adapters.Add(new AzureKeyVaultKeyValueAdapter());
-            }
-
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(client)));
+           
             return this;
         }
 
-      /*  internal AzureAppConfigurationOptions UseKeyVauleAdapter(IKeyValueAdapter adapter)
-        {
-            _adapters.RemoveAll(a => a.GetType() == adapter.GetType());
-
-            _adapters.Add(adapter);
-
-            return this;
-        }*/
-
-
+    
         /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>

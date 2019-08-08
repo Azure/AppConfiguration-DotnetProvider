@@ -1,11 +1,12 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using System;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
+﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+    using System;
+    using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
+
     class Program
     {
         static IConfiguration Configuration { get; set; }
@@ -13,22 +14,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
         static void Main(string[] args)
         {
+            Configure();
 
+            var cts = new CancellationTokenSource();
+            Run(cts.Token);
 
-            /*var builder = new ConfigurationBuilder(); //new config builder
-
-             var cts = new CancellationTokenSource();
-             Run(cts.Token);
-
-             // Finish on key press
-             Console.ReadKey();
-             cts.Cancel();*/
-
-             //
-            Example2 example2 = new Example2();
-            example2.KV();
+            // Finish on key press
+            Console.ReadKey();
+            cts.Cancel();
         }
-        
 
         private static void Configure()
         {

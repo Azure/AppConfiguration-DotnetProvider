@@ -10,17 +10,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
     class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
-        private readonly IAzureKeyVaultClient _keyVaultClient;
-        private readonly bool _disposeClient;
+        private readonly AzureKeyVaultSecretProvider _secretProvider;
 
-        public AzureKeyVaultKeyValueAdapter() : this(new AzureKeyVaultClient(), true)
-        {
-        }
 
-        public AzureKeyVaultKeyValueAdapter(IAzureKeyVaultClient keyVaultClient, bool disposeClient)
+        public AzureKeyVaultKeyValueAdapter(AzureKeyVaultSecretProvider secretProvider)
         {
-            _keyVaultClient = keyVaultClient ?? throw new ArgumentNullException(nameof(keyVaultClient));
-            _disposeClient = disposeClient;
+            _secretProvider = secretProvider ?? throw new ArgumentNullException(nameof(secretProvider));
         }
 
         /// <summary> Uses the managed identity to retrieve the actual value </summary>
@@ -33,22 +28,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             string value = keyValue.Value;
 
-            KeyVaultSecretReference secretRef = new KeyVaultSecretReference();
+            KeyVaultSecretReference secretRef = null;
+
             try
             {
                 secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(keyValue.Value, s_SerializationSettings);
 
             }
-            catch (JsonReaderException)
+            catch (JsonReaderException e)
             {
-                string message = "Secret Reference was not initialized";
-                Exception inner = new Exception();
-                throw new KeyVaultReferenceException(message, inner);
+                throw new KeyVaultReferenceException("Invalid KeyValult reference", e);
             }
 
 
             //Get secret from KeyVault
-            string secret = await _keyVaultClient.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
+            string secret = await _secretProvider.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
 
             // add the key and it's value in the keyvaluePair
             keyValues.Add(new KeyValuePair<string, string>(keyValue.Key, secret));

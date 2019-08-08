@@ -8,9 +8,15 @@ using Microsoft.Azure.AppConfiguration.Azconfig;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    class AzureKeyVaultClient : IAzureKeyVaultClient, IDisposable
+    class AzureKeyVaultSecretProvider : IDisposable
     {
-        private KeyVaultClient _keyVaultClient;
+        private IKeyVaultClient _keyVaultClient;
+        private bool _disposeClient;
+
+        public AzureKeyVaultSecretProvider(IKeyVaultClient client = null)
+        {
+            _keyVaultClient = client;
+        }
 
         public async Task<string> GetSecretValue(Uri secretUri, CancellationToken cancellationToken)
         {
@@ -28,7 +34,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public void Dispose()
         {
-            _keyVaultClient?.Dispose();
+            if (_disposeClient)
+            {
+                _keyVaultClient.Dispose();
+            }
         }
 
         private void EnsureInitialized()
@@ -38,10 +47,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return;
             }
 
-            //Use Managed identity
+            // Use Managed identity
             var azureServiceTokenProvider = new AzureServiceTokenProvider();
 
             _keyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
+
+            _disposeClient = true;
         }
     }
 }
