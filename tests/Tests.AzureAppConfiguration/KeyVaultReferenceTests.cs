@@ -4,7 +4,6 @@ using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVaultReference;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
