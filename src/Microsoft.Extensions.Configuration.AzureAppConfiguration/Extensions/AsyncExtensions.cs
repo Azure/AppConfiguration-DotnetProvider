@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class AsyncExtensions
     {
@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var iter = enumerable.GetEnumerator();
             var items = new List<T>();
 
-            while (await iter.MoveNext(cancellationToken))
+            while (await iter.MoveNext(cancellationToken).ConfigureAwait(false))
             {
                 items.Add(iter.Current);
             }

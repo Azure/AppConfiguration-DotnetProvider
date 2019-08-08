@@ -14,22 +14,38 @@ namespace Tests.AzureAppConfiguration
     class MockedGetKeyValueRequest : HttpMessageHandler
     {
         private IKeyValue _kv;
+        private int _millisecondsDelay;
         private readonly IEnumerable<IKeyValue> _kvCollection;
         private int _getKvCounter = 0;
         private int _getKvsCounter = 0;
-       /// private IKeyValueURI kv;
+        /// private IKeyValueURI kv;
         //private IEnumerable<IKeyValueURI> kvCollectionPageOne;
-        private const int _createNewKvTrigger = 1; 
+        private const int _createNewKvTrigger = 1;
 
-        public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue>  kvCollection)
+        public int RequestCount { get; private set; } = 0;
+
+        public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue> kvCollection, int millisecondsDelay = 0)
+        {
+            _kv = kv ?? throw new ArgumentException(nameof(kv));
+            _millisecondsDelay = millisecondsDelay;
+            _kvCollection = kvCollection ?? throw new ArgumentException(nameof(kvCollection));
+        }
+
+        public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue> kvCollection)
+
         {
             _kv = kv ?? throw new ArgumentException(nameof(kv));
             _kvCollection = kvCollection ?? throw new ArgumentException(nameof(kvCollection));
         }
 
+
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            RequestCount++;
+            Thread.Sleep(_millisecondsDelay);
             HttpMethod method = request.Method;
+
             if (request.Method == HttpMethod.Get)
             {
                 if (request.RequestUri.AbsolutePath.StartsWith($"/kv/{_kv.Key}"))
@@ -42,12 +58,14 @@ namespace Tests.AzureAppConfiguration
                     return GetKeyValues(request);
                 }
             }
+
             return Task.FromResult(new HttpResponseMessage());
         }
 
 
 
         private Task<HttpResponseMessage> GetKeyValue(HttpRequestMessage request)
+
         {
             // use counter to switch retrieved key value
             // used in observe key tests
@@ -59,12 +77,17 @@ namespace Tests.AzureAppConfiguration
                     Label = _kv.Label,
                     Value = "newValue",
                 };
+
             }
+
             HttpResponseMessage response = new HttpResponseMessage();
 
             response.StatusCode = HttpStatusCode.OK;
+
             string json = JsonConvert.SerializeObject(_kv);
+
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
             _getKvCounter++;
 
             return Task.FromResult(response);
@@ -72,7 +95,6 @@ namespace Tests.AzureAppConfiguration
 
         private Task<HttpResponseMessage> GetKeyValues(HttpRequestMessage request)
         {
-
             HttpResponseMessage response = new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK
@@ -87,17 +109,15 @@ namespace Tests.AzureAppConfiguration
                     Value = "newValue",
                     Label = x.Label,
                     ContentType = x.ContentType,
-                    Tags = x.Tags});
+                    Tags = x.Tags
+                });
             }
 
             string json = JsonConvert.SerializeObject(new { items = keyvalues });
 
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
             _getKvsCounter++;
-            Task<HttpResponseMessage> res = Task.FromResult(response);
-            return res;
+            return Task.FromResult(response); ;
         }
-
-        //public void Dispose() { }
     }
 }

@@ -48,7 +48,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
 
             //Get secret from KeyVault
-            string secret = await _keyVaultClient.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken);
+            string secret = await _keyVaultClient.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
 
             // add the key and it's value in the keyvaluePair
             keyValues.Add(new KeyValuePair<string, string>(keyValue.Key, secret));

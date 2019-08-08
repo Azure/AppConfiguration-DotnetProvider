@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -15,13 +16,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string Label { get; set; }
 
         /// <summary>
-        /// The interval at which the key-value will be polled for changes.
+        /// A flag to refresh all key-values.
         /// </summary>
-        public TimeSpan PollInterval { get; set; }
+        public bool RefreshAll { get; set; }
 
         /// <summary>
-        /// A flag to reload all key-values.
+        /// The minimum time that must elapse before the key-value is refreshed.
         /// </summary>
-        public bool ReloadAll { get; set; }
+        public TimeSpan CacheExpirationTime { get; set; }
+
+        /// <summary>
+        /// The most-recent time when the key-value was refreshed.
+        /// </summary>
+        public DateTimeOffset LastRefreshTime { get; set; }
+
+        /// <summary>
+        /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.
+        /// </summary>
+        public SemaphoreSlim Semaphore { get; } = new SemaphoreSlim(1);
     }
 }
