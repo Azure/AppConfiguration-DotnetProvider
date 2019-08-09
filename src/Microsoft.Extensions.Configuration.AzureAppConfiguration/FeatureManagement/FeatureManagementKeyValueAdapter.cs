@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
             catch (JsonReaderException e)
             {
-                throw new KeyVaultReferenceException("Invalid key", e);
+                throw new FormatException(keyValue.Key, e);
             }
 
             var keyValues = new List<KeyValuePair<string, string>>();
@@ -44,7 +44,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         if (cancellationToken.IsCancellationRequested)
                         {
-                            throw new Exception();
+                            cancellationToken.ThrowIfCancellationRequested();
                         }
 
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
