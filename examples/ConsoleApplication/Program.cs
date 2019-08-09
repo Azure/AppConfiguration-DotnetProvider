@@ -23,7 +23,7 @@
             Console.ReadKey();
             cts.Cancel();
         }
-       
+
         private static void Configure()
         {
             var builder = new ConfigurationBuilder();
