@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             _secretProvider = secretProvider ?? throw new ArgumentNullException(nameof(secretProvider));
         }
 
-        /// <summary> Uses the managed identity to retrieve the actual value </summary>
+        /// <summary> Uses the Azure Key Vault secret provider to resolve Key Vault references retrieved from Azure App Configuration. </summary>
         /// <param KeyValue ="IKeyValue">  inputs the IKeyValue </param>
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
@@ -37,10 +37,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (JsonReaderException e)
             {
-                throw new KeyVaultReferenceException("Invalid Key Vault reference", e);
+                throw new KeyVaultReferenceException("Invalid Key Vault reference", e)
+                {
+                    Key = keyValue.Key,
+                    Label = keyValue.Label,
+                    Etag = keyValue.ETag
+                };
             }
 
             string secret = null;
+
             try
             {
                 secret = await _secretProvider.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
@@ -48,7 +54,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (FormatException e)
             {
-                throw new KeyVaultReferenceException("Invalid key vault uri format", e);
+                throw new KeyVaultReferenceException("Invalid key vault uri format", e)
+                {
+                    Key = keyValue.Key,
+                    Label = keyValue.Label,
+                    Etag = keyValue.ETag,
+                    SecretIdentifier = secretRef.Uri
+                };
             }
 
             return  new KeyValuePair<string, string>[] { new KeyValuePair<string, string>(keyValue.Key, secret) };

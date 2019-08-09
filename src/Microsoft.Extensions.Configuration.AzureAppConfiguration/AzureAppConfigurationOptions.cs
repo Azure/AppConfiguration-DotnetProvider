@@ -26,7 +26,6 @@
 
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
-       
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
@@ -151,10 +150,9 @@
         }
 
         /// <summary>
-        /// 
+        /// Configures the Azure App Configuration provider to use the provided Key Vault client to resolve Key Vault references.
         /// </summary>
         /// <param name="client"></param>
-        /// <returns></returns>
         public AzureAppConfigurationOptions UseAzureKeyVault(IKeyVaultClient client)
         {
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
