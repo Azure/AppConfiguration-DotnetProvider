@@ -40,17 +40,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 throw new KeyVaultReferenceException("Invalid Key Vault reference", e);
             }
 
+            string secret = null;
+            try
+            {
+                secret = await _secretProvider.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
 
-            //Get secret from KeyVault
-            string secret = await _secretProvider.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
+            }
+            catch (FormatException e)
+            {
+                throw new KeyVaultReferenceException("Invalid key vault uri format", e);
+            }
 
-            // add the key and it's value in the keyvaluePair
-            keyValues.Add(new KeyValuePair<string, string>(keyValue.Key, secret));
-
-
-
-
-            return keyValues;
+            return  new KeyValuePair<string, string>[] { new KeyValuePair<string, string>(keyValue.Key, secret) };
         }
 
         public bool CanProcess(IKeyValue kv)

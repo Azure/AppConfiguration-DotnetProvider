@@ -11,13 +11,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
-        private FeatureFlag featureFlag;
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
         {
-            featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+            FeatureFlag featureFlag = null;
+            try
+            {
+                 featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+            }
+            catch (JsonReaderException e)
+            {
+                throw new KeyVaultReferenceException("Invalid key", e);
+            }
 
             var keyValues = new List<KeyValuePair<string, string>>();
+            
 
             if (featureFlag.Enabled)
             {
@@ -34,6 +42,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     // Conditionally on based on feature filters
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            throw new Exception();
+                        }
+
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));

@@ -124,7 +124,7 @@
                     await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                    LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult();
+                    await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
