@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json;
 
@@ -9,21 +12,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
-        public IEnumerable<KeyValuePair<string, string>> GetKeyValues(IKeyValue keyValue)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
         {
-            string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
-
-            if (!string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                !keyValue.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+            FeatureFlag featureFlag = null;
+            try
             {
-                return null;
+                 featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+            }
+            catch (JsonReaderException e)
+            {
+                throw new FormatException(keyValue.Key, e);
             }
 
-            //
-            // TODO error handling
-            FeatureFlag featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
-
             var keyValues = new List<KeyValuePair<string, string>>();
+            
 
             if (featureFlag.Enabled)
             {
@@ -40,6 +42,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     // Conditionally on based on feature filters
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
@@ -59,7 +66,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
             }
 
-            return keyValues;
+            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+        }
+
+        public bool CanProcess(IKeyValue kv)
+        {
+            string contentType = kv?.ContentType?.Split(';')[0].Trim();
+
+            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
+                                 kv.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
         }
     }
 }
