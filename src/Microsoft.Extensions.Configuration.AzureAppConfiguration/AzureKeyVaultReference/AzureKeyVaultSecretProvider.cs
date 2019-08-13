@@ -22,12 +22,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             if (secretUri == null)
             {
-                 throw new ArgumentNullException(nameof(secretUri));
+                throw new ArgumentNullException(nameof(secretUri));
             }
 
             EnsureInitialized();
+            SecretBundle secretBundle = null;
 
-            SecretBundle secretBundle = await _keyVaultClient.GetSecretAsync(secretUri.ToString(), cancellationToken);
+            for (int i = 0; i < 100; i++)
+            {
+                secretBundle = await _keyVaultClient.GetSecretAsync(secretUri.ToString(), cancellationToken);
+            }
 
             return secretBundle?.Value;
         }

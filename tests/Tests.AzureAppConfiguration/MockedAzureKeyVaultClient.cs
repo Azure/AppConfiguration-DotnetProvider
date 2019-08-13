@@ -1,17 +1,13 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+using Microsoft.Azure.KeyVault.Models;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Rest.Azure;
+using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppConfiguration.Azconfig;
-using Xunit.Sdk;
-using System.Net.Http;
-using System.Net;
-using Newtonsoft.Json;
-using System.Text;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Rest.Azure;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -22,9 +18,20 @@ namespace Tests.AzureAppConfiguration
         private readonly IKeyValue _kv;
         private readonly IEnumerable<IKeyValue> _kvCollectionPageOne;
 
+
         public bool IsEnabled { get; set; } = true;
         public bool IsActive { get; set; } = true;
         public bool IsNotExpired { get; set; } = true;
+        public bool HasAccessToKeyVault { get; set; } = true;
+
+        public string messsage;
+
+        public CancellationToken CancellationToken { get; set; }
+
+        public IKeyValue kv { get; }
+        public KeyVaultSecretReference secretRef { get; }
+        public Exception inner { get; }
+
 
 
         public MockedAzureKeyVaultClient(IEnumerable<KeyValuePair<string, string>> keyValues)
@@ -43,22 +50,35 @@ namespace Tests.AzureAppConfiguration
             _kvCollectionPageOne = kvCollectionPageOne;
         }
 
-        public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(string vaultBaseUrl, string secretName, string secretVersion, Dictionary<string, List<string>> customHeaders = null, CancellationToken cancellationToken = default)
+        public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(
+            string vaultBaseUrl,
+            string secretName,
+            string secretVersion,
+            Dictionary<string, List<string>> customHeaders = null,
+            CancellationToken cancellationToken = default)
         {
             if (IsEnabled == false)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultReferenceException("The Secret reference is not enabled", inner);
             }
 
             if (IsActive == false)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultReferenceException("The Secret reference is not active", inner);
             }
 
             if (IsNotExpired == false)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultReferenceException("The Secret reference is expired", inner);
             }
+
+            if (HasAccessToKeyVault == false)
+            {
+                throw new KeyVaultReferenceException("You have no access to Key Vault", kv, secretRef ,inner);
+            }
+
+            CancellationToken.ThrowIfCancellationRequested();
+
             var response = new AzureOperationResponse<SecretBundle>()
             {
                 RequestId = Guid.NewGuid().ToString(),

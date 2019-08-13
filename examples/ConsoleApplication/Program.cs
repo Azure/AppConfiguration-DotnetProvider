@@ -14,14 +14,22 @@
 
         static void Main(string[] args)
         {
-            Configure();
+            /*Configure();
 
             var cts = new CancellationTokenSource();
             Run(cts.Token);
 
             // Finish on key press
             Console.ReadKey();
-            cts.Cancel();
+            cts.Cancel();*/
+
+            var builder = new ConfigurationBuilder(); //new config builder
+
+            builder.AddAzureAppConfiguration(Environment.GetEnvironmentVariable("ConnectionString")); //get the connecting string
+
+            IConfigurationRoot config = builder.Build(); //call the build method in config builder
+
+            Console.WriteLine(config["OutlookPassword"]);
         }
 
         private static void Configure()

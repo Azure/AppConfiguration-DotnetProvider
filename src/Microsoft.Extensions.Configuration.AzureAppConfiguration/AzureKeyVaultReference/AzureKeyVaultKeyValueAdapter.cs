@@ -1,4 +1,5 @@
 ﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+using Microsoft.Azure.KeyVault.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -21,49 +22,54 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// <summary> Uses the Azure Key Vault secret provider to resolve Key Vault references retrieved from Azure App Configuration. </summary>
         /// <param KeyValue ="IKeyValue">  inputs the IKeyValue </param>
         /// returns the keyname and actual value
-        public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
+        public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue kv, CancellationToken cancellationToken)
         {
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            string value = keyValue.Value;
+            string value = kv.Value;
 
             KeyVaultSecretReference secretRef = null;
 
+            //
+            // Content validation
             try
             {
-                secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(keyValue.Value, s_SerializationSettings);
+                secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(kv.Value, s_SerializationSettings);
 
             }
             catch (JsonReaderException e)
             {
-                throw new KeyVaultReferenceException("Invalid Key Vault reference", e)
-                {
-                    Key = keyValue.Key,
-                    Label = keyValue.Label,
-                    Etag = keyValue.ETag
-                };
+                throw new KeyVaultReferenceException("Invalid Key Vault reference", kv, e);
+            }
+
+            // Uri validation
+            if (string.IsNullOrEmpty(secretRef.Uri) ||
+                !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri))
+            {
+                throw new KeyVaultReferenceException("Invalid Key vault secret identifier", kv, secretRef, null);
             }
 
             string secret = null;
 
             try
             {
-                secret = await _secretProvider.GetSecretValue(new Uri(secretRef.Uri, UriKind.Absolute), cancellationToken).ConfigureAwait(false);
-
+                secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
             }
             catch (FormatException e)
             {
-                throw new KeyVaultReferenceException("Invalid key vault uri format", e)
-                {
-                    Key = keyValue.Key,
-                    Label = keyValue.Label,
-                    Etag = keyValue.ETag,
-                    SecretIdentifier = secretRef.Uri
-                };
+                throw new KeyVaultReferenceException("Invalid key vault uri format", kv, secretRef, e);
+            }
+            catch (KeyVaultErrorException e)
+            {
+                throw new KeyVaultReferenceException("You don't have access to key Vault", kv, secretRef, e);
             }
 
-            return  new KeyValuePair<string, string>[] { new KeyValuePair<string, string>(keyValue.Key, secret) };
+
+            return new KeyValuePair<string, string>[] 
+            {
+                new KeyValuePair<string, string>(kv.Key, secret)
+            };
         }
 
         public bool CanProcess(IKeyValue kv)
