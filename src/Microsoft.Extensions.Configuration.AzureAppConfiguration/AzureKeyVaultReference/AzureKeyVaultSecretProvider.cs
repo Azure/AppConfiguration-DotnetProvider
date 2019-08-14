@@ -26,12 +26,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             EnsureInitialized();
-            SecretBundle secretBundle = null;
 
-            for (int i = 0; i < 100; i++)
-            {
-                secretBundle = await _keyVaultClient.GetSecretAsync(secretUri.ToString(), cancellationToken);
-            }
+            SecretBundle secretBundle = await _keyVaultClient.GetSecretAsync(secretUri.ToString(), cancellationToken);
 
             return secretBundle?.Value;
         }

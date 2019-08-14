@@ -74,7 +74,7 @@ namespace Tests.AzureAppConfiguration
 
             if (HasAccessToKeyVault == false)
             {
-                throw new KeyVaultReferenceException("You have no access to Key Vault", kv, secretRef ,inner);
+                throw new KeyVaultReferenceException("You have no access to Key Vault", inner);
             }
 
             CancellationToken.ThrowIfCancellationRequested();
