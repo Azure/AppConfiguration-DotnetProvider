@@ -28,7 +28,7 @@ namespace Tests.AzureAppConfiguration
 
         public CancellationToken CancellationToken { get; set; }
 
-        public IKeyValue kv { get; }
+        public IKeyValue kv { get; set; }
         public KeyVaultSecretReference secretRef { get; }
         public Exception inner { get; }
 
@@ -42,6 +42,11 @@ namespace Tests.AzureAppConfiguration
         public MockedAzureKeyVaultClient(string secretValue)
         {
             _secretValue = secretValue;
+        }
+        public MockedAzureKeyVaultClient(IKeyValue kv, string secretValue)
+        {
+            _secretValue = secretValue;
+            _kv = kv;
         }
 
         public MockedAzureKeyVaultClient(IKeyValue kv, IEnumerable<IKeyValue> kvCollectionPageOne)
@@ -59,22 +64,38 @@ namespace Tests.AzureAppConfiguration
         {
             if (IsEnabled == false)
             {
-                throw new KeyVaultReferenceException("The Secret reference is not enabled", inner);
+                throw new KeyVaultReferenceException("The Secret reference is not enabled")
+                {
+                    Key = _kv.ToString(),
+                    Etag = _kv.ETag.ToString(),
+                };
             }
 
             if (IsActive == false)
             {
-                throw new KeyVaultReferenceException("The Secret reference is not active", inner);
+                throw new KeyVaultReferenceException("The Secret reference is not active")
+                {
+                    Key = _kv.ToString(),
+                    Etag = _kv.ETag.ToString(),
+                };
             }
 
             if (IsNotExpired == false)
             {
-                throw new KeyVaultReferenceException("The Secret reference is expired", inner);
+                throw new KeyVaultReferenceException("The Secret reference is expired")
+                {
+                    Key = _kv.ToString(),
+                    Etag = _kv.ETag.ToString(),
+                };
             }
 
             if (HasAccessToKeyVault == false)
             {
-                throw new KeyVaultReferenceException("You have no access to Key Vault", inner);
+                throw new KeyVaultReferenceException("You have no access to Key Vault")
+                {
+                    Key = _kv.ToString(),
+                    Etag = _kv.ETag.ToString(),
+                };
             }
 
             CancellationToken.ThrowIfCancellationRequested();

@@ -12,7 +12,6 @@ namespace Tests.AzureAppConfiguration
     public class KeyVaultReferenceTests
     {
       
-
         IKeyValue _kv = new KeyValue("TestKey1")
         {
             Value = @"
@@ -142,7 +141,7 @@ namespace Tests.AzureAppConfiguration
 
                 Assert.Throws<KeyVaultReferenceException> (() =>
                 {
-                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { IsEnabled = false });
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { IsEnabled = false });
                     builder.AddAzureAppConfiguration(options);
                     builder.Build();
                 });
@@ -169,7 +168,7 @@ namespace Tests.AzureAppConfiguration
 
                 Assert.Throws<KeyVaultReferenceException>(() =>
                 {
-                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { IsActive = false });
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { IsActive = false });
                     builder.AddAzureAppConfiguration(options);
                     builder.Build();
                 });
@@ -195,7 +194,7 @@ namespace Tests.AzureAppConfiguration
 
                 Assert.Throws<KeyVaultReferenceException>(() =>
                 {
-                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { IsNotExpired = false });
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { IsNotExpired = false });
                     builder.AddAzureAppConfiguration(options);
                     builder.Build();
                 });
@@ -305,7 +304,7 @@ namespace Tests.AzureAppConfiguration
 
                 Assert.Throws<KeyVaultReferenceException>(() =>
                 {
-                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { HasAccessToKeyVault = false });
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { HasAccessToKeyVault = false });
                     builder.AddAzureAppConfiguration(options);
                     builder.Build();
                 });
