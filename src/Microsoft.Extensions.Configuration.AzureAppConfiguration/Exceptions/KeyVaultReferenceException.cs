@@ -60,7 +60,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public string SecretIdentifier { get; set; }
 
         /// <summary>
-        /// The Inner Error code message that is returned in the exception 
+        /// The error code, if available, describing the cause of the exception. 
         /// </summary>
         public string ErrorCode { get; set; }
     }

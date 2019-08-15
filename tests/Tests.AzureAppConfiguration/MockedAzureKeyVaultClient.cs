@@ -89,11 +89,7 @@ namespace Tests.AzureAppConfiguration
 
             if (HasAccessToKeyVault == false)
             {
-                throw new KeyVaultReferenceException("You have no access to Key Vault")
-                {
-                    Key = _kv.ToString(),
-                    Etag = _kv.ETag.ToString(),
-                };
+                throw new KeyVaultErrorException();
             }
 
             CancellationToken.ThrowIfCancellationRequested();
