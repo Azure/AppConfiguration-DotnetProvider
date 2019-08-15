@@ -30,8 +30,6 @@ namespace Tests.AzureAppConfiguration
 
         public IKeyValue kv { get; set; }
         public KeyVaultSecretReference secretRef { get; }
-        public Exception inner { get; }
-
 
 
         public MockedAzureKeyVaultClient(IEnumerable<KeyValuePair<string, string>> keyValues)
