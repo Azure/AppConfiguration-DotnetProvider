@@ -25,7 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                             Exception inner)
             : this(message, kv, inner)
         {
-            SecretIdentifier = reference.Uri.ToString();
+            SecretIdentifier = reference.Uri;
         }
 
         internal KeyVaultReferenceException(string message,

@@ -25,10 +25,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue kv, CancellationToken cancellationToken)
         {
 
-            var keyValues = new List<KeyValuePair<string, string>>();
-
-            string value = kv.Value;
-
             KeyVaultSecretReference secretRef = null;
 
             //
@@ -56,17 +52,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
             }
-            catch (FormatException e)
-            {
-                throw new KeyVaultReferenceException("Invalid key vault uri format", kv, secretRef, e);
-            }
             catch (KeyVaultErrorException e)
             {
-                throw new KeyVaultReferenceException("You don't have access to key Vault", kv, secretRef, e);
+                throw new KeyVaultReferenceException("", kv, secretRef, e);
             }
 
 
-            return new KeyValuePair<string, string>[] 
+            return new KeyValuePair<string, string>[]
             {
                 new KeyValuePair<string, string>(kv.Key, secret)
             };
