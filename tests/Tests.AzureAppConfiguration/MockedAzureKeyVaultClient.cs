@@ -25,6 +25,7 @@ namespace Tests.AzureAppConfiguration
         public bool HasAccessToKeyVault { get; set; } = true;
 
         public string messsage;
+        private KeyVaultErrorException inner;
 
         public CancellationToken CancellationToken { get; set; }
 
@@ -62,22 +63,33 @@ namespace Tests.AzureAppConfiguration
         {
             if (IsEnabled == false)
             {
-                throw new KeyVaultErrorException(); 
+                throw new KeyVaultErrorException() {
+                    Body = inner?.Body,
+                }; 
             }
 
             if (IsActive == false)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultErrorException()
+                {
+                    Body = inner?.Body,
+                };
             }
 
             if (IsNotExpired == false)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultErrorException()
+                {
+                    Body = inner?.Body,
+                };
             }
 
             if (HasAccessToKeyVault == false)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultErrorException()
+                {
+                    Body = inner?.Body,
+                };
             }
 
             CancellationToken.ThrowIfCancellationRequested();

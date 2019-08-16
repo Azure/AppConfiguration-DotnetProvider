@@ -30,8 +30,6 @@ namespace Tests.AzureAppConfiguration
             ContentType = KeyVaultConstants.ContentType + "; charset=utf-8"
         };
 
-
-
         IKeyValue _kvWrongContentType = new KeyValue("TestKey1")
         {
             Value = @"
