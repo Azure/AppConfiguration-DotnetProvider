@@ -62,29 +62,17 @@ namespace Tests.AzureAppConfiguration
         {
             if (IsEnabled == false)
             {
-                throw new KeyVaultReferenceException("The Secret reference is not enabled")
-                {
-                    Key = _kv.ToString(),
-                    Etag = _kv.ETag.ToString(),
-                };
+                throw new KeyVaultErrorException(); 
             }
 
             if (IsActive == false)
             {
-                throw new KeyVaultReferenceException("The Secret reference is not active")
-                {
-                    Key = _kv.ToString(),
-                    Etag = _kv.ETag.ToString(),
-                };
+                throw new KeyVaultErrorException();
             }
 
             if (IsNotExpired == false)
             {
-                throw new KeyVaultReferenceException("The Secret reference is expired")
-                {
-                    Key = _kv.ToString(),
-                    Etag = _kv.ETag.ToString(),
-                };
+                throw new KeyVaultErrorException();
             }
 
             if (HasAccessToKeyVault == false)
