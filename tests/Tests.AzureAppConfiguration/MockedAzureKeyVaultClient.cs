@@ -64,7 +64,9 @@ namespace Tests.AzureAppConfiguration
             if (IsEnabled == false)
             {
                 throw new KeyVaultErrorException() {
-                    Body = inner?.Body,
+                    Request = inner?.Request,
+                    Response = inner?.Response,
+                    Body = inner?.Body
                 }; 
             }
 
@@ -72,7 +74,9 @@ namespace Tests.AzureAppConfiguration
             {
                 throw new KeyVaultErrorException()
                 {
-                    Body = inner?.Body,
+                    Request = inner?.Request,
+                    Response = inner?.Response,
+                    Body = inner?.Body
                 };
             }
 
@@ -80,7 +84,9 @@ namespace Tests.AzureAppConfiguration
             {
                 throw new KeyVaultErrorException()
                 {
-                    Body = inner?.Body,
+                    Request = inner?.Request,
+                    Response = inner?.Response,
+                    Body = inner?.Body
                 };
             }
 
@@ -88,7 +94,9 @@ namespace Tests.AzureAppConfiguration
             {
                 throw new KeyVaultErrorException()
                 {
-                    Body = inner?.Body,
+                    Request = inner?.Request,
+                    Response = inner?.Response,
+                    Body = inner?.Body
                 };
             }
 
