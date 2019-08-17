@@ -146,59 +146,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-
-        [Fact]
-        public void NonActiveSecretIdentifier()
-        {
-
-            IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
-            string secretValue = "SecretValue from KeyVault";
-
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, KeyValues)))
-            {
-                var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
-
-                Assert.Throws<KeyVaultReferenceException>(() =>
-                {
-                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { IsActive = false });
-                    builder.AddAzureAppConfiguration(options);
-                    builder.Build();
-                });
-            }
-        }
-
-        [Fact]
-        public void ExpiredSecretIdentifier()
-        {
-
-            IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
-            string secretValue = "SecretValue from KeyVault";
-
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, KeyValues)))
-            {
-                var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
-
-                Assert.Throws<KeyVaultReferenceException>(() =>
-                {
-                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { IsNotExpired = false });
-                    builder.AddAzureAppConfiguration(options);
-                    builder.Build();
-                });
-            }
-        }
-
         [Fact]
         public void WrongContentType()
         {

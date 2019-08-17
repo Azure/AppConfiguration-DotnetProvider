@@ -20,12 +20,7 @@ namespace Tests.AzureAppConfiguration
 
 
         public bool IsEnabled { get; set; } = true;
-        public bool IsActive { get; set; } = true;
-        public bool IsNotExpired { get; set; } = true;
         public bool HasAccessToKeyVault { get; set; } = true;
-
-        public string messsage;
-        private KeyVaultErrorException inner;
 
         public CancellationToken CancellationToken { get; set; }
 
@@ -33,10 +28,6 @@ namespace Tests.AzureAppConfiguration
         public KeyVaultSecretReference secretRef { get; }
 
 
-        public MockedAzureKeyVaultClient(IEnumerable<KeyValuePair<string, string>> keyValues)
-        {
-            _keyValues = keyValues;
-        }
 
         public MockedAzureKeyVaultClient(string secretValue)
         {
@@ -48,12 +39,6 @@ namespace Tests.AzureAppConfiguration
             _kv = kv;
         }
 
-        public MockedAzureKeyVaultClient(IKeyValue kv, IEnumerable<IKeyValue> kvCollectionPageOne)
-        {
-            _kv = kv;
-            _kvCollectionPageOne = kvCollectionPageOne;
-        }
-
         public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(
             string vaultBaseUrl,
             string secretName,
@@ -61,42 +46,25 @@ namespace Tests.AzureAppConfiguration
             Dictionary<string, List<string>> customHeaders = null,
             CancellationToken cancellationToken = default)
         {
-            if (IsEnabled == false)
-            {
-                throw new KeyVaultErrorException() {
-                    Request = inner?.Request,
-                    Response = inner?.Response,
-                    Body = inner?.Body
-                }; 
-            }
-
-            if (IsActive == false)
+            if (!IsEnabled)
             {
                 throw new KeyVaultErrorException()
                 {
-                    Request = inner?.Request,
-                    Response = inner?.Response,
-                    Body = inner?.Body
+                    Body = new KeyVaultError(
+                        new Error("Forbidden",
+                        "Operation get is not allowed on a disabled secret.",
+                        new Error()))
                 };
             }
 
-            if (IsNotExpired == false)
+            if (!HasAccessToKeyVault)
             {
                 throw new KeyVaultErrorException()
                 {
-                    Request = inner?.Request,
-                    Response = inner?.Response,
-                    Body = inner?.Body
-                };
-            }
-
-            if (HasAccessToKeyVault == false)
-            {
-                throw new KeyVaultErrorException()
-                {
-                    Request = inner?.Request,
-                    Response = inner?.Response,
-                    Body = inner?.Body
+                    Body = new KeyVaultError(
+                        new Error("Forbidden",
+                        "Access denied. Caller was not found on any access policy.\r\nCaller: appid=872cd9fa-d31f-45e0-9eab-6e460a02d1f1;oid=d676e43f-41f5-4057-a09b-85208ddea088;numgroups=652;iss=https://sts.windows.net/72f988bf-86f1-41af-91ab-2d7cd011db47/\r\nVault: Keyvault-TheClassics;location=eastus",
+                        new Error()))
                 };
             }
 

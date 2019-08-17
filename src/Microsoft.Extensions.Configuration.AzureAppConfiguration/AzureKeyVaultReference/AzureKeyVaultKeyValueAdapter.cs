@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (KeyVaultErrorException e)
             {
-                throw new KeyVaultReferenceException("Key vault error", kv, secretRef, e);
+               throw new KeyVaultReferenceException("Key vault error", kv, secretRef, e);
             }
 
 
