@@ -63,7 +63,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     Body = new KeyVaultError(
                         new Error("Forbidden",
-                        "Access denied. Caller was not found on any access policy.\r\nCaller: appid=872cd9fa-d31f-45e0-9eab-6e460a02d1f1;oid=d676e43f-41f5-4057-a09b-85208ddea088;numgroups=652;iss=https://sts.windows.net/72f988bf-86f1-41af-91ab-2d7cd011db47/\r\nVault: Keyvault-TheClassics;location=eastus",
+                        "Access denied. Caller was not found on any access policy.",
                         new Error()))
                 };
             }
