@@ -10,34 +10,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class KeyVaultReferenceException : Exception
     {
-     
-        internal KeyVaultReferenceException(string message,
-                                           Exception inner = null)
-         : base(message, inner)
+        private readonly string _message;
+        /// <summary>
+        /// KeyVaultReferenceException constructor used when an Azure App Configuration reference to a Key Vault resource is invalid 
+        /// </summary>
+        /// <param name="message">message to tell what error is</param>
+        /// <param name="inner">inner exception to show what exception it is </param>
+        public KeyVaultReferenceException(string message,
+                                           Exception inner)
+         :base(string.Empty, inner)
         {
+            _message = message;
         }
 
-        internal KeyVaultReferenceException(string message, 
-                                            IKeyValue kv,
-                                            Exception inner) 
-            : base(message, inner)
-        {
-            Key = kv.Key;
-            Label = kv.Label;
-            Etag = kv.ETag;
-            ErrorCode = (inner as KeyVaultErrorException)?.Body?.Error?.InnerError?.Code;
-        }
-
-        internal KeyVaultReferenceException(string message,
-                                            IKeyValue kv,
-                                            KeyVaultSecretReference reference,
-                                            Exception inner)
-            : this(message, kv, inner)
-        {
-            SecretIdentifier = reference.Uri;
-        }
-
-      
+        /// <summary>
+        /// Overriding Message used to show more information about the exception message 
+        /// The error message that explains the reason for the exception 
+        /// and attributes like the ErrorCode, key, label, etag and SeretIdentifier 
+        /// </summary>
+        public override string  Message => $"{_message}. ErrorCode:{ErrorCode}, Key:{Key}, Label:{Label}, Etag:{Etag}, SecretIdentifier:{SecretIdentifier}";
 
         /// <summary>
         /// The key of the Key Vault reference that caused the exception.
