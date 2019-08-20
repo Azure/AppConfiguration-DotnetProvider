@@ -51,9 +51,8 @@ namespace Tests.AzureAppConfiguration
                 throw new KeyVaultErrorException()
                 {
                     Body = new KeyVaultError(
-                        new Error("Forbidden",
-                        "Operation get is not allowed on a disabled secret.",
-                        new Error()))
+                        new Error("Forbidden", "Operation get is not allowed on a disabled secret.",
+                        new Error("SecretDisabled", null, null)))
                 };
             }
 
@@ -62,9 +61,8 @@ namespace Tests.AzureAppConfiguration
                 throw new KeyVaultErrorException()
                 {
                     Body = new KeyVaultError(
-                        new Error("Forbidden",
-                        "Access denied. Caller was not found on any access policy.",
-                        new Error()))
+                        new Error("Forbidden", "Access denied. Caller was not found on any access policy",
+                        new Error("AccessDenied", null, null)))
                 };
             }
 

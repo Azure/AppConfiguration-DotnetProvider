@@ -11,7 +11,7 @@ namespace Tests.AzureAppConfiguration
 {
     public class KeyVaultReferenceTests
     {
-      
+
         IKeyValue _kv = new KeyValue("TestKey1")
         {
             Value = @"
@@ -137,12 +137,14 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                Assert.Throws<KeyVaultReferenceException> (() =>
+                KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
                 {
                     options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { IsEnabled = false });
                     builder.AddAzureAppConfiguration(options);
                     builder.Build();
                 });
+
+                Assert.Equal("SecretDisabled", ex.ErrorCode);
             }
         }
 
@@ -163,7 +165,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     Client = testClient
                 };
-               
+
                 options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
 
                 builder.AddAzureAppConfiguration(options);
@@ -188,8 +190,8 @@ namespace Tests.AzureAppConfiguration
                 {
                     Client = testClient
                 };
-              
-                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) {});
+
+                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { });
 
                 builder.AddAzureAppConfiguration(options);
 
@@ -205,7 +207,7 @@ namespace Tests.AzureAppConfiguration
         public void CancelationToken()
         {
             string secretValue = "SecretValue from KeyVault";
-          
+
 
             using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
                                                        new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
@@ -231,7 +233,7 @@ namespace Tests.AzureAppConfiguration
         }
 
 
-       [Fact]
+        [Fact]
         public void HasNoAccessToKeyVault()
         {
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
@@ -247,12 +249,14 @@ namespace Tests.AzureAppConfiguration
                     Client = testClient
                 };
 
-                Assert.Throws<KeyVaultReferenceException>(() =>
+                KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
                 {
                     options.UseAzureKeyVault(new MockedAzureKeyVaultClient(_kv, secretValue) { HasAccessToKeyVault = false });
                     builder.AddAzureAppConfiguration(options);
                     builder.Build();
                 });
+
+                Assert.Equal("AccessDenied", ex.ErrorCode);
             }
         }
     }
