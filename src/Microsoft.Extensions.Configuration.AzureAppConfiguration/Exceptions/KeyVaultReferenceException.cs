@@ -6,16 +6,18 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// The exception that is thrown when an Azure App Configuration reference to a Key Vault resource is invalid
+    /// The exception that is thrown when there is an error resolving a reference to Azure Key Vault resource.
     /// </summary>
     public class KeyVaultReferenceException : Exception
     {
         private readonly string _message;
+
         /// <summary>
-        /// KeyVaultReferenceException constructor used when an Azure App Configuration reference to a Key Vault resource is invalid 
+        /// Initializes a new instance of the System.Exception class with a specified error
+        /// message and a reference to the inner exception that is the cause of this exception.
         /// </summary>
-        /// <param name="message">message to tell what error is</param>
-        /// <param name="inner">inner exception to show what exception it is </param>
+        /// <param name="message">The error message that explains the reason for the exception.</param>
+        /// <param name="inner">The exception that is the cause of the current exception, or a null reference (Nothing in Visual Basic) if no inner exception is specified.        /// </param>
         public KeyVaultReferenceException(string message,
                                            Exception inner)
          :base(string.Empty, inner)
@@ -24,9 +26,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Overriding Message used to show more information about the exception message 
-        /// The error message that explains the reason for the exception 
-        /// and attributes like the ErrorCode, key, label, etag and SeretIdentifier 
+        ///Gets a message that describes the current exception.
+        ///Returns The error message that explains the reason for the exception, or an empty string("").
         /// </summary>
         public override string  Message => $"{_message}. ErrorCode:{ErrorCode}, Key:{Key}, Label:{Label}, Etag:{Etag}, SecretIdentifier:{SecretIdentifier}";
 
