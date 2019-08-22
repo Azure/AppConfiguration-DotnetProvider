@@ -1,17 +1,13 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+using Microsoft.Azure.KeyVault.Models;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Rest.Azure;
+using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppConfiguration.Azconfig;
-using Xunit.Sdk;
-using System.Net.Http;
-using System.Net;
-using Newtonsoft.Json;
-using System.Text;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Rest.Azure;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -22,43 +18,56 @@ namespace Tests.AzureAppConfiguration
         private readonly IKeyValue _kv;
         private readonly IEnumerable<IKeyValue> _kvCollectionPageOne;
 
+
         public bool IsEnabled { get; set; } = true;
-        public bool IsActive { get; set; } = true;
-        public bool IsNotExpired { get; set; } = true;
+        public bool HasAccessToKeyVault { get; set; } = true;
+
+        public CancellationToken CancellationToken { get; set; }
+
+        public IKeyValue kv { get; set; }
+        public KeyVaultSecretReference secretRef { get; }
 
 
-        public MockedAzureKeyVaultClient(IEnumerable<KeyValuePair<string, string>> keyValues)
-        {
-            _keyValues = keyValues;
-        }
 
         public MockedAzureKeyVaultClient(string secretValue)
         {
             _secretValue = secretValue;
         }
-
-        public MockedAzureKeyVaultClient(IKeyValue kv, IEnumerable<IKeyValue> kvCollectionPageOne)
+        public MockedAzureKeyVaultClient(IKeyValue kv, string secretValue)
         {
+            _secretValue = secretValue;
             _kv = kv;
-            _kvCollectionPageOne = kvCollectionPageOne;
         }
 
-        public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(string vaultBaseUrl, string secretName, string secretVersion, Dictionary<string, List<string>> customHeaders = null, CancellationToken cancellationToken = default)
+        public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(
+            string vaultBaseUrl,
+            string secretName,
+            string secretVersion,
+            Dictionary<string, List<string>> customHeaders = null,
+            CancellationToken cancellationToken = default)
         {
-            if (IsEnabled == false)
+            if (!IsEnabled)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultErrorException()
+                {
+                    Body = new KeyVaultError(
+                        new Error("Forbidden", "Operation get is not allowed on a disabled secret.",
+                        new Error("SecretDisabled", null, null)))
+                };
             }
 
-            if (IsActive == false)
+            if (!HasAccessToKeyVault)
             {
-                throw new KeyVaultErrorException();
+                throw new KeyVaultErrorException()
+                {
+                    Body = new KeyVaultError(
+                        new Error("Forbidden", "Access denied. Caller was not found on any access policy",
+                        new Error("AccessDenied", null, null)))
+                };
             }
 
-            if (IsNotExpired == false)
-            {
-                throw new KeyVaultErrorException();
-            }
+            CancellationToken.ThrowIfCancellationRequested();
+
             var response = new AzureOperationResponse<SecretBundle>()
             {
                 RequestId = Guid.NewGuid().ToString(),
