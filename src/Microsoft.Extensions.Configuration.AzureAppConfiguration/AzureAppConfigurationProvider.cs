@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
             refresher.SetProvider(this);
 
-            LoadAll();
+            LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
@@ -76,7 +76,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             await RefreshKeyValueCollections().ConfigureAwait(false);
         }
 
-        private void LoadAll()
+        private async Task void LoadAll()
         {
             IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
@@ -92,9 +92,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     
                     ConfigureRequestTracingOptions(options);
 
-                    // Load all key-values with the null label
+                    //
+                    // Load all key-values with the null label.
                     // TODO: Get with Selector
-                    _client.Get(options).ForEach(kv => { data[kv.Key] = kv; });
+                    _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
+					
+					// TODO: resolve
+                    await _client.GetKeyValues(options).ForEachAsync(kv => { data[kv.Key] = kv; }).ConfigureAwait(false);
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -119,10 +123,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     };
 
                     ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
-                    _client.GetKeyValues(queryKeyValueCollectionOptions).ForEach(kv => { data[kv.Key] = kv; });
+
+                    await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                    LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult();
+                    await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
                 }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
@@ -136,7 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (data != null)
                     {
-                        SetData(data);
+                        await SetData(data).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -149,7 +154,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return;
             }
 
-            SetData(data);
+            await SetData(data).ConfigureAwait(false);
 
             if (_options.OfflineCache != null)
             {
@@ -249,7 +254,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else
                         {
-                            SetData(_settings);
+                            await SetData(_settings).ConfigureAwait(false);
                         }
                     }
                 }
@@ -262,7 +267,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
             if (shouldRefreshAll)
             {
-                LoadAll();
+                await LoadAll().ConfigureAwait(false);
             }
         }
 
@@ -298,7 +303,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (keyValueChanges?.Any() == true)
                     {
                         ProcessChanges(keyValueChanges);
-                        SetData(_settings);
+
+                        await SetData(_settings).ConfigureAwait(false);
                     }
                 }
                 finally
@@ -308,7 +314,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private void SetData(IDictionary<string, ConfigurationSetting> data)
+        private async Task void SetData(IDictionary<string, IKeyValue> data)
         {
             // Update cache of settings
             this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ?? 
@@ -319,7 +325,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
-                foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
+                foreach (KeyValuePair<string, string> kv in await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false))
                 {
                     string key = kv.Key;
                     foreach (string prefix in _options.KeyPrefixes)
@@ -341,13 +347,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             OnReload();
         }
         
-        private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(ConfigurationSetting keyValue)
+        private  async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(IKeyValue keyValue)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                IEnumerable<KeyValuePair<string, string>> kvs = adapter.GetKeyValues(keyValue);
+                if (!adapter.CanProcess(keyValue))
+                {
+                    continue;
+                }
+
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(keyValue, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {

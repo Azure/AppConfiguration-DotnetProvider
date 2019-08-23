@@ -1,6 +1,9 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Azure.ApplicationModel.Configuration;
+    using Microsoft.Azure.AppConfiguration.Azconfig;
+    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Azure.KeyVault;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using System;
@@ -17,7 +20,7 @@
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>();
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() { new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()) };
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
@@ -146,6 +149,20 @@
             return this;
         }
 
+        /// <summary>
+        /// Configures the Azure App Configuration provider to use the provided Key Vault client to resolve Key Vault references.
+        /// </summary>
+        /// <param name="client"></param>
+        public AzureAppConfigurationOptions UseAzureKeyVault(IKeyVaultClient client)
+        {
+            _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
+
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(client)));
+           
+            return this;
+        }
+
+    
         /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>
