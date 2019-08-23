@@ -13,9 +13,10 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
     class AzureAppConfigurationRefreshMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly AzureAppConfigurationMiddlewareOptions _options;
         public IList<IConfigurationRefresher> Refreshers { get; private set; }
 
-        public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfiguration configuration)
+        public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfiguration configuration, Action<AzureAppConfigurationMiddlewareOptions> optionsInitializer = null)
         {
             _next = next;
             Refreshers = new List<IConfigurationRefresher>();
@@ -33,13 +34,23 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
                     Refreshers.Add(refresher);
                 }
             }
+
+            _options = new AzureAppConfigurationMiddlewareOptions();
+            optionsInitializer(_options);
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
             foreach (var refresher in Refreshers)
             {
-                refresher.Refresh();
+                if (_options.WaitForRefreshCompletion)
+                {
+                    await refresher.Refresh();
+                }
+                else
+                {
+                    refresher.Refresh();
+                }
             }
 
             // Call the next delegate/middleware in the pipeline
