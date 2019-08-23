@@ -1,7 +1,6 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Azure.AppConfiguration.Azconfig;
-    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Azure.ApplicationModel.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
     using System;
@@ -62,7 +61,7 @@
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
-        internal AzconfigClient Client { get; set; }
+        internal ConfigurationClient Client { get; set; }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -194,10 +193,7 @@
                 throw new ArgumentException(nameof(endpoint));
             }
 
-            Client = AzconfigClientFactory.CreateClient(uri, new AzconfigClientFactoryOptions()
-            {
-                Permissions = Permissions.Read
-            }).ConfigureAwait(false).GetAwaiter().GetResult();
+            // TODO: Client = new ConfigurationClient(endpoint); // auth?
 
             return this;
         }

@@ -1,6 +1,7 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+﻿using Azure.ApplicationModel.Configuration;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Azure.AppConfiguration.Azconfig;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -25,11 +26,11 @@
         private const int RetryWaitMinutes = 1;
 
         private readonly HostType _hostType;
-        private readonly AzconfigClient _client;
+        private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
-        private ConcurrentDictionary<string, IKeyValue> _settings;
+        private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
-        public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -77,7 +78,7 @@
 
         private void LoadAll()
         {
-            IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+            IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
@@ -86,16 +87,14 @@
 
                 if (useDefaultQuery)
                 {
-                    var options = new QueryKeyValueCollectionOptions
-                    {
-                        KeyFilter = KeyFilter.Any,
-                        LabelFilter = LabelFilter.Null
-                    };
+                    // TODO: how to configure the setting selector?
+                    var options = new SettingSelector();
                     
                     ConfigureRequestTracingOptions(options);
 
                     // Load all key-values with the null label
-                    _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
+                    // TODO: Get with Selector
+                    _client.Get(options).ForEach(kv => { data[kv.Key] = kv; });
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -111,11 +110,12 @@
                         continue;
                     }
 
-                    var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions
+                    var queryKeyValueCollectionOptions = new SettingSelector
                     {
+                        // TODO: How to parse keyfilter, labelfilter?
                         KeyFilter = loadOption.KeyFilter,
                         LabelFilter = loadOption.LabelFilter,
-                        PreferredDateTime = loadOption.PreferredDateTime
+                        AsOf = loadOption.PreferredDateTime
                     };
 
                     ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
@@ -131,6 +131,7 @@
             {
                 if (_options.OfflineCache != null)
                 {
+                    // TODO: ?
                     data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
 
                     if (data != null)
@@ -156,7 +157,7 @@
             }
         }
 
-        private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, IKeyValue> data)
+        private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, ConfigurationSetting> data)
         {
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -169,11 +170,13 @@
                     return;
                 }
 
-                var options = new QueryKeyValueOptions { Label = watchedLabel };
+                var options = new SettingSelector();
+                options.Labels.Add(watchedLabel);
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                // TODO: How do we request from service with SettingSelector?
+                ConfigurationSetting watchedKv = await _client.Get(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
                 data[watchedKey] = watchedKv;
             }
@@ -198,7 +201,7 @@
                 try
                 {
                     bool hasChanged = false;
-                    IKeyValue watchedKv = null;
+                    ConfigurationSetting watchedKv = null;
 
                     if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
                     {
@@ -220,11 +223,14 @@
                     {
                         // Load the key-value in case the previous load attempts had failed
 
-                        var options = new QueryKeyValueOptions { Label = watchedLabel };
+                        var options = new SettingSelector();
+                        options.Labels.Add(watchedLabel);
                         ConfigureRequestTracingOptions(options);
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                        // TODO: Get with Selector
+                        // TODO: is it valid to pass a null value?
+                        watchedKv = await _client.Get(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Add the key-value if it is not loaded, or update it if it was loaded with a different label
@@ -274,7 +280,7 @@
 
                 try
                 {
-                    IEnumerable<IKeyValue> currentKeyValues = _settings.Values.Where(kv =>
+                    IEnumerable<ConfigurationSetting> currentKeyValues = _settings.Values.Where(kv =>
                     {
                         return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
                     });
@@ -302,16 +308,16 @@
             }
         }
 
-        private void SetData(IDictionary<string, IKeyValue> data)
+        private void SetData(IDictionary<string, ConfigurationSetting> data)
         {
             // Update cache of settings
-            this._settings = data as ConcurrentDictionary<string, IKeyValue> ?? 
-                new ConcurrentDictionary<string, IKeyValue>(data, StringComparer.OrdinalIgnoreCase);
+            this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ?? 
+                new ConcurrentDictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
 
             // Set the application data for the configuration provider
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (KeyValuePair<string, IKeyValue> kvp in data)
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 foreach (KeyValuePair<string, string> kv in ProcessAdapters(kvp.Value))
                 {
@@ -335,7 +341,7 @@
             OnReload();
         }
         
-        private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(IKeyValue keyValue)
+        private IEnumerable<KeyValuePair<string, string>> ProcessAdapters(ConfigurationSetting keyValue)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 
@@ -360,7 +366,7 @@
             {
                 if (change.ChangeType == KeyValueChangeType.Deleted)
                 {
-                    _settings.TryRemove(change.Key, out IKeyValue removed);
+                    _settings.TryRemove(change.Key, out ConfigurationSetting removed);
                 }
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {

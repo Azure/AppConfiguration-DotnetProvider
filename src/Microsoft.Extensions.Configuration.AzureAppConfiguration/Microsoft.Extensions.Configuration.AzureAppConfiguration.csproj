@@ -10,10 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.ApplicationModel.Configuration" Version="1.0.0-preview.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
     <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" />
   </ItemGroup>

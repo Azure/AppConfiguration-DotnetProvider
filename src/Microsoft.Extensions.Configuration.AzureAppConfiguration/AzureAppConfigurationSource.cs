@@ -1,5 +1,4 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
-using System;
+﻿using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

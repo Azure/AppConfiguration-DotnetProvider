@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.ApplicationModel.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class AzconfigClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this AzconfigClient client, IKeyValue keyValue, IRequestOptions options, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, IKeyValue keyValue, IRequestOptions options, CancellationToken cancellationToken)
         {
             if (keyValue == null)
             {
@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException($"{nameof(keyValue)}.{nameof(keyValue.Key)}");
             }
 
-            var currentKeyValue = await client.GetCurrentKeyValue(keyValue, options, cancellationToken).ConfigureAwait(false);
+            var currentKeyValue = await client.Get(keyValue, options, cancellationToken).ConfigureAwait(false);
 
             if (currentKeyValue == keyValue)
             {
@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this AzconfigClient client, IEnumerable<IKeyValue> keyValues, GetKeyValueChangeCollectionOptions options)
+        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options)
         {
             if (options == null)
             {
@@ -46,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (keyValues == null)
             {
-                keyValues = Enumerable.Empty<IKeyValue>();
+                keyValues = Enumerable.Empty<ConfigurationSetting>();
             }
 
             if (options.Prefix == null)
@@ -61,17 +61,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
             {
-                throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
+                throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Key)}");
             }
 
             if (!string.IsNullOrEmpty(options.Prefix) && keyValues.Any(k => !k.Key.StartsWith(options.Prefix)))
             {
-                throw new ArgumentException("All key-values registered for refresh must start with the provided prefix.", $"{nameof(keyValues)}[].{nameof(IKeyValue.Key)}");
+                throw new ArgumentException("All key-values registered for refresh must start with the provided prefix.", $"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Key)}");
             }
 
             if (keyValues.Any(k => !string.Equals(k.Label.NormalizeNull(), options.Label.NormalizeNull())))
             {
-                throw new ArgumentException("All key-values registered for refresh must use the same label.", $"{nameof(keyValues)}[].{nameof(IKeyValue.Label)}");
+                throw new ArgumentException("All key-values registered for refresh must use the same label.", $"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Label)}");
             }
 
             if (keyValues.Any(k => k.Label != null && k.Label.Contains("*")))
@@ -80,6 +80,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             var hasKeyValueCollectionChanged = false;
+
+            // TODO: learn from this - understand mapping to SettingSelector
             var queryOptions = new QueryKeyValueCollectionOptions
             {
                 KeyFilter = options.Prefix + "*",
@@ -90,13 +92,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
-            IEnumerable<IKeyValue> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None).ConfigureAwait(false);
+            // TODO: Get with selector
+            IEnumerable<ConfigurationSetting> kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None).ConfigureAwait(false);
 
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.Value);
             
             // Check for any modifications/creations
-            foreach (IKeyValue kv in kvs)
+            foreach (ConfigurationSetting kv in kvs)
             {
                 if (!eTagMap.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
                 {
@@ -128,7 +131,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 kvs = await client.GetKeyValues(queryOptions).ToEnumerableAsync(CancellationToken.None).ConfigureAwait(false);
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
 
-                foreach (IKeyValue kv in kvs)
+                foreach (ConfigurationSetting kv in kvs)
                 {
                     if (!eTagMap.TryGetValue(kv.Key, out string etag) || !etag.Equals(kv.ETag))
                     {

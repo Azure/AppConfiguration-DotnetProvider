@@ -1,5 +1,4 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 using System.Collections.Generic;
 

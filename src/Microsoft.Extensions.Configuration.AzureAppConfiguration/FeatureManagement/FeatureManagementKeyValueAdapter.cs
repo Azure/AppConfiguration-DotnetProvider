@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.ApplicationModel.Configuration;
 using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
-        public IEnumerable<KeyValuePair<string, string>> GetKeyValues(IKeyValue keyValue)
+        public IEnumerable<KeyValuePair<string, string>> GetKeyValues(ConfigurationSetting keyValue)
         {
             string contentType = keyValue?.ContentType?.Split(';')[0].Trim();
 
