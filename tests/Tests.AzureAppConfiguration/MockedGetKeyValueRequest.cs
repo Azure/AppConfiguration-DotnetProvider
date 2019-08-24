@@ -33,22 +33,35 @@ namespace Tests.AzureAppConfiguration
 
             if (request.Method == HttpMethod.Get)
             {
-                if (request.RequestUri.AbsolutePath.StartsWith($"/kv/{_kv.Key}"))
+                if (request.RequestUri.AbsolutePath.StartsWith($"/kv/NonExistentKey"))
                 {
-                    return GetKeyValue(request);
+                    return GetNonExistentKeyValueResponse();
+                }
+                else if (request.RequestUri.AbsolutePath.StartsWith($"/kv/{_kv.Key}"))
+                {
+                    return GetKeyValueResponse();
                 }
                 else if (request.RequestUri.AbsolutePath.StartsWith($"/kv"))
                 {
-                    return GetKeyValues(request);
+                    return GetKeyValuesResponse();
                 }
             }
 
             return Task.FromResult(new HttpResponseMessage());
         }
 
-        private Task<HttpResponseMessage> GetKeyValue(HttpRequestMessage request)
+        private Task<HttpResponseMessage> GetNonExistentKeyValueResponse()
         {
-            HttpResponseMessage response = new HttpResponseMessage();
+            var response = new HttpResponseMessage();
+            response.StatusCode = HttpStatusCode.NotFound;
+            response.Content = null;
+
+            return Task.FromResult(response);
+        }
+
+        private Task<HttpResponseMessage> GetKeyValueResponse()
+        {
+            var response = new HttpResponseMessage();
             response.StatusCode = HttpStatusCode.OK;
 
             string json = JsonConvert.SerializeObject(_kv);
@@ -57,9 +70,9 @@ namespace Tests.AzureAppConfiguration
             return Task.FromResult(response);
         }
 
-        private Task<HttpResponseMessage> GetKeyValues(HttpRequestMessage request)
+        private Task<HttpResponseMessage> GetKeyValuesResponse()
         {
-            HttpResponseMessage response = new HttpResponseMessage();
+            var response = new HttpResponseMessage();
             response.StatusCode = HttpStatusCode.OK;
 
             string json = JsonConvert.SerializeObject(new { items = _kvCollection });
