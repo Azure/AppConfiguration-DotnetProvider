@@ -1,4 +1,4 @@
-﻿using Azure.ApplicationModel.Configuration;
+﻿using Azure.Data.AppConfiguration;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;

@@ -1,7 +1,9 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+﻿using Azure.Data.AppConfiguration;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Azure.AppConfiguration.Azconfig;
-    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    //using Microsoft.Azure.AppConfiguration.Azconfig;
+    //using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
     using Microsoft.Azure.KeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -210,7 +212,7 @@
                 throw new ArgumentException(nameof(endpoint));
             }
 
-            // TODO: Client = new ConfigurationClient(endpoint); // auth?
+            Client = new ConfigurationClient(endpoint, /**TODO**/); // auth?
 
             return this;
         }

@@ -1,4 +1,4 @@
-﻿using Azure.ApplicationModel.Configuration;
+﻿using Azure.Data.AppConfiguration;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-    using Newtonsoft.Json;
+    using System.Text.Json;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -30,15 +30,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
-        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(AzureAppConfigurationOptions options, bool optional)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+            
+            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.Default);
+            clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
 
-            // Initialize retry options.
-            _client.RetryOptions.MaxRetries = MaxRetries;
-            _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(RetryWaitMinutes);
+            // TODO: what is the scenario where we could have already have a client populated - should we support this?
+            // Answer: MSI auth, and tests
+
+            // TODO: what is the requirement here?
+            _client.UserAgent = TracingUtils.GenerateUserAgent(client.UserAgent);
 
             string requestTracingDisabled = null;
             try
@@ -76,7 +81,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             await RefreshKeyValueCollections().ConfigureAwait(false);
         }
 
-        private async Task void LoadAll()
+        private async Task LoadAll()
         {
             IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
@@ -87,18 +92,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (useDefaultQuery)
                 {
-                    // TODO: how to configure the setting selector?
-                    var options = new SettingSelector();
-                    
-                    ConfigureRequestTracingOptions(options);
+                    ConfigureRequestTracingOptions(_options);
 
+                    // TODO: does this set Key to Any? // If not, use SettingSelector(null)
+                    var selector = new SettingSelector();
+
+
+                    // TODO: IAsyncEnumerable isn't supported till netstandard2.1
                     //
                     // Load all key-values with the null label.
-                    // TODO: Get with Selector
-                    _client.GetKeyValues(options).ForEach(kv => { data[kv.Key] = kv; });
-					
-					// TODO: resolve
-                    await _client.GetKeyValues(options).ForEachAsync(kv => { data[kv.Key] = kv; }).ConfigureAwait(false);
+                    var collection = _client.GetSettingsAsync(selector);// .ConfigureAwait(false);
+                    
+                    await foreach (var response in collection)
+                    {
+                        data[response.Value.Key] = response.Value;
+                    }
+                    .ConfigureAwait(false);
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -114,17 +123,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var queryKeyValueCollectionOptions = new SettingSelector
+                    var options = new SettingSelector(loadOption.KeyFilter, loadOption.LabelFilter)
                     {
-                        // TODO: How to parse keyfilter, labelfilter?
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter,
                         AsOf = loadOption.PreferredDateTime
                     };
 
-                    ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
+                    ConfigureRequestTracingOptions(options);
 
-                    await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
+                    // TODO: Get AsyncCollection
+                    await _client.GetSettingsAsync(options).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                     await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
@@ -137,7 +144,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_options.OfflineCache != null)
                 {
                     // TODO: ?
-                    data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    var cache = _options.OfflineCache.Import(_options);
+                    // TODO: does this do the right thing?
+                    data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(cache);
 
                     if (data != null)
                     {
@@ -158,7 +167,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
+                _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
             }
         }
 
@@ -175,13 +184,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return;
                 }
 
-                var options = new SettingSelector();
-                options.Labels.Add(watchedLabel);
+                var options = new SettingSelector(watchedKey, watchedLabel);
+
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                 // TODO: How do we request from service with SettingSelector?
-                ConfigurationSetting watchedKv = await _client.Get(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                ConfigurationSetting watchedKv = await _client.GetSettingsAsync(options, CancellationToken.None).ConfigureAwait(false) ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
                 data[watchedKey] = watchedKv;
             }
@@ -314,7 +323,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task void SetData(IDictionary<string, IKeyValue> data)
+        private async Task SetData(IDictionary<string, ConfigurationSetting> data)
         {
             // Update cache of settings
             this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ?? 
