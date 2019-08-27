@@ -1,10 +1,13 @@
 ﻿using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,52 +33,60 @@ namespace Tests.AzureAppConfiguration
             RequestCount++;
             Thread.Sleep(_millisecondsDelay);
             HttpMethod method = request.Method;
+            string pathAndQuery = request.RequestUri.PathAndQuery;
 
             if (request.Method == HttpMethod.Get)
             {
-                if (request.RequestUri.AbsolutePath.StartsWith($"/kv/NonExistentKey"))
+                if (pathAndQuery.StartsWith("/kv/?key="))
                 {
-                    return GetNonExistentKeyValueResponse();
+                    var match = Regex.Match(pathAndQuery, @"/kv/\?key=([\w*]+)");
+
+                    if (match.Success && match.Groups.Count == 2)
+                    {
+                        string keyFilter = match.Groups[1].Value;
+
+                        if (keyFilter.Contains("*"))
+                        {
+                            return GetKeyValuesResponse(_kvCollection);
+                        }
+
+                        IEnumerable<IKeyValue> keyValues = _kvCollection.Where(kv => kv.Key.Equals(keyFilter));
+                        return GetKeyValuesResponse(keyValues);
+                    }
                 }
-                else if (request.RequestUri.AbsolutePath.StartsWith($"/kv/{_kv.Key}"))
+                else if (pathAndQuery.StartsWith("/kv/"))
                 {
-                    return GetKeyValueResponse();
-                }
-                else if (request.RequestUri.AbsolutePath.StartsWith($"/kv"))
-                {
-                    return GetKeyValuesResponse();
+                    var match = Regex.Match(pathAndQuery, @"/kv/(\w+)");
+
+                    if (match.Success && match.Groups.Count == 2)
+                    {
+                        string key = match.Groups[1].Value;
+                        IKeyValue keyValue = _kvCollection.Where(kv => kv.Key.Equals(key)).FirstOrDefault();
+                        return GetKeyValueResponse(keyValue);
+                    }
                 }
             }
 
             return Task.FromResult(new HttpResponseMessage());
         }
 
-        private Task<HttpResponseMessage> GetNonExistentKeyValueResponse()
-        {
-            var response = new HttpResponseMessage();
-            response.StatusCode = HttpStatusCode.NotFound;
-            response.Content = null;
-
-            return Task.FromResult(response);
-        }
-
-        private Task<HttpResponseMessage> GetKeyValueResponse()
+        private Task<HttpResponseMessage> GetKeyValueResponse(IKeyValue kv)
         {
             var response = new HttpResponseMessage();
             response.StatusCode = HttpStatusCode.OK;
 
-            string json = JsonConvert.SerializeObject(_kv);
+            string json = JsonConvert.SerializeObject(kv);
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
             return Task.FromResult(response);
         }
 
-        private Task<HttpResponseMessage> GetKeyValuesResponse()
+        private Task<HttpResponseMessage> GetKeyValuesResponse(IEnumerable<IKeyValue> kvCollection)
         {
             var response = new HttpResponseMessage();
             response.StatusCode = HttpStatusCode.OK;
 
-            string json = JsonConvert.SerializeObject(new { items = _kvCollection });
+            string json = JsonConvert.SerializeObject(new { items = kvCollection });
             response.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
             return Task.FromResult(response);
