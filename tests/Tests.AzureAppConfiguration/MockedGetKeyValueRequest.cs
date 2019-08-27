@@ -1,15 +1,15 @@
 ﻿using Microsoft.Azure.AppConfiguration.Azconfig;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -39,31 +39,23 @@ namespace Tests.AzureAppConfiguration
             {
                 if (pathAndQuery.StartsWith("/kv/?key="))
                 {
-                    var match = Regex.Match(pathAndQuery, @"/kv/\?key=([\w*]+)");
+                    NameValueCollection queryParams = HttpUtility.ParseQueryString(request.RequestUri.Query);
+                    string keyFilter = queryParams["key"];
 
-                    if (match.Success && match.Groups.Count == 2)
+                    if (keyFilter.Contains("*"))
                     {
-                        string keyFilter = match.Groups[1].Value;
-
-                        if (keyFilter.Contains("*"))
-                        {
-                            return GetKeyValuesResponse(_kvCollection);
-                        }
-
-                        IEnumerable<IKeyValue> keyValues = _kvCollection.Where(kv => kv.Key.Equals(keyFilter));
-                        return GetKeyValuesResponse(keyValues);
+                        return GetKeyValuesResponse(_kvCollection);
                     }
+
+                    IEnumerable<IKeyValue> keyValues = _kvCollection.Where(kv => kv.Key.Equals(keyFilter));
+                    return GetKeyValuesResponse(keyValues);
                 }
                 else if (pathAndQuery.StartsWith("/kv/"))
                 {
-                    var match = Regex.Match(pathAndQuery, @"/kv/(\w+)");
-
-                    if (match.Success && match.Groups.Count == 2)
-                    {
-                        string key = match.Groups[1].Value;
-                        IKeyValue keyValue = _kvCollection.Where(kv => kv.Key.Equals(key)).FirstOrDefault();
-                        return GetKeyValueResponse(keyValue);
-                    }
+                    string[] segments = new Uri(request.RequestUri.AbsoluteUri).Segments;
+                    string key = segments.Last();
+                    IKeyValue keyValue = _kvCollection.Where(kv => kv.Key.Equals(key)).FirstOrDefault();
+                    return GetKeyValueResponse(keyValue);
                 }
             }
 
