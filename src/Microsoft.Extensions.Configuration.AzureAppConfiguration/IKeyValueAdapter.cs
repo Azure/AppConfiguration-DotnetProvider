@@ -7,8 +7,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IKeyValueAdapter
     {
-        Task<IEnumerable<KeyValuePair<string, string>>> GetKeyValues(IKeyValue keyValue);
+        Task<IEnumerable<KeyValuePair<string, string>>> GetKeyValues(ConfigurationSetting setting);
 
-        bool CanProcess(IKeyValue kv);
+        bool CanProcess(ConfigurationSetting setting);
     }
 }

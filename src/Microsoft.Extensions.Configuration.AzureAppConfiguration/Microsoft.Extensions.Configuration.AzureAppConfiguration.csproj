@@ -9,6 +9,10 @@
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
+  <!--<PropertyGroup>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>-->
+
   <ItemGroup>
     <PackageReference Include="Azure.Core" Version="1.0.0-dev.20190826.1" />
     <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-dev.20190826.1" />

@@ -97,17 +97,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // TODO: does this set Key to Any? // If not, use SettingSelector(null)
                     var selector = new SettingSelector();
 
-
-                    // TODO: IAsyncEnumerable isn't supported till netstandard2.1
-                    //
                     // Load all key-values with the null label.
-                    var collection = _client.GetSettingsAsync(selector);// .ConfigureAwait(false);
-                    
-                    await foreach (var response in collection)
+                    var collection = _client.GetSettingsAsync(selector);
+
+                    // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
+                    var enumerator = collection.GetAsyncEnumerator();
+                    while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                     {
-                        data[response.Value.Key] = response.Value;
+                        data[enumerator.Current.Value.Key] = enumerator.Current.Value;
                     }
-                    .ConfigureAwait(false);
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -123,15 +121,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var options = new SettingSelector(loadOption.KeyFilter, loadOption.LabelFilter)
+                    var selector = new SettingSelector(loadOption.KeyFilter, loadOption.LabelFilter)
                     {
                         AsOf = loadOption.PreferredDateTime
                     };
 
                     ConfigureRequestTracingOptions(options);
 
-                    // TODO: Get AsyncCollection
-                    await _client.GetSettingsAsync(options).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
+                    // Load all key-values with the null label.
+                    var collection = _client.GetSettingsAsync(selector);
+
+                    // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
+                    var enumerator = collection.GetAsyncEnumerator();
+                    while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    {
+                        data[enumerator.Current.Value.Key] = enumerator.Current.Value;
+                    }
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                     await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
@@ -184,13 +189,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return;
                 }
 
-                var options = new SettingSelector(watchedKey, watchedLabel);
-
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                // TODO: How do we request from service with SettingSelector?
-                ConfigurationSetting watchedKv = await _client.GetSettingsAsync(options, CancellationToken.None).ConfigureAwait(false) ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default, CancellationToken.None).ConfigureAwait(false);
+                ConfigurationSetting watchedKv =  watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
                 data[watchedKey] = watchedKv;
             }
@@ -220,10 +224,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
                     {
                         watchedKv = _settings[watchedKey];
+
+                        // TODO: Address tracing enabled.
                         var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
                         options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
-                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None).ConfigureAwait(false);
+                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false);
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
@@ -242,10 +248,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         ConfigureRequestTracingOptions(options);
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        // TODO: Get with Selector
-                        // TODO: is it valid to pass a null value?
-                        watchedKv = await _client.Get(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                        var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default, CancellationToken.None).ConfigureAwait(false);
+                        watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
+
 
                         // Add the key-value if it is not loaded, or update it if it was loaded with a different label
                         _settings[watchedKey] = watchedKv;
@@ -356,18 +362,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             OnReload();
         }
         
-        private  async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(IKeyValue keyValue)
+        private  async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                if (!adapter.CanProcess(keyValue))
+                if (!adapter.CanProcess(setting))
                 {
                     continue;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(keyValue, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {
@@ -377,7 +383,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
+            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(setting.Key, setting.Value), 1);
         }
 
         private void ProcessChanges(IEnumerable<KeyValueChange> changes)

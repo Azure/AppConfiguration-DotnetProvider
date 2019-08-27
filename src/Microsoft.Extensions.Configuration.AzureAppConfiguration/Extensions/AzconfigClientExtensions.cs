@@ -9,31 +9,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class AzconfigClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, IKeyValue keyValue, IRequestOptions options, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting,  CancellationToken cancellationToken)
         {
-            if (keyValue == null)
+            if (setting == null)
             {
-                throw new ArgumentNullException(nameof(keyValue));
+                throw new ArgumentNullException(nameof(setting));
             }
 
-            if (string.IsNullOrEmpty(keyValue.Key))
+            if (string.IsNullOrEmpty(setting.Key))
             {
-                throw new ArgumentNullException($"{nameof(keyValue)}.{nameof(keyValue.Key)}");
+                throw new ArgumentNullException($"{nameof(setting)}.{nameof(setting.Key)}");
             }
 
-            var currentKeyValue = await client.Get(keyValue, options, cancellationToken).ConfigureAwait(false);
+            var currentSetting = await client.GetAsync(setting.Key, setting.Label, default, cancellationToken).ConfigureAwait(false);
 
-            if (currentKeyValue == keyValue)
+            // TODO: verify equality semantics
+            if (currentSetting.Value == setting)
             {
                 return null;
             }
 
             return new KeyValueChange
             {
-                ChangeType = currentKeyValue == null ? KeyValueChangeType.Deleted : KeyValueChangeType.Modified,
-                Current = currentKeyValue,
-                Key = keyValue.Key,
-                Label = keyValue.Label
+                ChangeType = currentSetting.Value == null ? KeyValueChangeType.Deleted : KeyValueChangeType.Modified,
+                Current = currentSetting,
+                Key = setting.Key,
+                Label = setting.Label
             };
         }
 
