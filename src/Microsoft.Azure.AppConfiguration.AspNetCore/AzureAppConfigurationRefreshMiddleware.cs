@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,9 +14,14 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
     class AzureAppConfigurationRefreshMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly AzureAppConfigurationMiddlewareOptions _options;
         public IList<IConfigurationRefresher> Refreshers { get; private set; }
 
-        public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfiguration configuration)
+        public AzureAppConfigurationRefreshMiddleware(
+            RequestDelegate next,
+            IConfiguration configuration,
+            IOptions<AzureAppConfigurationMiddlewareOptions> options,
+            Action<AzureAppConfigurationMiddlewareOptions> optionsInitializer = null)
         {
             _next = next;
             Refreshers = new List<IConfigurationRefresher>();
@@ -33,13 +39,21 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
                     Refreshers.Add(refresher);
                 }
             }
+
+            _options = options.Value ?? new AzureAppConfigurationMiddlewareOptions();
+            optionsInitializer?.Invoke(_options);
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
             foreach (var refresher in Refreshers)
             {
-                refresher.Refresh();
+                Task refreshTask = refresher.Refresh();
+
+                if (_options.AwaitRefresh)
+                {
+                    await refreshTask;
+                }
             }
 
             // Call the next delegate/middleware in the pipeline
