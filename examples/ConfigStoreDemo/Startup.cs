@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                 app.UseExceptionHandler("/Error");
             }
 
-            app.UseAzureAppConfiguration(option => option.SetWaitForRefresh(true));
+            app.UseAzureAppConfiguration(option => option.AwaitRefresh = true);
             app.UseStaticFiles();
             app.UseMvc();
         }

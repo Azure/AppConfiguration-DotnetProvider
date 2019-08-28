@@ -12,8 +12,17 @@ namespace Microsoft.AspNetCore.Builder
         /// Configures a middleware for Azure App Configuration to use activity-based refresh for data configured in the provider.
         /// </summary>
         /// <param name="builder">An instance of <see cref="IApplicationBuilder"/></param>
+        public static IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
+        }
+
+        /// <summary>
+        /// Configures a middleware for Azure App Configuration to use activity-based refresh for data configured in the provider.
+        /// </summary>
+        /// <param name="builder">An instance of <see cref="IApplicationBuilder"/></param>
         /// <param name="options">A callback used to configure Azure App Configuration middleware options.</param>
-        public static IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder builder, Action<AzureAppConfigurationMiddlewareOptions> options = null)
+        public static IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder builder, Action<AzureAppConfigurationMiddlewareOptions> options)
         {
             return builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>(options);
         }
