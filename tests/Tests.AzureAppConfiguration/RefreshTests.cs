@@ -10,12 +10,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.Extensions.Options;
 
 namespace Tests.AzureAppConfiguration
 {
     public class RefreshTests
     {
         string _connectionString = TestHelpers.CreateMockEndpointString();
+        IOptions<AzureAppConfigurationMiddlewareOptions> _middlewareOptions = Options.Create(new AzureAppConfigurationMiddlewareOptions());
 
         IEnumerable<IKeyValue> _kvCollection = new List<IKeyValue>
         {
@@ -345,7 +347,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration, _middlewareOptions);
 
             // Assert
             Assert.NotNull(middleware.Refreshers);
@@ -369,7 +371,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration, _middlewareOptions);
 
             // Assert
             Assert.NotNull(middleware.Refreshers);
@@ -382,7 +384,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var delegateMock = new Mock<RequestDelegate>();
             var configMock = new Mock<IConfiguration>();
-            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object);
+            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object, _middlewareOptions);
 
             // Act and Assert
             Assert.Throws<InvalidOperationException>(action);
