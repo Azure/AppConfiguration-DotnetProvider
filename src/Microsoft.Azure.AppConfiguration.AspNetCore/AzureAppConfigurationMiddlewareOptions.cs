@@ -6,8 +6,8 @@
     public class AzureAppConfigurationMiddlewareOptions
     {
         /// <summary>
-        /// Enables or disables whether the middleware awaits the refresh operation triggered on each request to complete.
-        /// Enable this option for scenarios where you want to force the refresh operation to complete before each request is processed.
+        /// Determines whether the middleware awaits the refresh operation during a request.
+        /// Enable this option for scenarios where the refresh operation must be completed before the request is processed.
         /// </summary>
         public bool AwaitRefresh { get; set; }
     }

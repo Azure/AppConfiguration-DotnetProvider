@@ -24,6 +24,11 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="options">A callback used to configure Azure App Configuration middleware options.</param>
         public static IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder builder, Action<AzureAppConfigurationMiddlewareOptions> options)
         {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             return builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>(options);
         }
     }

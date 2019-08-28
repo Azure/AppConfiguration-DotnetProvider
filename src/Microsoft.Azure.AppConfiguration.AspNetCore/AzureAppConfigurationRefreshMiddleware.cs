@@ -48,13 +48,11 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
         {
             foreach (var refresher in Refreshers)
             {
+                Task refreshTask = refresher.Refresh();
+
                 if (_options.AwaitRefresh)
                 {
-                    await refresher.Refresh();
-                }
-                else
-                {
-                    refresher.Refresh();
+                    await refreshTask;
                 }
             }
 
