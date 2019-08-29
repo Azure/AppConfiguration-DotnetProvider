@@ -2,8 +2,7 @@
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    //using Microsoft.Azure.AppConfiguration.Azconfig;
-    //using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
     using Microsoft.Azure.KeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -212,7 +211,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException(nameof(endpoint));
             }
 
-            Client = new ConfigurationClient(endpoint, /**TODO**/); // auth?
+            var connectionString = ManagedIdentityConnector.GetConnectionString(uri, Permissions.Read).ConfigureAwait(false).GetAwaiter().GetResult();
+            Client = new ConfigurationClient(connectionString);
 
             return this;
         }

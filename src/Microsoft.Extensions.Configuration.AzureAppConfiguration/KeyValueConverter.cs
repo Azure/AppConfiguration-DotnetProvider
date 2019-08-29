@@ -1,10 +1,10 @@
 ﻿using Azure.Data.AppConfiguration;
-using System.Text.Json;
+using Newtonsoft.Json.Converters;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class KeyValueConverter : JsonSerializerOptions
+    internal class KeyValueConverter : CustomCreationConverter<ConfigurationSetting>
     {
         public override ConfigurationSetting Create(Type _)
         {
