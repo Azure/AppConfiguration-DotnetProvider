@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class ConfigurationClientFactory
     {
-        internal static ConfigurationClient GetConfigurationClient(string connectionString)
+        internal static ConfigurationClient CreateConfigurationClient(string connectionString)
         {
             var clientOptions = AzureAppConfigurationProvider.GetClientOptions();
             return new ConfigurationClient(connectionString, clientOptions); 
