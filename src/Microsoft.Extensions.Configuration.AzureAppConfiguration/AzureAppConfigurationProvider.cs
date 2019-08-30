@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-    using System.Text.Json;
+    using Newtonsoft.Json;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -30,17 +30,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
-        public AzureAppConfigurationProvider(AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
+            _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
-            
-            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.Default);
-            clientOptions.Retry.MaxRetries = MaxRetries;
-            clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
-
-            // TODO: what is the scenario where we could have already have a client populated - should we support this?
-            // Answer: MSI auth, and tests
 
             // TODO: what is the requirement here?
             _client.UserAgent = TracingUtils.GenerateUserAgent(client.UserAgent);
@@ -79,6 +73,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             await RefreshIndividualKeyValues().ConfigureAwait(false);
             await RefreshKeyValueCollections().ConfigureAwait(false);
+        }
+
+        internal static ConfigurationClientOptions GetClientOptions()
+        {
+            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.Default);
+            clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
+            return clientOptions;
         }
 
         private async Task LoadAll()
@@ -150,8 +152,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     // TODO: ?
                     var cache = _options.OfflineCache.Import(_options);
-                    // TODO: does this do the right thing?
-                    data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(cache);
+                    data = JsonConvert.DeserializeObject<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
 
                     if (data != null)
                     {
@@ -172,7 +173,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
+                _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
             }
         }
 
@@ -329,7 +330,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task SetData(IDictionary<string, ConfigurationSetting> data)
+        private async Task SetData(IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default(CancellationToken))
         {
             // Update cache of settings
             this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ?? 
@@ -362,7 +363,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             OnReload();
         }
         
-        private  async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting)
+        private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 

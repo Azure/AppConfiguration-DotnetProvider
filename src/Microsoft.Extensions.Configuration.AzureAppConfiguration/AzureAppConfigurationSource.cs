@@ -36,7 +36,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                provider = new AzureAppConfigurationProvider(options, _optional);
+
+                ConfigurationClient client;
+                if ( options.Client != null)
+                {
+                    client = options.Client;
+                }
+                else
+                {
+                    ConfigurationClientOptions clientOptions = AzureAppConfigurationProvider.GetClientOptions();
+                    client = new ConfigurationClient(options.ConnectionString, clientOptions);
+                }
+
+                provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
             catch (ArgumentException)
             {

@@ -212,7 +212,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             var connectionString = ManagedIdentityConnector.GetConnectionString(uri, Permissions.Read).ConfigureAwait(false).GetAwaiter().GetResult();
-            Client = new ConfigurationClient(connectionString);
+            Client = ConfigurationClientFactory.GetConfigurationClient(connectionString);
 
             return this;
         }
