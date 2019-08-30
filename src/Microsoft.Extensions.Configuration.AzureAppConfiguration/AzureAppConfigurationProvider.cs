@@ -148,7 +148,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.OfflineCache != null)
                 {
-                    data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    data = JsonConvert.DeserializeObject<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
 
                     if (data != null)
                     {
@@ -186,16 +186,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                var options = new QueryKeyValueOptions { Label = watchedLabel };
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
                 ConfigurationSetting watchedKv =  watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
-// TODO:
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
@@ -252,12 +250,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         ConfigureRequestTracingOptions(options);
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
+                        var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
                         watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
-
-// TODO:
                         if (watchedKv != null)
                         {
                             // Add the key-value if it is not loaded, or update it if it was loaded with a different label
