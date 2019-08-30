@@ -129,7 +129,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     };
 
                     ConfigureRequestTracingOptions(options);
-
                     // Load all key-values with the null label.
                     var collection = _client.GetSettingsAsync(selector);
 
@@ -138,11 +137,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                     {
                         data[enumerator.Current.Value.Key] = enumerator.Current.Value;
-                    }
-
-                    // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                    await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
                 }
+
+                // Block current thread for the initial load of key-values registered for refresh that are not already loaded
+                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
                                               exception.InnerException is OperationCanceledException ||
@@ -150,9 +148,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.OfflineCache != null)
                 {
-                    // TODO: ?
-                    var cache = _options.OfflineCache.Import(_options);
-                    data = JsonConvert.DeserializeObject<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
 
                     if (data != null)
                     {
@@ -187,17 +183,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Skip the loading for the key-value in case it has already been loaded
                 if (data.ContainsKey(watchedKey) && data[watchedKey].Label == watchedLabel.NormalizeNull())
                 {
-                    return;
+                    continue;
                 }
 
+                var options = new QueryKeyValueOptions { Label = watchedLabel };
                 ConfigureRequestTracingOptions(options);
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default, CancellationToken.None).ConfigureAwait(false);
+                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                 ConfigurationSetting watchedKv =  watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
-                data[watchedKey] = watchedKv;
+
+// TODO:
+                // If the key-value was found, store it for updating the settings
+                if (watchedKv != null)
+                {
+                    data[watchedKey] = watchedKv;
+                }
             }
         }
 
@@ -249,14 +252,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         ConfigureRequestTracingOptions(options);
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default, CancellationToken.None).ConfigureAwait(false);
+                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false) ?? new KeyValue(watchedKey) { Label = watchedLabel };
                         watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
 
-                        // Add the key-value if it is not loaded, or update it if it was loaded with a different label
-                        _settings[watchedKey] = watchedKv;
-                        hasChanged = true;
+// TODO:
+                        if (watchedKv != null)
+                        {
+                            // Add the key-value if it is not loaded, or update it if it was loaded with a different label
+                            _settings[watchedKey] = watchedKv;
+                            hasChanged = true;
+                        }
                     }
 
                     if (hasChanged)

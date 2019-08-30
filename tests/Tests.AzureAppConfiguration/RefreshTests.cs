@@ -10,12 +10,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.Extensions.Options;
 
 namespace Tests.AzureAppConfiguration
 {
     public class RefreshTests
     {
         string _connectionString = TestHelpers.CreateMockEndpointString();
+        IOptions<AzureAppConfigurationMiddlewareOptions> _middlewareOptions = Options.Create(new AzureAppConfigurationMiddlewareOptions());
 
         IEnumerable<IKeyValue> _kvCollection = new List<IKeyValue>
         {
@@ -71,9 +73,10 @@ namespace Tests.AzureAppConfiguration
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                options.Use("RandomKey")
+                options.Use("TestKey1")
                        .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1")
+                           refresh.Register("TestKey2")
+                                  .Register("TestKey3")
                                   .SetCacheExpiration(TimeSpan.FromSeconds(60));
                        });
 
@@ -82,6 +85,8 @@ namespace Tests.AzureAppConfiguration
                     .Build();
 
                 Assert.Equal("TestValue1", config["TestKey1"]);
+                Assert.Equal("TestValue2", config["TestKey2"]);
+                Assert.Equal("TestValue3", config["TestKey3"]);
             }
         }
 
@@ -108,7 +113,7 @@ namespace Tests.AzureAppConfiguration
                 // Wait for some time but not enough to let the cache expire
                 Thread.Sleep(5000);
 
-                options.GetRefresher().Refresh();
+                options.GetRefresher().Refresh().Wait();
 
                 Assert.Equal("TestValue1", config["TestKey1"]);
             }
@@ -137,7 +142,7 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 Thread.Sleep(1500);
 
-                options.GetRefresher().Refresh();
+                options.GetRefresher().Refresh().Wait();
 
                 Assert.Equal("newValue", config["TestKey1"]);
             }
@@ -171,7 +176,7 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 Thread.Sleep(1500);
 
-                options.GetRefresher().Refresh();
+                options.GetRefresher().Refresh().Wait();
 
                 Assert.Equal("newValue", config["TestKey1"]);
                 Assert.NotEqual("newValue", config["TestKey2"]);
@@ -207,7 +212,7 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 Thread.Sleep(1500);
 
-                options.GetRefresher().Refresh();
+                options.GetRefresher().Refresh().Wait();
 
                 Assert.Equal("newValue", config["TestKey1"]);
                 Assert.Equal("newValue", config["TestKey2"]);
@@ -244,11 +249,53 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 Thread.Sleep(1500);
 
-                options.GetRefresher().Refresh();
+                options.GetRefresher().Refresh().Wait();
 
                 Assert.Equal("newValue", config["TestKey1"]);
                 Assert.Equal("TestValue2", config["TestKey2"]);
                 Assert.Null(config["TestKey3"]);
+            }
+        }
+
+        [Fact]
+        public void RefreshTests_RefreshAllForNonExistentSentinelDoesNothing()
+        {
+            var kvCollection = new List<IKeyValue>(_kvCollection);
+
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
+            {
+                var options = new AzureAppConfigurationOptions { Client = testClient };
+
+                options.Use("TestKey*")
+                       .ConfigureRefresh(refresh => {
+                           refresh.Register("TestKey1")
+                                  .Register("NonExistentKey", refreshAll: true)
+                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                       });
+
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options)
+                    .Build();
+
+                Assert.Equal("TestValue1", config["TestKey1"]);
+                Assert.Equal("TestValue2", config["TestKey2"]);
+                Assert.Equal("TestValue3", config["TestKey3"]);
+
+                kvCollection.ElementAt(0).Value = "newValue1";
+                kvCollection.ElementAt(1).Value = "newValue2";
+                kvCollection.Remove(kvCollection.Last());
+
+                // Wait for the cache to expire
+                Thread.Sleep(1500);
+
+                options.GetRefresher().Refresh().Wait();
+
+                // Validate that key-values registered for refresh were updated
+                Assert.Equal("newValue1", config["TestKey1"]);
+
+                // Validate that other key-values were not updated, which means refresh all wasn't triggered
+                Assert.Equal("TestValue2", config["TestKey2"]);
+                Assert.Equal("TestValue3", config["TestKey3"]);
             }
         }
 
@@ -300,7 +347,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration, _middlewareOptions);
 
             // Assert
             Assert.NotNull(middleware.Refreshers);
@@ -324,7 +371,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration, _middlewareOptions);
 
             // Assert
             Assert.NotNull(middleware.Refreshers);
@@ -337,7 +384,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var delegateMock = new Mock<RequestDelegate>();
             var configMock = new Mock<IConfiguration>();
-            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object);
+            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object, _middlewareOptions);
 
             // Act and Assert
             Assert.Throws<InvalidOperationException>(action);
