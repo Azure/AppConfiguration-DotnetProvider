@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -14,9 +14,8 @@ namespace Tests.AzureAppConfiguration
 {
     public class FeatureManagementTests
     {
-        private KeyValue _kv = new KeyValue(FeatureManagementConstants.FeatureFlagMarker + "myFeature")
-        {
-            Value = @"
+        private ConfigurationSetting _kv = new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            value: @"
                     {
                       ""id"": ""Beta"",
                       ""description"": ""The new beta version of our web site."",
@@ -43,14 +42,14 @@ namespace Tests.AzureAppConfiguration
                         ]
                       }
                     }
-                    ",
+                    ")
+{
             ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
-        private KeyValue _kv2 = new KeyValue(FeatureManagementConstants.FeatureFlagMarker + "myFeature2")
-        {
-            Value = @"
+        private ConfigurationSetting _kv2 = new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + "myFeature2", 
+            value: @"
                     {
                       ""id"": ""MyFeature2"",
                       ""description"": ""The new beta version of our web site."",
@@ -64,7 +63,8 @@ namespace Tests.AzureAppConfiguration
                         ]
                       }
                     }
-                    ",
+                    ")
+        { 
             ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
@@ -72,9 +72,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UsesFeatureFlags()
         {
-            IEnumerable<IKeyValue> featureFlags = new List<IKeyValue> { _kv };
+            IEnumerable<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
+            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
             {
                 var builder = new ConfigurationBuilder();
 
@@ -102,9 +102,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void WatchesFeatureFlags()
         {
-            List<IKeyValue> featureFlags = new List<IKeyValue> { _kv };
+            List<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
+            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
             {
                 var builder = new ConfigurationBuilder();
 
@@ -174,7 +174,7 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), handler))
+            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler))
             {
                 var builder = new ConfigurationBuilder();
 
@@ -198,7 +198,7 @@ namespace Tests.AzureAppConfiguration
             performedDefaultQuery = false;
             queriedFeatureFlags = false;
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), handler))
+            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler))
             {
                 var builder = new ConfigurationBuilder();
 

@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
-                _hostType =  Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
+                _hostType = Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
                     ? HostType.AzureFunction
                     : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
                         ? HostType.AzureWebApp
@@ -113,9 +113,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 foreach (var loadOption in _options.KeyValueSelectors)
                 {
                     if ((useDefaultQuery && LabelFilter.Null.Equals(loadOption.LabelFilter)) ||
-                        _options.KeyValueSelectors.Any(s => s != loadOption && 
-                           string.Equals(s.KeyFilter, KeyFilter.Any) && 
-                           string.Equals(s.LabelFilter, loadOption.LabelFilter) && 
+                        _options.KeyValueSelectors.Any(s => s != loadOption &&
+                           string.Equals(s.KeyFilter, KeyFilter.Any) &&
+                           string.Equals(s.LabelFilter, loadOption.LabelFilter) &&
                            Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, loadOption.PreferredDateTime)))
                     {
                         // This selection was already encapsulated by a wildcard query
@@ -137,10 +137,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                     {
                         data[enumerator.Current.Value.Key] = enumerator.Current.Value;
-                }
+                    }
 
-                // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
+                    // Block current thread for the initial load of key-values registered for refresh that are not already loaded
+                    await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
+                }
             }
             catch (Exception exception) when (exception.InnerException is HttpRequestException ||
                                               exception.InnerException is OperationCanceledException ||
@@ -190,7 +191,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                 var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
-                ConfigurationSetting watchedKv =  watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                ConfigurationSetting watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
@@ -336,7 +337,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task SetData(IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default(CancellationToken))
         {
             // Update cache of settings
-            this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ?? 
+            this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ??
                 new ConcurrentDictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
 
             // Set the application data for the configuration provider
@@ -361,11 +362,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             Data = applicationData;
-            
+
             // Notify that the configuration has been updated
             OnReload();
         }
-        
+
         private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             List<KeyValuePair<string, string>> keyValues = null;
