@@ -1,5 +1,7 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -36,6 +38,35 @@
             }
 
             return userAgent.ToString();
+        }
+
+        public static void ConfigureRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType)
+        {
+            IList<KeyValuePair<string, string>> correlationContext = new List<KeyValuePair<string, string>>();
+
+            if (tracingEnabled)
+            {
+                AddRequestType(correlationContext, requestType);
+
+                if (hostType != HostType.None)
+                {
+                    AddHostType(correlationContext, hostType);
+                }
+            }
+
+            // TODO: use correlationContext to set headers
+        }
+
+        private static void AddRequestType(IList<KeyValuePair<string, string>> correlationContext, RequestType requestType)
+        {
+            string requestTypeValue = Enum.GetName(typeof(RequestType), requestType);
+            correlationContext.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, requestTypeValue));
+        }
+
+        private static void AddHostType(IList<KeyValuePair<string, string>> correlationContext, HostType hostType)
+        {
+            string hostTypeValue = Enum.GetName(typeof(HostType), hostType);
+            correlationContext.Add(new KeyValuePair<string, string>(RequestTracingConstants.HostTypeKey, hostTypeValue));
         }
     }
 }

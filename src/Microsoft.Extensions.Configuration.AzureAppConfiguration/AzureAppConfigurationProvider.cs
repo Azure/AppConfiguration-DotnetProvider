@@ -94,7 +94,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (useDefaultQuery)
                 {
-                    ConfigureRequestTracingOptions(_options);
+                    ConfigureRequestTracingOptions();
 
                     // TODO: does this set Key to Any? // If not, use SettingSelector(null)
                     var selector = new SettingSelector();
@@ -128,7 +128,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         AsOf = loadOption.PreferredDateTime
                     };
 
-                    ConfigureRequestTracingOptions(options);
+                    ConfigureRequestTracingOptions();
                     // Load all key-values with the null label.
                     var collection = _client.GetSettingsAsync(selector);
 
@@ -187,7 +187,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                ConfigureRequestTracingOptions(options);
+                ConfigureRequestTracingOptions();
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                 var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
@@ -228,9 +228,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedKv = _settings[watchedKey];
 
-                        // TODO: Address tracing enabled.
-                        var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
-                        options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
+                        TracingUtils.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
                         KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false);
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
@@ -248,7 +246,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         var options = new SettingSelector();
                         options.Labels.Add(watchedLabel);
-                        ConfigureRequestTracingOptions(options);
+                        ConfigureRequestTracingOptions();
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
                         var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
@@ -406,10 +404,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private void ConfigureRequestTracingOptions(IRequestOptions options)
+        private void ConfigureRequestTracingOptions()
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            options.ConfigureRequestTracing(_requestTracingEnabled, requestType, _hostType);
+
+            TracingUtils.ConfigureRequestTracing(_requestTracingEnabled, requestType, _hostType);
         }
     }
 }

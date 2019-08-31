@@ -89,7 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Fields = SettingFields.ETag | SettingFields.Key
             };
 
-            queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
+            TracingUtils.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
             var kvs = client.GetSettingsAsync(selector);
@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
                 selector = new SettingSelector(keyFilter, labelFilter);
 
-                queryOptions.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
+                TracingUtils.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
 				
                 kvs = client.GetSettingsAsync(selector);
                 enumerator = kvs.GetAsyncEnumerator(CancellationToken.None);
