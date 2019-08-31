@@ -36,9 +36,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            // TODO: what is the requirement here?
-            _client.UserAgent = TracingUtils.GenerateUserAgent(client.UserAgent);
-
             string requestTracingDisabled = null;
             try
             {
@@ -80,6 +77,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.Default);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
+
+            clientOptions.Diagnostics.ApplicationId = TracingUtils.GenerateUserAgent();
+
             return clientOptions;
         }
 
