@@ -1,14 +1,18 @@
-﻿using Azure.Core.Http;
+﻿using Azure;
+using Azure.Core.Http;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Moq;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -70,12 +74,29 @@ namespace Tests.AzureAppConfiguration
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
+        internal class MockAsyncCollection : AsyncCollection<ConfigurationSetting>
+        {
+            public override IAsyncEnumerable<Page<ConfigurationSetting>> ByPage(string continuationToken = null, int? pageSizeHint = null)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         [Fact]
         public void UsesFeatureFlags()
         {
-            IEnumerable<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
+            var mockResponse = new Mock<Response>();
+            var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
 
-            var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags));
+            var featureFlags = new List<Response<ConfigurationSetting>>
+            {
+                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
+            };
+
+            mock.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
+                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
+
+            var testClient = mock.Object;
 
             var builder = new ConfigurationBuilder();
 
@@ -102,10 +123,18 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void WatchesFeatureFlags()
         {
-            List<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
+            var mockResponse = new Mock<Response>();
+            var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
 
-            var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags));
+            var featureFlags = new List<Response<ConfigurationSetting>>
+            {
+                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
+            };
 
+            mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
+                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
+
+            var testClient = mock.Object;
             var builder = new ConfigurationBuilder();
 
             var options = new AzureAppConfigurationOptions { Client = testClient }
@@ -143,7 +172,9 @@ namespace Tests.AzureAppConfiguration
                     ";
 
             _kv.ETag = new ETag(_kv.ETag.ToString() + "f");
-            featureFlags.Add(_kv2);
+
+            var mockResponse2 = new Mock<Response>();
+            featureFlags.Add(new Response<ConfigurationSetting>(mockResponse2.Object, _kv2));
             options.GetRefresher().Refresh();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -158,23 +189,37 @@ namespace Tests.AzureAppConfiguration
             bool performedDefaultQuery = false;
             bool queriedFeatureFlags = false;
 
-            var handler = new CallbackMessageHandler((req) =>
+            //var handler = new CallbackMessageHandler((req) =>
+            //{
+            //    performedDefaultQuery = performedDefaultQuery || req.RequestUri.PathAndQuery == "/kv/?key=*&label=%00";
+
+            //    queriedFeatureFlags = queriedFeatureFlags || req.RequestUri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+
+            //    HttpResponseMessage response = new HttpResponseMessage();
+
+            //    response.StatusCode = HttpStatusCode.OK;
+
+            //    response.Content = new StringContent(JsonConvert.SerializeObject(new { items = new object[] { } }), Encoding.UTF8, "application/json");
+
+            //    return response;
+            //});
+
+            var mockResponse = new Mock<Response>();
+            var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+
+            var featureFlags = new List<Response<ConfigurationSetting>>
             {
+                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
+            };
 
-                performedDefaultQuery = performedDefaultQuery || req.RequestUri.PathAndQuery == "/kv/?key=*&label=%00";
+            mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
+                .Callback<Request>((req) => {
+                    performedDefaultQuery = performedDefaultQuery || req.UriBuilder.Uri.PathAndQuery == "/kv/?key=*&label=%00";
+                    queriedFeatureFlags = queriedFeatureFlags || req.UriBuilder.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+                })
+                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
 
-                queriedFeatureFlags = queriedFeatureFlags || req.RequestUri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
-
-                HttpResponseMessage response = new HttpResponseMessage();
-
-                response.StatusCode = HttpStatusCode.OK;
-
-                response.Content = new StringContent(JsonConvert.SerializeObject(new { items = new object[] { } }), Encoding.UTF8, "application/json");
-
-                return response;
-            });
-
-            var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler);
+            var testClient = mock.Object;
 
             var builder = new ConfigurationBuilder();
 
@@ -198,7 +243,20 @@ namespace Tests.AzureAppConfiguration
             performedDefaultQuery = false;
             queriedFeatureFlags = false;
 
-            testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler);
+            mockResponse = new Mock<Response>();
+            mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+
+            featureFlags = new List<Response<ConfigurationSetting>>
+            {
+                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
+            };
+
+            mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
+                .Callback<Request>((req) => {
+                    performedDefaultQuery = performedDefaultQuery || req.UriBuilder.Uri.PathAndQuery == "/kv/?key=*&label=%00";
+                    queriedFeatureFlags = queriedFeatureFlags || req.UriBuilder.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+                })
+                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
 
             builder = new ConfigurationBuilder();
 
