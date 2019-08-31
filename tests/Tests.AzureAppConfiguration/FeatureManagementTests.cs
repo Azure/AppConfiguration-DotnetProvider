@@ -44,12 +44,12 @@ namespace Tests.AzureAppConfiguration
                       }
                     }
                     ")
-{
+        {
             ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
-        private ConfigurationSetting _kv2 = new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + "myFeature2", 
+        private ConfigurationSetting _kv2 = new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
             value: @"
                     {
                       ""id"": ""MyFeature2"",
@@ -65,7 +65,7 @@ namespace Tests.AzureAppConfiguration
                       }
                     }
                     ")
-        { 
+        {
             ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
@@ -75,29 +75,28 @@ namespace Tests.AzureAppConfiguration
         {
             IEnumerable<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
-            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
+            var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags));
+
+            var builder = new ConfigurationBuilder();
+
+            var options = new AzureAppConfigurationOptions()
             {
-                var builder = new ConfigurationBuilder();
+                Client = testClient
+            };
 
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+            options.UseFeatureFlags();
 
-                options.UseFeatureFlags();
+            builder.AddAzureAppConfiguration(options);
 
-                builder.AddAzureAppConfiguration(options);
+            var config = builder.Build();
 
-                var config = builder.Build();
-
-                Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-                Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-                Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-                Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
-                Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
-                Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
-                Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
-            }
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
+            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
+            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
         }
 
         [Fact]
@@ -105,26 +104,26 @@ namespace Tests.AzureAppConfiguration
         {
             List<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
-            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
-            {
-                var builder = new ConfigurationBuilder();
+            var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags));
 
-                var options = new AzureAppConfigurationOptions { Client = testClient }
-                    .UseFeatureFlags(o => o.CacheExpirationTime = TimeSpan.FromSeconds(1));
+            var builder = new ConfigurationBuilder();
 
-                var config = builder
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            var options = new AzureAppConfigurationOptions { Client = testClient }
+                .UseFeatureFlags(o => o.CacheExpirationTime = TimeSpan.FromSeconds(1));
 
-                Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-                Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-                Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-                Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
-                Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
-                Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
-                Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            var config = builder
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                _kv.Value = @"
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
+            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
+            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+
+            _kv.Value = @"
                     {
                       ""id"": ""Beta"",
                       ""description"": ""The new beta version of our web site."",
@@ -143,15 +142,14 @@ namespace Tests.AzureAppConfiguration
                     }
                     ";
 
-                _kv.ETag = new ETag(_kv.ETag.ToString() + "f");
-                featureFlags.Add(_kv2);
-                options.GetRefresher().Refresh();
+            _kv.ETag = new ETag(_kv.ETag.ToString() + "f");
+            featureFlags.Add(_kv2);
+            options.GetRefresher().Refresh();
 
-                Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-                Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-                Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-                Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
-            }
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
         }
 
         [Fact]
@@ -160,7 +158,8 @@ namespace Tests.AzureAppConfiguration
             bool performedDefaultQuery = false;
             bool queriedFeatureFlags = false;
 
-            var handler = new CallbackMessageHandler((req) => {
+            var handler = new CallbackMessageHandler((req) =>
+            {
 
                 performedDefaultQuery = performedDefaultQuery || req.RequestUri.PathAndQuery == "/kv/?key=*&label=%00";
 
@@ -175,48 +174,47 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler))
+            var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler);
+
+            var builder = new ConfigurationBuilder();
+
+            var options = new AzureAppConfigurationOptions()
             {
-                var builder = new ConfigurationBuilder();
+                Client = testClient
+            };
 
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+            options.UseFeatureFlags();
 
-                options.UseFeatureFlags();
+            builder.AddAzureAppConfiguration(options);
 
-                builder.AddAzureAppConfiguration(options);
+            var config = builder.Build();
 
-                var config = builder.Build();
+            Assert.True(performedDefaultQuery);
+            Assert.False(queriedFeatureFlags);
 
-                Assert.True(performedDefaultQuery);
-                Assert.False(queriedFeatureFlags);
-            }
-
+            // TODO: better to separate this into a separate function to create new objects?
             //
             // Reset
             performedDefaultQuery = false;
             queriedFeatureFlags = false;
 
-            using (var testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler))
+            testClient = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), handler);
+
+            builder = new ConfigurationBuilder();
+
+            options = new AzureAppConfigurationOptions()
             {
-                var builder = new ConfigurationBuilder();
+                Client = testClient
+            };
 
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+            options.UseFeatureFlags(o => o.Label = "myLabel");
 
-                options.UseFeatureFlags(o => o.Label = "myLabel");
+            builder.AddAzureAppConfiguration(options);
 
-                builder.AddAzureAppConfiguration(options);
+            config = builder.Build();
 
-                var config = builder.Build();
-
-                Assert.True(performedDefaultQuery);
-                Assert.True(queriedFeatureFlags);
-            }
+            Assert.True(performedDefaultQuery);
+            Assert.True(queriedFeatureFlags);
         }
     }
 }

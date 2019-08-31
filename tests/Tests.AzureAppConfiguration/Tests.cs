@@ -57,7 +57,8 @@ namespace Tests.AzureAppConfiguration
             using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions() {
+                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+                {
                     Client = testClient
                 });
                 var config = builder.Build();
@@ -85,7 +86,8 @@ namespace Tests.AzureAppConfiguration
         {
             string invalidConnectionString = "invalid-Connection-String";
             var builder = new ConfigurationBuilder();
-            var exception = Record.Exception(() => {
+            var exception = Record.Exception(() =>
+            {
                 builder.AddAzureAppConfiguration(invalidConnectionString, false);
                 builder.Build();
             });
@@ -98,7 +100,8 @@ namespace Tests.AzureAppConfiguration
         {
             bool kvsRetrieved = false;
 
-            var messageHandler = new CallbackMessageHandler(r => {
+            var messageHandler = new CallbackMessageHandler(r =>
+            {
 
                 Assert.True(r.Headers.TryGetValues("Accept-Datetime", out var values));
 
@@ -111,70 +114,67 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
+            var testClient = new ConfigurationClient(_connectionString, messageHandler);
+
+            var builder = new ConfigurationBuilder();
+
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
             {
-                var builder = new ConfigurationBuilder();
+                Client = testClient
 
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
+            }.Use("*", null, DateTimeOffset.UtcNow));
 
-                }.Use("*", null, DateTimeOffset.UtcNow));
+            var config = builder.Build();
 
-                var config = builder.Build();
-
-                Assert.True(kvsRetrieved);
-            }
+            Assert.True(kvsRetrieved);
         }
 
         [Fact]
         public void TrimKeyPrefix_TestCase1()
         {
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
-            {
-                // Trim following prefixes from all keys in the configuration.
-                var keyPrefix1 = "T";
-                var keyPrefix2 = "App2/";
-                var keyPrefix3 = "Test";
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne));
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-                    {
-                        Client = testClient
-                    }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3))
-                    .Build();
+            // Trim following prefixes from all keys in the configuration.
+            var keyPrefix1 = "T";
+            var keyPrefix2 = "App2/";
+            var keyPrefix3 = "Test";
 
-                Assert.True(config["Key1"] == "TestValue1");
-                Assert.True(config["Key2"] == "TestValue2");
-                Assert.True(config["Key3"] == "TestValue3");
-                Assert.True(config["Key4"] == "TestValue4");
-                Assert.True(config["TestKey1"] == "TestValue2.1");
-            }
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = testClient
+                }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3))
+                .Build();
+
+            Assert.True(config["Key1"] == "TestValue1");
+            Assert.True(config["Key2"] == "TestValue2");
+            Assert.True(config["Key3"] == "TestValue3");
+            Assert.True(config["Key4"] == "TestValue4");
+            Assert.True(config["TestKey1"] == "TestValue2.1");
         }
 
         [Fact]
         public void TrimKeyPrefix_TestCase2()
         {
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
-            {
-                // Trim following prefixes from all keys in the configuration.
-                var keyPrefix1 = "T";
-                var keyPrefix2 = "App2/";
-                var keyPrefix3 = "Test";
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne));
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-                    {
-                        Client = testClient
-                    }.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1))
-                    .Build();
+            // Trim following prefixes from all keys in the configuration.
+            var keyPrefix1 = "T";
+            var keyPrefix2 = "App2/";
+            var keyPrefix3 = "Test";
 
-                Assert.True(config["Key1"] == "TestValue1");
-                Assert.True(config["Key2"] == "TestValue2");
-                Assert.True(config["Key3"] == "TestValue3");
-                Assert.True(config["Key4"] == "TestValue4");
-                Assert.True(config["TestKey1"] == "TestValue2.1");
-            }
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = testClient
+                }.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1))
+                .Build();
+
+            Assert.True(config["Key1"] == "TestValue1");
+            Assert.True(config["Key2"] == "TestValue2");
+            Assert.True(config["Key3"] == "TestValue3");
+            Assert.True(config["Key4"] == "TestValue4");
+            Assert.True(config["TestKey1"] == "TestValue2.1");
         }
 
         [Fact]
@@ -182,7 +182,8 @@ namespace Tests.AzureAppConfiguration
         {
             string correlationHeader = null;
 
-            var messageHandler = new CallbackMessageHandler(r => {
+            var messageHandler = new CallbackMessageHandler(r =>
+            {
                 Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
                 correlationHeader = corrHeader.First();
 
@@ -190,26 +191,26 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
+            var testClient = new ConfigurationClient(_connectionString, messageHandler);
+
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
             {
-                var builder = new ConfigurationBuilder();
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                }.Use("*", null));
+                Client = testClient
+            }.Use("*", null));
 
-                var config = builder.Build();
+            var config = builder.Build();
 
-                Assert.NotNull(correlationHeader);
-                Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
-            }
+            Assert.NotNull(correlationHeader);
+            Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
         }
 
         [Fact]
         public void TestTurnOffRequestTracing()
         {
             string correlationHeader = null;
-            var messageHandler = new CallbackMessageHandler(r => {
+            var messageHandler = new CallbackMessageHandler(r =>
+            {
                 Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
                 correlationHeader = corrHeader?.FirstOrDefault();
 
@@ -217,19 +218,18 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
+            var testClient = new ConfigurationClient(_connectionString, messageHandler);
+
+            Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
             {
-                Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
-                var builder = new ConfigurationBuilder();
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                }.Use("*", null));
+                Client = testClient
+            }.Use("*", null));
 
-                var config = builder.Build();
+            var config = builder.Build();
 
-                Assert.Null(correlationHeader);
-            }
+            Assert.Null(correlationHeader);
 
             // Delete the request tracing environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
@@ -237,27 +237,29 @@ namespace Tests.AzureAppConfiguration
             // Verify the correlation context in the same test to avoid issues due to environment variable conflict with above code when run in parallel
 
             string correlationContext = null;
-            messageHandler = new CallbackMessageHandler(r => {
+            messageHandler = new CallbackMessageHandler(r =>
+            {
                 Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
                 correlationContext = corrHeader.First();
 
                 return new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
             });
 
-            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
+            // TODO: better to separate into a separate function?
+            testClient = new ConfigurationClient(_connectionString, messageHandler);
+
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
+            builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
             {
-                Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
-                var builder = new ConfigurationBuilder();
-                builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                }.Use("*", null));
+                Client = testClient
+            }.Use("*", null));
 
-                var config = builder.Build();
+            config = builder.Build();
 
-                Assert.NotNull(correlationContext);
-                Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
-            }
+            Assert.NotNull(correlationContext);
+            Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
+
 
             // Delete the azure function environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);

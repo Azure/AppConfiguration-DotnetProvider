@@ -44,103 +44,103 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_DefaultUseQuery()
         {
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection));
+
+            var options = new AzureAppConfigurationOptions { Client = testClient };
+
+            options.ConfigureRefresh(refresh =>
             {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+                refresh.Register("TestKey1")
+                       .SetCacheExpiration(TimeSpan.FromSeconds(60));
+            });
 
-                options.ConfigureRefresh(refresh => {
-                    refresh.Register("TestKey1")
-                           .SetCacheExpiration(TimeSpan.FromSeconds(60));
-                });
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
-
-                Assert.Equal("TestValue1", config["TestKey1"]);
-            }
+            Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_CustomUseQuery()
         {
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection));
 
-                options.Use("TestKey1")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey2")
-                                  .Register("TestKey3")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(60));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey1")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey2")
+                              .Register("TestKey3")
+                              .SetCacheExpiration(TimeSpan.FromSeconds(60));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Equal("TestValue3", config["TestKey3"]);
-            }
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
         }
 
         [Fact]
         public void RefreshTests_RefreshIsSkippedIfCacheIsNotExpired()
         {
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection));
 
-                options.Use("TestKey*")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(10));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey*")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey1")
+                              .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                FirstKeyValue.Value = "newValue1";
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                // Wait for some time but not enough to let the cache expire
-                Thread.Sleep(5000);
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
 
-                options.GetRefresher().Refresh().Wait();
+            // Wait for some time but not enough to let the cache expire
+            Thread.Sleep(5000);
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-            }
+            options.GetRefresher().Refresh().Wait();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
         [Fact]
         public void RefreshTests_RefreshIsNotSkippedIfCacheIsExpired()
         {
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection));
 
-                options.Use("TestKey*")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey*")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey1")
+                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                FirstKeyValue.Value = "newValue";
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                // Wait for the cache to expire
-                Thread.Sleep(1500);
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue";
 
-                options.GetRefresher().Refresh().Wait();
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
 
-                Assert.Equal("newValue", config["TestKey1"]);
-            }
+            options.GetRefresher().Refresh().Wait();
+
+            Assert.Equal("newValue", config["TestKey1"]);
         }
 
         [Fact]
@@ -148,35 +148,35 @@ namespace Tests.AzureAppConfiguration
         {
             var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection));
 
-                options.Use("TestKey*")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1") // refreshAll: false
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey*")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey1") // refreshAll: false
+                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Equal("TestValue3", config["TestKey3"]);
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                kvCollection.ForEach(kv => kv.Value = "newValue");
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
 
-                // Wait for the cache to expire
-                Thread.Sleep(1500);
+            kvCollection.ForEach(kv => kv.Value = "newValue");
 
-                options.GetRefresher().Refresh().Wait();
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
 
-                Assert.Equal("newValue", config["TestKey1"]);
-                Assert.NotEqual("newValue", config["TestKey2"]);
-                Assert.NotEqual("newValue", config["TestKey3"]);
-            }
+            options.GetRefresher().Refresh().Wait();
+
+            Assert.Equal("newValue", config["TestKey1"]);
+            Assert.NotEqual("newValue", config["TestKey2"]);
+            Assert.NotEqual("newValue", config["TestKey3"]);
         }
 
         [Fact]
@@ -184,35 +184,35 @@ namespace Tests.AzureAppConfiguration
         {
             var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection));
 
-                options.Use("TestKey*")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1", refreshAll: true)
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey*")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey1", refreshAll: true)
+                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Equal("TestValue3", config["TestKey3"]);
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                kvCollection.ForEach(kv => kv.Value = "newValue");
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
 
-                // Wait for the cache to expire
-                Thread.Sleep(1500);
+            kvCollection.ForEach(kv => kv.Value = "newValue");
 
-                options.GetRefresher().Refresh().Wait();
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
 
-                Assert.Equal("newValue", config["TestKey1"]);
-                Assert.Equal("newValue", config["TestKey2"]);
-                Assert.Equal("newValue", config["TestKey3"]);
-            }
+            options.GetRefresher().Refresh().Wait();
+
+            Assert.Equal("newValue", config["TestKey1"]);
+            Assert.Equal("newValue", config["TestKey2"]);
+            Assert.Equal("newValue", config["TestKey3"]);
         }
 
         [Fact]
@@ -220,36 +220,36 @@ namespace Tests.AzureAppConfiguration
         {
             var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection));
 
-                options.Use("TestKey*")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1", refreshAll: true)
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey*")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey1", refreshAll: true)
+                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Equal("TestValue3", config["TestKey3"]);
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                kvCollection.First().Value = "newValue";
-                kvCollection.Remove(kvCollection.Last());
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
 
-                // Wait for the cache to expire
-                Thread.Sleep(1500);
+            kvCollection.First().Value = "newValue";
+            kvCollection.Remove(kvCollection.Last());
 
-                options.GetRefresher().Refresh().Wait();
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
 
-                Assert.Equal("newValue", config["TestKey1"]);
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Null(config["TestKey3"]);
-            }
+            options.GetRefresher().Refresh().Wait();
+
+            Assert.Equal("newValue", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Null(config["TestKey3"]);
         }
 
         [Fact]
@@ -257,41 +257,41 @@ namespace Tests.AzureAppConfiguration
         {
             var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
-            {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+            var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection));
 
-                options.Use("TestKey*")
-                       .ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1")
-                                  .Register("NonExistentKey", refreshAll: true)
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            var options = new AzureAppConfigurationOptions { Client = testClient };
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            options.Use("TestKey*")
+                   .ConfigureRefresh(refresh =>
+                   {
+                       refresh.Register("TestKey1")
+                              .Register("NonExistentKey", refreshAll: true)
+                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                   });
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Equal("TestValue3", config["TestKey3"]);
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                kvCollection.ElementAt(0).Value = "newValue1";
-                kvCollection.ElementAt(1).Value = "newValue2";
-                kvCollection.Remove(kvCollection.Last());
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
 
-                // Wait for the cache to expire
-                Thread.Sleep(1500);
+            kvCollection.ElementAt(0).Value = "newValue1";
+            kvCollection.ElementAt(1).Value = "newValue2";
+            kvCollection.Remove(kvCollection.Last());
 
-                options.GetRefresher().Refresh().Wait();
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
 
-                // Validate that key-values registered for refresh were updated
-                Assert.Equal("newValue1", config["TestKey1"]);
+            options.GetRefresher().Refresh().Wait();
 
-                // Validate that other key-values were not updated, which means refresh all wasn't triggered
-                Assert.Equal("TestValue2", config["TestKey2"]);
-                Assert.Equal("TestValue3", config["TestKey3"]);
-            }
+            // Validate that key-values registered for refresh were updated
+            Assert.Equal("newValue1", config["TestKey1"]);
+
+            // Validate that other key-values were not updated, which means refresh all wasn't triggered
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
         }
 
         [Fact]
@@ -300,33 +300,33 @@ namespace Tests.AzureAppConfiguration
             var kvCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockedHttpRequestHandler = new MockedGetKeyValueRequest(kvCollection.First(), kvCollection, 6000);
 
-            using (var testClient = new ConfigurationClient(_connectionString, mockedHttpRequestHandler))
+            var testClient = new ConfigurationClient(_connectionString, mockedHttpRequestHandler);
+
+            var options = new AzureAppConfigurationOptions { Client = testClient };
+
+            options.ConfigureRefresh(refresh =>
             {
-                var options = new AzureAppConfigurationOptions { Client = testClient };
+                refresh.Register("TestKey1", "label")
+                       .SetCacheExpiration(TimeSpan.FromSeconds(1));
+            });
 
-                options.ConfigureRefresh(refresh => {
-                           refresh.Register("TestKey1", "label")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options)
+                .Build();
 
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options)
-                    .Build();
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal(1, mockedHttpRequestHandler.RequestCount);
 
-                Assert.Equal("TestValue1", config["TestKey1"]);
-                Assert.Equal(1, mockedHttpRequestHandler.RequestCount);
+            kvCollection.First().Value = "newValue";
 
-                kvCollection.First().Value = "newValue";
+            // Simulate simultaneous refresh calls with expired cache from multiple threads
+            var task1 = Task.Run(() => WaitAndRefresh(options, 1500));
+            var task2 = Task.Run(() => WaitAndRefresh(options, 3000));
+            var task3 = Task.Run(() => WaitAndRefresh(options, 4500));
+            Task.WaitAll(task1, task2, task3);
 
-                // Simulate simultaneous refresh calls with expired cache from multiple threads
-                var task1 = Task.Run(() => WaitAndRefresh(options, 1500));
-                var task2 = Task.Run(() => WaitAndRefresh(options, 3000));
-                var task3 = Task.Run(() => WaitAndRefresh(options, 4500));
-                Task.WaitAll(task1, task2, task3);
-
-                Assert.Equal("newValue", config["TestKey1"]);
-                Assert.Equal(2, mockedHttpRequestHandler.RequestCount);
-            }
+            Assert.Equal("newValue", config["TestKey1"]);
+            Assert.Equal(2, mockedHttpRequestHandler.RequestCount);
         }
 
         [Fact]
