@@ -1,4 +1,5 @@
-﻿using Azure.Data.AppConfiguration;
+﻿using Azure.Core.Http;
+using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -44,7 +45,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ")
 {
-            ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
+            ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
@@ -65,7 +66,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ")
         { 
-            ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c1",
+            ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
             ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
         };
 
@@ -142,7 +143,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ";
 
-                _kv.ETag += "f";
+                _kv.ETag = new ETag(_kv.ETag.ToString() + "f");
                 featureFlags.Add(_kv2);
                 options.GetRefresher().Refresh();
 

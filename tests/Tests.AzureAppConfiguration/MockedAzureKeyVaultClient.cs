@@ -1,9 +1,7 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.Data.AppConfiguration;
 using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Rest.Azure;
-using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -15,25 +13,24 @@ namespace Tests.AzureAppConfiguration
     {
         private readonly string _secretValue;
         private readonly IEnumerable<KeyValuePair<string, string>> _keyValues;
-        private readonly IKeyValue _kv;
-        private readonly IEnumerable<IKeyValue> _kvCollectionPageOne;
-
+        private readonly ConfigurationSetting _kv;
+        private readonly IEnumerable<ConfigurationSetting> _kvCollectionPageOne;
 
         public bool IsEnabled { get; set; } = true;
+
         public bool HasAccessToKeyVault { get; set; } = true;
 
         public CancellationToken CancellationToken { get; set; }
 
-        public IKeyValue kv { get; set; }
+        public ConfigurationSetting kv { get; set; }
+
         public KeyVaultSecretReference secretRef { get; }
-
-
 
         public MockedAzureKeyVaultClient(string secretValue)
         {
             _secretValue = secretValue;
         }
-        public MockedAzureKeyVaultClient(IKeyValue kv, string secretValue)
+        public MockedAzureKeyVaultClient(ConfigurationSetting kv, string secretValue)
         {
             _secretValue = secretValue;
             _kv = kv;

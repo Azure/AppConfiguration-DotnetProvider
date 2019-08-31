@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.Core.Http;
+using Azure.Data.AppConfiguration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -10,7 +12,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.Extensions.Options;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -19,37 +20,31 @@ namespace Tests.AzureAppConfiguration
         string _connectionString = TestHelpers.CreateMockEndpointString();
         IOptions<AzureAppConfigurationMiddlewareOptions> _middlewareOptions = Options.Create(new AzureAppConfigurationMiddlewareOptions());
 
-        IEnumerable<IKeyValue> _kvCollection = new List<IKeyValue>
+        IEnumerable<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
         {
-            new KeyValue("TestKey1")
+            new ConfigurationSetting("TestKey1", "TestValue1", "label")
             {
-                Label = "label",
-                Value = "TestValue1",
-                ETag = "0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63",
+                ETag = new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 ContentType = "text"
             },
-            new KeyValue("TestKey2")
+            new ConfigurationSetting("TestKey2", "TestValue2", "label")
             {
-                Label = "label",
-                Value = "TestValue2",
-                ETag = "31c38369-831f-4bf1-b9ad-79db56c8b989",
+                ETag = new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
                 ContentType = "text"
             },
-            new KeyValue("TestKey3")
+            new ConfigurationSetting("TestKey3", "TestValue3", "label")
             {
-                Label = "label",
-                Value = "TestValue3",
-                ETag = "bb203f2b-c113-44fc-995d-b933c2143339",
+                ETag = new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
                 ContentType = "text"
             }
         };
 
-        IKeyValue FirstKeyValue => _kvCollection.First();
+        ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_DefaultUseQuery()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -69,7 +64,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_CustomUseQuery()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -93,7 +88,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshIsSkippedIfCacheIsNotExpired()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -122,7 +117,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshIsNotSkippedIfCacheIsExpired()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(FirstKeyValue, _kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -151,9 +146,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllFalseDoesNotUpdateEntireConfiguration()
         {
-            var kvCollection = new List<IKeyValue>(_kvCollection);
+            var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -187,9 +182,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllTrueUpdatesEntireConfiguration()
         {
-            var kvCollection = new List<IKeyValue>(_kvCollection);
+            var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -223,9 +218,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllTrueRemovesDeletedConfiguration()
         {
-            var kvCollection = new List<IKeyValue>(_kvCollection);
+            var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -260,9 +255,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllForNonExistentSentinelDoesNothing()
         {
-            var kvCollection = new List<IKeyValue>(_kvCollection);
+            var kvCollection = new List<ConfigurationSetting>(_kvCollection);
 
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(kvCollection.First(), kvCollection)))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -302,10 +297,10 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
         {
-            var kvCollection = new List<IKeyValue>(_kvCollection);
+            var kvCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockedHttpRequestHandler = new MockedGetKeyValueRequest(kvCollection.First(), kvCollection, 6000);
 
-            using (var testClient = new AzconfigClient(_connectionString, mockedHttpRequestHandler))
+            using (var testClient = new ConfigurationClient(_connectionString, mockedHttpRequestHandler))
             {
                 var options = new AzureAppConfigurationOptions { Client = testClient };
 
@@ -342,7 +337,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(new AzureAppConfigurationOptions
                 {
-                    Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
+                    Client = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
                 })
                 .Build();
 
@@ -362,11 +357,11 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(new AzureAppConfigurationOptions
                 {
-                    Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
+                    Client = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
                 })
                 .AddAzureAppConfiguration(new AzureAppConfigurationOptions
                 {
-                    Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.Last(), _kvCollection))
+                    Client = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.Last(), _kvCollection))
                 })
                 .Build();
 

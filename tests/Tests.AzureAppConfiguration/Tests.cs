@@ -1,6 +1,7 @@
 namespace Tests.AzureAppConfiguration
 {
-    using Microsoft.Azure.AppConfiguration.Azconfig;
+    using Azure.Core.Http;
+    using Azure.Data.AppConfiguration;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
@@ -9,56 +10,43 @@ namespace Tests.AzureAppConfiguration
     using System.Linq;
     using System.Net.Http;
     using System.Text;
-    using System.Threading;
     using Xunit;
 
     public class Tests
     {
         string _connectionString = TestHelpers.CreateMockEndpointString();
 
-        IKeyValue _kv = new KeyValue("TestKey1")
+        ConfigurationSetting _kv = new ConfigurationSetting("TestKey1", "newTestValue1", "test")
         {
-            Label = "test",
-            Value = "newTestValue1",
-            ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c6",
+            ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c6"),
             ContentType = "text"
         };
 
-        IEnumerable<IKeyValue> _kvCollectionPageOne = new List<IKeyValue>
+        IEnumerable<ConfigurationSetting> _kvCollectionPageOne = new List<ConfigurationSetting>
         {
-            new KeyValue("TestKey1")
+            new ConfigurationSetting("TestKey1", "TestValue1", "label")
             {
-                Label = "label",
-                Value = "TestValue1",
-                ETag = "0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63",
+                ETag = new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 ContentType = "text"
             },
-            new KeyValue("TestKey2")
+            new ConfigurationSetting("TestKey2", "TestValue2", "label")
             {
-                Label = "label",
-                Value = "TestValue2",
-                ETag = "31c38369-831f-4bf1-b9ad-79db56c8b989",
+                ETag = new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
                 ContentType = "text"
             },
-            new KeyValue("TestKey3")
+            new ConfigurationSetting("TestKey3", "TestValue3", "label")
             {
-                Label = "label",
-                Value = "TestValue3",
-                ETag = "bb203f2b-c113-44fc-995d-b933c2143339",
+                ETag = new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
                 ContentType = "text"
             },
-            new KeyValue("TestKey4")
+            new ConfigurationSetting("TestKey4", "TestValue4", "label")
             {
-                Label = "label",
-                Value = "TestValue4",
-                ETag = "3ca43b3e-d544-4b0c-b3a2-e7a7284217a2",
+                ETag = new ETag("3ca43b3e-d544-4b0c-b3a2-e7a7284217a2"),
                 ContentType = "text"
             },
-            new KeyValue("App2/TestKey1")
+            new ConfigurationSetting("App2/TestKey1", "TestValue2.1", "label")
             {
-                Label = "label",
-                Value = "TestValue2.1",
-                ETag = "88c8c740-f998-4c88-85cb-fe95e93e2263",
+                ETag = new ETag("88c8c740-f998-4c88-85cb-fe95e93e2263"),
                 ContentType = "text"
             }
         };
@@ -66,7 +54,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void AddsConfigurationValues()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions() {
@@ -123,7 +111,7 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
             {
                 var builder = new ConfigurationBuilder();
 
@@ -142,7 +130,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TrimKeyPrefix_TestCase1()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 // Trim following prefixes from all keys in the configuration.
                 var keyPrefix1 = "T";
@@ -167,7 +155,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TrimKeyPrefix_TestCase2()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new ConfigurationClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
             {
                 // Trim following prefixes from all keys in the configuration.
                 var keyPrefix1 = "T";
@@ -202,7 +190,7 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
             {
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
@@ -229,7 +217,7 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
             {
                 Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
                 var builder = new ConfigurationBuilder();
@@ -256,7 +244,7 @@ namespace Tests.AzureAppConfiguration
                 return new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
             });
 
-            using (var testClient = new AzconfigClient(_connectionString, messageHandler))
+            using (var testClient = new ConfigurationClient(_connectionString, messageHandler))
             {
                 Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
                 var builder = new ConfigurationBuilder();

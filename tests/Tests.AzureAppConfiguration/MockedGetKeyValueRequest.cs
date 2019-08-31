@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.Data.AppConfiguration;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -15,13 +15,13 @@ namespace Tests.AzureAppConfiguration
 {
     class MockedGetKeyValueRequest : HttpMessageHandler
     {
-        private IKeyValue _kv;
+        private ConfigurationSetting _kv;
         private int _millisecondsDelay;
-        private readonly IEnumerable<IKeyValue> _kvCollection;
+        private readonly IEnumerable<ConfigurationSetting> _kvCollection;
 
         public int RequestCount { get; private set; } = 0;
 
-        public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue>  kvCollection, int millisecondsDelay = 0)
+        public MockedGetKeyValueRequest(ConfigurationSetting kv, IEnumerable<ConfigurationSetting>  kvCollection, int millisecondsDelay = 0)
         {
             _kv = kv ?? throw new ArgumentException(nameof(kv));
             _millisecondsDelay = millisecondsDelay;
@@ -47,14 +47,14 @@ namespace Tests.AzureAppConfiguration
                         return GetKeyValuesResponse(_kvCollection);
                     }
 
-                    IEnumerable<IKeyValue> keyValues = _kvCollection.Where(kv => kv.Key.Equals(keyFilter));
+                    IEnumerable<ConfigurationSetting> keyValues = _kvCollection.Where(kv => kv.Key.Equals(keyFilter));
                     return GetKeyValuesResponse(keyValues);
                 }
                 else if (pathAndQuery.StartsWith("/kv/"))
                 {
                     string[] segments = new Uri(request.RequestUri.AbsoluteUri).Segments;
                     string key = segments.Last();
-                    IKeyValue keyValue = _kvCollection.Where(kv => kv.Key.Equals(key)).FirstOrDefault();
+                    ConfigurationSetting keyValue = _kvCollection.Where(kv => kv.Key.Equals(key)).FirstOrDefault();
                     return GetKeyValueResponse(keyValue);
                 }
             }
@@ -62,7 +62,7 @@ namespace Tests.AzureAppConfiguration
             return Task.FromResult(new HttpResponseMessage());
         }
 
-        private Task<HttpResponseMessage> GetKeyValueResponse(IKeyValue kv)
+        private Task<HttpResponseMessage> GetKeyValueResponse(ConfigurationSetting kv)
         {
             var response = new HttpResponseMessage();
             response.StatusCode = HttpStatusCode.OK;
@@ -73,7 +73,7 @@ namespace Tests.AzureAppConfiguration
             return Task.FromResult(response);
         }
 
-        private Task<HttpResponseMessage> GetKeyValuesResponse(IEnumerable<IKeyValue> kvCollection)
+        private Task<HttpResponseMessage> GetKeyValuesResponse(IEnumerable<ConfigurationSetting> kvCollection)
         {
             var response = new HttpResponseMessage();
             response.StatusCode = HttpStatusCode.OK;
