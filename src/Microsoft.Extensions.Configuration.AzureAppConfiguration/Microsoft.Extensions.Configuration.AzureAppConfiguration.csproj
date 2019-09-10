@@ -10,26 +10,27 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
-    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
+    <PackageReference Include="Microsoft.Azure.KeyVault" Version="$(MicrosoftAzureKeyVaultVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)" />
+    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
     <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" />
   </ItemGroup>
   
   <PropertyGroup>
-    <!-- 
+    <!--
       This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
       This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
     -->
-    <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
-    <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
     <MicrosoftAzconfigClientVersion>1.0.0-preview-009440001-1345</MicrosoftAzconfigClientVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-008930001-1422</MicrosoftAzconfigManagedIdentityConnectorVersion>
+    <MicrosoftAzureKeyVaultVersion>3.0.3</MicrosoftAzureKeyVaultVersion>
+    <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
+    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion>2.0.0</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
+    <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
     <SystemInteractiveAsyncVersion>3.1.1</SystemInteractiveAsyncVersion>
-    <MicrosoftAspNetCoreHttpExtensionsVersion>2.1.1</MicrosoftAspNetCoreHttpExtensionsVersion>
   </PropertyGroup>
 
   <!-- After the build, we write the .nuspec file to the output directory -->

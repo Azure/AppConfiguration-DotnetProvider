@@ -16,14 +16,6 @@ namespace Tests.AzureAppConfiguration
     {
         string _connectionString = TestHelpers.CreateMockEndpointString();
 
-        IKeyValue _kv = new KeyValue("TestKey1")
-        {
-            Label = "test",
-            Value = "newTestValue1",
-            ETag = "c3c231fd-39a0-4cb6-3237-4614474b92c6",
-            ContentType = "text"
-        };
-
         IEnumerable<IKeyValue> _kvCollectionPageOne = new List<IKeyValue>
         {
             new KeyValue("TestKey1")
@@ -66,7 +58,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void AddsConfigurationValues()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
                 builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions() {
@@ -142,7 +134,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TrimKeyPrefix_TestCase1()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollectionPageOne)))
             {
                 // Trim following prefixes from all keys in the configuration.
                 var keyPrefix1 = "T";
@@ -167,7 +159,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TrimKeyPrefix_TestCase2()
         {
-            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollectionPageOne)))
             {
                 // Trim following prefixes from all keys in the configuration.
                 var keyPrefix1 = "T";

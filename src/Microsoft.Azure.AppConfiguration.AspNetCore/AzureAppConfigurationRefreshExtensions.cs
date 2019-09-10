@@ -1,4 +1,7 @@
 ﻿using Microsoft.Azure.AppConfiguration.AspNetCore;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -13,6 +16,15 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="builder">An instance of <see cref="IApplicationBuilder"/></param>
         public static IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder builder)
         {
+            // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
+            // We use the IConfigurationRefresher to make sure if the required services were added.
+            var refresher = builder.ApplicationServices.GetService(typeof(IConfigurationRefresher));
+
+            if (refresher == null)
+            {
+                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.AddAzureAppConfiguration' inside the call to 'ConfigureServices(...)' in the application startup code.");
+            }
+
             return builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
         }
     }

@@ -15,15 +15,13 @@ namespace Tests.AzureAppConfiguration
 {
     class MockedGetKeyValueRequest : HttpMessageHandler
     {
-        private IKeyValue _kv;
         private int _millisecondsDelay;
         private readonly IEnumerable<IKeyValue> _kvCollection;
 
         public int RequestCount { get; private set; } = 0;
 
-        public MockedGetKeyValueRequest(IKeyValue kv, IEnumerable<IKeyValue>  kvCollection, int millisecondsDelay = 0)
+        public MockedGetKeyValueRequest(IEnumerable<IKeyValue> kvCollection, int millisecondsDelay = 0)
         {
-            _kv = kv ?? throw new ArgumentException(nameof(kv));
             _millisecondsDelay = millisecondsDelay;
             _kvCollection = kvCollection ?? throw new ArgumentException(nameof(kvCollection));
         }

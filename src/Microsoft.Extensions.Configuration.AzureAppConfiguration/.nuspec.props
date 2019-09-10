@@ -29,9 +29,10 @@
         <copyright>© Microsoft Corporation. All rights reserved.</copyright>
         <dependencies>
             <group targetFramework=".NETStandard2.0">
+                <dependency id="Microsoft.Azure.KeyVault" version="$(MicrosoftAzureKeyVaultVersion)" exclude="Build,Analyzers" />
                 <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)" exclude="Build,Analyzers" />
                 <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
-                <dependency id="Microsoft.AspNetCore.Http.Extensions" version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" exclude="Build,Analyzers" />
                 <dependency id="System.Interactive.Async" version="$(SystemInteractiveAsyncVersion)" exclude="Build,Analyzers" />
 
                 <!-- 

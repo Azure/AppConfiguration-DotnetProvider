@@ -71,16 +71,10 @@ namespace Tests.AzureAppConfiguration
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kvNoUrl };
             string secretValue = "SecretValue from KeyVault";
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kvNoUrl, KeyValues)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(KeyValues)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
-
+                var options = new AzureAppConfigurationOptions { Client = testClient };
                 IConfiguration config = null;
 
                 var exception = Record.Exception(() =>
@@ -101,22 +95,15 @@ namespace Tests.AzureAppConfiguration
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
             string secretValue = "SecretValue from KeyVault";
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, KeyValues)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(KeyValues)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient };
 
                 options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
-
                 builder.AddAzureAppConfiguration(options);
 
                 var config = builder.Build();
-
                 Assert.Equal(secretValue, config[_kv.Key]);
             }
         }
@@ -127,15 +114,10 @@ namespace Tests.AzureAppConfiguration
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
             string secretValue = "SecretValue from KeyVault";
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, KeyValues)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(KeyValues)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient };
 
                 KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
                 {
@@ -155,16 +137,10 @@ namespace Tests.AzureAppConfiguration
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kvWrongContentType };
             string secretValue = "SecretValue from KeyVault";
 
-
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kvWrongContentType, KeyValues)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(KeyValues)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient };
 
                 options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
 
@@ -181,15 +157,10 @@ namespace Tests.AzureAppConfiguration
         {
             string secretValue = "SecretValue from KeyVault";
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient };
 
                 options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { });
 
@@ -209,15 +180,10 @@ namespace Tests.AzureAppConfiguration
             string secretValue = "SecretValue from KeyVault";
 
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, _kvCollectionPageOne)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kvCollectionPageOne)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient };
 
                 Assert.Throws<OperationCanceledException>(() =>
                 {
@@ -239,15 +205,10 @@ namespace Tests.AzureAppConfiguration
             IEnumerable<IKeyValue> KeyValues = new List<IKeyValue> { _kv };
             string secretValue = "SecretValue from KeyVault";
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(),
-                                                       new MockedGetKeyValueRequest(_kv, KeyValues)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(KeyValues)))
             {
                 var builder = new ConfigurationBuilder();
-
-                var options = new AzureAppConfigurationOptions()
-                {
-                    Client = testClient
-                };
+                var options = new AzureAppConfigurationOptions { Client = testClient };
 
                 KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
                 {

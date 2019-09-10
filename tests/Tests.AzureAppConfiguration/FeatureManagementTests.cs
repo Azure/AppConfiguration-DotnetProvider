@@ -74,7 +74,7 @@ namespace Tests.AzureAppConfiguration
         {
             IEnumerable<IKeyValue> featureFlags = new List<IKeyValue> { _kv };
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(featureFlags)))
             {
                 var builder = new ConfigurationBuilder();
 
@@ -104,7 +104,7 @@ namespace Tests.AzureAppConfiguration
         {
             List<IKeyValue> featureFlags = new List<IKeyValue> { _kv };
 
-            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(_kv, featureFlags)))
+            using (var testClient = new AzconfigClient(TestHelpers.CreateMockEndpointString(), new MockedGetKeyValueRequest(featureFlags)))
             {
                 var builder = new ConfigurationBuilder();
 

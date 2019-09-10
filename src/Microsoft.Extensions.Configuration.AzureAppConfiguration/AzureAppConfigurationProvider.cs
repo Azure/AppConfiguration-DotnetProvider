@@ -61,7 +61,7 @@
         public override void Load()
         {
             var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
-            refresher.SetProvider(this);
+            refresher.Register(this);
 
             LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
 
