@@ -14,8 +14,7 @@
   </PropertyGroup>-->
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="1.0.0-dev.20190829.1" />
-    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-dev.20190829.1" />
+    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-preview.1" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="1.0.0-preview-008930001-1422" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />    
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
