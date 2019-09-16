@@ -30,7 +30,7 @@
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, IKeyValue> _settings;
 
-        private static readonly TimeSpan MinRuntimeForUnhandledFailure = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan MinRuntimeOnAuthorizationFailure = TimeSpan.FromSeconds(60);
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -71,9 +71,9 @@
             {
                 LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
             }
-            catch
+            catch (UnauthorizedAccessException)
             {
-                var waitTime = MinRuntimeForUnhandledFailure.Subtract(watch.Elapsed);
+                var waitTime = MinRuntimeOnAuthorizationFailure.Subtract(watch.Elapsed);
 
                 if (waitTime.Ticks > 0)
                 {
