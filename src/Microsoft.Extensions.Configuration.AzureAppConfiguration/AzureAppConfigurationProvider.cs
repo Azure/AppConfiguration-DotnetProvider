@@ -9,6 +9,7 @@
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Net.Http;
     using System.Security;
@@ -28,6 +29,8 @@
         private readonly AzconfigClient _client;
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, IKeyValue> _settings;
+
+        private static readonly TimeSpan MinRuntimeForUnhandledFailure = TimeSpan.FromSeconds(60);
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -60,10 +63,27 @@
         /// </summary>
         public override void Load()
         {
+            var watch = Stopwatch.StartNew();
             var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
             refresher.SetProvider(this);
 
-            LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
+            try
+            {
+                LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                var waitTime = MinRuntimeForUnhandledFailure.Subtract(watch.Elapsed);
+
+                if (waitTime.Ticks > 0)
+                {
+                    // Add a delay to slow down further attempts in case the application is stuck in a crash loop
+                    Task.Delay(waitTime).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+
+                // Re-throw the exception
+                throw;
+            }
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
