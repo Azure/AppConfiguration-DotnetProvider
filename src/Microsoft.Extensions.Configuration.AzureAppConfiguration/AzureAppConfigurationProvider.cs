@@ -30,7 +30,7 @@
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, IKeyValue> _settings;
 
-        private static readonly TimeSpan MinRuntimeOnAuthorizationFailure = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan MinRuntimeOnAuthorizationFailure = TimeSpan.FromSeconds(5);
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
