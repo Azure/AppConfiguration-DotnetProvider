@@ -30,7 +30,7 @@
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, IKeyValue> _settings;
 
-        private static readonly TimeSpan MinRuntimeOnAuthorizationFailure = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
         public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -60,6 +60,9 @@
 
         /// <summary>
         /// Loads (or reloads) the data for this provider.
+        /// This method is normally called in the application's startup code path.
+        /// Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
+        /// Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
         /// </summary>
         public override void Load()
         {
@@ -71,17 +74,19 @@
             {
                 LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
             }
-            catch (UnauthorizedAccessException)
+            catch (ArgumentException)
             {
-                var waitTime = MinRuntimeOnAuthorizationFailure.Subtract(watch.Elapsed);
+                throw;
+            }
+            catch
+            {
+                var waitTime = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
 
                 if (waitTime.Ticks > 0)
                 {
-                    // Add a delay to slow down further attempts in case the application is stuck in a crash loop
                     Task.Delay(waitTime).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
 
-                // Re-throw the exception
                 throw;
             }
 
