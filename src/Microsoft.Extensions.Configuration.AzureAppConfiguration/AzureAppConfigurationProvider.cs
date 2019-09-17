@@ -76,6 +76,7 @@
             }
             catch (ArgumentException)
             {
+                // Instantly re-throw the exception
                 throw;
             }
             catch
@@ -87,6 +88,7 @@
                     Task.Delay(waitTime).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
 
+                // Re-throw the exception after the additional delay (if required)
                 throw;
             }
 
