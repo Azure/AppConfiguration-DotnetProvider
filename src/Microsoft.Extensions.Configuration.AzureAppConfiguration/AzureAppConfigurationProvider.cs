@@ -60,9 +60,6 @@
 
         /// <summary>
         /// Loads (or reloads) the data for this provider.
-        /// This method is normally called in the application's startup code path.
-        /// Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
-        /// Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
         /// </summary>
         public override void Load()
         {
@@ -81,6 +78,10 @@
             }
             catch
             {
+                // AzureAppConfigurationProvider.Load() method is called in the application's startup code path.
+                // Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
+                // Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
+
                 var waitTime = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
 
                 if (waitTime.Ticks > 0)
