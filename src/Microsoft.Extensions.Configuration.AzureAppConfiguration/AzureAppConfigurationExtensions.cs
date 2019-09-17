@@ -1,6 +1,7 @@
 ﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -67,6 +68,11 @@
                 .Select(s => s.ImplementationInstance)
                 .FirstOrDefault();
 
+            if (configuration == null)
+            {
+                throw new InvalidOperationException($"Unable to find {typeof(IConfiguration)} within the service collection. Please ensure that it has been added.");
+            }
+
             var configurationRoot = configuration as IConfigurationRoot;
             var refreshers = new List<IConfigurationRefresher>();
 
@@ -80,12 +86,12 @@
 
             if (!refreshers.Any())
             {
-                throw new InvalidOperationException($"Unable to find Azure App Configuration provider. Please ensure that it has been configured correctly.");
+                throw new InvalidOperationException($"Unable to find an Azure App Configuration provider. Please ensure that it has been added to {typeof(IConfiguration)} within the service collection.");
             }
 
             var globalRefresher = new AzureAppConfigurationRefresher();
             refreshers.ForEach(r => globalRefresher.Register(r));
-            services.AddSingleton<IConfigurationRefresher>(globalRefresher);
+            services.TryAddSingleton<IConfigurationRefresher>(globalRefresher);
             return services;
         }
     }

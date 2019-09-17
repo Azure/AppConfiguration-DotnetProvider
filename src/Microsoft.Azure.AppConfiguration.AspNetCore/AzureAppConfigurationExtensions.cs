@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Builder
 
             if (refresher == null)
             {
-                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.AddAzureAppConfiguration' inside the call to 'ConfigureServices(...)' in the application startup code.");
+                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.AddAzureAppConfiguration'.");
             }
 
             return builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
