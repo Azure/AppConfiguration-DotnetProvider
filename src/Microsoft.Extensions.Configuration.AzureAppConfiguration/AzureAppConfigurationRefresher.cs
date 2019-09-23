@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -19,15 +21,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _refreshers.Add(refresher);
         }
 
-        public async Task Refresh()
+        public async Task Refresh(CancellationToken cancellationToken)
         {
             if (!_refreshers.Any())
             {
                 throw new InvalidOperationException("Refresh operation cannot be invoked before Azure App Configuration Provider is initialized.");
             }
 
-            var refreshTasks = _refreshers.Select(r => r.Refresh());
-            await Task.WhenAll(refreshTasks).ConfigureAwait(false);
+            await _refreshers.ParallelForEachAsync(r => r.Refresh(cancellationToken), maxDegreeOfParallelism: 4).ConfigureAwait(false);
         }
     }
 }

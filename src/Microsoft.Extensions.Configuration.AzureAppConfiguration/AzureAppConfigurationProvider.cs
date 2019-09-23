@@ -63,19 +63,19 @@
             var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
             refresher.Register(this);
 
-            LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
+            LoadAll(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
         }
 
-        public async Task Refresh()
+        public async Task Refresh(CancellationToken cancellationToken)
         {
-            await RefreshIndividualKeyValues().ConfigureAwait(false);
-            await RefreshKeyValueCollections().ConfigureAwait(false);
+            await RefreshIndividualKeyValues(cancellationToken).ConfigureAwait(false);
+            await RefreshKeyValueCollections(cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task LoadAll()
+        private async Task LoadAll(CancellationToken cancellationToken)
         {
             IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -96,7 +96,7 @@
 
                     //
                     // Load all key-values with the null label.
-                    await _client.GetKeyValues(options).ForEachAsync(kv => { data[kv.Key] = kv; }).ConfigureAwait(false);
+                    await _client.GetKeyValues(options).ForEachAsync(kv => { data[kv.Key] = kv; }, cancellationToken).ConfigureAwait(false);
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -120,7 +120,7 @@
                     };
 
                     ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
-                    await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
+                    await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv, cancellationToken).ConfigureAwait(false);
                 }
 
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
@@ -185,7 +185,7 @@
             }
         }
 
-        private async Task RefreshIndividualKeyValues()
+        private async Task RefreshIndividualKeyValues(CancellationToken cancellationToken)
         {
             bool shouldRefreshAll = false;
 
@@ -212,7 +212,7 @@
                         var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
                         options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
-                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None).ConfigureAwait(false);
+                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, cancellationToken).ConfigureAwait(false);
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
@@ -230,7 +230,7 @@
                         ConfigureRequestTracingOptions(options);
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false);
+                        watchedKv = await _client.GetKeyValue(watchedKey, options, cancellationToken).ConfigureAwait(false);
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         if (watchedKv != null)
@@ -265,11 +265,11 @@
             // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
             if (shouldRefreshAll)
             {
-                await LoadAll().ConfigureAwait(false);
+                await LoadAll(cancellationToken).ConfigureAwait(false);
             }
         }
 
-        private async Task RefreshKeyValueCollections()
+        private async Task RefreshKeyValueCollections(CancellationToken cancellationToken)
         {
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
@@ -294,7 +294,7 @@
                         Label = changeWatcher.Label.NormalizeNull(),
                         RequestTracingEnabled = _requestTracingEnabled,
                         HostType = _hostType
-                    }).ConfigureAwait(false);
+                    }, cancellationToken).ConfigureAwait(false);
 
                     changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 

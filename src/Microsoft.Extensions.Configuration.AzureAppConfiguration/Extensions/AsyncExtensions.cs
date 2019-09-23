@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,6 +20,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             return items;
+        }
+
+        public static Task ParallelForEachAsync<T>(this IEnumerable<T> source, Func<T, Task> function, int maxDegreeOfParallelism)
+        {
+            async Task AwaitPartition(IEnumerator<T> partition)
+            {
+                using (partition)
+                {
+                    while (partition.MoveNext())
+                    {
+                        await function(partition.Current);
+                    }
+                }
+            }
+
+            return Task.WhenAll(Partitioner.Create(source).GetPartitions(maxDegreeOfParallelism).AsParallel().Select(p => AwaitPartition(p)));
         }
     }
 }
