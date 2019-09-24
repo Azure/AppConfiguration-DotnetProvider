@@ -17,6 +17,5 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="2.0.0-preview-009470001-1371" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="2.0.2" />
   </ItemGroup>
 </Project>
