@@ -10,6 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Net.Http;
     using System.Security;
@@ -29,6 +30,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
+
+        private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -57,10 +60,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public override void Load()
         {
+            var watch = Stopwatch.StartNew();
             var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
             refresher.SetProvider(this);
 
-            LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
+            try
+            {
+                LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (ArgumentException)
+            {
+                // Instantly re-throw the exception
+                throw;
+            }
+            catch
+            {
+                // AzureAppConfigurationProvider.Load() method is called in the application's startup code path.
+                // Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
+                // Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
+
+                var waitTime = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
+
+                if (waitTime.Ticks > 0)
+                {
+                    Task.Delay(waitTime).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+
+                // Re-throw the exception after the additional delay (if required)
+                throw;
+            }
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
