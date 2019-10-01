@@ -77,6 +77,7 @@ namespace Tests.AzureAppConfiguration
         internal class MockAsyncCollection : AsyncCollection<ConfigurationSetting>
         {
             // TODO: YOU ARE HERE.  Is there a way to approach this without referencing IAsyncEnumerable in this project?
+            // See line 123 in UseSyncMethodsInterceptor.cs
             public override IAsyncEnumerable<Page<ConfigurationSetting>> ByPage(string continuationToken = null, int? pageSizeHint = null)
             {
                 throw new NotImplementedException();

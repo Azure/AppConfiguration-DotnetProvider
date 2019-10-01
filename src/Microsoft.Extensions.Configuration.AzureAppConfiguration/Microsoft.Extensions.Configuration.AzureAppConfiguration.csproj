@@ -19,7 +19,7 @@
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />    
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
-    <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
+    <PackageReference Include="System.Interactive.Async" Version="4.0.0-preview.8.build.9" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="$(MicrosoftAspNetCoreHttpExtensionsVersion)" />
   </ItemGroup>
   
