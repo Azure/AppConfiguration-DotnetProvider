@@ -3,7 +3,6 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,49 +22,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException($"{nameof(setting)}.{nameof(setting.Key)}");
             }
 
-            KeyValueChange change = null;
-
             try
             {
                 Response<ConfigurationSetting> response = await client.GetAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-
-                switch (response.GetRawResponse().Status)
+                if (response.GetRawResponse().Status == 200)
                 {
-                    case (int)HttpStatusCode.OK:
-                        change = new KeyValueChange
-                        {
-                            ChangeType = KeyValueChangeType.Modified,
-                            Current = response.Value,
-                            Key = setting.Key,
-                            Label = setting.Label
-                        };
-                        break;
-                    case (int)HttpStatusCode.NotModified:
-                        // No change.
-                    default:
-                        // Get threw.
-                        break;
-                }
-            }
-            catch (RequestFailedException e)
-            {
-                if (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
-                {
-                    change = new KeyValueChange
+                    return new KeyValueChange
                     {
-                        ChangeType = KeyValueChangeType.Deleted,
-                        Current = null,
+                        ChangeType = KeyValueChangeType.Modified,
+                        Current = response.Value,
                         Key = setting.Key,
                         Label = setting.Label
                     };
                 }
-                else
+            }
+            catch (RequestFailedException e) when (e.Status == 404 && setting.ETag != default)
+            {
+                return new KeyValueChange
                 {
-                    throw e;
-                }
+                    ChangeType = KeyValueChangeType.Deleted,
+                    Current = null,
+                    Key = setting.Key,
+                    Label = setting.Label
+                };
             }
 
-            return change;
+            return null;
         }
 
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options)
