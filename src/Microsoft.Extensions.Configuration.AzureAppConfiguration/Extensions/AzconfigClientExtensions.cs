@@ -1,7 +1,9 @@
-﻿using Azure.Data.AppConfiguration;
+﻿using Azure;
+using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class AzconfigClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting,  CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -21,21 +23,49 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException($"{nameof(setting)}.{nameof(setting.Key)}");
             }
 
-            var currentSetting = await client.GetAsync(setting.Key, setting.Label, default, cancellationToken).ConfigureAwait(false);
+            KeyValueChange change = null;
 
-            // TODO: verify equality semantics
-            if (currentSetting.Value == setting)
+            try
             {
-                return null;
+                Response<ConfigurationSetting> response = await client.GetAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
+
+                switch (response.GetRawResponse().Status)
+                {
+                    case (int)HttpStatusCode.OK:
+                        change = new KeyValueChange
+                        {
+                            ChangeType = KeyValueChangeType.Modified,
+                            Current = response.Value,
+                            Key = setting.Key,
+                            Label = setting.Label
+                        };
+                        break;
+                    case (int)HttpStatusCode.NotModified:
+                        // No change.
+                    default:
+                        // Get threw.
+                        break;
+                }
+            }
+            catch (RequestFailedException e)
+            {
+                if (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
+                {
+                    change = new KeyValueChange
+                    {
+                        ChangeType = KeyValueChangeType.Deleted,
+                        Current = null,
+                        Key = setting.Key,
+                        Label = setting.Label
+                    };
+                }
+                else
+                {
+                    throw e;
+                }
             }
 
-            return new KeyValueChange
-            {
-                ChangeType = currentSetting.Value == null ? KeyValueChangeType.Deleted : KeyValueChangeType.Modified,
-                Current = currentSetting,
-                Key = setting.Key,
-                Label = setting.Label
-            };
+            return change;
         }
 
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options)
@@ -96,7 +126,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.Value);
-            
+
             // Check for any modifications/creations
             var enumerator = kvs.GetAsyncEnumerator();
             while (await enumerator.MoveNextAsync().ConfigureAwait(false))
@@ -126,7 +156,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 selector = new SettingSelector(keyFilter, labelFilter);
 
                 TracingUtils.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
-				
+
                 kvs = client.GetSettingsAsync(selector);
                 enumerator = kvs.GetAsyncEnumerator(CancellationToken.None);
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
