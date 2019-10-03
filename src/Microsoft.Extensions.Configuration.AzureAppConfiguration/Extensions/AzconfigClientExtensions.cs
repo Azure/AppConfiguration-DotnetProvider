@@ -107,7 +107,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             var kvs = client.GetSettingsAsync(selector);
 
             // Dictionary of eTags that we write to and use for comparison
-            var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.Value);
+            var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
 
             // Check for any modifications/creations
             var enumerator = kvs.GetAsyncEnumerator();
