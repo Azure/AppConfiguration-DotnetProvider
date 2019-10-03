@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
-            FeatureFlag featureFlag = null;
+            FeatureFlag featureFlag;
             try
             {
                  featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(setting.Value, s_SerializationSettings);
@@ -26,7 +26,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
             
-
             if (featureFlag.Enabled)
             {
                 //if (featureFlag.Conditions?.ClientFilters == null)

@@ -1,19 +1,18 @@
 ﻿using Azure.Data.AppConfiguration;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal enum KeyValueChangeType
     {
+        None,
         Modified,
         Deleted
     }
 
-    // TODO: Struct
-    internal class KeyValueChange
+    internal struct KeyValueChange
     {
+        public static readonly KeyValueChange NoChange = new KeyValueChange { ChangeType = KeyValueChangeType.None };
+
         public KeyValueChangeType ChangeType { get; set; }
 
         public string Key { get; set; }

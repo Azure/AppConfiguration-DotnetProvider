@@ -262,7 +262,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
-                        if (keyValueChange != null)
+                        if (keyValueChange.ChangeType != KeyValueChangeType.None)
                         {
                             ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
                             hasChanged = true;
