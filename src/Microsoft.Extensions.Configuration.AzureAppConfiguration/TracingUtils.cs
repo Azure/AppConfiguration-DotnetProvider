@@ -41,7 +41,7 @@
             return userAgent.ToString();
         }
 
-        public static Activity StartDiagnosticHeaderActivity(bool tracingEnabled, RequestType requestType, HostType hostType)
+        public static Activity StartTracingActivity(bool tracingEnabled, RequestType requestType, HostType hostType)
         {
             IList<KeyValuePair<string, string>> correlationContext = new List<KeyValuePair<string, string>>();
 

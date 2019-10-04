@@ -122,7 +122,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (useDefaultQuery)
                 {
-                    // TODO: does this set Key to Any? // If not, use SettingSelector(null)
                     var selector = new SettingSelector();
 
                     // Load all key-values with the null label.
@@ -258,7 +257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedKv = _settings[watchedKey];
 
-                        var activity = TracingUtils.StartDiagnosticHeaderActivity(_requestTracingEnabled, RequestType.Watch, _hostType);
+                        var activity = TracingUtils.StartTracingActivity(_requestTracingEnabled, RequestType.Watch, _hostType);
                         KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false);
                         activity.Stop();
 
@@ -440,7 +439,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Activity ConfigureRequestTracingOptions()
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            return TracingUtils.StartDiagnosticHeaderActivity(_requestTracingEnabled, requestType, _hostType);
+            return TracingUtils.StartTracingActivity(_requestTracingEnabled, requestType, _hostType);
         }
     }
 }

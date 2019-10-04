@@ -102,7 +102,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
-            var activity = TracingUtils.StartDiagnosticHeaderActivity(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
+            var activity = TracingUtils.StartTracingActivity(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
             var kvs = client.GetSettingsAsync(selector);
             activity.Stop();
 
@@ -137,7 +137,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
                 selector = new SettingSelector(keyFilter, labelFilter);
 
-                var changesActivity = TracingUtils.StartDiagnosticHeaderActivity(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
+                var changesActivity = TracingUtils.StartTracingActivity(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
                 kvs = client.GetSettingsAsync(selector);
                 changesActivity.Stop();
 
