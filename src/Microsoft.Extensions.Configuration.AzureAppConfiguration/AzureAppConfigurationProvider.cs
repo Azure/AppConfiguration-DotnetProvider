@@ -102,7 +102,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         internal static ConfigurationClientOptions GetClientOptions()
         {
-            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.Default);
+            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
 
@@ -122,13 +122,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (useDefaultQuery)
                 {
-                    ConfigureRequestTracingOptions();
-
                     // TODO: does this set Key to Any? // If not, use SettingSelector(null)
                     var selector = new SettingSelector();
 
                     // Load all key-values with the null label.
+                    var activity = ConfigureRequestTracingOptions();
                     var collection = _client.GetSettingsAsync(selector);
+                    activity.Stop();
 
                     // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
                     var enumerator = collection.GetAsyncEnumerator();
@@ -156,9 +156,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         AsOf = loadOption.PreferredDateTime
                     };
 
-                    ConfigureRequestTracingOptions();
                     // Load all key-values with the null label.
+                    var activity = ConfigureRequestTracingOptions();
                     var collection = _client.GetSettingsAsync(selector);
+                    activity.Stop();
 
                     // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
                     var enumerator = collection.GetAsyncEnumerator();
@@ -215,10 +216,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                ConfigureRequestTracingOptions();
-
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
+                var activity = ConfigureRequestTracingOptions();
+                var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false);
+                activity.Stop();
+
                 ConfigurationSetting watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
@@ -256,9 +258,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedKv = _settings[watchedKey];
 
-                        TracingUtils.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
-
+                        var activity = TracingUtils.StartDiagnosticHeaderActivity(_requestTracingEnabled, RequestType.Watch, _hostType);
                         KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false);
+                        activity.Stop();
+
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
@@ -274,10 +277,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         var options = new SettingSelector();
                         options.Labels.Add(watchedLabel);
-                        ConfigureRequestTracingOptions();
 
                         // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, default(DateTimeOffset), CancellationToken.None).ConfigureAwait(false);
+                        var activity = ConfigureRequestTracingOptions();
+                        var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false);
+                        activity.Stop();
+
                         watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
@@ -432,11 +437,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private void ConfigureRequestTracingOptions()
+        private Activity ConfigureRequestTracingOptions()
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-
-            TracingUtils.ConfigureRequestTracing(_requestTracingEnabled, requestType, _hostType);
+            return TracingUtils.StartDiagnosticHeaderActivity(_requestTracingEnabled, requestType, _hostType);
         }
     }
 }

@@ -3,6 +3,7 @@
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Reflection;
     using System.Runtime.InteropServices;
@@ -40,7 +41,7 @@
             return userAgent.ToString();
         }
 
-        public static void ConfigureRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType)
+        public static Activity StartDiagnosticHeaderActivity(bool tracingEnabled, RequestType requestType, HostType hostType)
         {
             IList<KeyValuePair<string, string>> correlationContext = new List<KeyValuePair<string, string>>();
 
@@ -54,7 +55,10 @@
                 }
             }
 
-            // TODO: use correlationContext to set headers
+            var activity = new Activity("Azure.CustomDiagnosticHeaders");
+            activity.Start();
+            activity.AddTag("correlation-context", string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+            return activity;
         }
 
         private static void AddRequestType(IList<KeyValuePair<string, string>> correlationContext, RequestType requestType)

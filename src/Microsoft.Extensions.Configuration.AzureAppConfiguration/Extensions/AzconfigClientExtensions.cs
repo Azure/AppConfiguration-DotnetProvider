@@ -101,10 +101,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Fields = SettingFields.ETag | SettingFields.Key
             };
 
-            TracingUtils.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
-
             // Fetch e-tags for prefixed key-values that can be used to detect changes
+            var activity = TracingUtils.StartDiagnosticHeaderActivity(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
             var kvs = client.GetSettingsAsync(selector);
+            activity.Stop();
 
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
@@ -137,9 +137,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
                 selector = new SettingSelector(keyFilter, labelFilter);
 
-                TracingUtils.ConfigureRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
-
+                var changesActivity = TracingUtils.StartDiagnosticHeaderActivity(options.RequestTracingEnabled, RequestType.Watch, options.HostType);
                 kvs = client.GetSettingsAsync(selector);
+                changesActivity.Stop();
+
                 enumerator = kvs.GetAsyncEnumerator(CancellationToken.None);
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
 
