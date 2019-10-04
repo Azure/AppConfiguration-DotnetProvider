@@ -5,13 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using Xunit;
 
@@ -19,7 +15,8 @@ namespace Tests.AzureAppConfiguration
 {
     public class FeatureManagementTests
     {
-        private ConfigurationSetting _kv = new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+        private ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
             value: @"
                     {
                       ""id"": ""Beta"",
@@ -47,13 +44,13 @@ namespace Tests.AzureAppConfiguration
                         ]
                       }
                     }
-                    ")
-        {
-            ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
-            ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
-        };
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        private ConfigurationSetting _kv2 = new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
+        private ConfigurationSetting _kv2 = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
             value: @"
                     {
                       ""id"": ""MyFeature2"",
@@ -68,37 +65,23 @@ namespace Tests.AzureAppConfiguration
                         ]
                       }
                     }
-                    ")
-        {
-            ETag = new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
-            ContentType = FeatureManagementConstants.ContentType + ";charset=utf-8"
-        };
-
-        internal class MockAsyncCollection : AsyncCollection<ConfigurationSetting>
-        {
-            // TODO: YOU ARE HERE.  Is there a way to approach this without referencing IAsyncEnumerable in this project?
-            // See line 123 in UseSyncMethodsInterceptor.cs
-            public override IAsyncEnumerable<Page<ConfigurationSetting>> ByPage(string continuationToken = null, int? pageSizeHint = null)
-            {
-                throw new NotImplementedException();
-            }
-        }
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         [Fact]
         public void UsesFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
 
-            var featureFlags = new List<Response<ConfigurationSetting>>
-            {
-                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
-            };
+            var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            mock.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
-                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
 
-            var testClient = mock.Object;
+            var testClient = mockClient.Object;
 
             var builder = new ConfigurationBuilder();
 
@@ -128,13 +111,10 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
 
-            var featureFlags = new List<Response<ConfigurationSetting>>
-            {
-                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
-            };
+            var featureFlags = new List<ConfigurationSetting> { _kv };
 
             mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
-                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
+                .Returns(new MockPageable(featureFlags));
 
             var testClient = mock.Object;
             var builder = new ConfigurationBuilder();
@@ -154,7 +134,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
             Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
 
-            _kv.Value = @"
+            _kv = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            value: @"
                     {
                       ""id"": ""Beta"",
                       ""description"": ""The new beta version of our web site."",
@@ -171,12 +153,13 @@ namespace Tests.AzureAppConfiguration
                         ]
                       }
                     }
-                    ";
-
-            _kv.ETag = new ETag(_kv.ETag.ToString() + "f");
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             var mockResponse2 = new Mock<Response>();
-            featureFlags.Add(new Response<ConfigurationSetting>(mockResponse2.Object, _kv2));
+            featureFlags.Add(_kv2);
             options.GetRefresher().Refresh();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -209,17 +192,14 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
 
-            var featureFlags = new List<Response<ConfigurationSetting>>
-            {
-                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
-            };
+            var featureFlags = new List<ConfigurationSetting> { _kv };
 
             mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
                 .Callback<Request>((req) => {
-                    performedDefaultQuery = performedDefaultQuery || req.UriBuilder.Uri.PathAndQuery == "/kv/?key=*&label=%00";
-                    queriedFeatureFlags = queriedFeatureFlags || req.UriBuilder.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+                    performedDefaultQuery = performedDefaultQuery || req.Uri.PathAndQuery == "/kv/?key=*&label=%00";
+                    queriedFeatureFlags = queriedFeatureFlags || req.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
                 })
-                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
+                .Returns(new MockPageable(featureFlags));
 
             var testClient = mock.Object;
 
@@ -239,7 +219,6 @@ namespace Tests.AzureAppConfiguration
             Assert.True(performedDefaultQuery);
             Assert.False(queriedFeatureFlags);
 
-            // TODO: better to separate this into a separate function to create new objects?
             //
             // Reset
             performedDefaultQuery = false;
@@ -247,18 +226,14 @@ namespace Tests.AzureAppConfiguration
 
             mockResponse = new Mock<Response>();
             mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-
-            featureFlags = new List<Response<ConfigurationSetting>>
-            {
-                new Response<ConfigurationSetting>(mockResponse.Object, _kv)
-            };
+            featureFlags = new List<ConfigurationSetting> { _kv };
 
             mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
                 .Callback<Request>((req) => {
-                    performedDefaultQuery = performedDefaultQuery || req.UriBuilder.Uri.PathAndQuery == "/kv/?key=*&label=%00";
-                    queriedFeatureFlags = queriedFeatureFlags || req.UriBuilder.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+                    performedDefaultQuery = performedDefaultQuery || req.Uri.PathAndQuery == "/kv/?key=*&label=%00";
+                    queriedFeatureFlags = queriedFeatureFlags || req.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
                 })
-                .Returns(new List<Response<ConfigurationSetting>>(featureFlags));
+                .Returns(new MockPageable(featureFlags));
 
             builder = new ConfigurationBuilder();
 
