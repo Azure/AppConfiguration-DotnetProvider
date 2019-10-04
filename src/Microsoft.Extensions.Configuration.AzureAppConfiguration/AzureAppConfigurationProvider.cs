@@ -1,4 +1,5 @@
-﻿using Azure.Data.AppConfiguration;
+﻿using Azure;
+using Azure.Data.AppConfiguration;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -125,9 +126,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var selector = new SettingSelector();
 
                     // Load all key-values with the null label.
-                    var activity = ConfigureRequestTracingOptions();
-                    var collection = _client.GetSettingsAsync(selector);
-                    activity.Stop();
+                    AsyncPageable<ConfigurationSetting> collection = null;
+                    await CallWithRequestTracing(() => collection = _client.GetSettingsAsync(selector)).ConfigureAwait(false);
 
                     // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
                     var enumerator = collection.GetAsyncEnumerator();
@@ -156,9 +156,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     };
 
                     // Load all key-values with the null label.
-                    var activity = ConfigureRequestTracingOptions();
-                    var collection = _client.GetSettingsAsync(selector);
-                    activity.Stop();
+                    AsyncPageable<ConfigurationSetting> collection = null;
+                    await CallWithRequestTracing(() => collection = _client.GetSettingsAsync(selector)).ConfigureAwait(false);
 
                     // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
                     var enumerator = collection.GetAsyncEnumerator();
@@ -171,7 +170,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
                 }
             }
-            catch (Exception exception) when (exception.InnerException is HttpRequestException ||
+            catch (Exception exception) when (// TODO: exception is Azure.RequestFailedException ||
+                                              exception.InnerException is HttpRequestException ||
                                               exception.InnerException is OperationCanceledException ||
                                               exception.InnerException is UnauthorizedAccessException)
             {
@@ -216,11 +216,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                var activity = ConfigureRequestTracingOptions();
-                var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false);
-                activity.Stop();
-
-                ConfigurationSetting watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                ConfigurationSetting watchedKv = null;
+                try
+                {
+                    await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None)).ConfigureAwait(false);
+                }
+                catch (RequestFailedException e) when (e.Status == 404)  
+                {
+                   watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                }
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
@@ -257,9 +261,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedKv = _settings[watchedKey];
 
-                        var activity = TracingUtils.StartTracingActivity(_requestTracingEnabled, RequestType.Watch, _hostType);
-                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false);
-                        activity.Stop();
+                        KeyValueChange keyValueChange = default;
+                        await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType,
+                            async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
 
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
@@ -277,12 +281,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         var options = new SettingSelector();
                         options.Labels.Add(watchedLabel);
 
-                        // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        var activity = ConfigureRequestTracingOptions();
-                        var watchedKvResponse = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false);
-                        activity.Stop();
+                        try
+                        {
+                            await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
+                        }
+                        catch (RequestFailedException e) when (e.Status == 404)
+                        {
+                            watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                        }
 
-                        watchedKv = watchedKvResponse.Value ?? new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         if (watchedKv != null)
@@ -436,10 +443,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private Activity ConfigureRequestTracingOptions()
+        private async Task CallWithRequestTracing(Action clientCall)
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            return TracingUtils.StartTracingActivity(_requestTracingEnabled, requestType, _hostType);
+            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _hostType, clientCall).ConfigureAwait(false);
+        }
+
+        private async Task CallWithRequestTracing(Func<Task> clientCall)
+        {
+            var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
+            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _hostType, clientCall).ConfigureAwait(false);
         }
     }
 }

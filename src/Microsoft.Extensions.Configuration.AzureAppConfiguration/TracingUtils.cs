@@ -9,6 +9,7 @@
     using System.Runtime.InteropServices;
     using System.Runtime.Versioning;
     using System.Text;
+    using System.Threading.Tasks;
 
     internal static class TracingUtils
     {
@@ -41,7 +42,16 @@
             return userAgent.ToString();
         }
 
-        public static Activity StartTracingActivity(bool tracingEnabled, RequestType requestType, HostType hostType)
+        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType, Action clientCall)
+        {
+            await CallWithRequestTracing(tracingEnabled, requestType, hostType, () =>
+            {
+                clientCall();
+                return Task.CompletedTask;
+            }).ConfigureAwait(false);
+        }
+
+        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType, Func<Task> clientCall)
         {
             IList<KeyValuePair<string, string>> correlationContext = new List<KeyValuePair<string, string>>();
 
@@ -56,9 +66,16 @@
             }
 
             var activity = new Activity("Azure.CustomDiagnosticHeaders");
-            activity.Start();
-            activity.AddTag("correlation-context", string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
-            return activity;
+            try
+            {
+                activity.Start();
+                activity.AddTag("correlation-context", string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+                await clientCall().ConfigureAwait(false);
+            }
+            finally
+            {
+                activity.Stop();
+            }
         }
 
         private static void AddRequestType(IList<KeyValuePair<string, string>> correlationContext, RequestType requestType)
