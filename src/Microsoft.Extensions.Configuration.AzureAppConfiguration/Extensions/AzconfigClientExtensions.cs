@@ -113,13 +113,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             var enumerator = kvs.GetAsyncEnumerator();
             while (await enumerator.MoveNextAsync().ConfigureAwait(false))
             {
-                if (!eTagMap.TryGetValue(enumerator.Current.Value.Key, out string etag) || !etag.Equals(enumerator.Current.Value.ETag))
+                if (!eTagMap.TryGetValue(enumerator.Current.Key, out string etag) || !etag.Equals(enumerator.Current.ETag))
                 {
                     hasKeyValueCollectionChanged = true;
                     break;
                 }
 
-                eTagMap.Remove(enumerator.Current.Value.Key);
+                eTagMap.Remove(enumerator.Current.Key);
             }
 
             // Check for any deletions
@@ -146,18 +146,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
                 while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 {
-                    if (!eTagMap.TryGetValue(enumerator.Current.Value.Key, out string etag) || !etag.Equals(enumerator.Current.Value.ETag))
+                    if (!eTagMap.TryGetValue(enumerator.Current.Key, out string etag) || !etag.Equals(enumerator.Current.ETag))
                     {
                         changes.Add(new KeyValueChange
                         {
                             ChangeType = KeyValueChangeType.Modified,
-                            Key = enumerator.Current.Value.Key,
+                            Key = enumerator.Current.Key,
                             Label = options.Label.NormalizeNull(),
-                            Current = enumerator.Current.Value
+                            Current = enumerator.Current
                         });
                     }
 
-                    eTagMap.Remove(enumerator.Current.Value.Key);
+                    eTagMap.Remove(enumerator.Current.Key);
                 }
 
                 foreach (var kvp in eTagMap)

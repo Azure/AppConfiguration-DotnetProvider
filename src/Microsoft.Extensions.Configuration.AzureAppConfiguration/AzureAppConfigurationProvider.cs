@@ -133,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var enumerator = collection.GetAsyncEnumerator();
                     while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                     {
-                        data[enumerator.Current.Value.Key] = enumerator.Current.Value;
+                        data[enumerator.Current.Key] = enumerator.Current;
                     }
                 }
 
@@ -164,7 +164,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var enumerator = collection.GetAsyncEnumerator();
                     while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                     {
-                        data[enumerator.Current.Value.Key] = enumerator.Current.Value;
+                        data[enumerator.Current.Key] = enumerator.Current;
                     }
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
