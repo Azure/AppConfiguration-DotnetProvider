@@ -238,12 +238,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="configure">>A callback used to configure Azure App Configuration refresh options.</param>
         public AzureAppConfigurationOptions ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> configure)
         {
-            var options = new AzureAppConfigurationRefreshOptions();
-            configure?.Invoke(options);
+            var refreshOptions = new AzureAppConfigurationRefreshOptions();
+            configure?.Invoke(refreshOptions);
 
-            foreach (var item in options.RefreshRegistrations)
+            foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.Value.CacheExpirationTime = options.CacheExpirationTime;
+                item.Value.CacheExpirationTime = refreshOptions.CacheExpirationTime;
                 _changeWatchers[item.Key] = item.Value;
             }
 

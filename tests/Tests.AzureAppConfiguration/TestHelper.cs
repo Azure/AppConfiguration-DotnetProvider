@@ -4,6 +4,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -14,6 +15,43 @@ namespace Tests.AzureAppConfiguration
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
             return $"Endpoint=https://xxxxx;Id=b1d9b31;Secret={returnValue}";
+        }
+
+        static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)
+        {
+            json.WriteStartObject();
+            json.WriteString("key", setting.Key);
+            json.WriteString("label", setting.Label);
+            json.WriteString("value", setting.Value);
+            json.WriteString("content_type", setting.ContentType);
+            if (setting.Tags != null)
+            {
+                json.WriteStartObject("tags");
+                foreach (KeyValuePair<string, string> tag in setting.Tags)
+                {
+                    json.WriteString(tag.Key, tag.Value);
+                }
+                json.WriteEndObject();
+            }
+            if (setting.ETag != default)
+                json.WriteString("etag", setting.ETag.ToString());
+            if (setting.LastModified.HasValue)
+                json.WriteString("last_modified", setting.LastModified.Value.ToString());
+            if (setting.ReadOnly.HasValue)
+                json.WriteBoolean("locked", setting.ReadOnly.Value);
+            json.WriteEndObject();
+        }
+
+        static public void SerializeBatch(ref Utf8JsonWriter json, ConfigurationSetting[] settings)
+        {
+            json.WriteStartObject();
+            json.WriteStartArray("items");
+            foreach (ConfigurationSetting item in settings)
+            {
+                SerializeSetting(ref json, item);
+            }
+            json.WriteEndArray();
+            json.WriteEndObject();
         }
     }
 

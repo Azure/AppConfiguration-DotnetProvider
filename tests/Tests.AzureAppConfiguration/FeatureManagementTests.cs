@@ -1,13 +1,15 @@
 ﻿using Azure;
 using Azure.Core.Http;
+using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
+using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Linq;
 using System.Threading;
 using Xunit;
 
@@ -109,12 +111,12 @@ namespace Tests.AzureAppConfiguration
         public void WatchesFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            var mock = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
-                .Returns(new MockPageable(featureFlags));
+            mock.Setup(c => c.GetSettingsAsync(new SettingSelector("*", "\0"), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
 
             var testClient = mock.Object;
             var builder = new ConfigurationBuilder();
@@ -171,82 +173,67 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void PreservesDefaultQuery()
         {
-            bool performedDefaultQuery = false;
-            bool queriedFeatureFlags = false;
+            var response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(new[] { _kv }, TestHelpers.SerializeBatch));
 
-            //var handler = new CallbackMessageHandler((req) =>
-            //{
-            //    performedDefaultQuery = performedDefaultQuery || req.RequestUri.PathAndQuery == "/kv/?key=*&label=%00";
+            var mockTransport = new MockTransport(response);
+            var clientOptions = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
 
-            //    queriedFeatureFlags = queriedFeatureFlags || req.RequestUri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
+            var client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
 
-            //    HttpResponseMessage response = new HttpResponseMessage();
-
-            //    response.StatusCode = HttpStatusCode.OK;
-
-            //    response.Content = new StringContent(JsonConvert.SerializeObject(new { items = new object[] { } }), Encoding.UTF8, "application/json");
-
-            //    return response;
-            //});
-
-            var mockResponse = new Mock<Response>();
-            var mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-
-            var featureFlags = new List<ConfigurationSetting> { _kv };
-
-            mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
-                .Callback<Request>((req) => {
-                    performedDefaultQuery = performedDefaultQuery || req.Uri.PathAndQuery == "/kv/?key=*&label=%00";
-                    queriedFeatureFlags = queriedFeatureFlags || req.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
-                })
-                .Returns(new MockPageable(featureFlags));
-
-            var testClient = mock.Object;
-
+            //
+            // Test scenario
             var builder = new ConfigurationBuilder();
-
             var options = new AzureAppConfigurationOptions()
             {
-                Client = testClient
+                Client = client
             };
 
             options.UseFeatureFlags();
-
             builder.AddAzureAppConfiguration(options);
-
             var config = builder.Build();
 
-            Assert.True(performedDefaultQuery);
-            Assert.False(queriedFeatureFlags);
+            // TODO (Pavel): Can we get the request pre-escaped?
+            MockRequest request = mockTransport.SingleRequest;
+
+            Assert.Contains("/kv/?key=*&label=%00", Uri.EscapeUriString(request.Uri.PathAndQuery));
+            Assert.DoesNotContain(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker), request.Uri.PathAndQuery);
+        }
+
+        [Fact]
+        public void QueriesFeatureFlags()
+        {
+            var mockTransport = new MockTransport(req =>
+            {
+                var response = new MockResponse(200);
+                response.SetContent(SerializationHelpers.Serialize(new[] { _kv }, TestHelpers.SerializeBatch));
+                return response;
+            });
+
+            var clientOptions = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
+
+            var client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
 
             //
-            // Reset
-            performedDefaultQuery = false;
-            queriedFeatureFlags = false;
-
-            mockResponse = new Mock<Response>();
-            mock = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            featureFlags = new List<ConfigurationSetting> { _kv };
-
-            mock.Setup(c => c.GetSettings(new SettingSelector(), It.IsAny<CancellationToken>()))
-                .Callback<Request>((req) => {
-                    performedDefaultQuery = performedDefaultQuery || req.Uri.PathAndQuery == "/kv/?key=*&label=%00";
-                    queriedFeatureFlags = queriedFeatureFlags || req.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker));
-                })
-                .Returns(new MockPageable(featureFlags));
-
-            builder = new ConfigurationBuilder();
-
-            options = new AzureAppConfigurationOptions()
+            // Test scenario
+            var builder = new ConfigurationBuilder();
+            var options = new AzureAppConfigurationOptions()
             {
-                Client = testClient
+                Client = client
             };
 
             options.UseFeatureFlags(o => o.Label = "myLabel");
-
             builder.AddAzureAppConfiguration(options);
+            var config = builder.Build();
 
-            config = builder.Build();
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => Uri.EscapeUriString(r.Uri.PathAndQuery).Contains("/kv/?key=*&label=%00"));
+            bool queriedFeatureFlags = mockTransport.Requests.Any(r => Uri.EscapeDataString(r.Uri.PathAndQuery).Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
             Assert.True(queriedFeatureFlags);

@@ -123,9 +123,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (useDefaultQuery)
                 {
-                    var selector = new SettingSelector();
-
                     // Load all key-values with the null label.
+                    var selector = new SettingSelector("*", LabelFilter.Null);
                     AsyncPageable<ConfigurationSetting> collection = null;
                     await CallWithRequestTracing(() => collection = _client.GetSettingsAsync(selector)).ConfigureAwait(false);
 
@@ -146,6 +145,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                            Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, loadOption.PreferredDateTime)))
                     {
                         // This selection was already encapsulated by a wildcard query
+                        // Or would select kvs obtained by a different selector
                         // We skip it to prevent unnecessary requests
                         continue;
                     }
