@@ -53,6 +53,11 @@ namespace Tests.AzureAppConfiguration
             json.WriteEndArray();
             json.WriteEndObject();
         }
+
+        public static ConfigurationSetting CloneSetting(ConfigurationSetting setting)
+        {
+            return ConfigurationModelFactory.ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ContentType, setting.ETag, setting.LastModified);
+        }
     }
 
     class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
