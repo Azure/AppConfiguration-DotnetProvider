@@ -87,7 +87,7 @@ namespace Tests.AzureAppConfiguration
             _collection = collection;
         }
 
-        public override IEnumerable<Page<ConfigurationSetting>> ByPage(string continuationToken = null, int? pageSizeHint = null)
+        public override IEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
         {
             yield return new Page<ConfigurationSetting>(_collection, null, new Mock<Response>().Object);
         }

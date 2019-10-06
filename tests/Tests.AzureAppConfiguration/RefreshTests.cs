@@ -78,7 +78,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, _kvCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -113,7 +113,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, _kvCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -153,7 +153,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, _kvCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -195,7 +195,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, serviceCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue( serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
@@ -203,7 +203,7 @@ namespace Tests.AzureAppConfiguration
                 var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(response, newSetting);
+                return Response.FromValue(newSetting, response);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -265,7 +265,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, serviceCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue( serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
@@ -273,7 +273,7 @@ namespace Tests.AzureAppConfiguration
                 var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(response, newSetting);
+                return Response.FromValue(newSetting, response);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -335,7 +335,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, serviceCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
@@ -343,7 +343,7 @@ namespace Tests.AzureAppConfiguration
                 var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(response, newSetting);
+                return Response.FromValue(newSetting, response);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -404,7 +404,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(mockResponse.Object, serviceCollection.FirstOrDefault(s => s.Key == k));
+                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
@@ -412,7 +412,7 @@ namespace Tests.AzureAppConfiguration
                 var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(response, newSetting);
+                return Response.FromValue(newSetting, response);
             }
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -501,7 +501,7 @@ namespace Tests.AzureAppConfiguration
                 var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(response, newSetting);
+                return Response.FromValue(newSetting, response);
             }
 
             mockClient.Setup(c => c.GetAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))

@@ -2,11 +2,9 @@ namespace Tests.AzureAppConfiguration
 {
     using Azure;
     using Azure.Core.Http;
-    using Azure.Core.Pipeline;
     using Azure.Core.Testing;
     using Azure.Data.AppConfiguration;
     using Azure.Data.AppConfiguration.Tests;
-    using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
@@ -14,12 +12,7 @@ namespace Tests.AzureAppConfiguration
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Net;
-    using System.Net.Http;
-    using System.Text;
-    using System.Text.Json;
     using System.Threading;
-    using System.Threading.Tasks;
     using Xunit;
 
     public class Tests
@@ -60,7 +53,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             mockClient.Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(mockResponse.Object, _kv));
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             var builder = new ConfigurationBuilder();
             builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
@@ -104,39 +97,38 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UsesPreferredDateTime()
         {
-            bool kvsRetrieved = false;
+            var response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+            var mockTransport = new MockTransport(response);
 
-            //var messageHandler = new CallbackMessageHandler(r =>
-            //{
-            //    Assert.True(r.Headers.TryGetValues("Accept-Datetime", out var values));
+            var options = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
 
-            //    kvsRetrieved = true;
+            var client = new ConfigurationClient(_connectionString, options);
 
-            //    var response = new HttpResponseMessage();
-
-            //    response.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-
-            //    return response;
-            //});
-
-            //var testClient = new ConfigurationClient(_connectionString, messageHandler);
-
+            // Test
             var builder = new ConfigurationBuilder();
 
             builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
             {
-                Client = mockClient.Object
+                Client = client
 
             }.Use("*", null, DateTimeOffset.UtcNow));
 
             var config = builder.Build();
 
-            Assert.True(kvsRetrieved);
+            MockRequest request = mockTransport.SingleRequest;
+
+            Assert.True(request.Headers.TryGetValues("Accept-Datetime", out var values));
+
+            // KeyValues Retrieved
+            Assert.True(config["TestKey1"] == "TestValue1");
+            Assert.True(config["TestKey2"] == "TestValue2");
+            Assert.True(config["TestKey3"] == "TestValue3");
+            Assert.True(config["TestKey4"] == "TestValue4");
         }
 
         [Fact]
@@ -149,7 +141,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             mockClient.Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(mockResponse.Object, _kv));
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             // Trim following prefixes from all keys in the configuration.
             var keyPrefix1 = "T";
@@ -180,7 +172,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             mockClient.Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(mockResponse.Object, _kv));
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             // Trim following prefixes from all keys in the configuration.
             var keyPrefix1 = "T";
@@ -204,20 +196,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TestCorrelationContextInHeader()
         {
-            string correlationHeader = null;
-
-            ConfigurationSetting testSetting = new ConfigurationSetting("test_key", "test_value")
-            {
-                Label = "test_label",
-                ContentType = "test_content_type",
-            };
-
             var response = new MockResponse(200);
-            response.SetContent(SerializationHelpers.Serialize(new[]
-            {
-                CreateSetting(0),
-                CreateSetting(1),
-            }, TestHelpers.SerializeBatch));
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
             var mockTransport = new MockTransport(response);
 
@@ -227,6 +207,40 @@ namespace Tests.AzureAppConfiguration
             };
 
             var client = new ConfigurationClient(_connectionString, options);
+
+            // Test
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            {
+                Client = client
+            }.Use("*", null));
+
+            var config = builder.Build();
+
+            MockRequest request = mockTransport.SingleRequest;
+
+            Assert.True(request.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> correlationHeader));
+            Assert.NotNull(correlationHeader.First());
+            Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader.First(), StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        [Fact]
+        public void TestTurnOffRequestTracing()
+        {
+            var response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
+
+            var mockTransport = new MockTransport(response);
+
+            var options = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
+
+            var client = new ConfigurationClient(_connectionString, options);
+
+            // Test
+            Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
 
             var builder = new ConfigurationBuilder();
             builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
@@ -238,231 +252,38 @@ namespace Tests.AzureAppConfiguration
 
             MockRequest request = mockTransport.SingleRequest;
 
-            Assert.True(request.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-            Assert.NotNull(corrHeader.First());
-            Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
-        }
+            Assert.False(request.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> correlationHeader));
 
-        private static ConfigurationSetting CreateSetting(int i)
-        {
-            return ConfigurationModelFactory.ConfigurationSetting($"key{i}", "val", "label", 
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
-                contentType: "text" );
-        }
+            // Reset transport
+            response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
+            mockTransport = new MockTransport(response);
+            options = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
+            client = new ConfigurationClient(_connectionString, options);
 
-        //[Fact]
-        //public void TestCorrelationContextInHeader()
-        //{
-        //    string correlationHeader = null;
+            // Delete the request tracing environment variable
+            Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
+            builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            {
+                Client = client
+            }.Use("*", null));
 
-        //    var mockResponse = new Mock<HttpResponseMessage>();
-        //    var mockTransport = new Mock<HttpClientTransport>();
+            config = builder.Build();
 
-        //    Func<HttpClientTransport, Task> func =
-        //        c => c.ProcessAsync(It.IsAny<HttpPipelineMessage>()).AsTask();
+            request = mockTransport.SingleRequest;
 
+            Assert.True(request.Headers.TryGetValues("Correlation-Context", out correlationHeader));
+            Assert.NotNull(correlationHeader.First());
+            Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationHeader.First(), StringComparison.InvariantCultureIgnoreCase);
 
-        //    ValueTask checkHeaders(HttpRequestMessage m, CancellationToken c)
-        //    {
-        //        Assert.True(m.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-        //        correlationHeader = corrHeader.First();
-        //        //return mockResponse.Object;
-        //    }
-
-
-        //    mockTransport.Setup(
-        //        c => c.ProcessAsync(It.IsAny<HttpPipelineMessage>()))
-        //        .Returns(m =>
-        //        {
-        //            Assert.True(m.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-        //            correlationHeader = corrHeader.First();
-        //        });
-
-        //    var mockHttpClient = new Mock<HttpClient>();
-
-        //    HttpResponseMessage checkHeaders(HttpRequestMessage r, CancellationToken c)
-        //    {
-        //        Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-        //        correlationHeader = corrHeader.First();
-        //        return mockResponse.Object;
-        //    }
-
-        //    mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
-        //        .ReturnsAsync((Func<HttpRequestMessage, CancellationToken, HttpResponseMessage>)checkHeaders);
-
-        //    var options = new ConfigurationClientOptions
-        //    {
-        //        Transport = new HttpClientTransport(mockHttpClient.Object)
-        //    };
-
-        //    var testClient = new ConfigurationClient(_connectionString, options);
-
-        //    var builder = new ConfigurationBuilder();
-        //    builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-        //    {
-        //        Client = testClient
-        //    }.Use("*", null));
-
-        //    var config = builder.Build();
-
-        //    Assert.NotNull(correlationHeader);
-        //    Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
-        //}
-
-        //[Fact]
-        //public void TestCorrelationContextInHeader()
-        //{
-        //    string correlationHeader = null;
-
-        //    var mockResponse = new Mock<HttpResponseMessage>();
-        //    var mockHttpClient = new Mock<HttpClient>();
-
-        //    HttpResponseMessage checkHeaders(HttpRequestMessage r, CancellationToken c)
-        //    {
-        //        Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-        //        correlationHeader = corrHeader.First();
-        //        return mockResponse.Object;
-        //    }
-
-        //    mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
-        //        .ReturnsAsync((Func<HttpRequestMessage, CancellationToken, HttpResponseMessage>)checkHeaders);
-
-        //    var options = new ConfigurationClientOptions
-        //    {
-        //        Transport = new HttpClientTransport(mockHttpClient.Object)
-        //    };
-
-        //    var testClient = new ConfigurationClient(_connectionString, options);
-
-        //    var builder = new ConfigurationBuilder();
-        //    builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-        //    {
-        //        Client = testClient
-        //    }.Use("*", null));
-
-        //    var config = builder.Build();
-
-        //    Assert.NotNull(correlationHeader);
-        //    Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader, StringComparison.InvariantCultureIgnoreCase);
-        //}
-
-        //private ConfigurationClient CreateTestService()
-        //{
-
-        //    var mockResponse = new Mock<HttpResponseMessage>();
-        //    var mockHttpClient = new Mock<HttpClient>();
-
-        //    Func<HttpRequestMessage, HttpResponseMessage> checkHeaders = r =>
-        //    {
-        //        // Validate headers
-        //        var h = r.Headers;
-        //        return mockResponse.Object;
-        //    };
-
-        //    mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>()))
-        //        .ReturnsAsync(checkHeaders);
-
-        //    // HttpClientTransport transport = 
-
-        //    var options = new ConfigurationClientOptions
-        //    {
-        //        Transport = new HttpClientTransport(mockHttpClient.Object)
-        //    };
-
-        //    var client = new ConfigurationClient(_connectionString, options);
-
-        //    return client;
-        //}
-
-        //private ConfigurationClient CreateTestService()
-        //{
-
-        //    var mockResponse = new Mock<HttpResponseMessage>();
-        //    var mockHttpClient = new Mock<HttpClient>();
-
-        //    Func<HttpRequestMessage, HttpResponseMessage> checkHeaders = r =>
-        //    {
-        //        // Validate headers
-        //        var h = r.Headers;
-        //        return mockResponse.Object;
-        //    };
-
-        //    mockHttpClient.Setup(c => c.SendAsync(It.IsAny<HttpRequestMessage>()))
-        //        .ReturnsAsync(checkHeaders);
-
-        //    // HttpClientTransport transport = 
-
-        //    var options = new ConfigurationClientOptions
-        //    {
-        //        Transport = new HttpClientTransport(mockHttpClient.Object)
-        //    };
-
-        //    var client = new ConfigurationClient(_connectionString, options);
-
-        //    return client;
-        //}
-
-        [Fact]
-        public void TestTurnOffRequestTracing()
-        {
-            throw new NotImplementedException();
-
-            //string correlationHeader = null;
-            //var messageHandler = new CallbackMessageHandler(r =>
-            //{
-            //    Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-            //    correlationHeader = corrHeader?.FirstOrDefault();
-
-            //    var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
-            //    return response;
-            //});
-
-            //var testClient = new ConfigurationClient(_connectionString, messageHandler);
-
-            //Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
-            //var builder = new ConfigurationBuilder();
-            //builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            //{
-            //    Client = testClient
-            //}.Use("*", null));
-
-            //var config = builder.Build();
-
-            //Assert.Null(correlationHeader);
-
-            //// Delete the request tracing environment variable
-            //Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
-
-            //// Verify the correlation context in the same test to avoid issues due to environment variable conflict with above code when run in parallel
-
-            //string correlationContext = null;
-            //messageHandler = new CallbackMessageHandler(r =>
-            //{
-            //    Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-            //    correlationContext = corrHeader.First();
-
-            //    return new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
-            //});
-
-            //// TODO: better to separate into a separate function?
-            //testClient = new ConfigurationClient(_connectionString, messageHandler);
-
-            //Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
-            //builder = new ConfigurationBuilder();
-            //builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            //{
-            //    Client = testClient
-            //}.Use("*", null));
-
-            //config = builder.Build();
-
-            //Assert.NotNull(correlationContext);
-            //Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
-
-
-            //// Delete the azure function environment variable
-            //Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
+            // Delete the azure function environment variable
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
         }
     }
 }

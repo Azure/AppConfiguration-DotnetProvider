@@ -69,7 +69,12 @@
             try
             {
                 activity.Start();
-                activity.AddTag("correlation-context", string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+
+                if (correlationContext.Count > 0)
+                {
+                    activity.AddTag("correlation-context", string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+                }
+
                 await clientCall().ConfigureAwait(false);
             }
             finally

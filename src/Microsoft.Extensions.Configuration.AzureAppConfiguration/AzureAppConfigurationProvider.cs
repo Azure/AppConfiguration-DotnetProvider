@@ -126,14 +126,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Load all key-values with the null label.
                     var selector = new SettingSelector("*", LabelFilter.Null);
                     AsyncPageable<ConfigurationSetting> collection = null;
-                    await CallWithRequestTracing(() => collection = _client.GetSettingsAsync(selector)).ConfigureAwait(false);
 
-                    // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
-                    var enumerator = collection.GetAsyncEnumerator();
-                    while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    await CallWithRequestTracing(async () =>
                     {
-                        data[enumerator.Current.Key] = enumerator.Current;
-                    }
+                        collection = _client.GetSettingsAsync(selector);
+
+                        // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
+                        var enumerator = collection.GetAsyncEnumerator();
+                        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        {
+                            data[enumerator.Current.Key] = enumerator.Current;
+                        }
+                    }).ConfigureAwait(false);
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
@@ -157,14 +161,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     // Load all key-values with the null label.
                     AsyncPageable<ConfigurationSetting> collection = null;
-                    await CallWithRequestTracing(() => collection = _client.GetSettingsAsync(selector)).ConfigureAwait(false);
 
-                    // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
-                    var enumerator = collection.GetAsyncEnumerator();
-                    while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    await CallWithRequestTracing(async () =>
                     {
-                        data[enumerator.Current.Key] = enumerator.Current;
-                    }
+                        collection = _client.GetSettingsAsync(selector);
+
+                        // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
+                        var enumerator = collection.GetAsyncEnumerator();
+                        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        {
+                            data[enumerator.Current.Key] = enumerator.Current;
+                        }
+                    }).ConfigureAwait(false);
 
                     // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                     await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
@@ -221,9 +229,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None)).ConfigureAwait(false);
                 }
-                catch (RequestFailedException e) when (e.Status == 404)  
+                catch (RequestFailedException e) when (e.Status == 404)
                 {
-                   watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                    watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                 }
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
