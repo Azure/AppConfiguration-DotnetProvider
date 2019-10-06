@@ -96,22 +96,11 @@ namespace Tests.AzureAppConfiguration
         public void UseSecret()
         {
             string secretValue = "SecretValue from KeyVault";
-            var settings = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(() =>
-                {
-                    var copy = new List<ConfigurationSetting>();
-                    foreach (var setting in settings)
-                    {
-                        copy.Add(TestHelpers.CloneSetting(setting));
-                    };
-
-                    return new MockAsyncPageable(copy);
-                });
-
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             var builder = new ConfigurationBuilder();
 
@@ -135,9 +124,9 @@ namespace Tests.AzureAppConfiguration
             string secretValue = "SecretValue from KeyVault";
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.Get("Key", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns(Response.FromValue(mockResponse.Object, _kv));
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             var builder = new ConfigurationBuilder();
 
@@ -163,8 +152,8 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.Get("Key", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns(Response.FromValue(mockResponse.Object, _kvWrongContentType));
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvWrongContentType }));
 
             var builder = new ConfigurationBuilder();
 
@@ -189,7 +178,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             var builder = new ConfigurationBuilder();
@@ -210,13 +199,13 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void CancelationToken()
+        public void CancellationToken()
         {
             string secretValue = "SecretValue from KeyVault";
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             var builder = new ConfigurationBuilder();
@@ -242,13 +231,13 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void HasNoAccessToKeyVault()
         {
-            IEnumerable<ConfigurationSetting> KeyValues = new List<ConfigurationSetting> { _kv };
+            var KeyValues = new List<ConfigurationSetting> { _kv };
             string secretValue = "SecretValue from KeyVault";
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.Get("Key", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns(Response.FromValue(mockResponse.Object, _kv));
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(KeyValues));
 
             var builder = new ConfigurationBuilder();
 
