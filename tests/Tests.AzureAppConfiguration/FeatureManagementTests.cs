@@ -110,15 +110,25 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void WatchesFeatureFlags()
         {
-            var mockResponse = new Mock<Response>();
-            var mock = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            mock.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
-            var testClient = mock.Object;
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    // Return a copy of our local collection.
+                    var copy = new List<ConfigurationSetting>();
+                    foreach (var setting in featureFlags)
+                    {
+                        copy.Add(TestHelpers.CloneSetting(setting));
+                    };
+
+                    return new MockAsyncPageable(copy);
+                });
+
+            var testClient = mockClient.Object;
             var builder = new ConfigurationBuilder();
 
             var options = new AzureAppConfigurationOptions { Client = testClient }
@@ -136,31 +146,30 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
             Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
 
-            _kv = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
-            value: @"
-                    {
-                      ""id"": ""Beta"",
-                      ""description"": ""The new beta version of our web site."",
-                      ""display_name"": ""Beta Feature"",
-                      ""enabled"": true,
-                      ""conditions"": {
-                        ""client_filters"": [
-                          {
-                            ""name"": ""Browser"",
-                            ""parameters"": {
-                              ""AllowedBrowsers"": [ ""Chrome"", ""Edge"" ]
-                            }
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                value: @"
+                        {
+                          ""id"": ""Beta"",
+                          ""description"": ""The new beta version of our web site."",
+                          ""display_name"": ""Beta Feature"",
+                          ""enabled"": true,
+                          ""conditions"": {
+                            ""client_filters"": [
+                              {
+                                ""name"": ""Browser"",
+                                ""parameters"": {
+                                  ""AllowedBrowsers"": [ ""Chrome"", ""Edge"" ]
+                                }
+                              }
+                            ]
                           }
-                        ]
-                      }
-                    }
-                    ",
-            label: default,
-            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
-            var mockResponse2 = new Mock<Response>();
             featureFlags.Add(_kv2);
             options.GetRefresher().Refresh();
 
