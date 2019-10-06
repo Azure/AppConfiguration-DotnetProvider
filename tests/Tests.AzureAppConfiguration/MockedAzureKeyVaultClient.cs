@@ -12,9 +12,6 @@ namespace Tests.AzureAppConfiguration
     class MockedAzureKeyVaultClient : MockedAzureKeyVaultClientBase
     {
         private readonly string _secretValue;
-        private readonly IEnumerable<KeyValuePair<string, string>> _keyValues;
-        private readonly ConfigurationSetting _kv;
-        private readonly IEnumerable<ConfigurationSetting> _kvCollectionPageOne;
 
         public bool IsEnabled { get; set; } = true;
 
@@ -29,11 +26,6 @@ namespace Tests.AzureAppConfiguration
         public MockedAzureKeyVaultClient(string secretValue)
         {
             _secretValue = secretValue;
-        }
-        public MockedAzureKeyVaultClient(ConfigurationSetting kv, string secretValue)
-        {
-            _secretValue = secretValue;
-            _kv = kv;
         }
 
         public override Task<AzureOperationResponse<SecretBundle>> GetSecretWithHttpMessagesAsync(
