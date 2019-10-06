@@ -39,7 +39,7 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
         {
             foreach (var refresher in Refreshers)
             {
-                refresher.Refresh();
+                await refresher.Refresh();
             }
 
             // Call the next delegate/middleware in the pipeline

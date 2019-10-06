@@ -101,43 +101,43 @@ namespace Tests.AzureAppConfiguration
             Assert.IsType<ArgumentException>(exception);
         }
 
-        //[Fact]
-        //public void UsesPreferredDateTime()
-        //{
-        //    bool kvsRetrieved = false;
+        [Fact]
+        public void UsesPreferredDateTime()
+        {
+            bool kvsRetrieved = false;
 
-        //    var mockResponse = new Mock<Response>();
-        //    var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-        //    mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
-        //        .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
-        //    //var messageHandler = new CallbackMessageHandler(r =>
-        //    //{
-        //    //    Assert.True(r.Headers.TryGetValues("Accept-Datetime", out var values));
+            //var messageHandler = new CallbackMessageHandler(r =>
+            //{
+            //    Assert.True(r.Headers.TryGetValues("Accept-Datetime", out var values));
 
-        //    //    kvsRetrieved = true;
+            //    kvsRetrieved = true;
 
-        //    //    var response = new HttpResponseMessage();
+            //    var response = new HttpResponseMessage();
 
-        //    //    response.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            //    response.Content = new StringContent("{}", Encoding.UTF8, "application/json");
 
-        //    //    return response;
-        //    //});
+            //    return response;
+            //});
 
-        //    //var testClient = new ConfigurationClient(_connectionString, messageHandler);
+            //var testClient = new ConfigurationClient(_connectionString, messageHandler);
 
-        //    var builder = new ConfigurationBuilder();
+            var builder = new ConfigurationBuilder();
 
-        //    builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-        //    {
-        //        Client = mockClient.Object
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            {
+                Client = mockClient.Object
 
-        //    }.Use("*", null, DateTimeOffset.UtcNow));
+            }.Use("*", null, DateTimeOffset.UtcNow));
 
-        //    var config = builder.Build();
+            var config = builder.Build();
 
-        //    Assert.True(kvsRetrieved);
-        //}
+            Assert.True(kvsRetrieved);
+        }
 
         [Fact]
         public void TrimKeyPrefix_TestCase1()
@@ -279,9 +279,6 @@ namespace Tests.AzureAppConfiguration
         //            correlationHeader = corrHeader.First();
         //        });
 
-
-
-
         //    var mockHttpClient = new Mock<HttpClient>();
 
         //    HttpResponseMessage checkHeaders(HttpRequestMessage r, CancellationToken c)
@@ -406,64 +403,66 @@ namespace Tests.AzureAppConfiguration
         //    return client;
         //}
 
-        //[Fact]
-        //public void TestTurnOffRequestTracing()
-        //{
-        //    string correlationHeader = null;
-        //    var messageHandler = new CallbackMessageHandler(r =>
-        //    {
-        //        Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-        //        correlationHeader = corrHeader?.FirstOrDefault();
+        [Fact]
+        public void TestTurnOffRequestTracing()
+        {
+            throw new NotImplementedException();
 
-        //        var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
-        //        return response;
-        //    });
+            //string correlationHeader = null;
+            //var messageHandler = new CallbackMessageHandler(r =>
+            //{
+            //    Assert.False(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
+            //    correlationHeader = corrHeader?.FirstOrDefault();
 
-        //    var testClient = new ConfigurationClient(_connectionString, messageHandler);
+            //    var response = new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+            //    return response;
+            //});
 
-        //    Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
-        //    var builder = new ConfigurationBuilder();
-        //    builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-        //    {
-        //        Client = testClient
-        //    }.Use("*", null));
+            //var testClient = new ConfigurationClient(_connectionString, messageHandler);
 
-        //    var config = builder.Build();
+            //Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
+            //var builder = new ConfigurationBuilder();
+            //builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            //{
+            //    Client = testClient
+            //}.Use("*", null));
 
-        //    Assert.Null(correlationHeader);
+            //var config = builder.Build();
 
-        //    // Delete the request tracing environment variable
-        //    Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
+            //Assert.Null(correlationHeader);
 
-        //    // Verify the correlation context in the same test to avoid issues due to environment variable conflict with above code when run in parallel
+            //// Delete the request tracing environment variable
+            //Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
 
-        //    string correlationContext = null;
-        //    messageHandler = new CallbackMessageHandler(r =>
-        //    {
-        //        Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
-        //        correlationContext = corrHeader.First();
+            //// Verify the correlation context in the same test to avoid issues due to environment variable conflict with above code when run in parallel
 
-        //        return new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
-        //    });
+            //string correlationContext = null;
+            //messageHandler = new CallbackMessageHandler(r =>
+            //{
+            //    Assert.True(r.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> corrHeader));
+            //    correlationContext = corrHeader.First();
 
-        //    // TODO: better to separate into a separate function?
-        //    testClient = new ConfigurationClient(_connectionString, messageHandler);
+            //    return new HttpResponseMessage() { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+            //});
 
-        //    Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
-        //    builder = new ConfigurationBuilder();
-        //    builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-        //    {
-        //        Client = testClient
-        //    }.Use("*", null));
+            //// TODO: better to separate into a separate function?
+            //testClient = new ConfigurationClient(_connectionString, messageHandler);
 
-        //    config = builder.Build();
+            //Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
+            //builder = new ConfigurationBuilder();
+            //builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            //{
+            //    Client = testClient
+            //}.Use("*", null));
 
-        //    Assert.NotNull(correlationContext);
-        //    Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
+            //config = builder.Build();
+
+            //Assert.NotNull(correlationContext);
+            //Assert.Contains(Enum.GetName(typeof(HostType), HostType.AzureFunction), correlationContext, StringComparison.InvariantCultureIgnoreCase);
 
 
-        //    // Delete the azure function environment variable
-        //    Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
-        //}
+            //// Delete the azure function environment variable
+            //Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
+        }
     }
 }

@@ -52,7 +52,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", "\0"), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
 
             var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
@@ -475,19 +475,29 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
         {
-            var kvCollection = new List<ConfigurationSetting>(_kvCollection);
+            throw new NotImplementedException();
+
+            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
 
             var requestCount = 0;
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", "\0"), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
                     requestCount++;
                     Thread.Sleep(6000);
-                    return new MockAsyncPageable(_kvCollection);
+
+                    // Return a copy of our local collection.
+                    var copy = new List<ConfigurationSetting>();
+                    foreach (var setting in serviceCollection)
+                    {
+                        copy.Add(TestHelpers.CloneSetting(setting));
+                    };
+
+                    return new MockAsyncPageable(copy);
                 });
 
             mockClient.Setup(c => c.GetAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -495,7 +505,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     requestCount++;
                     Thread.Sleep(6000);
-                    return Response.FromValue(mockResponse.Object, kvCollection.First());
+                    return Response.FromValue(mockResponse.Object, serviceCollection.First());
                 });
 
             var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
@@ -513,7 +523,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal(1, requestCount);
 
-            kvCollection.First().Value = "newValue";
+            serviceCollection.First().Value = "newValue";
 
             // Simulate simultaneous refresh calls with expired cache from multiple threads
             var task1 = Task.Run(() => WaitAndRefresh(options, 1500));
@@ -525,49 +535,59 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(2, requestCount);
         }
 
-        //[Fact]
-        //public void RefreshMiddlewareTests_MiddlewareConstructorParsesIConfigurationRefresher()
-        //{
-        //    // Arrange
-        //    var delegateMock = new Mock<RequestDelegate>();
-        //    var configuration = new ConfigurationBuilder()
-        //        .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-        //        {
-        //            Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
-        //        })
-        //        .Build();
+        [Fact]
+        public void RefreshMiddlewareTests_MiddlewareConstructorParsesIConfigurationRefresher()
+        {
+            // Arrange
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollection));
 
-        //    // Act
-        //    var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var delegateMock = new Mock<RequestDelegate>();
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = mockClient.Object
+                })
+                .Build();
 
-        //    // Assert
-        //    Assert.NotNull(middleware.Refreshers);
-        //    Assert.Equal(1, middleware.Refreshers.Count);
-        //}
+            // Act
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
 
-        //[Fact]
-        //public void RefreshMiddlewareTests_MiddlewareConstructorParsesMultipleIConfigurationRefreshers()
-        //{
-        //    // Arrange
-        //    var delegateMock = new Mock<RequestDelegate>();
-        //    var configuration = new ConfigurationBuilder()
-        //        .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-        //        {
-        //            Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.First(), _kvCollection))
-        //        })
-        //        .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-        //        {
-        //            Client = new AzconfigClient(_connectionString, new MockedGetKeyValueRequest(_kvCollection.Last(), _kvCollection))
-        //        })
-        //        .Build();
+            // Assert
+            Assert.NotNull(middleware.Refreshers);
+            Assert.Equal(1, middleware.Refreshers.Count);
+        }
 
-        //    // Act
-        //    var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+        [Fact]
+        public void RefreshMiddlewareTests_MiddlewareConstructorParsesMultipleIConfigurationRefreshers()
+        {
+            // Arrange
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollection));
 
-        //    // Assert
-        //    Assert.NotNull(middleware.Refreshers);
-        //    Assert.Equal(2, middleware.Refreshers.Count);
-        //}
+            var delegateMock = new Mock<RequestDelegate>();
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = mockClient.Object
+                })
+                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                {
+                    Client = mockClient.Object
+                })
+                .Build();
+
+            // Act
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+
+            // Assert
+            Assert.NotNull(middleware.Refreshers);
+            Assert.Equal(2, middleware.Refreshers.Count);
+        }
 
         [Fact]
         public void RefreshMiddlewareTests_InvalidOperationExceptionOnIConfigurationCastFailure()
