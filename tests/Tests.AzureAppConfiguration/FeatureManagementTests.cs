@@ -116,17 +116,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(() =>
-                {
-                    // Return a copy of our local collection.
-                    var copy = new List<ConfigurationSetting>();
-                    foreach (var setting in featureFlags)
-                    {
-                        copy.Add(TestHelpers.CloneSetting(setting));
-                    };
-
-                    return new MockAsyncPageable(copy);
-                });
+                .Returns(new MockAsyncPageable(featureFlags));
 
             var testClient = mockClient.Object;
             var builder = new ConfigurationBuilder();

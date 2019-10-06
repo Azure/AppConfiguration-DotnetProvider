@@ -209,7 +209,6 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    // Return a copy of our local collection.
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in serviceCollection)
                     {
@@ -280,7 +279,6 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    // Return a copy of our local collection.
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in serviceCollection)
                     {
@@ -351,7 +349,6 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    // Return a copy of our local collection.
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in serviceCollection)
                     {
@@ -421,7 +418,6 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    // Return a copy of our local collection.
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in serviceCollection)
                     {
@@ -475,8 +471,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
         {
-            throw new NotImplementedException();
-
             var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
 
             var requestCount = 0;
@@ -490,7 +484,6 @@ namespace Tests.AzureAppConfiguration
                     requestCount++;
                     Thread.Sleep(6000);
 
-                    // Return a copy of our local collection.
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in serviceCollection)
                     {
@@ -500,13 +493,19 @@ namespace Tests.AzureAppConfiguration
                     return new MockAsyncPageable(copy);
                 });
 
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
+            {
+                requestCount++;
+                Thread.Sleep(6000);
+
+                var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(response, newSetting);
+            }
+
             mockClient.Setup(c => c.GetAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() =>
-                {
-                    requestCount++;
-                    Thread.Sleep(6000);
-                    return Response.FromValue(mockResponse.Object, serviceCollection.First());
-                });
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
             var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
 
