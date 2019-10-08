@@ -1,23 +1,23 @@
 ﻿using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-    using Newtonsoft.Json;
-    using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Net;
-    using System.Net.Http;
-    using System.Security;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
     {

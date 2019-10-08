@@ -1,16 +1,15 @@
 ﻿using Azure.Data.AppConfiguration;
+using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+using Microsoft.Azure.KeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
-    using Microsoft.Azure.KeyVault;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-
     /// <summary>
     /// Options used to configure the behavior of an Azure App Configuration provider.
     /// </summary>
