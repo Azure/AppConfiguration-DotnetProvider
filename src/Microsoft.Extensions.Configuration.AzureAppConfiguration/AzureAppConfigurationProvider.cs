@@ -1,4 +1,5 @@
 ﻿using Azure;
+using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -107,6 +108,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
+            clientOptions.Retry.Mode = RetryMode.Exponential;
 
             clientOptions.Diagnostics.ApplicationId = TracingUtils.GenerateUserAgent();
 
@@ -168,7 +170,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
                 }
             }
-            catch (Exception exception) when (// TODO: exception is Azure.RequestFailedException ||
+            catch (Exception exception) when (exception.InnerException is RequestFailedException ||
                                               exception.InnerException is HttpRequestException ||
                                               exception.InnerException is OperationCanceledException ||
                                               exception.InnerException is UnauthorizedAccessException)
@@ -283,7 +285,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
                         }
-                        catch (RequestFailedException e) when (e.Status == 404)
+                        catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                         {
                             watchedKv = new ConfigurationSetting(watchedKey, null, watchedLabel);
                         }
