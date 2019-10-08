@@ -3,6 +3,7 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             try
             {
                 Response<ConfigurationSetting> response = await client.GetAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-                if (response.GetRawResponse().Status == 200)
+                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
                 {
                     return new KeyValueChange
                     {
@@ -36,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     };
                 }
             }
-            catch (RequestFailedException e) when (e.Status == 404 && setting.ETag != default)
+            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
             {
                 return new KeyValueChange
                 {
@@ -145,7 +146,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
                 while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                 {
-                    if (!eTagMap.TryGetValue(enumerator.Current.Key, out string etag) || !etag.Equals(enumerator.Current.ETag))
+                    if (!eTagMap.TryGetValue(enumerator.Current.Key, out string etag) || !etag.Equals(enumerator.Current.ETag.ToString()))
                     {
                         changes.Add(new KeyValueChange
                         {

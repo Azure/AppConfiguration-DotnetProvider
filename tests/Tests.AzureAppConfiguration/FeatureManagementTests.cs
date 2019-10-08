@@ -80,7 +80,7 @@ namespace Tests.AzureAppConfiguration
 
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
             var testClient = mockClient.Object;

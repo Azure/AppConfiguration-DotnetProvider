@@ -1,5 +1,5 @@
-﻿using System;
-using Azure.Data.AppConfiguration;
+﻿using Azure.Data.AppConfiguration;
+using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

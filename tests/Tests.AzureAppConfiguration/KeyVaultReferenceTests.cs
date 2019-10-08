@@ -205,7 +205,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector("*", LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             var builder = new ConfigurationBuilder();

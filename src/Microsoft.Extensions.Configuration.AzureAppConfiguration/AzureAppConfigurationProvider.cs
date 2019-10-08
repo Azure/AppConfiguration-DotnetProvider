@@ -13,6 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
+    using System.Net;
     using System.Net.Http;
     using System.Security;
     using System.Threading;
@@ -124,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (useDefaultQuery)
                 {
                     // Load all key-values with the null label.
-                    var selector = new SettingSelector("*", LabelFilter.Null);
+                    var selector = new SettingSelector(KeyFilter.Any, LabelFilter.Null);
                     AsyncPageable<ConfigurationSetting> collection = null;
 
                     await CallWithRequestTracing(async () =>
@@ -229,7 +230,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None)).ConfigureAwait(false);
                 }
-                catch (RequestFailedException e) when (e.Status == 404)
+                catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
                     watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
                 }
@@ -295,7 +296,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         catch (RequestFailedException e) when (e.Status == 404)
                         {
-                            watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                            watchedKv = new ConfigurationSetting(watchedKey, null, watchedLabel);
                         }
 
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
@@ -449,12 +450,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _settings[change.Key] = change.Current;
                 }
             }
-        }
-
-        private async Task CallWithRequestTracing(Action clientCall)
-        {
-            var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _hostType, clientCall).ConfigureAwait(false);
         }
 
         private async Task CallWithRequestTracing(Func<Task> clientCall)

@@ -17,7 +17,10 @@
             Configure();
 
             var cts = new CancellationTokenSource();
+
+#pragma warning disable CS4014 // use await
             Run(cts.Token);
+#pragma warning restore CS4014 // use await
 
             // Finish on key press
             Console.ReadKey();
@@ -70,7 +73,10 @@
             while (!token.IsCancellationRequested)
             {
                 // Trigger an async refresh for registered configuration settings without wait
+
+#pragma warning disable CS4014 // use await
                 _refresher.Refresh();
+#pragma warning restore CS4014 // use await
 
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();

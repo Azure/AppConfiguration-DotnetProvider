@@ -39,7 +39,9 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
         {
             foreach (var refresher in Refreshers)
             {
-                await refresher.Refresh();
+#pragma warning disable CS4014 // use await
+                refresher.Refresh();
+#pragma warning restore CS4014 // use await
             }
 
             // Call the next delegate/middleware in the pipeline
