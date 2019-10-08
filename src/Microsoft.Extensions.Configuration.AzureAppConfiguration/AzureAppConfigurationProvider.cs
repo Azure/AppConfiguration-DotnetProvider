@@ -126,17 +126,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     // Load all key-values with the null label.
                     var selector = new SettingSelector(KeyFilter.Any, LabelFilter.Null);
-                    AsyncPageable<ConfigurationSetting> collection = null;
 
                     await CallWithRequestTracing(async () =>
                     {
-                        collection = _client.GetSettingsAsync(selector);
-
-                        // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
-                        var enumerator = collection.GetAsyncEnumerator();
-                        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector))
                         {
-                            data[enumerator.Current.Key] = enumerator.Current;
+                            data[setting.Key] = setting;
                         }
                     }).ConfigureAwait(false);
                 }
@@ -161,17 +156,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     };
 
                     // Load all key-values with the null label.
-                    AsyncPageable<ConfigurationSetting> collection = null;
-
                     await CallWithRequestTracing(async () =>
                     {
-                        collection = _client.GetSettingsAsync(selector);
-
-                        // TODO: could use await foreach if support <LangVersion>preview<LangVersion>
-                        var enumerator = collection.GetAsyncEnumerator();
-                        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector))
                         {
-                            data[enumerator.Current.Key] = enumerator.Current;
+                            data[setting.Key] = setting;
                         }
                     }).ConfigureAwait(false);
 
