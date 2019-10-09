@@ -34,6 +34,7 @@
                 <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
                 <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
                 <dependency id="System.Interactive.Async" version="$(SystemInteractiveAsyncVersion)" exclude="Build,Analyzers" />
+                <dependency id="Azure.Data.AppConfiguration" version="$(AzureDataAppConfigurationVersion)" exclude="Build,Analyzers" />
 
                 <!-- 
                     The dependencies below are brought in by bundled binaries.
@@ -48,7 +49,6 @@
     </metadata>
     <files>
         <file src="./Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" target="lib/netstandard2.0/Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" />
-        <file src="./Azure.Data.AppConfiguration.dll" target="lib/netstandard2.0/Azure.Data.AppConfiguration.dll" />
         <file src="./Microsoft.Azure.AppConfiguration.ManagedIdentityConnector.dll" target="lib/netstandard2.0/Microsoft.Azure.AppConfiguration.ManagedIdentityConnector.dll" />
         <file src="./XMLComments/$(MSBuildProjectName).xml" target="lib/netstandard2.0/$(MSBuildProjectName).xml" />
     </files>
