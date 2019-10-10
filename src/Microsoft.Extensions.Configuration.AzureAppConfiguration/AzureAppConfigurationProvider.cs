@@ -131,7 +131,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector))
+                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector, CancellationToken.None))
                         {
                             data[setting.Key] = setting;
                         }
@@ -160,7 +160,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector))
+                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector, CancellationToken.None))
                         {
                             data[setting.Key] = setting;
                         }
