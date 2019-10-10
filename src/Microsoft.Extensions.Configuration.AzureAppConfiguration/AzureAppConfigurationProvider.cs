@@ -165,10 +165,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             data[setting.Key] = setting;
                         }
                     }).ConfigureAwait(false);
-
-                    // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                    await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
                 }
+
+                // Block current thread for the initial load of key-values registered for refresh that are not already loaded
+                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
             }
             catch (Exception exception) when (exception.InnerException is RequestFailedException ||
                                               exception.InnerException is HttpRequestException ||
