@@ -172,8 +172,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (Exception exception) when (exception.InnerException is RequestFailedException ||
                                               exception.InnerException is HttpRequestException ||
-                                              exception.InnerException is OperationCanceledException ||
-                                              exception.InnerException is UnauthorizedAccessException)
+                                              exception.InnerException is OperationCanceledException)
             {
                 if (_options.OfflineCache != null)
                 {
@@ -223,7 +222,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
-                    watchedKv = new ConfigurationSetting(watchedKey, null) { Label = watchedLabel };
+                    watchedKv = null;
                 }
 
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
@@ -287,7 +286,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                         {
-                            watchedKv = new ConfigurationSetting(watchedKey, null, watchedLabel);
+                            watchedKv = null;
                         }
 
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
