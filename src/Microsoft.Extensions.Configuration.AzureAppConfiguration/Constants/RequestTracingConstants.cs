@@ -11,5 +11,9 @@
         public const string RequestTypeKey = "RequestType";
 
         public const string HostTypeKey = "Host";
+
+        public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
+
+        public const string CorrelationContextHeader = "Correlation-Context";
     }
 }

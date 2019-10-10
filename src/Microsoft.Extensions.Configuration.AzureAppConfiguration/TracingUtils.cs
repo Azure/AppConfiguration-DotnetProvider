@@ -66,14 +66,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            var activity = new Activity("Azure.CustomDiagnosticHeaders");
+            var activity = new Activity(RequestTracingConstants.DiagnosticHeaderActivityName);
             activity.Start();
             try
             {
 
                 if (correlationContext.Count > 0)
                 {
-                    activity.AddTag("correlation-context", string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+                    activity.AddTag(RequestTracingConstants.CorrelationContextHeader, string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
                 }
 
                 await clientCall().ConfigureAwait(false);
