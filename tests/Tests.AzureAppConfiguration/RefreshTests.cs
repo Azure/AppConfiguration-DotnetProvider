@@ -52,8 +52,16 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
+            {
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
+            }
+
             mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
+            mockClient.Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
             var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
 
