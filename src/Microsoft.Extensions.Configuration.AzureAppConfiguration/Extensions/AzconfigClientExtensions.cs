@@ -102,26 +102,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Fields = SettingFields.ETag | SettingFields.Key
             };
 
-            // Fetch e-tags for prefixed key-values that can be used to detect changes
-            AsyncPageable<ConfigurationSetting> kvs = null;
-            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
-                () => kvs = client.GetSettingsAsync(selector)).ConfigureAwait(false);
-
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
 
-            // Check for any modifications/creations
-            var enumerator = kvs.GetAsyncEnumerator();
-            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
-            {
-                if (!eTagMap.TryGetValue(enumerator.Current.Key, out string etag) || !etag.Equals(enumerator.Current.ETag))
+            // Fetch e-tags for prefixed key-values that can be used to detect changes
+            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
+                async () =>
                 {
-                    hasKeyValueCollectionChanged = true;
-                    break;
-                }
+                    await foreach(ConfigurationSetting setting in client.GetSettingsAsync(selector))
+                    {
+                        if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
+                        {
+                            hasKeyValueCollectionChanged = true;
+                            break;
+                        }
 
-                eTagMap.Remove(enumerator.Current.Key);
-            }
+                        eTagMap.Remove(setting.Key);
+                    }
+                }).ConfigureAwait(false);
 
             // Check for any deletions
             if (eTagMap.Any())
@@ -138,27 +136,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
                 selector = new SettingSelector(keyFilter, labelFilter);
 
-                await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
-                    () => kvs = client.GetSettingsAsync(selector)).ConfigureAwait(false);
-
-                enumerator = kvs.GetAsyncEnumerator(CancellationToken.None);
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
-
-                while (await enumerator.MoveNextAsync().ConfigureAwait(false))
-                {
-                    if (!eTagMap.TryGetValue(enumerator.Current.Key, out string etag) || !etag.Equals(enumerator.Current.ETag.ToString()))
+                await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
+                    async () =>
                     {
-                        changes.Add(new KeyValueChange
+                        await foreach (ConfigurationSetting setting in client.GetSettingsAsync(selector))
                         {
-                            ChangeType = KeyValueChangeType.Modified,
-                            Key = enumerator.Current.Key,
-                            Label = options.Label.NormalizeNull(),
-                            Current = enumerator.Current
-                        });
-                    }
+                            if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
+                            {
+                                changes.Add(new KeyValueChange
+                                {
+                                    ChangeType = KeyValueChangeType.Modified,
+                                    Key = setting.Key,
+                                    Label = options.Label.NormalizeNull(),
+                                    Current = setting
+                                });
+                            }
 
-                    eTagMap.Remove(enumerator.Current.Key);
-                }
+                            eTagMap.Remove(setting.Key);
+                        }
+                    }).ConfigureAwait(false);
 
                 foreach (var kvp in eTagMap)
                 {

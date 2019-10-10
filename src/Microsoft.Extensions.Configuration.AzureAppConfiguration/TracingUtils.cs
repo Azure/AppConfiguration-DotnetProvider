@@ -67,9 +67,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             var activity = new Activity("Azure.CustomDiagnosticHeaders");
+            activity.Start();
             try
             {
-                activity.Start();
 
                 if (correlationContext.Count > 0)
                 {
