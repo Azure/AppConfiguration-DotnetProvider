@@ -37,15 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
 
-                ConfigurationClient client;
-                if ( options.Client != null)
-                {
-                    client = options.Client;
-                }
-                else
-                {
-                    client = ConfigurationClientFactory.CreateConfigurationClient(options.ConnectionString);
-                }
+                ConfigurationClient client = options.Client ?? ConfigurationClientFactory.CreateConfigurationClient(options.ConnectionString);
 
                 provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
