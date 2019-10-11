@@ -11,8 +11,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
     internal struct KeyValueChange
     {
-        public static readonly KeyValueChange NoChange = new KeyValueChange { ChangeType = KeyValueChangeType.None };
-
         public KeyValueChangeType ChangeType { get; set; }
 
         public string Key { get; set; }

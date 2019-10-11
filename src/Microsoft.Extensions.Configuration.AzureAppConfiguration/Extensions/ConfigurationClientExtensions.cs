@@ -48,7 +48,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 };
             }
 
-            return KeyValueChange.NoChange;
+            return new KeyValueChange
+            {
+                ChangeType = KeyValueChangeType.None,
+                Current = setting,
+                Key = setting.Key,
+                Label = setting.Label
+            };
         }
 
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options)
