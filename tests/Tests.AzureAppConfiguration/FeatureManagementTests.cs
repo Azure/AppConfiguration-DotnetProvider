@@ -195,7 +195,6 @@ namespace Tests.AzureAppConfiguration
             builder.AddAzureAppConfiguration(options);
             var config = builder.Build();
 
-            // TODO (Pavel): Can we get the request pre-escaped?
             MockRequest request = mockTransport.SingleRequest;
 
             Assert.Contains("/kv/?key=*&label=%00", Uri.EscapeUriString(request.Uri.PathAndQuery));

@@ -13,6 +13,7 @@
     <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-preview.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
     <PackageReference Include="Moq" Version="4.8.2" />
+    <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
     <PackageReference Include="xunit" Version="2.3.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
@@ -21,5 +22,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.AspNetCore\Microsoft.Azure.AppConfiguration.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Interactive.Async">
+      <HintPath></HintPath>
+      <Aliases>SystemInteractiveAsync</Aliases>
+    </Reference>
   </ItemGroup>
 </Project>
