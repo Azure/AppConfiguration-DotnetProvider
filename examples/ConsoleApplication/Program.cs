@@ -18,9 +18,7 @@
 
             var cts = new CancellationTokenSource();
 
-#pragma warning disable CS4014 // use await
-            Run(cts.Token);
-#pragma warning restore CS4014 // use await
+            _ = Run(cts.Token);
 
             // Finish on key press
             Console.ReadKey();
