@@ -35,10 +35,6 @@ namespace Azure.Core.Testing
             }
         }
 
-
-#if HAS_INTERNALS_VISIBLE_CORE
-        internal
-#endif
         protected override void AddHeader(string name, string value)
         {
             if (!_headers.TryGetValue(name, out List<string> values))
@@ -49,9 +45,6 @@ namespace Azure.Core.Testing
             values.Add(value);
         }
 
-#if HAS_INTERNALS_VISIBLE_CORE
-        internal
-#endif
         protected override bool TryGetHeader(string name, out string value)
         {
             if (_headers.TryGetValue(name, out List<string> values))
@@ -64,9 +57,6 @@ namespace Azure.Core.Testing
             return false;
         }
 
-#if HAS_INTERNALS_VISIBLE_CORE
-        internal
-#endif
         protected override bool TryGetHeaderValues(string name, out IEnumerable<string> values)
         {
             var result = _headers.TryGetValue(name, out List<string> valuesList);
@@ -74,25 +64,16 @@ namespace Azure.Core.Testing
             return result;
         }
 
-#if HAS_INTERNALS_VISIBLE_CORE
-        internal
-#endif
         protected override bool ContainsHeader(string name)
         {
             return TryGetHeaderValues(name, out _);
         }
 
-#if HAS_INTERNALS_VISIBLE_CORE
-        internal
-#endif
         protected override bool RemoveHeader(string name)
         {
             return _headers.Remove(name);
         }
 
-#if HAS_INTERNALS_VISIBLE_CORE
-        internal
-#endif
         protected override IEnumerable<HttpHeader> EnumerateHeaders() => _headers.Select(h => new HttpHeader(h.Key, JoinHeaderValue(h.Value)));
 
         private static string JoinHeaderValue(IEnumerable<string> values)

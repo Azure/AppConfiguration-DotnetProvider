@@ -73,10 +73,7 @@
             while (!token.IsCancellationRequested)
             {
                 // Trigger an async refresh for registered configuration settings without wait
-
-#pragma warning disable CS4014 // use await
-                _refresher.Refresh();
-#pragma warning restore CS4014 // use await
+                _ = _refresher.Refresh();
 
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();

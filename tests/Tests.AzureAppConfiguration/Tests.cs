@@ -1,20 +1,20 @@
+using Azure;
+using Azure.Core.Http;
+using Azure.Core.Testing;
+using Azure.Data.AppConfiguration;
+using Azure.Data.AppConfiguration.Tests;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+using Moq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using Xunit;
+
 namespace Tests.AzureAppConfiguration
 {
-    using Azure;
-    using Azure.Core.Http;
-    using Azure.Core.Testing;
-    using Azure.Data.AppConfiguration;
-    using Azure.Data.AppConfiguration.Tests;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
-    using Moq;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading;
-    using Xunit;
-
     public class Tests
     {
         string _connectionString = TestHelpers.CreateMockEndpointString();
