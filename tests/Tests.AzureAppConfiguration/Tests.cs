@@ -225,6 +225,35 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void TestSpecialCharacterEscaping()
+        {
+            var response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
+
+            var mockTransport = new MockTransport(response);
+
+            var options = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
+
+            var client = new ConfigurationClient(_connectionString, options);
+
+            // Test
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            {
+                Client = client
+            }.Use("!@#$%^&()-=", "!@#$%^&()-="));
+
+            var config = builder.Build();
+
+            MockRequest request = mockTransport.SingleRequest;
+
+            Assert.DoesNotContain("#", request.Uri.ToString());
+        }
+
+        [Fact]
         public void TestTurnOffRequestTracing()
         {
             var response = new MockResponse(200);
