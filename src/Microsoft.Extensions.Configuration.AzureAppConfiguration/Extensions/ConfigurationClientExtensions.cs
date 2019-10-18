@@ -103,10 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             var keyFilter = options.Prefix + "*";
             var labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
-            var selector = new SettingSelector(keyFilter, labelFilter)
-            {
-                Fields = SettingFields.ETag | SettingFields.Key
-            };
+            var selector = SelectorFactory.CreateSettingSelector(keyFilter, labelFilter, fields: SettingFields.ETag | SettingFields.Key);
 
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
@@ -140,7 +137,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 keyFilter = options.Prefix + "*";
                 labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
-                selector = new SettingSelector(keyFilter, labelFilter);
+                selector = SelectorFactory.CreateSettingSelector(keyFilter, labelFilter);
 
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
                 await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,

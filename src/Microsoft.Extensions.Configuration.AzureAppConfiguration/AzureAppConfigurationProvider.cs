@@ -127,7 +127,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (useDefaultQuery)
                 {
                     // Load all key-values with the null label.
-                    var selector = new SettingSelector(KeyFilter.Any, LabelFilter.Null);
+                    var selector = SelectorFactory.CreateSettingSelector(KeyFilter.Any, LabelFilter.Null);
 
                     await CallWithRequestTracing(async () =>
                     {
@@ -152,10 +152,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var selector = new SettingSelector(loadOption.KeyFilter, loadOption.LabelFilter)
-                    {
-                        AsOf = loadOption.PreferredDateTime
-                    };
+                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, asOf: loadOption.PreferredDateTime);
 
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
@@ -276,8 +273,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     else
                     {
                         // Load the key-value in case the previous load attempts had failed
-
-                        var options = new SettingSelector();
+                        var options = SelectorFactory.CreateSettingSelector();
                         options.Labels.Add(watchedLabel);
 
                         try
