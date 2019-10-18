@@ -14,8 +14,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             // Workaround for '#' issue in Azure.Data.AppConfiguration 1.0.0-preview.3.  
             // This will be removed when provider moves to 1.0.0-preview.4 where issue is fixed.
-            keyFilter = keyFilter.Replace("#", "%23");
-            labelFilter = labelFilter.Replace("#", "%23");
+            keyFilter = Uri.EscapeDataString(keyFilter);
+            labelFilter = Uri.EscapeDataString(labelFilter);
 
             return new SettingSelector(keyFilter, labelFilter)
             {
