@@ -58,7 +58,7 @@ namespace Tests.AzureAppConfiguration
                 return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
             mockClient.Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
@@ -486,7 +486,7 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
                     requestCount++;
@@ -548,7 +548,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
 
             var delegateMock = new Mock<RequestDelegate>();
@@ -573,7 +573,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
 
             var delegateMock = new Mock<RequestDelegate>();

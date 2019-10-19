@@ -76,11 +76,11 @@ namespace Tests.AzureAppConfiguration
         public void UsesFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            mockClient.Setup(c => c.GetSettingsAsync(new SettingSelector(KeyFilter.Any, LabelFilter.Null), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
             var testClient = mockClient.Object;
@@ -197,7 +197,7 @@ namespace Tests.AzureAppConfiguration
 
             MockRequest request = mockTransport.SingleRequest;
 
-            Assert.Contains("/kv/?key=*&label=%00", Uri.EscapeUriString(request.Uri.PathAndQuery));
+            Assert.Contains("/kv/?key=%252A&label=%2500", Uri.EscapeUriString(request.Uri.PathAndQuery));
             Assert.DoesNotContain(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker), request.Uri.PathAndQuery);
         }
 
@@ -230,8 +230,8 @@ namespace Tests.AzureAppConfiguration
             builder.AddAzureAppConfiguration(options);
             var config = builder.Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => Uri.EscapeUriString(r.Uri.PathAndQuery).Contains("/kv/?key=*&label=%00"));
-            bool queriedFeatureFlags = mockTransport.Requests.Any(r => Uri.EscapeDataString(r.Uri.PathAndQuery).Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
+            bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
             Assert.True(queriedFeatureFlags);
