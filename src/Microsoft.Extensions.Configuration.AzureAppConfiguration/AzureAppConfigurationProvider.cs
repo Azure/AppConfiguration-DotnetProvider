@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -14,6 +13,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security;
+using SystemJson = System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -173,7 +173,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.OfflineCache != null)
                 {
-                    data = JsonConvert.DeserializeObject<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    data = SystemJson.JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options));
 
                     if (data != null)
                     {
@@ -194,7 +194,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
+                _options.OfflineCache.Export(_options, SystemJson.JsonSerializer.Serialize(data));
             }
         }
 
