@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Azure.Data.AppConfiguration;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppConfiguration.Azconfig;
-using Newtonsoft.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -12,21 +12,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(IKeyValue keyValue, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
-            FeatureFlag featureFlag = null;
+            FeatureFlag featureFlag;
             try
             {
-                 featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(keyValue.Value, s_SerializationSettings);
+                 featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(setting.Value, s_SerializationSettings);
             }
             catch (JsonReaderException e)
             {
-                throw new FormatException(keyValue.Key, e);
+                throw new FormatException(setting.Key, e);
             }
 
             var keyValues = new List<KeyValuePair<string, string>>();
             
-
             if (featureFlag.Enabled)
             {
                 //if (featureFlag.Conditions?.ClientFilters == null)
@@ -69,12 +68,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
         }
 
-        public bool CanProcess(IKeyValue kv)
+        public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = kv?.ContentType?.Split(';')[0].Trim();
+            string contentType = setting?.ContentType?.Split(';')[0].Trim();
 
             return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                                 kv.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+                                 setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
         }
     }
 }

@@ -4,7 +4,6 @@ using Microsoft.Azure.Services.AppAuthentication;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppConfiguration.Azconfig;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {

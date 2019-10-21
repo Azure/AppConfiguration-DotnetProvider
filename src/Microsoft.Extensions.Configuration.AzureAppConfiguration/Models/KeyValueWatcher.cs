@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
-    class KeyValueWatcher
+    internal class KeyValueWatcher
     {
         /// <summary>
         /// Key of the key-value to be watched.

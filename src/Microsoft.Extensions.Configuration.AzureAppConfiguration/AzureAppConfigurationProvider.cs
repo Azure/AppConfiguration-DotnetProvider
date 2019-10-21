@@ -1,20 +1,24 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+﻿using Azure;
+using Azure.Core.Pipeline;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security;
+using SystemJson = System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    using Microsoft.Azure.AppConfiguration.Azconfig;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-    using Newtonsoft.Json;
-    using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Net.Http;
-    using System.Security;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
     {
@@ -26,27 +30,23 @@
         private const int RetryWaitMinutes = 1;
 
         private readonly HostType _hostType;
-        private readonly AzconfigClient _client;
+        private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
-        private ConcurrentDictionary<string, IKeyValue> _settings;
+        private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
-        public AzureAppConfigurationProvider(AzconfigClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            // Initialize retry options.
-            _client.RetryOptions.MaxRetries = MaxRetries;
-            _client.RetryOptions.MaxRetryWaitTime = TimeSpan.FromMinutes(RetryWaitMinutes);
-
             string requestTracingDisabled = null;
             try
             {
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
-                _hostType =  Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
+                _hostType = Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
                     ? HostType.AzureFunction
                     : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
                         ? HostType.AzureWebApp
@@ -103,9 +103,21 @@
             await RefreshKeyValueCollections().ConfigureAwait(false);
         }
 
+        internal static ConfigurationClientOptions GetClientOptions()
+        {
+            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
+            clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
+            clientOptions.Retry.Mode = RetryMode.Exponential;
+
+            clientOptions.Diagnostics.ApplicationId = TracingUtils.GenerateUserAgent();
+
+            return clientOptions;
+        }
+
         private async Task LoadAll()
         {
-            IDictionary<string, IKeyValue> data = new Dictionary<string, IKeyValue>(StringComparer.OrdinalIgnoreCase);
+            IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
@@ -114,53 +126,54 @@
 
                 if (useDefaultQuery)
                 {
-                    var options = new QueryKeyValueCollectionOptions
-                    {
-                        KeyFilter = KeyFilter.Any,
-                        LabelFilter = LabelFilter.Null
-                    };
-                    
-                    ConfigureRequestTracingOptions(options);
-
-                    //
                     // Load all key-values with the null label.
-                    await _client.GetKeyValues(options).ForEachAsync(kv => { data[kv.Key] = kv; }).ConfigureAwait(false);
+                    var selector = SelectorFactory.CreateSettingSelector(KeyFilter.Any, LabelFilter.Null);
+
+                    await CallWithRequestTracing(async () =>
+                    {
+                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector, CancellationToken.None))
+                        {
+                            data[setting.Key] = setting;
+                        }
+                    }).ConfigureAwait(false);
                 }
 
                 foreach (var loadOption in _options.KeyValueSelectors)
                 {
                     if ((useDefaultQuery && LabelFilter.Null.Equals(loadOption.LabelFilter)) ||
-                        _options.KeyValueSelectors.Any(s => s != loadOption && 
-                           string.Equals(s.KeyFilter, KeyFilter.Any) && 
-                           string.Equals(s.LabelFilter, loadOption.LabelFilter) && 
+                        _options.KeyValueSelectors.Any(s => s != loadOption &&
+                           string.Equals(s.KeyFilter, KeyFilter.Any) &&
+                           string.Equals(s.LabelFilter, loadOption.LabelFilter) &&
                            Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, loadOption.PreferredDateTime)))
                     {
                         // This selection was already encapsulated by a wildcard query
+                        // Or would select kvs obtained by a different selector
                         // We skip it to prevent unnecessary requests
                         continue;
                     }
 
-                    var queryKeyValueCollectionOptions = new QueryKeyValueCollectionOptions
-                    {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter,
-                        PreferredDateTime = loadOption.PreferredDateTime
-                    };
+                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, asOf: loadOption.PreferredDateTime);
 
-                    ConfigureRequestTracingOptions(queryKeyValueCollectionOptions);
-                    await _client.GetKeyValues(queryKeyValueCollectionOptions).ForEachAsync(kv => data[kv.Key] = kv).ConfigureAwait(false);
+                    // Load all key-values with the null label.
+                    await CallWithRequestTracing(async () =>
+                    {
+                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector, CancellationToken.None))
+                        {
+                            data[setting.Key] = setting;
+                        }
+                    }).ConfigureAwait(false);
                 }
 
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                 await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
             }
-            catch (Exception exception) when (exception.InnerException is HttpRequestException ||
-                                              exception.InnerException is OperationCanceledException ||
-                                              exception.InnerException is UnauthorizedAccessException)
+            catch (Exception exception) when (exception.InnerException is RequestFailedException ||
+                                              exception.InnerException is HttpRequestException ||
+                                              exception.InnerException is OperationCanceledException)
             {
                 if (_options.OfflineCache != null)
                 {
-                    data = JsonConvert.DeserializeObject<IDictionary<string, IKeyValue>>(_options.OfflineCache.Import(_options), new KeyValueConverter());
+                    data = SystemJson.JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options));
 
                     if (data != null)
                     {
@@ -181,11 +194,11 @@
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.Export(_options, JsonConvert.SerializeObject(data));
+                _options.OfflineCache.Export(_options, SystemJson.JsonSerializer.Serialize(data));
             }
         }
 
-        private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, IKeyValue> data)
+        private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, ConfigurationSetting> data)
         {
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -198,11 +211,17 @@
                     continue;
                 }
 
-                var options = new QueryKeyValueOptions { Label = watchedLabel };
-                ConfigureRequestTracingOptions(options);
-
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                IKeyValue watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false);
+                ConfigurationSetting watchedKv = null;
+                try
+                {
+                    await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None)).ConfigureAwait(false);
+                }
+                catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
+                {
+                    watchedKv = null;
+                }
+
                 changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                 // If the key-value was found, store it for updating the settings
@@ -232,19 +251,20 @@
                 try
                 {
                     bool hasChanged = false;
-                    IKeyValue watchedKv = null;
+                    ConfigurationSetting watchedKv = null;
 
                     if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
                     {
                         watchedKv = _settings[watchedKey];
-                        var options = _requestTracingEnabled ? new RequestOptionsBase() : null;
-                        options.ConfigureRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType);
 
-                        KeyValueChange keyValueChange = await _client.GetKeyValueChange(watchedKv, options, CancellationToken.None).ConfigureAwait(false);
+                        KeyValueChange keyValueChange = default;
+                        await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType,
+                            async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
+
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         // Check if a change has been detected in the key-value registered for refresh
-                        if (keyValueChange != null)
+                        if (keyValueChange.ChangeType != KeyValueChangeType.None)
                         {
                             ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
                             hasChanged = true;
@@ -253,12 +273,18 @@
                     else
                     {
                         // Load the key-value in case the previous load attempts had failed
+                        var options = SelectorFactory.CreateSettingSelector();
+                        options.Labels.Add(watchedLabel);
 
-                        var options = new QueryKeyValueOptions { Label = watchedLabel };
-                        ConfigureRequestTracingOptions(options);
+                        try
+                        {
+                            await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
+                        }
+                        catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
+                        {
+                            watchedKv = null;
+                        }
 
-                        // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label
-                        watchedKv = await _client.GetKeyValue(watchedKey, options, CancellationToken.None).ConfigureAwait(false);
                         changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
 
                         if (watchedKv != null)
@@ -311,7 +337,7 @@
 
                 try
                 {
-                    IEnumerable<IKeyValue> currentKeyValues = _settings.Values.Where(kv =>
+                    IEnumerable<ConfigurationSetting> currentKeyValues = _settings.Values.Where(kv =>
                     {
                         return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
                     });
@@ -340,16 +366,16 @@
             }
         }
 
-        private async Task SetData(IDictionary<string, IKeyValue> data, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task SetData(IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default(CancellationToken))
         {
             // Update cache of settings
-            this._settings = data as ConcurrentDictionary<string, IKeyValue> ?? 
-                new ConcurrentDictionary<string, IKeyValue>(data, StringComparer.OrdinalIgnoreCase);
+            this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ??
+                new ConcurrentDictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
 
             // Set the application data for the configuration provider
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (KeyValuePair<string, IKeyValue> kvp in data)
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 foreach (KeyValuePair<string, string> kv in await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false))
                 {
@@ -368,23 +394,23 @@
             }
 
             Data = applicationData;
-            
+
             // Notify that the configuration has been updated
             OnReload();
         }
-        
-        private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(IKeyValue keyValue, CancellationToken cancellationToken)
+
+        private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             List<KeyValuePair<string, string>> keyValues = null;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                if (!adapter.CanProcess(keyValue))
+                if (!adapter.CanProcess(setting))
                 {
                     continue;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(keyValue, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {
@@ -394,7 +420,7 @@
                 }
             }
 
-            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(keyValue.Key, keyValue.Value), 1);
+            return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(setting.Key, setting.Value), 1);
         }
 
         private void ProcessChanges(IEnumerable<KeyValueChange> changes)
@@ -403,7 +429,7 @@
             {
                 if (change.ChangeType == KeyValueChangeType.Deleted)
                 {
-                    _settings.TryRemove(change.Key, out IKeyValue removed);
+                    _settings.TryRemove(change.Key, out ConfigurationSetting removed);
                 }
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
@@ -412,10 +438,10 @@
             }
         }
 
-        private void ConfigureRequestTracingOptions(IRequestOptions options)
+        private async Task CallWithRequestTracing(Func<Task> clientCall)
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            options.ConfigureRequestTracing(_requestTracingEnabled, requestType, _hostType);
+            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _hostType, clientCall).ConfigureAwait(false);
         }
     }
 }

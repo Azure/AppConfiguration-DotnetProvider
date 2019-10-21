@@ -1,14 +1,14 @@
-﻿using System;
-using Microsoft.Azure.AppConfiguration.Azconfig;
+﻿using Azure.Data.AppConfiguration;
 using Newtonsoft.Json.Converters;
+using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class KeyValueConverter : CustomCreationConverter<IKeyValue>
+    internal class KeyValueConverter : CustomCreationConverter<ConfigurationSetting>
     {
-        public override IKeyValue Create(Type _)
+        public override ConfigurationSetting Create(Type _)
         {
-            return new KeyValue(null);
+            return new ConfigurationSetting(null, null);
         }
     }
 }

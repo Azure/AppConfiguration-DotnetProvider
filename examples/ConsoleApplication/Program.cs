@@ -17,7 +17,8 @@
             Configure();
 
             var cts = new CancellationTokenSource();
-            Run(cts.Token);
+
+            _ = Run(cts.Token);
 
             // Finish on key press
             Console.ReadKey();
@@ -70,7 +71,7 @@
             while (!token.IsCancellationRequested)
             {
                 // Trigger an async refresh for registered configuration settings without wait
-                _refresher.Refresh();
+                _ = _refresher.Refresh();
 
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();

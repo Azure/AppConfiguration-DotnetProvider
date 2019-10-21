@@ -1,7 +1,4 @@
 ﻿using System;
-using Microsoft.Azure.AppConfiguration.Azconfig;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

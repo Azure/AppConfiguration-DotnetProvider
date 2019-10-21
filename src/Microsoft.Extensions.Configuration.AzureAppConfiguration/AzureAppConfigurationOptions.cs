@@ -1,15 +1,15 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
-{
-    using Microsoft.Azure.AppConfiguration.Azconfig;
-    using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
-    using Microsoft.Azure.KeyVault;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
+﻿using Azure.Data.AppConfiguration;
+using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+using Microsoft.Azure.KeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+{
     /// <summary>
     /// Options used to configure the behavior of an Azure App Configuration provider.
     /// </summary>
@@ -64,7 +64,7 @@
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
-        internal AzconfigClient Client { get; set; }
+        internal ConfigurationClient Client { get; set; }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -210,10 +210,8 @@
                 throw new ArgumentException(nameof(endpoint));
             }
 
-            Client = AzconfigClientFactory.CreateClient(uri, new AzconfigClientFactoryOptions()
-            {
-                Permissions = Permissions.Read
-            }).ConfigureAwait(false).GetAwaiter().GetResult();
+            var connectionString = ManagedIdentityConnector.GetConnectionString(uri, Permissions.Read).ConfigureAwait(false).GetAwaiter().GetResult();
+            Client = ConfigurationClientFactory.CreateConfigurationClient(connectionString);
 
             return this;
         }
@@ -239,12 +237,12 @@
         /// <param name="configure">>A callback used to configure Azure App Configuration refresh options.</param>
         public AzureAppConfigurationOptions ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> configure)
         {
-            var options = new AzureAppConfigurationRefreshOptions();
-            configure?.Invoke(options);
+            var refreshOptions = new AzureAppConfigurationRefreshOptions();
+            configure?.Invoke(refreshOptions);
 
-            foreach (var item in options.RefreshRegistrations)
+            foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.Value.CacheExpirationTime = options.CacheExpirationTime;
+                item.Value.CacheExpirationTime = refreshOptions.CacheExpirationTime;
                 _changeWatchers[item.Key] = item.Value;
             }
 

@@ -3,6 +3,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>8.0</LangVersion>
     <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications.</Description>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
@@ -10,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.AzconfigClient" Version="$(MicrosoftAzconfigClientVersion)" />
+    <PackageReference Include="Azure.Data.AppConfiguration" Version="$(AzureDataAppConfigurationVersion)" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="$(MicrosoftAzureKeyVaultVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
@@ -23,8 +24,7 @@
       This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
       This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
     -->
-    <MicrosoftAspNetCoreHttpExtensionsVersion>2.1.1</MicrosoftAspNetCoreHttpExtensionsVersion>
-    <MicrosoftAzconfigClientVersion>1.0.0-preview-009440001-1345</MicrosoftAzconfigClientVersion>
+    <AzureDataAppConfigurationVersion>1.0.0-preview.3</AzureDataAppConfigurationVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>1.0.0-preview-010040004-40</MicrosoftAzconfigManagedIdentityConnectorVersion>
     <MicrosoftAzureKeyVaultVersion>3.0.3</MicrosoftAzureKeyVaultVersion>
     <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
