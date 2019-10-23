@@ -1,5 +1,5 @@
-﻿using System.Text.Json;
-using Azure.Core;
+﻿using Azure.Core;
+using System.Text.Json;
 
 namespace Azure.Data.AppConfiguration.Tests
 {

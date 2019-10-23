@@ -73,7 +73,7 @@ namespace Tests.AzureAppConfiguration
         public async override IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
 #pragma warning restore 1998
         {
-            yield return new Page<ConfigurationSetting>(_collection, null, new Mock<Response>().Object);
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new Mock<Response>().Object);
 
         }
     }
@@ -89,7 +89,7 @@ namespace Tests.AzureAppConfiguration
 
         public override IEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
         {
-            yield return new Page<ConfigurationSetting>(_collection, null, new Mock<Response>().Object);
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new Mock<Response>().Object);
         }
     }
 }

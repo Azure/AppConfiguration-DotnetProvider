@@ -1,5 +1,4 @@
 ﻿using Azure;
-using Azure.Core.Http;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;

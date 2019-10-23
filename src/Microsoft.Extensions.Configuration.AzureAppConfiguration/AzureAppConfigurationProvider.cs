@@ -1,5 +1,5 @@
 ﻿using Azure;
-using Azure.Core.Pipeline;
+using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -13,9 +13,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security;
-using SystemJson = System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using SystemJson = System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

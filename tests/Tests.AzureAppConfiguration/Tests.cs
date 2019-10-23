@@ -1,5 +1,4 @@
 using Azure;
-using Azure.Core.Http;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;

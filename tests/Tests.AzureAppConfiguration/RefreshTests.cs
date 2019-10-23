@@ -1,8 +1,6 @@
 ﻿using Azure;
-using Azure.Core.Http;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
-using Azure.Data.AppConfiguration.Tests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration;

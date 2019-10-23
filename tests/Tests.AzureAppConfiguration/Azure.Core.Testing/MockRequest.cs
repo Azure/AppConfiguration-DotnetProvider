@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Azure.Core.Http;
-using Azure.Core.Pipeline;
 
 namespace Azure.Core.Testing
 {
@@ -17,7 +15,7 @@ namespace Azure.Core.Testing
 
         public bool IsDisposed { get; private set; }
 
-        public override HttpPipelineRequestContent Content
+        public override RequestContent Content
         {
             get { return base.Content; }
             set
