@@ -1,4 +1,5 @@
 using Azure;
+using Azure.Core;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
@@ -221,6 +222,39 @@ namespace Tests.AzureAppConfiguration
             Assert.True(request.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> correlationHeader));
             Assert.NotNull(correlationHeader.First());
             Assert.Contains(Enum.GetName(typeof(RequestType), RequestType.Startup), correlationHeader.First(), StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        [Fact]
+        public void TestUserAgentHeader()
+        {
+            var response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
+
+            var mockTransport = new MockTransport(response);
+
+            var options = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
+            options.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
+
+            var client = new ConfigurationClient(_connectionString, options);
+
+            // Test
+            var builder = new ConfigurationBuilder();
+            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
+            {
+                Client = client
+            }.Use("*", null));
+
+            var config = builder.Build();
+
+            MockRequest request = mockTransport.SingleRequest;
+
+            string appUserAgent = TracingUtils.GenerateUserAgent();
+            Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
+            Assert.Contains(appUserAgent, userAgentHeader);
+            Assert.NotEqual(appUserAgent.Length, userAgentHeader.Length);
         }
 
         [Fact]
