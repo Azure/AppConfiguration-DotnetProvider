@@ -109,8 +109,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
             clientOptions.Retry.Mode = RetryMode.Exponential;
-
-            clientOptions.Diagnostics.ApplicationId = TracingUtils.GenerateUserAgent();
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
         }
