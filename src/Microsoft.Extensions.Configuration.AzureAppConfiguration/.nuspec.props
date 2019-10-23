@@ -47,6 +47,7 @@
         </dependencies>
     </metadata>
     <files>
+        <file src="./Microsoft.Azure.AppConfiguration.ManagedIdentityConnector.dll" target="lib/netstandard2.0/Microsoft.Azure.AppConfiguration.ManagedIdentityConnector.dll" />
         <file src="./Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" target="lib/netstandard2.0/Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" />
         <file src="./XMLComments/$(MSBuildProjectName).xml" target="lib/netstandard2.0/$(MSBuildProjectName).xml" />
     </files>
