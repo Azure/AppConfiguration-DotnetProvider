@@ -11,9 +11,9 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-preview.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
     <PackageReference Include="Moq" Version="4.8.2" />
-    <PackageReference Include="System.Interactive.Async" Version="$(SystemInteractiveAsyncVersion)" />
     <PackageReference Include="xunit" Version="2.3.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />

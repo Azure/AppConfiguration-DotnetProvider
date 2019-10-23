@@ -33,7 +33,6 @@
                 <dependency id="Microsoft.Azure.KeyVault" version="$(MicrosoftAzureKeyVaultVersion)" exclude="Build,Analyzers" />
                 <dependency id="Microsoft.Extensions.Configuration" version="$(MicrosoftExtensionsConfigurationVersion)" exclude="Build,Analyzers" />
                 <dependency id="Newtonsoft.Json" version="$(NewtonsoftJsonVersion)" exclude="Build,Analyzers" />
-                <dependency id="System.Interactive.Async" version="$(SystemInteractiveAsyncVersion)" exclude="Build,Analyzers" />
 
                 <!-- 
                     The dependencies below are brought in by bundled binaries.
@@ -42,13 +41,14 @@
                 <!-- MSI Connector dependencies -->
                 <dependency id="Microsoft.Azure.Management.ResourceManager" version="2.0.0-preview" exclude="Build,Analyzers" />
                 <dependency id="Microsoft.Azure.Services.AppAuthentication" version="1.0.3" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.Net.Http.Headers" version="1.0.4" exclude="Build,Analyzers" />
 
             </group>
         </dependencies>
     </metadata>
     <files>
-        <file src="./Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" target="lib/netstandard2.0/Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" />
         <file src="./Microsoft.Azure.AppConfiguration.ManagedIdentityConnector.dll" target="lib/netstandard2.0/Microsoft.Azure.AppConfiguration.ManagedIdentityConnector.dll" />
+        <file src="./Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" target="lib/netstandard2.0/Microsoft.Extensions.Configuration.AzureAppConfiguration.dll" />
         <file src="./XMLComments/$(MSBuildProjectName).xml" target="lib/netstandard2.0/$(MSBuildProjectName).xml" />
     </files>
 </package>
