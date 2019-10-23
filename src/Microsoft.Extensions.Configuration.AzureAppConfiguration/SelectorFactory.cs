@@ -12,11 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static SettingSelector CreateSettingSelector(string keyFilter, string labelFilter, DateTimeOffset? asOf = default, SettingFields fields = SettingFields.All)
         {
-            // Workaround for '#' issue in Azure.Data.AppConfiguration 1.0.0-preview.3.  
-            // This will be removed when provider moves to 1.0.0-preview.4 where issue is fixed.
-            keyFilter = Uri.EscapeDataString(keyFilter);
-            labelFilter = Uri.EscapeDataString(labelFilter);
-
             return new SettingSelector(keyFilter, labelFilter)
             {
                 AsOf = asOf,
