@@ -1,6 +1,7 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using System;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration
 {
     /// <summary>
     /// This type provides helper methods to make common use cases for Azure App Configuration easy.

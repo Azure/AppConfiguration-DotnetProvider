@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration
 {
     /// <summary>
     /// Options used to configure the refresh behavior of an Azure App Configuration provider.
