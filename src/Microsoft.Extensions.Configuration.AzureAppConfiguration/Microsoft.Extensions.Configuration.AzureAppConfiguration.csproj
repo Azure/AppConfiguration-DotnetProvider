@@ -8,6 +8,8 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
+
+    <!-- Copy NuGet package reference assemblies to build output. Can be removed once the MsiConnector assembly no longer needs to be packaged inside the configuration provider package. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
