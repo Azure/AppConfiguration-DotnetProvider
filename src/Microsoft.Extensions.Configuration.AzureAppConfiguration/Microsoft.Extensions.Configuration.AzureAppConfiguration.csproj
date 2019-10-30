@@ -8,6 +8,9 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
+
+    <!-- Copy NuGet package reference assemblies to build output. Can be removed once the MsiConnector assembly no longer needs to be packaged inside the configuration provider package. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -46,7 +49,7 @@
   </PropertyGroup>
 
   <Target Name="PrepublishScript" BeforeTargets="PrepareForPublish">
-    <Copy SourceFiles="$(DocumentationFile)" DestinationFolder="$(PublishDir)\XMLComments" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(DocumentationFile)" DestinationFolder="$(OutDir)\XMLComments" SkipUnchangedFiles="false" />
   </Target>
 
 </Project>
