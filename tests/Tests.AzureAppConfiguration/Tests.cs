@@ -251,7 +251,8 @@ namespace Tests.AzureAppConfiguration
 
             MockRequest request = mockTransport.SingleRequest;
 
-            string appUserAgent = TracingUtils.GenerateUserAgent();
+            string appUserAgent = TracingUtils.GenerateUserAgent("SdkUserAgent");
+            appUserAgent = appUserAgent.Replace("SdkUserAgent", "");
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
             Assert.Contains(appUserAgent, userAgentHeader);
             Assert.NotEqual(appUserAgent.Length, userAgentHeader.Length);
