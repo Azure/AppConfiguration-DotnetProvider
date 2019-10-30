@@ -1,16 +1,14 @@
 ﻿using Azure.Data.AppConfiguration;
 using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
 using Microsoft.Azure.KeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Microsoft.Extensions.Configuration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
     /// Options used to configure the behavior of an Azure App Configuration provider.
@@ -125,7 +123,7 @@ namespace Microsoft.Extensions.Configuration
             if (options.CacheExpirationTime < MinimumFeatureFlagsCacheExpiration)
             {
                 throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationTime), options.CacheExpirationTime.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpiration.TotalMilliseconds));
+                    string.Format(Constants.ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpiration.TotalMilliseconds));
             }
 
             if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
