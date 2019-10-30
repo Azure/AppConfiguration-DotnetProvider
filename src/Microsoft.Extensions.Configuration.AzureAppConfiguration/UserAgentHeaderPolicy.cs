@@ -21,7 +21,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline, bool async)
         {
-            string providerUserAgent = TracingUtils.GenerateUserAgent();
             string headerValue = message.Request.Headers.TryGetValue(RequestTracingConstants.UserAgentHeader, out string sdkUserAgent)
                 ? TracingUtils.GenerateUserAgent(sdkUserAgent) : TracingUtils.GenerateUserAgent();
             message.Request.Headers.SetValue(RequestTracingConstants.UserAgentHeader, headerValue);
