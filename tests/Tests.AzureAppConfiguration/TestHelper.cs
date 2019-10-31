@@ -37,8 +37,8 @@ namespace Tests.AzureAppConfiguration
                 json.WriteString("etag", setting.ETag.ToString());
             if (setting.LastModified.HasValue)
                 json.WriteString("last_modified", setting.LastModified.Value.ToString());
-            if (setting.ReadOnly.HasValue)
-                json.WriteBoolean("locked", setting.ReadOnly.Value);
+            if (setting.IsReadOnly.HasValue)
+                json.WriteBoolean("locked", setting.IsReadOnly.Value);
             json.WriteEndObject();
         }
 

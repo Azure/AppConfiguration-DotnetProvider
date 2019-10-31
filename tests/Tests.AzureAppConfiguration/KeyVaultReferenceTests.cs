@@ -68,7 +68,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvNoUrl }));
 
             var builder = new ConfigurationBuilder();
@@ -98,7 +98,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             var builder = new ConfigurationBuilder();
@@ -124,7 +124,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             var builder = new ConfigurationBuilder();
@@ -151,7 +151,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvWrongContentType }));
 
             var builder = new ConfigurationBuilder();
@@ -177,7 +177,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             var builder = new ConfigurationBuilder();
@@ -204,7 +204,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             var builder = new ConfigurationBuilder();
@@ -235,7 +235,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(KeyValues));
 
             var builder = new ConfigurationBuilder();

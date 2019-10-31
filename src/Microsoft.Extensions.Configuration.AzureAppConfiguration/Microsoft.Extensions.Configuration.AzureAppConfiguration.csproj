@@ -26,7 +26,7 @@
       This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
       This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
     -->
-    <AzureDataAppConfigurationVersion>1.0.0-dev.20191022.1</AzureDataAppConfigurationVersion>
+    <AzureDataAppConfigurationVersion>1.0.0-preview.4</AzureDataAppConfigurationVersion>
     <MicrosoftAzconfigManagedIdentityConnectorVersion>2.0.0-preview-010240001-1409</MicrosoftAzconfigManagedIdentityConnectorVersion>
     <MicrosoftAzureKeyVaultVersion>3.0.3</MicrosoftAzureKeyVaultVersion>
     <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>

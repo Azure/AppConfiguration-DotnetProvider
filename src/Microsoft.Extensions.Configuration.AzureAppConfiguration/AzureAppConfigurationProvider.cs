@@ -15,7 +15,7 @@ using System.Net.Http;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using SystemJson = System.Text.Json;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -130,7 +130,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector, CancellationToken.None))
+                        await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, CancellationToken.None))
                         {
                             data[setting.Key] = setting;
                         }
@@ -156,7 +156,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetSettingsAsync(selector, CancellationToken.None))
+                        await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, CancellationToken.None))
                         {
                             data[setting.Key] = setting;
                         }
@@ -214,7 +214,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 ConfigurationSetting watchedKv = null;
                 try
                 {
-                    await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None)).ConfigureAwait(false);
+                    await CallWithRequestTracing(async () => watchedKv = await _client.GetConfigurationSettingAsync(watchedKey, watchedLabel, CancellationToken.None)).ConfigureAwait(false);
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
@@ -277,7 +277,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         try
                         {
-                            await CallWithRequestTracing(async () => watchedKv = await _client.GetAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
+                            await CallWithRequestTracing(async () => watchedKv = await _client.GetConfigurationSettingAsync(watchedKey, watchedLabel, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
                         }
                         catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                         {
