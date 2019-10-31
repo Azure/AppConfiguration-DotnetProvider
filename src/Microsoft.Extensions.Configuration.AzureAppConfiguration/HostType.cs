@@ -2,7 +2,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal enum HostType
     {
-        None,
+        Unidentified,
 
         AzureWebApp,
 
