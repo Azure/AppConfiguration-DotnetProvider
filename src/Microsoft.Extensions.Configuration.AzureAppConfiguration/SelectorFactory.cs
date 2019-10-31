@@ -1,5 +1,7 @@
 ﻿using Azure.Data.AppConfiguration;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -12,9 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static SettingSelector CreateSettingSelector(string keyFilter, string labelFilter, DateTimeOffset? asOf = default, SettingFields fields = SettingFields.All)
         {
-            // Convert from comma literal format to SDK convention
-            string[] keyFilters = keyFilter?.Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-
             SettingSelector selector = new SettingSelector()
             {
                 AsOf = asOf,
@@ -24,6 +23,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             selector.Keys.Clear();
             selector.Labels.Clear();
 
+            // Convert from comma literal format to SDK convention
+            var keyFilters = ParseFilters(keyFilter);
+
             foreach (var filter in keyFilters)
             {
                 selector.Keys.Add(filter);
@@ -32,6 +34,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             selector.Labels.Add(labelFilter);
 
             return selector;
+        }
+
+        private static IEnumerable<string> ParseFilters(string filterString)
+        {
+            var filters = new List<string>();
+            var prev = ' ';
+            var startIdx = 0;
+            for (int i = 0; i < filterString.Length; i++)
+            {
+                var c = filterString[i];
+                if (c == ',' && prev != '\\')
+                {
+                    filters.Add(filterString.Substring(startIdx, i - startIdx).Replace("\\", ""));
+                    startIdx = i + 1;
+                }
+
+                prev = c;
+            }
+
+            filters.Add(filterString.Substring(startIdx, filterString.Length - startIdx).Replace("\\", ""));
+
+            return filters.Where(f => !string.IsNullOrEmpty(f));
         }
     }
 }

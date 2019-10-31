@@ -23,14 +23,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                     var settings = config.AddJsonFile("appsettings.json").Build();
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect("Endpoint=https://configstore.azconfig.io;Id=0-l3-s0:KHCTawEN7KgILTkc44xi;Secret=oMN6aENui0R23jkQvlCukF1V3RqZcP94d0B+QQ/bdmM=")//settings["connection_string"])
+                        options.Connect(settings["connection_string"])
                                .ConfigureRefresh(refresh =>
                                {
                                    refresh.Register("Settings:BackgroundColor")
                                           .SetCacheExpiration(TimeSpan.FromSeconds(10));
-                               })
-                               .Use("abc*")
-                               ;
+                               });
                     });
                 })
                 .UseStartup<Startup>()
