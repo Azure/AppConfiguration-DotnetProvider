@@ -42,20 +42,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            string requestTracingDisabled = null;
             try
             {
-                requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
-                _hostType = Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
-                    ? HostType.AzureFunction
-                    : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
-                        ? HostType.AzureWebApp
-                        : HostType.None;
+                // Enable request tracing if not opt-out
+                string requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
+                _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
+
+                if (_requestTracingEnabled)
+                {
+                    if (Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null)
+                    {
+                        _hostType = HostType.AzureFunction;
+                    }
+                    else if (Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null)
+                    {
+                        _hostType = HostType.AzureWebApp;
+                    }
+                    else if (Environment.GetEnvironmentVariable(RequestTracingConstants.KubernetesEnvironmentVariable) != null)
+                    {
+                        _hostType = HostType.Kubernetes;
+                    }
+                    else if (Process.GetCurrentProcess().ProcessName.Equals(RequestTracingConstants.IISExpressProcessName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _hostType = HostType.IISExpress;
+                    }
+                    else
+                    {
+                        _hostType = HostType.None;
+                    }
+                }
             }
             catch (SecurityException) { }
-
-            // Enable request tracing by default (if no valid environmental variable option is specified).
-            _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
         }
 
         /// <summary>

@@ -6,6 +6,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         AzureWebApp,
 
-        AzureFunction
+        AzureFunction,
+
+        Kubernetes,
+
+        IISExpress
     }
 }
