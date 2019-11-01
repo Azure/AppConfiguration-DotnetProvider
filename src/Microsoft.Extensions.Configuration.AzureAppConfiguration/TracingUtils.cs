@@ -3,17 +3,20 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-
     internal static class TracingUtils
     {
+        static private HostType? _hostType = null;
+
         public static string GenerateUserAgent(string currentUserAgent = null)
         {
             Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
@@ -43,6 +46,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return userAgent.ToString();
         }
 
+        public static HostType GetHostType()
+        {
+            if (_hostType.HasValue)
+            {
+                return _hostType.Value;
+            }
+
+            HostType hostType = HostType.Unidentified;
+
+            try
+            {
+                if (Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null)
+                {
+                    hostType = HostType.AzureFunction;
+                }
+                else if (Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null)
+                {
+                    hostType = HostType.AzureWebApp;
+                }
+                else if (Environment.GetEnvironmentVariable(RequestTracingConstants.KubernetesEnvironmentVariable) != null)
+                {
+                    hostType = HostType.Kubernetes;
+                }
+                else
+                {
+                    try
+                    {
+                        string processName = Process.GetCurrentProcess().ProcessName;
+                        if (processName != null && processName.Equals(RequestTracingConstants.IISExpressProcessName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            hostType = HostType.IISExpress;
+                        }
+                    }
+                    catch (InvalidOperationException) { }
+                    catch (PlatformNotSupportedException) { }
+                    catch (NotSupportedException) { }
+                }
+            }
+            catch (SecurityException) { }
+
+            _hostType = hostType;
+
+            return hostType;
+        }
+
         public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType, Action clientCall)
         {
             await CallWithRequestTracing(tracingEnabled, requestType, hostType, () =>
@@ -60,7 +108,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AddRequestType(correlationContext, requestType);
 
-                if (hostType != HostType.None)
+                if (hostType != HostType.Unidentified)
                 {
                     AddHostType(correlationContext, hostType);
                 }
