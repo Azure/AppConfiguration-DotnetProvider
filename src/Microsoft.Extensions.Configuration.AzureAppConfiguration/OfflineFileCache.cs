@@ -95,13 +95,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            _localCachePath = opts.Path ?? throw new ArgumentNullException(nameof(opts.Path));
-
-            if (!Path.IsPathRooted(_localCachePath) || !string.Equals(Path.GetFullPath(_localCachePath), _localCachePath))
-            {
-                throw new ArgumentException("The path must be a full path.", nameof(opts.Path));
-            }
-
+            ValidateCachePath(opts.Path);
+            _localCachePath = opts.Path;
             _options = opts;
         }
 
@@ -282,6 +277,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _options = options;
+        }
+
+        internal static void ValidateCachePath(string path)
+        {
+            if (!Path.IsPathRooted(path) || !string.Equals(Path.GetFullPath(path), path) || string.IsNullOrWhiteSpace(Path.GetFileName(path)))
+            {
+                throw new ArgumentException($"The path {path} is not a full file path.");
+            }
+
+            if (Directory.Exists(path))
+            {
+                throw new ArgumentException($"The path {path} corresponds to an existing directory and cannot be used as file path.");
+            }
+
+            string directoryPath = Path.GetDirectoryName(path);
+
+            if (!Directory.Exists(directoryPath))
+            {
+                throw new ArgumentException($"The directory with path {directoryPath} does not exist.");
+            }
         }
     }
 }
