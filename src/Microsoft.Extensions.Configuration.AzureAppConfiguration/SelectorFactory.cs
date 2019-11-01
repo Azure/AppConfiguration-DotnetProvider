@@ -46,14 +46,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var c = filterString[i];
                 if (c == ',' && prev != '\\')
                 {
-                    filters.Add(filterString.Substring(startIdx, i - startIdx).Replace("\\", ""));
+                    if (i - startIdx > 0)
+                    {
+                        filters.Add(filterString.Substring(startIdx, i - startIdx).Replace("\\,", ","));
+                    }
                     startIdx = i + 1;
                 }
 
                 prev = c;
             }
 
-            filters.Add(filterString.Substring(startIdx, filterString.Length - startIdx).Replace("\\", ""));
+            if (filterString.Length - startIdx > 0)
+            {
+                filters.Add(filterString.Substring(startIdx, filterString.Length - startIdx).Replace("\\,", ","));
+            }
 
             return filters.Where(f => !string.IsNullOrEmpty(f));
         }
