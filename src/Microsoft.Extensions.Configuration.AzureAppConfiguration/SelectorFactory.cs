@@ -48,7 +48,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (i - startIdx > 0)
                     {
-                        filters.Add(filterString.Substring(startIdx, i - startIdx).Replace("\\,", ","));
+                        filters.Add(filterString.Substring(startIdx, i - startIdx).Replace("\\,", ",").Replace("\\\\", "\\"));
                     }
                     startIdx = i + 1;
                 }
@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (filterString.Length - startIdx > 0)
             {
-                filters.Add(filterString.Substring(startIdx, filterString.Length - startIdx).Replace("\\,", ","));
+                filters.Add(filterString.Substring(startIdx, filterString.Length - startIdx).Replace("\\,", ",").Replace("\\\\", "\\"));
             }
 
             return filters.Where(f => !string.IsNullOrEmpty(f));
