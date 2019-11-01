@@ -172,7 +172,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.OfflineCache != null)
                 {
-                    data = SystemJson.JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options));
+                    data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options));
 
                     if (data != null)
                     {
@@ -193,7 +193,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_options.OfflineCache != null)
             {
-                _options.OfflineCache.Export(_options, SystemJson.JsonSerializer.Serialize(data));
+                _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
             }
         }
 
