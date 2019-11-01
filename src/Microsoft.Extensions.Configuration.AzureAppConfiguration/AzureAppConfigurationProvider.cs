@@ -42,20 +42,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
+            // Enable request tracing if not opt-out
             string requestTracingDisabled = null;
             try
             {
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
-                _hostType = Environment.GetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable) != null
-                    ? HostType.AzureFunction
-                    : Environment.GetEnvironmentVariable(RequestTracingConstants.AzureWebAppEnvironmentVariable) != null
-                        ? HostType.AzureWebApp
-                        : HostType.None;
             }
             catch (SecurityException) { }
-
-            // Enable request tracing by default (if no valid environmental variable option is specified).
             _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
+
+            if (_requestTracingEnabled)
+            {
+                _hostType = TracingUtils.GetHostType();
+            }
         }
 
         /// <summary>
