@@ -1,5 +1,4 @@
 ﻿using Azure;
-using Azure.Core.Http;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
@@ -80,7 +79,7 @@ namespace Tests.AzureAppConfiguration
 
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
             var testClient = mockClient.Object;
@@ -115,7 +114,7 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
-            mockClient.Setup(c => c.GetSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
             var testClient = mockClient.Object;

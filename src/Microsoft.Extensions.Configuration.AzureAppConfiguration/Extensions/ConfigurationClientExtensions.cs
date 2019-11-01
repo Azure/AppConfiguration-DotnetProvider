@@ -25,7 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             try
             {
-                Response<ConfigurationSetting> response = await client.GetAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
+                Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
                 if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
                 {
                     return new KeyValueChange
@@ -112,7 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
                 async () =>
                 {
-                    await foreach(ConfigurationSetting setting in client.GetSettingsAsync(selector))
+                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector))
                     {
                         if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
                         {
@@ -143,7 +143,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
                     async () =>
                     {
-                        await foreach (ConfigurationSetting setting in client.GetSettingsAsync(selector))
+                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector))
                         {
                             if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
                             {

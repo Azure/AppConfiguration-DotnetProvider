@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Azure.Core.Pipeline;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure.Core.Pipeline;
-using Azure.Core.Http;
 
 namespace Azure.Core.Testing
 {
@@ -36,7 +35,7 @@ namespace Azure.Core.Testing
         public override Request CreateRequest()
             => new MockRequest();
 
-        public override void Process(HttpPipelineMessage message)
+        public override void Process(HttpMessage message)
         {
             if (ExpectSyncPipeline == false)
             {
@@ -46,7 +45,7 @@ namespace Azure.Core.Testing
             ProcessCore(message).GetAwaiter().GetResult();
         }
 
-        public override async ValueTask ProcessAsync(HttpPipelineMessage message)
+        public override async ValueTask ProcessAsync(HttpMessage message)
         {
             if (ExpectSyncPipeline == true)
             {
@@ -56,7 +55,7 @@ namespace Azure.Core.Testing
             await ProcessCore(message);
         }
 
-        private async Task ProcessCore(HttpPipelineMessage message)
+        private async Task ProcessCore(HttpMessage message)
         {
             if (!(message.Request is MockRequest request))
                 throw new InvalidOperationException("the request is not compatible with the transport");

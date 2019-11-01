@@ -19,5 +19,7 @@
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
 
         public const string CorrelationContextHeader = "Correlation-Context";
+
+        public const string UserAgentHeader = "User-Agent";
     }
 }

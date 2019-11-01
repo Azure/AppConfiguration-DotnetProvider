@@ -37,8 +37,8 @@ namespace Tests.AzureAppConfiguration
                 json.WriteString("etag", setting.ETag.ToString());
             if (setting.LastModified.HasValue)
                 json.WriteString("last_modified", setting.LastModified.Value.ToString());
-            if (setting.ReadOnly.HasValue)
-                json.WriteBoolean("locked", setting.ReadOnly.Value);
+            if (setting.IsReadOnly.HasValue)
+                json.WriteBoolean("locked", setting.IsReadOnly.Value);
             json.WriteEndObject();
         }
 
@@ -73,7 +73,7 @@ namespace Tests.AzureAppConfiguration
         public async override IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
 #pragma warning restore 1998
         {
-            yield return new Page<ConfigurationSetting>(_collection, null, new Mock<Response>().Object);
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new Mock<Response>().Object);
 
         }
     }
@@ -89,7 +89,7 @@ namespace Tests.AzureAppConfiguration
 
         public override IEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
         {
-            yield return new Page<ConfigurationSetting>(_collection, null, new Mock<Response>().Object);
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new Mock<Response>().Object);
         }
     }
 }
