@@ -1,12 +1,10 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
-{
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
+﻿using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
+{
     class Program
     {
         static IConfiguration Configuration { get; set; }
@@ -70,8 +68,14 @@
 
             while (!token.IsCancellationRequested)
             {
-                // Trigger an async refresh for registered configuration settings without wait
-                _ = _refresher.Refresh();
+                try
+                {
+                    await _refresher.Refresh();
+                }
+                catch (Exception e) when (e is UnauthorizedAccessException || e is InvalidOperationException || e is RefreshFailedException)
+                {
+                    sb.AppendLine(e.ToString());
+                }
 
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();

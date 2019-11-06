@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -10,6 +11,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Refreshes the data from the configuration store asynchronously.
         /// </summary>
+        /// <exception cref="UnauthorizedAccessException">The caller is not authorized to perform this operation.</exception>
+        /// <exception cref="InvalidOperationException">The initial configuration is not loaded or the caller does not have the required permission to perform this operation.</exception>
+        /// <exception cref="RefreshFailedException">The refresh operation failed.</exception>
         Task Refresh();
     }
 }

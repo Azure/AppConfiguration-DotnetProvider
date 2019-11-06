@@ -13,9 +13,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -98,8 +98,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task Refresh()
         {
-            await RefreshIndividualKeyValues().ConfigureAwait(false);
-            await RefreshKeyValueCollections().ConfigureAwait(false);
+            try
+            {
+                await RefreshIndividualKeyValues().ConfigureAwait(false);
+                await RefreshKeyValueCollections().ConfigureAwait(false);
+            }
+            catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Unauthorized)
+            {
+                throw new UnauthorizedAccessException(ex.Message, ex.InnerException);
+            }
+            catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Forbidden)
+            {
+                throw new InvalidOperationException(ex.Message, ex.InnerException);
+            }
+            catch (Exception ex) when (ex is KeyVaultReferenceException
+                                    || ex is RequestFailedException
+                                    || (ex is AggregateException && ex.Message.StartsWith("Retry failed after")))
+            {
+                throw new RefreshFailedException("Refresh operation failed.", ex);
+            }
         }
 
         internal static ConfigurationClientOptions GetClientOptions()
