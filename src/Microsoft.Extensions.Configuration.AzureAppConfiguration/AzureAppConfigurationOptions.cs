@@ -1,5 +1,5 @@
-﻿using Azure.Data.AppConfiguration;
-using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+﻿using Azure.Core;
+using Azure.Data.AppConfiguration;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -191,28 +191,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
-
         /// <summary>
-        /// Connect the provider to Azure App Configuration using the managed identity of an Azure resource.
+        /// Connect the provider to Azure App Configuration using endpoint and token credentials.
         /// </summary>
-        /// <param name="endpoint">
-        /// The endpoint of the Azure App Configuration store to connect to.
-        /// </param>
-        public AzureAppConfigurationOptions ConnectWithManagedIdentity(string endpoint)
+        /// <param name="endpoint">The endpoint of the Azure App Configuration store to connect to.</param>
+        /// <param name="credential">Token credentials to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
         {
-            if (string.IsNullOrEmpty(endpoint))
+            if (endpoint == null)
             {
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri))
+            if (credential == null)
             {
-                throw new ArgumentException(nameof(endpoint));
+                throw new ArgumentNullException(nameof(credential));
             }
 
-            var connectionString = ManagedIdentityConnector.GetConnectionString(uri, Permissions.Read).ConfigureAwait(false).GetAwaiter().GetResult();
-            Client = ConfigurationClientFactory.CreateConfigurationClient(connectionString);
-
+            Client = ConfigurationClientFactory.CreateConfigurationClient(endpoint, credential);
             return this;
         }
 

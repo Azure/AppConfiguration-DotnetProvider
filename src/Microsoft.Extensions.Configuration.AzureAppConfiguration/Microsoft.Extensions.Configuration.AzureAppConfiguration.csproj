@@ -8,15 +8,12 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
-
-    <!-- Copy NuGet package reference assemblies to build output. Can be removed once the MsiConnector assembly no longer needs to be packaged inside the configuration provider package. -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Data.AppConfiguration" Version="$(AzureDataAppConfigurationVersion)" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="$(MicrosoftAzureKeyVaultVersion)" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="$(MicrosoftAzureServicesAppAuthenticationVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
     <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
   </ItemGroup>
@@ -27,8 +24,8 @@
       This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
     -->
     <AzureDataAppConfigurationVersion>1.0.0-preview.4</AzureDataAppConfigurationVersion>
-    <MicrosoftAzconfigManagedIdentityConnectorVersion>2.0.0-preview-010240001-1409</MicrosoftAzconfigManagedIdentityConnectorVersion>
     <MicrosoftAzureKeyVaultVersion>3.0.3</MicrosoftAzureKeyVaultVersion>
+    <MicrosoftAzureServicesAppAuthenticationVersion>1.0.3</MicrosoftAzureServicesAppAuthenticationVersion>
     <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
     <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
   </PropertyGroup>
