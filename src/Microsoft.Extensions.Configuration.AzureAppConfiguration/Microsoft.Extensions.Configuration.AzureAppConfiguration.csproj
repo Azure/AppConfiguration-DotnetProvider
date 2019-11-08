@@ -11,9 +11,10 @@
     <AssemblyName>Microsoft.Extensions.Configuration.AzureAppConfiguration</AssemblyName>
     <Authors>Microsoft</Authors>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
-    <PackageProjectUrl>https://azure.microsoft.com</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Azure/AppConfiguration</PackageProjectUrl>
     <PackageLicenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</PackageLicenseUrl>
     <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
+    <PackageReleaseNotes>https://aka.ms/MicrosoftExtensionsConfigurationAzureAppConfigurationReleaseNotes</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
