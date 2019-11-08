@@ -8,37 +8,21 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
+    <AssemblyName>Microsoft.Extensions.Configuration.AzureAppConfiguration</AssemblyName>
+    <Authors>Microsoft</Authors>
+    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
+    <PackageProjectUrl>https://azure.microsoft.com</PackageProjectUrl>
+    <PackageLicenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</PackageLicenseUrl>
+    <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Data.AppConfiguration" Version="$(AzureDataAppConfigurationVersion)" />
-    <PackageReference Include="Microsoft.Azure.KeyVault" Version="$(MicrosoftAzureKeyVaultVersion)" />
-    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="$(MicrosoftAzureServicesAppAuthenticationVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
+    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-preview.4" />
+    <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.1" />
   </ItemGroup>
-  
-  <PropertyGroup>
-    <!-- 
-      This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
-      This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
-    -->
-    <AzureDataAppConfigurationVersion>1.0.0-preview.4</AzureDataAppConfigurationVersion>
-    <MicrosoftAzureKeyVaultVersion>3.0.3</MicrosoftAzureKeyVaultVersion>
-    <MicrosoftAzureServicesAppAuthenticationVersion>1.0.3</MicrosoftAzureServicesAppAuthenticationVersion>
-    <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
-  </PropertyGroup>
 
-  <!-- After the build, we write the .nuspec file to the output directory -->
-  <Import Project=".\.nuspec.props" />
-  <Target Name="WriteToFile" AfterTargets="Build">  
-      <WriteLinesToFile File="$(OutDir)\$(ProjectName).nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />
-  </Target>
-  
-  <!-- Ensure any package generation is done via the generated nuspec file. -->
-  <Target Name="PackCheck" AfterTargets="Pack">
-    <Error Text=" The NuspecFile property must be set to build this NuGet package." Condition="'$(NuspecFile)' == ''" />  
-  </Target>
-  
   <PropertyGroup>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\XMLComments\$(MSBuildProjectName).xml</DocumentationFile>
   </PropertyGroup>
