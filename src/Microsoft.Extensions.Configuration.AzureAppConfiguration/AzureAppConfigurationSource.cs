@@ -11,11 +11,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
             _optionsProvider = () => {
-
                 var options = new AzureAppConfigurationOptions();
-
                 optionsInitializer(options);
-
                 return options;
             };
 
@@ -25,7 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationSource(AzureAppConfigurationOptions options, bool optional = false)
         {
             _optional = optional;
-
             _optionsProvider = () => options;
         }
 
@@ -36,8 +32,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
+                ConfigurationClient client;
 
-                ConfigurationClient client = options.Client ?? ConfigurationClientFactory.CreateConfigurationClient(options.ConnectionString);
+                if (options.Endpoint != null || options.Credential != null)
+                {
+                    client = ConfigurationClientFactory.CreateConfigurationClient(options.Endpoint, options.Credential);
+                }
+                else
+                {
+                    client = ConfigurationClientFactory.CreateConfigurationClient(options.ConnectionString);
+                }
 
                 provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
