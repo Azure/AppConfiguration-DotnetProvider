@@ -112,7 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
                 async () =>
                 {
-                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector))
+                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
                     {
                         if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
                         {
@@ -143,7 +143,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
                     async () =>
                     {
-                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector))
+                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
                         {
                             if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
                             {
