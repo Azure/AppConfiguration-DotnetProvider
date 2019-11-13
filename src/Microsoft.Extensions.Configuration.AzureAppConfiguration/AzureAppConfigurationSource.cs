@@ -34,13 +34,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 AzureAppConfigurationOptions options = _optionsProvider();
                 ConfigurationClient client;
 
-                if (options.Endpoint != null || options.Credential != null)
+                if (options.Client != null)
+                {
+                    client = options.Client;
+                }
+                else if (!string.IsNullOrWhiteSpace(options.ConnectionString))
+                {
+                    client = ConfigurationClientFactory.CreateConfigurationClient(options.ConnectionString);
+                }
+                else if (options.Endpoint != null && options.Credential != null)
                 {
                     client = ConfigurationClientFactory.CreateConfigurationClient(options.Endpoint, options.Credential);
                 }
                 else
                 {
-                    client = ConfigurationClientFactory.CreateConfigurationClient(options.ConnectionString);
+                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
                 provider = new AzureAppConfigurationProvider(client, options, _optional);

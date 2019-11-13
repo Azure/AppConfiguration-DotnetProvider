@@ -61,16 +61,16 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.ConfigureRefresh(refresh =>
-            {
-                refresh.Register("TestKey1")
-                       .SetCacheExpiration(TimeSpan.FromSeconds(60));
-            });
-
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register("TestKey1")
+                               .SetCacheExpiration(TimeSpan.FromSeconds(60));
+                    });
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -92,18 +92,18 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.Use("TestKey1")
-                   .ConfigureRefresh(refreshOptions =>
-                   {
-                       refreshOptions.Register("TestKey2")
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey1");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey2")
                             .Register("TestKey3")
                             .SetCacheExpiration(TimeSpan.FromSeconds(60));
-                   });
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                    });
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -127,17 +127,21 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.Use("TestKey*")
-                       .ConfigureRefresh(refresh =>
-                       {
-                           refresh.Register("TestKey1")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(10));
-                       });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -146,7 +150,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for some time but not enough to let the cache expire
             Thread.Sleep(5000);
 
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
@@ -167,17 +171,21 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.Use("TestKey*")
-                       .ConfigureRefresh(refresh =>
-                       {
-                           refresh.Register("TestKey1")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -186,7 +194,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
         }
@@ -230,19 +238,21 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            //
-            // Test
-            options.Use("TestKey*")
-                   .ConfigureRefresh(refresh =>
-                   {
-                       refresh.Register("TestKey1", "label") // refreshAll: false
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                   });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label") // refreshAll: false
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -254,7 +264,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.NotEqual("newValue", config["TestKey2"]);
@@ -300,19 +310,21 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-            
-            // 
-            // Test
-            options.Use("TestKey*")
-                       .ConfigureRefresh(refresh =>
-                       {
-                           refresh.Register("TestKey1", "label", refreshAll: true)
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", refreshAll: true)
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -324,7 +336,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("newValue", config["TestKey2"]);
@@ -370,17 +382,21 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.Use("TestKey*")
-                       .ConfigureRefresh(refresh =>
-                       {
-                           refresh.Register("TestKey1", refreshAll: true)
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                       });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", refreshAll: true)
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -393,7 +409,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
@@ -439,18 +455,22 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.Use("TestKey*")
-                   .ConfigureRefresh(refresh =>
-                   {
-                       refresh.Register("TestKey1")
-                              .Register("NonExistentKey", refreshAll: true)
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                   });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Use("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                                      .Register("NonExistentKey", refreshAll: true)
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -464,7 +484,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
 
             // Validate that key-values registered for refresh were updated
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -513,16 +533,20 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-            var options = new AzureAppConfigurationOptions { Client = mockClient.Object };
-
-            options.ConfigureRefresh(refresh =>
-            {
-                refresh.Register("TestKey1", "label")
-                       .SetCacheExpiration(TimeSpan.FromSeconds(1));
-            });
+            IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -531,9 +555,9 @@ namespace Tests.AzureAppConfiguration
             serviceCollection.First().Value = "newValue";
 
             // Simulate simultaneous refresh calls with expired cache from multiple threads
-            var task1 = Task.Run(() => WaitAndRefresh(options, 1500));
-            var task2 = Task.Run(() => WaitAndRefresh(options, 3000));
-            var task3 = Task.Run(() => WaitAndRefresh(options, 4500));
+            var task1 = Task.Run(() => WaitAndRefresh(refresher, 1500));
+            var task2 = Task.Run(() => WaitAndRefresh(refresher, 3000));
+            var task3 = Task.Run(() => WaitAndRefresh(refresher, 4500));
             Task.WaitAll(task1, task2, task3);
 
             Assert.Equal("newValue", config["TestKey1"]);
@@ -551,10 +575,7 @@ namespace Tests.AzureAppConfiguration
 
             var delegateMock = new Mock<RequestDelegate>();
             var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-                {
-                    Client = mockClient.Object
-                })
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             // Act
@@ -576,14 +597,8 @@ namespace Tests.AzureAppConfiguration
 
             var delegateMock = new Mock<RequestDelegate>();
             var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-                {
-                    Client = mockClient.Object
-                })
-                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
-                {
-                    Client = mockClient.Object
-                })
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             // Act
@@ -606,10 +621,10 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<InvalidOperationException>(action);
         }
 
-        private void WaitAndRefresh(AzureAppConfigurationOptions options, int millisecondsDelay)
+        private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();
-            options.GetRefresher().Refresh().Wait();
+            refresher.Refresh().Wait();
         }
     }
 }

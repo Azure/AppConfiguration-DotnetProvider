@@ -17,7 +17,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         internal static readonly TimeSpan DefaultFeatureFlagsCacheExpiration = TimeSpan.FromSeconds(30);
         internal static readonly TimeSpan MinimumFeatureFlagsCacheExpiration = TimeSpan.FromMilliseconds(1000);
-        private static readonly string ConnectValidationFailureMessage = $"Either set {nameof(ConnectionString)} or set {nameof(Endpoint)} and {nameof(Credential)}";
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
@@ -27,9 +26,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
-        private string _connectionString = null;
-        private Uri _endpoint = null;
-        private TokenCredential _credential = null;
+        /// <summary>
+        /// The connection string to use to connect to Azure App Configuration.
+        /// </summary>
+        internal string ConnectionString { get; private set; }
+
+        /// <summary>
+        /// The endpoint of the Azure App Configuration.
+        /// If this property is set, the <see cref="Credential"/> property also needs to be set.
+        /// </summary>
+        internal Uri Endpoint { get; private set; }
+
+        /// <summary>
+        /// The connection string to use to connect to Azure App Configuration.
+        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// </summary>
+        internal TokenCredential Credential { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -60,74 +72,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
         /// </summary>
         public IOfflineCache OfflineCache { get; private set; }
-
-        /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// </summary>
-        public string ConnectionString
-        {
-            get => _connectionString;
-            set
-            {
-                if (string.IsNullOrEmpty(value))
-                {
-                    throw new ArgumentNullException(nameof(ConnectionString));
-                }
-
-                if (Endpoint != null || Credential != null)
-                {
-                    throw new ArgumentException(ConnectValidationFailureMessage);
-                }
-
-                _connectionString = value;
-            }
-        }
-
-        /// <summary>
-        /// The endpoint of the Azure App Configuration.
-        /// If this property is set, the <see cref="Credential"/> property also needs to be set.
-        /// </summary>
-        public Uri Endpoint
-        {
-            get => _endpoint;
-            set
-            {
-                if (value == null)
-                {
-                    throw new ArgumentNullException(nameof(Endpoint));
-                }
-
-                if (ConnectionString != null)
-                {
-                    throw new ArgumentException(ConnectValidationFailureMessage);
-                }
-
-                _endpoint = value;
-            }
-        }
-
-        /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
-        /// </summary>
-        public TokenCredential Credential
-        {
-            get => _credential;
-            set
-            {
-                if (value == null)
-                {
-                    throw new ArgumentNullException(nameof(Credential));
-                }
-
-                if (ConnectionString != null)
-                {
-                    throw new ArgumentException(ConnectValidationFailureMessage);
-                }
-
-                _credential = value;
-            }
-        }
 
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
@@ -250,11 +194,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(string connectionString)
         {
-            if (ConnectionString != null)
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                throw new ArgumentException($"The property {nameof(ConnectionString)} is already set.");
+                throw new ArgumentNullException(nameof(connectionString));
             }
 
+            Endpoint = null;
+            Credential = null;
             ConnectionString = connectionString;
             return this;
         }
@@ -266,16 +212,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credentials to use to connect.</param>
         public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
         {
-            if (Endpoint != null)
+            if (endpoint == null)
             {
-                throw new ArgumentException($"The property {nameof(Endpoint)} is already set.");
+                throw new ArgumentNullException(nameof(endpoint));
             }
 
-            if (Credential != null)
+            if (credential == null)
             {
-                throw new ArgumentException($"The property {nameof(Credential)} is already set.");
+                throw new ArgumentNullException(nameof(credential));
             }
 
+            ConnectionString = null;
             Endpoint = endpoint;
             Credential = credential;
             return this;

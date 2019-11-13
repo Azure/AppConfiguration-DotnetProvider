@@ -71,20 +71,16 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvNoUrl }));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
             IConfiguration config = null;
+            var builder = new ConfigurationBuilder();
 
             var exception = Record.Exception(() =>
             {
-                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
-                builder.AddAzureAppConfiguration(options);
-                builder.Build();
+                builder.AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
+                }).Build();
             });
 
             Assert.IsType<KeyVaultReferenceException>(exception);
@@ -101,18 +97,13 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
-            options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
-
-            builder.AddAzureAppConfiguration(options);
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
+                })
+                .Build();
 
             Assert.Equal(secretValue, config[_kv.Key]);
         }
@@ -127,18 +118,13 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
             KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
             {
-                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { IsEnabled = false });
-                builder.AddAzureAppConfiguration(options);
-                builder.Build();
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { IsEnabled = false });
+                }).Build();
             });
 
             Assert.Equal("SecretDisabled", ex.ErrorCode);
@@ -154,18 +140,13 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvWrongContentType }));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
-            options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
-
-            builder.AddAzureAppConfiguration(options);
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
+                })
+                .Build();
 
             Assert.NotEqual(secretValue, config[_kv.Key]);
         }
@@ -180,18 +161,13 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
-            options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { });
-
-            builder.AddAzureAppConfiguration(options);
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue));
+                })
+                .Build();
 
             Assert.Equal(secretValue, config["TK1"]);
             Assert.Equal(secretValue, config["TK2"]);
@@ -207,22 +183,17 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
             Assert.Throws<OperationCanceledException>(() =>
             {
-                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue)
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    CancellationToken = new CancellationToken(true)
-                });
-
-                builder.AddAzureAppConfiguration(options);
-                builder.Build();
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue)
+                    {
+                        CancellationToken = new CancellationToken(true)
+                    });
+                })
+                .Build();
             });
         }
 
@@ -238,18 +209,17 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(KeyValues));
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            };
-
             KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
             {
-                options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue) { HasAccessToKeyVault = false });
-                builder.AddAzureAppConfiguration(options);
-                builder.Build();
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseAzureKeyVault(new MockedAzureKeyVaultClient(secretValue)
+                    {
+                        HasAccessToKeyVault = false
+                    });
+                })
+                .Build();
             });
 
             Assert.Equal("AccessDenied", ex.ErrorCode);

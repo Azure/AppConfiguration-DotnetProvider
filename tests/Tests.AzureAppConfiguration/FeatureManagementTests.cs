@@ -84,18 +84,13 @@ namespace Tests.AzureAppConfiguration
 
             var testClient = mockClient.Object;
 
-            var builder = new ConfigurationBuilder();
-
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = testClient
-            };
-
-            options.UseFeatureFlags();
-
-            builder.AddAzureAppConfiguration(options);
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = testClient;
+                    options.UseFeatureFlags();
+                })
+                .Build();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
             Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
@@ -117,14 +112,15 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
-            var testClient = mockClient.Object;
-            var builder = new ConfigurationBuilder();
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object; ;
+                    options.UseFeatureFlags(o => o.CacheExpirationTime = TimeSpan.FromSeconds(1));
 
-            var options = new AzureAppConfigurationOptions { Client = testClient }
-                .UseFeatureFlags(o => o.CacheExpirationTime = TimeSpan.FromSeconds(1));
-
-            var config = builder
-                .AddAzureAppConfiguration(options)
+                    refresher = options.GetRefresher();
+                })
                 .Build();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -160,7 +156,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             featureFlags.Add(_kv2);
-            options.GetRefresher().Refresh();
+            refresher.Refresh();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
@@ -180,19 +176,12 @@ namespace Tests.AzureAppConfiguration
                 Transport = mockTransport
             };
 
-            var client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
-
-            //
-            // Test scenario
             var builder = new ConfigurationBuilder();
-            var options = new AzureAppConfigurationOptions()
+            builder.AddAzureAppConfiguration(options =>
             {
-                Client = client
-            };
-
-            options.UseFeatureFlags();
-            builder.AddAzureAppConfiguration(options);
-            var config = builder.Build();
+                options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
+                options.UseFeatureFlags();
+            }).Build();
 
             MockRequest request = mockTransport.SingleRequest;
 
@@ -215,19 +204,13 @@ namespace Tests.AzureAppConfiguration
                 Transport = mockTransport
             };
 
-            var client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
-
-            //
-            // Test scenario
-            var builder = new ConfigurationBuilder();
-            var options = new AzureAppConfigurationOptions()
-            {
-                Client = client
-            };
-
-            options.UseFeatureFlags(o => o.Label = "myLabel");
-            builder.AddAzureAppConfiguration(options);
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
+                    options.UseFeatureFlags(o => o.Label = "myLabel");
+                })
+                .Build();
 
             bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));

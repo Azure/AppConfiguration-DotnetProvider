@@ -12,13 +12,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return new ConfigurationClient(connectionString, clientOptions); 
         }
 
-        public static ConfigurationClient CreateConfigurationClient(Uri hostUri, TokenCredential credential)
+        public static ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential)
         {
             var clientOptions = AzureAppConfigurationProvider.GetClientOptions();
-
-            // TODO : Update this code before merge once AAD support is available from SDK
-            var connectionString = Environment.GetEnvironmentVariable("connection_string");
-            return new ConfigurationClient(connectionString, clientOptions);
+            return new ConfigurationClient(endpoint, credential, clientOptions);
         }
     }
 }

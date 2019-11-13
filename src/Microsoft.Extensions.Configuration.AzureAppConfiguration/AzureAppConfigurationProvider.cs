@@ -150,7 +150,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, asOf: loadOption.PreferredDateTime);
+                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, acceptDateTime: loadOption.PreferredDateTime);
 
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
