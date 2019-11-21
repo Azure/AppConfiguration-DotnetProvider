@@ -270,7 +270,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 foreach (var selector in azconfigOptions.KeyValueSelectors)
                 {
-                    sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0{selector.PreferredDateTime.GetValueOrDefault().ToUnixTimeSeconds()}\0");
+                    sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0");
                 }
 
                 _scopeToken = sb.ToString();

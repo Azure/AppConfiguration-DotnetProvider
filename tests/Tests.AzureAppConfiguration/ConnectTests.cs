@@ -84,7 +84,7 @@ namespace Tests.AzureAppConfiguration
         public void ConnectTests_ThrowsIfConnectNotInvoked()
         {
             // Arrange
-            var configBuilder = new ConfigurationBuilder().AddAzureAppConfiguration(options => options.Use("TestKey1"));
+            var configBuilder = new ConfigurationBuilder().AddAzureAppConfiguration(options => options.Select("TestKey1"));
             Action action = () => configBuilder.Build();
 
             // Act and Assert

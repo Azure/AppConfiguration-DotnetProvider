@@ -80,7 +80,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
-        /// <see cref="Use"/> can be called multiple times to include multiple sets of key-values.
+        /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
         /// <param name="keyFilter">
         /// The key filter to apply when querying Azure App Configuration for key-values. Built-in key filter options: <see cref="KeyFilter"/>
@@ -89,10 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// Does not support '*' and ','.
         /// </param>
-        /// <param name="preferredDateTime">
-        /// Used to query key-values in the state that they existed at the time provided.
-        /// </param>
-        public AzureAppConfigurationOptions Use(string keyFilter, string labelFilter = LabelFilter.Null, DateTimeOffset? preferredDateTime = null)
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -110,13 +107,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            if (!_kvSelectors.Any(s => s.KeyFilter.Equals(keyFilter) && s.LabelFilter.Equals(labelFilter) && Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, preferredDateTime)))
+            if (!_kvSelectors.Any(s => s.KeyFilter.Equals(keyFilter) && s.LabelFilter.Equals(labelFilter)))
             {
                 _kvSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = keyFilter,
-                    LabelFilter = labelFilter,
-                    PreferredDateTime = preferredDateTime
+                    LabelFilter = labelFilter
                 });
             }
 
@@ -140,7 +136,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
             {
-                Use(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
+                Select(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
             }
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))

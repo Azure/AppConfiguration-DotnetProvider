@@ -1,5 +1,4 @@
 ﻿using Azure.Data.AppConfiguration;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,11 +11,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return new SettingSelector();
         }
 
-        public static SettingSelector CreateSettingSelector(string keyFilter, string labelFilter, DateTimeOffset? acceptDateTime = default, SettingFields fields = SettingFields.All)
+        public static SettingSelector CreateSettingSelector(string keyFilter, string labelFilter, SettingFields fields = SettingFields.All)
         {
-            SettingSelector selector = new SettingSelector()
+            SettingSelector selector = new SettingSelector
             {
-                AcceptDateTime = acceptDateTime,
                 Fields = fields
             };
 
@@ -32,7 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             selector.Labels.Add(labelFilter);
-
             return selector;
         }
 
