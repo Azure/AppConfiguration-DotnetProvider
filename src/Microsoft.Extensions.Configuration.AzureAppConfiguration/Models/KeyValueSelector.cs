@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
+﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     /// <summary>
     /// A selector used to control what key-values are retrieved from Azure App Configuration.
@@ -17,10 +15,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// A filter that determines what label to use when selecting key-values for the the configuration provider
         /// </summary>
         public string LabelFilter { get; set; }
-
-        /// <summary>
-        /// If set, then key-values will be retrieved exactly as they existed at the provided time.
-        /// </summary>
-        public DateTimeOffset? PreferredDateTime { get; set; }
     }
 }

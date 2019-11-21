@@ -96,7 +96,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey1");
+                    options.Select("TestKey1");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey2")
@@ -133,7 +133,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey*");
+                    options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1")
@@ -177,7 +177,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey*");
+                    options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1")
@@ -244,7 +244,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey*");
+                    options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label") // refreshAll: false
@@ -316,7 +316,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey*");
+                    options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
@@ -388,7 +388,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey*");
+                    options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", refreshAll: true)
@@ -461,7 +461,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.Use("TestKey*");
+                    options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1")

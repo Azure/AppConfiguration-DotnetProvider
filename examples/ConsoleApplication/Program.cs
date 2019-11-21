@@ -47,8 +47,8 @@
             builder.AddAzureAppConfiguration(options =>
             {
                 options.Connect(configuration["connection_string"])
-                       .Use("AppName")
-                       .Use("Settings:BackgroundColor")
+                       .Select("AppName")
+                       .Select("Settings:BackgroundColor")
                        .ConfigureRefresh(refresh =>
                        {
                            refresh.Register("AppName")

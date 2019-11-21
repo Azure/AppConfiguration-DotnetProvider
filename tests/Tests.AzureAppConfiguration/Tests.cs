@@ -88,38 +88,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void UsesPreferredDateTime()
-        {
-            var response = new MockResponse(200);
-            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
-
-            var mockTransport = new MockTransport(response);
-
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
-                    options.Use("*", null, DateTimeOffset.UtcNow);
-                })
-                .Build();
-
-            MockRequest request = mockTransport.SingleRequest;
-
-            Assert.True(request.Headers.TryGetValues("Accept-Datetime", out var values));
-
-            // KeyValues Retrieved
-            Assert.True(config["TestKey1"] == "TestValue1");
-            Assert.True(config["TestKey2"] == "TestValue2");
-            Assert.True(config["TestKey3"] == "TestValue3");
-            Assert.True(config["TestKey4"] == "TestValue4");
-        }
-
-        [Fact]
         public void TrimKeyPrefix_TestCase1()
         {
             var mockResponse = new Mock<Response>();
@@ -200,7 +168,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = new ConfigurationClient(_connectionString, clientOptions);
-                    options.Use("*", null);
+                    options.Select("*", null);
                 })
                 .Build();
 
@@ -230,7 +198,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = new ConfigurationClient(_connectionString, clientOptions);
-                    options.Use("*", null);
+                    options.Select("*", null);
                 })
                 .Build();
 
@@ -262,7 +230,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = new ConfigurationClient(_connectionString, clientOptions);
-                    options.Use("*", null);
+                    options.Select("*", null);
                 })
                 .Build();
 
@@ -288,7 +256,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = new ConfigurationClient(_connectionString, clientOptions);
-                    options.Use("*", null);
+                    options.Select("*", null);
                 })
                 .Build();
 

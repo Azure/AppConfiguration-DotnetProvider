@@ -141,8 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if ((useDefaultQuery && LabelFilter.Null.Equals(loadOption.LabelFilter)) ||
                         _options.KeyValueSelectors.Any(s => s != loadOption &&
                            string.Equals(s.KeyFilter, KeyFilter.Any) &&
-                           string.Equals(s.LabelFilter, loadOption.LabelFilter) &&
-                           Nullable<DateTimeOffset>.Equals(s.PreferredDateTime, loadOption.PreferredDateTime)))
+                           string.Equals(s.LabelFilter, loadOption.LabelFilter)))
                     {
                         // This selection was already encapsulated by a wildcard query
                         // Or would select kvs obtained by a different selector
@@ -150,7 +149,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, acceptDateTime: loadOption.PreferredDateTime);
+                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter);
 
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
