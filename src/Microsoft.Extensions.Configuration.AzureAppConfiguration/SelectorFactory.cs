@@ -12,11 +12,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return new SettingSelector();
         }
 
-        public static SettingSelector CreateSettingSelector(string keyFilter, string labelFilter, DateTimeOffset? asOf = default, SettingFields fields = SettingFields.All)
+        public static SettingSelector CreateSettingSelector(string keyFilter, string labelFilter, DateTimeOffset? acceptDateTime = default, SettingFields fields = SettingFields.All)
         {
             SettingSelector selector = new SettingSelector()
             {
-                AsOf = asOf,
+                AcceptDateTime = acceptDateTime,
                 Fields = fields
             };
 

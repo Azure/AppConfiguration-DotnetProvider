@@ -1,5 +1,5 @@
-﻿using Azure.Data.AppConfiguration;
-using Microsoft.Azure.AppConfiguration.ManagedIdentityConnector;
+﻿using Azure.Core;
+using Azure.Data.AppConfiguration;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -25,6 +25,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
+
+        /// <summary>
+        /// The connection string to use to connect to Azure App Configuration.
+        /// </summary>
+        internal string ConnectionString { get; private set; }
+
+        /// <summary>
+        /// The endpoint of the Azure App Configuration.
+        /// If this property is set, the <see cref="Credential"/> property also needs to be set.
+        /// </summary>
+        internal Uri Endpoint { get; private set; }
+
+        /// <summary>
+        /// The connection string to use to connect to Azure App Configuration.
+        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// </summary>
+        internal TokenCredential Credential { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -55,11 +72,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
         /// </summary>
         public IOfflineCache OfflineCache { get; private set; }
-
-        /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// </summary>
-        public string ConnectionString { get; set; }
 
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
@@ -182,37 +194,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(string connectionString)
         {
-            if (string.IsNullOrEmpty(connectionString))
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
+            Endpoint = null;
+            Credential = null;
             ConnectionString = connectionString;
             return this;
         }
 
-
         /// <summary>
-        /// Connect the provider to Azure App Configuration using the managed identity of an Azure resource.
+        /// Connect the provider to Azure App Configuration using endpoint and token credentials.
         /// </summary>
-        /// <param name="endpoint">
-        /// The endpoint of the Azure App Configuration store to connect to.
-        /// </param>
-        public AzureAppConfigurationOptions ConnectWithManagedIdentity(string endpoint)
+        /// <param name="endpoint">The endpoint of the Azure App Configuration to connect to.</param>
+        /// <param name="credential">Token credentials to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
         {
-            if (string.IsNullOrEmpty(endpoint))
+            if (endpoint == null)
             {
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uri))
+            if (credential == null)
             {
-                throw new ArgumentException(nameof(endpoint));
+                throw new ArgumentNullException(nameof(credential));
             }
 
-            var connectionString = ManagedIdentityConnector.GetConnectionString(uri, Permissions.Read).ConfigureAwait(false).GetAwaiter().GetResult();
-            Client = ConfigurationClientFactory.CreateConfigurationClient(connectionString);
-
+            ConnectionString = null;
+            Endpoint = endpoint;
+            Credential = credential;
             return this;
         }
 

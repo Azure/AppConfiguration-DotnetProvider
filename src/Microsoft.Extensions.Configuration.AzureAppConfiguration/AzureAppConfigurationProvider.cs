@@ -13,9 +13,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -150,7 +150,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, asOf: loadOption.PreferredDateTime);
+                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter, acceptDateTime: loadOption.PreferredDateTime);
 
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>

@@ -8,42 +8,17 @@
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
-
-    <!-- Copy NuGet package reference assemblies to build output. Can be removed once the MsiConnector assembly no longer needs to be packaged inside the configuration provider package. -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AssemblyName>Microsoft.Extensions.Configuration.AzureAppConfiguration</AssemblyName>
+    <PackageReleaseNotes>https://aka.ms/MicrosoftExtensionsConfigurationAzureAppConfigurationReleaseNotes</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Data.AppConfiguration" Version="$(AzureDataAppConfigurationVersion)" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.ManagedIdentityConnector" Version="$(MicrosoftAzconfigManagedIdentityConnectorVersion)" />
-    <PackageReference Include="Microsoft.Azure.KeyVault" Version="$(MicrosoftAzureKeyVaultVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsConfigurationVersion)" />
-    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftJsonVersion)" />
+    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-preview.5" />
+    <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.1" />
   </ItemGroup>
-  
-  <PropertyGroup>
-    <!-- 
-      This method of package referencing is used to bind package depedency versions to the generated .nuspec file.
-      This will no longer be needed when the configuration provider can depend on a public version of the Azconfig .NET Core SDK
-    -->
-    <AzureDataAppConfigurationVersion>1.0.0-preview.4</AzureDataAppConfigurationVersion>
-    <MicrosoftAzconfigManagedIdentityConnectorVersion>2.0.0-preview-010240001-1409</MicrosoftAzconfigManagedIdentityConnectorVersion>
-    <MicrosoftAzureKeyVaultVersion>3.0.3</MicrosoftAzureKeyVaultVersion>
-    <MicrosoftExtensionsConfigurationVersion>2.1.1</MicrosoftExtensionsConfigurationVersion>
-    <NewtonsoftJsonVersion>11.0.2</NewtonsoftJsonVersion>
-  </PropertyGroup>
 
-  <!-- After the build, we write the .nuspec file to the output directory -->
-  <Import Project=".\.nuspec.props" />
-  <Target Name="WriteToFile" AfterTargets="Build">  
-      <WriteLinesToFile File="$(OutDir)\$(ProjectName).nuspec" Lines="$(NuspecContent)" Overwrite="true" Encoding="Unicode" />
-  </Target>
-  
-  <!-- Ensure any package generation is done via the generated nuspec file. -->
-  <Target Name="PackCheck" AfterTargets="Pack">
-    <Error Text=" The NuspecFile property must be set to build this NuGet package." Condition="'$(NuspecFile)' == ''" />  
-  </Target>
-  
   <PropertyGroup>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\XMLComments\$(MSBuildProjectName).xml</DocumentationFile>
   </PropertyGroup>

@@ -55,19 +55,12 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
-            var builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            {
-                Client = mockClient.Object
-            });
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .Build();
 
             Assert.True(config["TestKey1"] == "TestValue1");
-
-            //
-            // Case-insensitive
-            Assert.True(config["tEsTkEy1"] == "TestValue1");
+            Assert.True(config["tEsTkEy1"] == "TestValue1");    // Case-insensitive
         }
 
         [Fact]
@@ -102,23 +95,18 @@ namespace Tests.AzureAppConfiguration
 
             var mockTransport = new MockTransport(response);
 
-            var options = new ConfigurationClientOptions
+            var clientOptions = new ConfigurationClientOptions
             {
                 Transport = mockTransport
             };
 
-            var client = new ConfigurationClient(_connectionString, options);
-
-            // Test
-            var builder = new ConfigurationBuilder();
-
-            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            {
-                Client = client
-
-            }.Use("*", null, DateTimeOffset.UtcNow));
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Use("*", null, DateTimeOffset.UtcNow);
+                })
+                .Build();
 
             MockRequest request = mockTransport.SingleRequest;
 
@@ -149,10 +137,11 @@ namespace Tests.AzureAppConfiguration
             var keyPrefix3 = "Test";
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                .AddAzureAppConfiguration(options =>
                 {
-                    Client = mockClient.Object
-                }.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3))
+                    options.Client = mockClient.Object;
+                    options.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3);
+                })
                 .Build();
 
             Assert.True(config["Key1"] == "TestValue1");
@@ -180,10 +169,11 @@ namespace Tests.AzureAppConfiguration
             var keyPrefix3 = "Test";
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(new AzureAppConfigurationOptions
+                .AddAzureAppConfiguration(options =>
                 {
-                    Client = mockClient.Object
-                }.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1))
+                    options.Client = mockClient.Object;
+                    options.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1);
+                })
                 .Build();
 
             Assert.True(config["Key1"] == "TestValue1");
@@ -201,21 +191,18 @@ namespace Tests.AzureAppConfiguration
 
             var mockTransport = new MockTransport(response);
 
-            var options = new ConfigurationClientOptions
+            var clientOptions = new ConfigurationClientOptions
             {
                 Transport = mockTransport
             };
 
-            var client = new ConfigurationClient(_connectionString, options);
-
-            // Test
-            var builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            {
-                Client = client
-            }.Use("*", null));
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Use("*", null);
+                })
+                .Build();
 
             MockRequest request = mockTransport.SingleRequest;
 
@@ -232,22 +219,20 @@ namespace Tests.AzureAppConfiguration
 
             var mockTransport = new MockTransport(response);
 
-            var options = new ConfigurationClientOptions
+            var clientOptions = new ConfigurationClientOptions
             {
                 Transport = mockTransport
             };
-            options.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
 
-            var client = new ConfigurationClient(_connectionString, options);
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
 
-            // Test
-            var builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            {
-                Client = client
-            }.Use("*", null));
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Use("*", null);
+                })
+                .Build();
 
             MockRequest request = mockTransport.SingleRequest;
 
@@ -266,23 +251,20 @@ namespace Tests.AzureAppConfiguration
 
             var mockTransport = new MockTransport(response);
 
-            var options = new ConfigurationClientOptions
+            var clientOptions = new ConfigurationClientOptions
             {
                 Transport = mockTransport
             };
 
-            var client = new ConfigurationClient(_connectionString, options);
-
-            // Test
             Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
 
-            var builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            {
-                Client = client
-            }.Use("*", null));
-
-            var config = builder.Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Use("*", null);
+                })
+                .Build();
 
             MockRequest request = mockTransport.SingleRequest;
 
@@ -293,22 +275,22 @@ namespace Tests.AzureAppConfiguration
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
             mockTransport = new MockTransport(response);
-            options = new ConfigurationClientOptions
+            clientOptions = new ConfigurationClientOptions
             {
                 Transport = mockTransport
             };
-            client = new ConfigurationClient(_connectionString, options);
 
             // Delete the request tracing environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
-            builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(new AzureAppConfigurationOptions()
-            {
-                Client = client
-            }.Use("*", null));
 
-            config = builder.Build();
+            config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Use("*", null);
+                })
+                .Build();
 
             request = mockTransport.SingleRequest;
 

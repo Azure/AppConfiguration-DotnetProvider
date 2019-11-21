@@ -30,7 +30,7 @@ if ((Test-Path -Path $LogDirectory) -ne $true) {
 }
 
 # The build system expects pre-built binaries to be in the folder pointed to by 'OutDir'.
-dotnet pack -o "$AzureAppConfigurationOutputPath" /p:OutDir="$PrebuiltBinariesDir" /p:NuspecFile="$($PrebuiltBinariesDir)\$AzureAppConfigurationProjectName.nuspec" "$AzureAppConfigurationProjectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
+dotnet pack -o "$AzureAppConfigurationOutputPath" /p:OutDir="$PrebuiltBinariesDir" "$AzureAppConfigurationProjectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
 dotnet pack -o "$AzureAppConfigurationAspNetCoreOutputPath" /p:OutDir="$PrebuiltBinariesDir" "$AzureAppConfigurationAspNetCoreProjectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
 
 exit $LASTEXITCODE

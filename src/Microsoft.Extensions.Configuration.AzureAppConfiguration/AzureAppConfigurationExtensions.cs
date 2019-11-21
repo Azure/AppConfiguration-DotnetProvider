@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration
             string connectionString,
             bool optional = false)
         {
-            return configurationBuilder.AddAzureAppConfiguration(new AzureAppConfigurationOptions().Connect(connectionString), optional);
+            return configurationBuilder.AddAzureAppConfiguration(options => options.Connect(connectionString), optional);
         }
 
         /// <summary>
@@ -38,19 +38,12 @@ namespace Microsoft.Extensions.Configuration
             return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
         }
 
-        /// <summary>
-        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
-        /// </summary>
-        /// <param name="configurationBuilder">The configuration builder to add key-values to</param>
-        /// <param name="options">Options used to configure the behavior of the Azure App Configuration provider.</param>
-        /// <param name="optional">If true, this method will not throw an exception if the configuration store cannot be accessed.</param>
-        /// <returns>The provided configuration builder.</returns>
-        public static IConfigurationBuilder AddAzureAppConfiguration(
+        internal static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            AzureAppConfigurationOptions options,
-            bool optional = false)
+            Action<AzureAppConfigurationOptions> action,
+            IConfigurationClientFactory configurationClientFactory)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(options, optional));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory));
         }
     }
 }
