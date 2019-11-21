@@ -9,11 +9,6 @@
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>Microsoft.Azure.AppConfiguration.AspNetCore</AssemblyName>
-    <Authors>Microsoft</Authors>
-    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
-    <PackageProjectUrl>https://github.com/Azure/AppConfiguration</PackageProjectUrl>
-    <PackageLicenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</PackageLicenseUrl>
-    <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
     <PackageReleaseNotes>https://aka.ms/MicrosoftAzureAppConfigurationAspNetCoreReleaseNotes</PackageReleaseNotes>
   </PropertyGroup>
 

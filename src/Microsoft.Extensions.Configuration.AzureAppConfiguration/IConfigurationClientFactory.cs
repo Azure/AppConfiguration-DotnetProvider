@@ -1,0 +1,12 @@
+﻿using Azure.Core;
+using Azure.Data.AppConfiguration;
+using System;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+{
+    internal interface IConfigurationClientFactory
+    {
+        ConfigurationClient CreateConfigurationClient(string connectionString);
+        ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential);
+    }
+}

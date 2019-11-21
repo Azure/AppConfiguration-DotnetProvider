@@ -9,16 +9,11 @@
     <DelaySign>false</DelaySign>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
     <AssemblyName>Microsoft.Extensions.Configuration.AzureAppConfiguration</AssemblyName>
-    <Authors>Microsoft</Authors>
-    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
-    <PackageProjectUrl>https://github.com/Azure/AppConfiguration</PackageProjectUrl>
-    <PackageLicenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</PackageLicenseUrl>
-    <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
     <PackageReleaseNotes>https://aka.ms/MicrosoftExtensionsConfigurationAzureAppConfigurationReleaseNotes</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-dev.20191115.1" />
+    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0-preview.5" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.1" />

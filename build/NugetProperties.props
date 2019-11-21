@@ -2,7 +2,12 @@
   <PropertyGroup>
     <Authors>Microsoft</Authors>
     <Company>Microsoft</Company>
+    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
+    <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
     <RepositoryUrl>https://github.com/Azure/Azconfig-DotnetProvider</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Azure/AppConfiguration</PackageProjectUrl>
+    <PackageLicenseUrl>https://aka.ms/AzureAppConfigurationDotnetCorePublicPreviewEula</PackageLicenseUrl>
+    <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'==''">
