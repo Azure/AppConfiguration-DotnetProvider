@@ -84,4 +84,20 @@ namespace Azure.Core.Testing
             IsDisposed = true;
         }
     }
+
+    class MockResponse<T> : Response<T>
+    {
+        private T _value;
+        public override T Value => _value;
+
+        public MockResponse(T value)
+        {
+            _value = value;
+        }
+
+        public override Response GetRawResponse()
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
