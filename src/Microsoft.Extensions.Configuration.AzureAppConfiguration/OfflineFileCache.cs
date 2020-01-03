@@ -1,9 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -113,24 +114,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     string json = File.ReadAllText(_localCachePath);
-
-                    JsonTextReader reader = new JsonTextReader(new StringReader(json));
                     string data = null, dataHash = null, scopeHash = null;
+
+                    byte[] bytes = Encoding.UTF8.GetBytes(json);
+                    var reader = new Utf8JsonReader(bytes);
+
                     while (reader.Read())
                     {
-                        if ((reader.TokenType == JsonToken.PropertyName) && (reader.Value != null))
+                        if (reader.TokenType == JsonTokenType.PropertyName)
                         {
-                            switch (reader.Value.ToString())
+                            switch (reader.GetString())
                             {
                                 case dataProp:
                                     data = reader.ReadAsString();
                                     break;
+
                                 case hashProp:
                                     dataHash = reader.ReadAsString();
                                     break;
+
                                 case scopeProp:
                                     scopeHash = reader.ReadAsString();
                                     break;
+
                                 default:
                                     return null;
                             }
@@ -178,21 +184,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var dataHash = CryptoService.GetHash(encryptedBytes, _options.SignKey);
                     var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_scopeToken), _options.SignKey);
 
-                    StringBuilder sb = new StringBuilder();
-                    using (var sw = new StringWriter(sb))
-                    using (var jtw = new JsonTextWriter(sw))
+                    using (var stream = new MemoryStream())
                     {
-                        jtw.WriteStartObject();
-                        jtw.WritePropertyName(dataProp);
-                        jtw.WriteValue(Convert.ToBase64String(encryptedBytes));
-                        jtw.WritePropertyName(hashProp);
-                        jtw.WriteValue(dataHash);
-                        jtw.WritePropertyName(scopeProp);
-                        jtw.WriteValue(scopeHash);
-                        jtw.WriteEndObject();
-                    }
+                        using (var writer = new Utf8JsonWriter(stream))
+                        {
+                            writer.WriteStartObject();
+                            writer.WriteString(dataProp, Convert.ToBase64String(encryptedBytes));
+                            writer.WriteString(hashProp, dataHash);
+                            writer.WriteString(scopeProp, scopeHash);
+                            writer.WriteEndObject();
+                        }
 
-                    File.WriteAllText(tempFile, sb.ToString());
+                        string jsonString = Encoding.UTF8.GetString(stream.ToArray());
+                        File.WriteAllText(tempFile, jsonString);
+                    }
 
                     await this.DoUpdate(tempFile).ConfigureAwait(false);
                 });

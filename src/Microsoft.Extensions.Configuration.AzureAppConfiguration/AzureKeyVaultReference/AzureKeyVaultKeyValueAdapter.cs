@@ -1,9 +1,9 @@
 ﻿using Azure;
 using Azure.Data.AppConfiguration;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,9 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
     class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter
     {
-        private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
         private readonly AzureKeyVaultSecretProvider _secretProvider;
-
 
         public AzureKeyVaultKeyValueAdapter(AzureKeyVaultSecretProvider secretProvider)
         {
@@ -25,15 +23,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
-
             KeyVaultSecretReference secretRef;
 
             // Content validation
             try
             {
-                secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(setting.Value, s_SerializationSettings);
+                secretRef = JsonSerializer.Deserialize<KeyVaultSecretReference>(setting.Value);
             }
-            catch (JsonReaderException e)
+            catch (JsonException e)
             {
                 throw CreateKeyVaultReferenceException("Invalid Key Vault reference", setting, e, null);
             }

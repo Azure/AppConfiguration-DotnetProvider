@@ -1,15 +1,14 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    [JsonObject(MemberSerialization.OptIn)]
     internal class ClientFilter
     {
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; }
 
-        [JsonProperty("parameters")]
-        public JObject Parameters { get; set; }
+        [JsonPropertyName("parameters")]
+        public JsonElement Parameters { get; set; }
     }
 }
