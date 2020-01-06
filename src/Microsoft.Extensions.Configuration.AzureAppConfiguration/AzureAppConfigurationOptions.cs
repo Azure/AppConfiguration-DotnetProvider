@@ -252,16 +252,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configures the Azure App Configuration provider to use the provided Key Vault configuration to resolve key-vault references.
+        /// Configures the Azure App Configuration provider to use the provided Key Vault configuration to resolve key vault references.
         /// </summary>
-        /// <param name="configure">A callback used to configure Azure App Configuration key-vault options.</param>
+        /// <param name="configure">A callback used to configure Azure App Configuration key vault options.</param>
         public AzureAppConfigurationOptions ConfigureKeyVault(Action<AzureAppConfigurationKeyVaultOptions> configure)
         {
             var keyVaultOptions = new AzureAppConfigurationKeyVaultOptions();
             configure?.Invoke(keyVaultOptions);
 
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
-            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.DefaultCredential, keyVaultOptions.SecretClients)));
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients)));
 
             return this;
         }

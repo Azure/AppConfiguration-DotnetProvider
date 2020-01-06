@@ -3,6 +3,7 @@ using Azure.Data.AppConfiguration;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -49,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e) when (e is RequestFailedException || e is AggregateException)
+            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) == true))
             {
                 throw CreateKeyVaultReferenceException("Key vault error", setting, e, secretRef);
             }

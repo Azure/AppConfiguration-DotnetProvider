@@ -286,7 +286,7 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.ConfigureKeyVault(kv => kv.SetDefaultCredential(new DefaultAzureCredential()));
+                    options.ConfigureKeyVault(kv => kv.SetCredential(new DefaultAzureCredential()));
                 })
                 .Build();
             });

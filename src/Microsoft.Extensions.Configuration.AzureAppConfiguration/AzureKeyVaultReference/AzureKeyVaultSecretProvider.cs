@@ -11,12 +11,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
     class AzureKeyVaultSecretProvider
     {
         private readonly IDictionary<string, SecretClient> _secretClients;
-        private readonly TokenCredential _defaultCredential;
+        private readonly TokenCredential _credential;
 
-        public AzureKeyVaultSecretProvider(TokenCredential defaultCredential = null, IEnumerable<SecretClient> secretClients = null)
+        public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null)
         {
-            _defaultCredential = defaultCredential;
-            _secretClients = new Dictionary<string, SecretClient>();
+            _credential = credential;
+            _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
             
             if (secretClients != null)
             {
@@ -59,12 +59,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return client;
             }
 
-            if (_defaultCredential == null)
+            if (_credential == null)
             {
                 return null;
             }
 
-            client = new SecretClient(new Uri(secretUri.GetLeftPart(UriPartial.Authority)), _defaultCredential);
+            client = new SecretClient(new Uri(secretUri.GetLeftPart(UriPartial.Authority)), _credential);
             _secretClients.Add(keyVaultId, client);
             return client;
         }
