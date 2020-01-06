@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) == true))
+            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
                 throw CreateKeyVaultReferenceException("Key vault error", setting, e, secretRef);
             }

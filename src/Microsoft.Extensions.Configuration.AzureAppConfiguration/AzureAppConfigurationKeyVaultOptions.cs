@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal List<SecretClient> SecretClients = new List<SecretClient>();
 
         /// <summary>
-        /// Sets the credentials used to authenticate to a key vault that has no registered <see cref="SecretClient"/>.
+        /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
         /// </summary>
         /// <param name="credential">Default token credentials.</param>
         public AzureAppConfigurationKeyVaultOptions SetCredential(TokenCredential credential)
