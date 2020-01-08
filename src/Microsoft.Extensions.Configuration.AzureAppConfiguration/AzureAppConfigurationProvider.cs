@@ -271,7 +271,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         // Load the key-value in case the previous load attempts had failed
                         var options = SelectorFactory.CreateSettingSelector();
-                        options.Labels.Add(watchedLabel);
+                        options.LabelFilter = watchedLabel;
 
                         try
                         {
