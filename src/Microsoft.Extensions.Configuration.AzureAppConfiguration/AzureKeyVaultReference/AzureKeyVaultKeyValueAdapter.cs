@@ -25,6 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
+
             KeyVaultSecretReference secretRef;
 
             // Content validation
@@ -44,16 +45,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             string secret;
-            var secretClient = _secretProvider.GetSecretClient(secretUri);
-
-            if (secretClient == null)
-            {
-                throw CreateKeyVaultReferenceException("No appropriate SecretClient or credential could be found", setting, null, secretRef);
-            }
 
             try
             {
-                secret = await _secretProvider.GetSecretValue(secretClient, secretUri, cancellationToken).ConfigureAwait(false);
+                secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRef);
             }
             catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
