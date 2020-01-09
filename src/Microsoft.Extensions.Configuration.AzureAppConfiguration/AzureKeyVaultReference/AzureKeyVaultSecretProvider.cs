@@ -1,20 +1,31 @@
-﻿using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Azure.Services.AppAuthentication;
+﻿using Azure.Core;
+using Azure.Security.KeyVault.Secrets;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    class AzureKeyVaultSecretProvider : IDisposable
+    class AzureKeyVaultSecretProvider
     {
-        private IKeyVaultClient _keyVaultClient;
-        private bool _disposeClient;
+        private readonly IDictionary<string, SecretClient> _secretClients;
+        private readonly TokenCredential _credential;
 
-        public AzureKeyVaultSecretProvider(IKeyVaultClient client = null)
+        public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null)
         {
-            _keyVaultClient = client;
+            _credential = credential;
+            _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
+            
+            if (secretClients != null)
+            {
+                foreach (SecretClient client in secretClients)
+                {
+                    string keyVaultId = client.VaultUri.Host;
+                    _secretClients[keyVaultId] = client;
+                }
+            }
         }
 
         public async Task<string> GetSecretValue(Uri secretUri, CancellationToken cancellationToken)
@@ -24,34 +35,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 throw new ArgumentNullException(nameof(secretUri));
             }
 
-            EnsureInitialized();
+            string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
+            string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
 
-            SecretBundle secretBundle = await _keyVaultClient.GetSecretAsync(secretUri.ToString(), cancellationToken).ConfigureAwait(false);
+            SecretClient client = GetSecretClient(secretUri);
 
-            return secretBundle?.Value;
-        }
-
-        public void Dispose()
-        {
-            if (_disposeClient)
+            if (client == null)
             {
-                _keyVaultClient.Dispose();
-            }
-        }
-
-        private void EnsureInitialized()
-        {
-            if (_keyVaultClient != null)
-            {
-                return;
+                throw new UnauthorizedAccessException("No key vault credential configured and no matching secret client could be found.");
             }
 
-            // Use Managed identity
-            var azureServiceTokenProvider = new AzureServiceTokenProvider();
+            KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+            return secret?.Value;
+        }
 
-            _keyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
+        private SecretClient GetSecretClient(Uri secretUri)
+        {
+            string keyVaultId = secretUri.Host;
 
-            _disposeClient = true;
+            if (_secretClients.TryGetValue(keyVaultId, out SecretClient client))
+            {
+                return client;
+            }
+
+            if (_credential == null)
+            {
+                return null;
+            }
+
+            client = new SecretClient(new Uri(secretUri.GetLeftPart(UriPartial.Authority)), _credential);
+            _secretClients.Add(keyVaultId, client);
+            return client;
         }
     }
 }

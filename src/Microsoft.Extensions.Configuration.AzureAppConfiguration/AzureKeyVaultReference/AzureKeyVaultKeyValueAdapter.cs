@@ -1,8 +1,9 @@
-﻿using Azure.Data.AppConfiguration;
-using Microsoft.Azure.KeyVault.Models;
+﻿using Azure;
+using Azure.Data.AppConfiguration;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,14 +26,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
 
-            KeyVaultSecretReference secretRef = null;
+            KeyVaultSecretReference secretRef;
 
-            //
             // Content validation
             try
             {
                 secretRef = JsonConvert.DeserializeObject<KeyVaultSecretReference>(setting.Value, s_SerializationSettings);
-
             }
             catch (JsonReaderException e)
             {
@@ -40,23 +39,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             // Uri validation
-            if (string.IsNullOrEmpty(secretRef.Uri) ||
-                !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri))
+            if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || secretUri.Segments.Length < 3)
             {
                 throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier", setting, null, secretRef);
             }
 
-            string secret = null;
+            string secret;
 
             try
             {
                 secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
             }
-            catch (KeyVaultErrorException e)
+            catch (UnauthorizedAccessException e)
+            {
+                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRef);
+            }
+            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
                 throw CreateKeyVaultReferenceException("Key vault error", setting, e, secretRef);
             }
-
 
             return new KeyValuePair<string, string>[]
             {
@@ -71,16 +72,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 Key = setting.Key,
                 Label = setting.Label,
                 Etag = setting.ETag.ToString(),
-                ErrorCode = (inner as KeyVaultErrorException)?.Body?.Error?.InnerError?.Code,
-                SecretIdentifier = secretRef?.Uri,
-
+                ErrorCode = (inner as RequestFailedException)?.ErrorCode,
+                SecretIdentifier = secretRef?.Uri
             };
         }
 
         public bool CanProcess(ConfigurationSetting setting)
         {
             string contentType = setting?.ContentType?.Split(';')[0].Trim();
-
             return string.Equals(contentType, KeyVaultConstants.ContentType);
         }
     }

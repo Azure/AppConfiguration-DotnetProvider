@@ -1,6 +1,5 @@
 ﻿using Azure.Core;
 using Azure.Data.AppConfiguration;
-using Microsoft.Azure.KeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -158,20 +157,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configures the Azure App Configuration provider to use the provided Key Vault client to resolve Key Vault references.
-        /// </summary>
-        /// <param name="client"></param>
-        public AzureAppConfigurationOptions UseAzureKeyVault(IKeyVaultClient client)
-        {
-            _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
-
-            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(client)));
-           
-            return this;
-        }
-
-    
-        /// <summary>
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>
         /// <param name="offlineCache">The offline file cache to use for storing/retrieving Azure App Configuration data.</param>
@@ -264,6 +249,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public IConfigurationRefresher GetRefresher()
         {
             return _refresher;
+        }
+
+        /// <summary>
+        /// Configures the Azure App Configuration provider to use the provided Key Vault configuration to resolve key vault references.
+        /// </summary>
+        /// <param name="configure">A callback used to configure Azure App Configuration key vault options.</param>
+        public AzureAppConfigurationOptions ConfigureKeyVault(Action<AzureAppConfigurationKeyVaultOptions> configure)
+        {
+            var keyVaultOptions = new AzureAppConfigurationKeyVaultOptions();
+            configure?.Invoke(keyVaultOptions);
+
+            _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients)));
+
+            return this;
         }
     }
 }
