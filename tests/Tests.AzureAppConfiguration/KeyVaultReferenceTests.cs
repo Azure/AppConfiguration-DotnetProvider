@@ -295,7 +295,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ServerRequestIsNotMadeWhenNoMatchingSecretClientIsFound()
+        public void ThrowsWhenNoMatchingSecretClientIsFound()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
@@ -308,34 +308,38 @@ namespace Tests.AzureAppConfiguration
             var mockSecretClient2 = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient2.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics2.vault.azure.net"));
 
-            var configuration = new ConfigurationBuilder()
+            Assert.Throws<KeyVaultReferenceException>(() =>
+            {
+                new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient1.Object).Register(mockSecretClient2.Object));
                 })
                 .Build();
+            });
 
             mockSecretClient1.Verify(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
             mockSecretClient2.Verify(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-            Assert.Null(configuration[_kv.Key]);
         }
 
         [Fact]
-        public void ServerRequestIsNotMadeWhenSecretClientAndCredentialAreMissing()
+        public void ThrowsWhenSecretClientAndCredentialAreMissing()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
-            IConfiguration configuration = new ConfigurationBuilder()
+            Assert.Throws<KeyVaultReferenceException>(() =>
+            {
+                new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                }).Build();
-
-            Assert.Null(configuration[_kv.Key]);
+                })
+                .Build();
+            });
         }
     }
 }

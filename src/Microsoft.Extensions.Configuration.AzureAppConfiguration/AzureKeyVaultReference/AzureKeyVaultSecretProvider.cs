@@ -28,8 +28,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(Uri secretUri, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(SecretClient secretClient, Uri secretUri, CancellationToken cancellationToken)
         {
+            if (secretClient == null)
+            {
+                throw new ArgumentNullException(nameof(secretClient));
+            }
+
             if (secretUri == null)
             {
                 throw new ArgumentNullException(nameof(secretUri));
@@ -38,20 +43,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
             string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
 
-            SecretClient client = GetSecretClient(secretUri);
-
-            if (client == null)
-            {
-                // Unable to find a registered SecretClient or default credentials to fetch the value for the secret
-                return null;
-            }
-
-            KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+            KeyVaultSecret secret = await secretClient.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
             return secret?.Value;
         }
 
-        private SecretClient GetSecretClient(Uri secretUri)
+        public SecretClient GetSecretClient(Uri secretUri)
         {
+            if (secretUri == null)
+            {
+                throw new ArgumentNullException(nameof(secretUri));
+            }
+
             string keyVaultId = secretUri.Host;
 
             if (_secretClients.TryGetValue(keyVaultId, out SecretClient client))
