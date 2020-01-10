@@ -162,7 +162,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult());
+                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception.InnerException is RequestFailedException ||
                                               exception.InnerException is HttpRequestException ||
