@@ -125,7 +125,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (useDefaultQuery)
                 {
                     // Load all key-values with the null label.
-                    var selector = SelectorFactory.CreateSettingSelector(KeyFilter.Any, LabelFilter.Null);
+                    var selector = new SettingSelector
+                    {
+                        KeyFilter = KeyFilter.Any,
+                        LabelFilter = LabelFilter.Null
+                    };
 
                     await CallWithRequestTracing(async () =>
                     {
@@ -149,7 +153,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         continue;
                     }
 
-                    var selector = SelectorFactory.CreateSettingSelector(loadOption.KeyFilter, loadOption.LabelFilter);
+                    var selector = new SettingSelector
+                    {
+                        KeyFilter = loadOption.KeyFilter,
+                        LabelFilter = loadOption.LabelFilter
+                    };
 
                     // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
@@ -270,8 +278,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     else
                     {
                         // Load the key-value in case the previous load attempts had failed
-                        var options = SelectorFactory.CreateSettingSelector();
-                        options.Labels.Add(watchedLabel);
+                        var options = new SettingSelector { LabelFilter = watchedLabel };
 
                         try
                         {

@@ -100,10 +100,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             var hasKeyValueCollectionChanged = false;
-
-            var keyFilter = options.Prefix + "*";
-            var labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
-            var selector = SelectorFactory.CreateSettingSelector(keyFilter, labelFilter, fields: SettingFields.ETag | SettingFields.Key);
+            var selector = new SettingSelector
+            {
+                KeyFilter = options.Prefix + "*",
+                LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
+                Fields = SettingFields.ETag | SettingFields.Key
+            };
 
             // Dictionary of eTags that we write to and use for comparison
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
@@ -135,9 +137,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             // If changes have been observed, refresh prefixed key-values
             if (hasKeyValueCollectionChanged)
             {
-                keyFilter = options.Prefix + "*";
-                labelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label;
-                selector = SelectorFactory.CreateSettingSelector(keyFilter, labelFilter);
+                selector = new SettingSelector
+                {
+                    KeyFilter = options.Prefix + "*",
+                    LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label
+                };
 
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
                 await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,

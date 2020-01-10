@@ -82,11 +82,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
         /// <param name="keyFilter">
-        /// The key filter to apply when querying Azure App Configuration for key-values. Built-in key filter options: <see cref="KeyFilter"/>
+        /// The key filter to apply when querying Azure App Configuration for key-values.
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
+        /// Built-in key filter options: <see cref="KeyFilter"/>.
         /// </param>
         /// <param name="labelFilter">
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
-        /// Does not support '*' and ','.
+        /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
         public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
         {
