@@ -128,8 +128,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var selector = new SettingSelector
                     {
                         KeyFilter = KeyFilter.Any,
-                        LabelFilter = LabelFilter.Null,
-                        Fields = SettingFields.All
+                        LabelFilter = LabelFilter.Null
                     };
 
                     await CallWithRequestTracing(async () =>
@@ -157,8 +156,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var selector = new SettingSelector
                     {
                         KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter,
-                        Fields = SettingFields.All
+                        LabelFilter = loadOption.LabelFilter
                     };
 
                     // Load all key-values with the null label.

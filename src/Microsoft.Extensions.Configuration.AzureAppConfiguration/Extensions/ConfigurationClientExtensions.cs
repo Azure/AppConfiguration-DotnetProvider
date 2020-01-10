@@ -140,8 +140,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 selector = new SettingSelector
                 {
                     KeyFilter = options.Prefix + "*",
-                    LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
-                    Fields = SettingFields.All
+                    LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label
                 };
 
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
