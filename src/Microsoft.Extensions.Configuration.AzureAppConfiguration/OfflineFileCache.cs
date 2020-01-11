@@ -184,19 +184,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var dataHash = CryptoService.GetHash(encryptedBytes, _options.SignKey);
                     var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_scopeToken), _options.SignKey);
 
-                    using (var stream = new MemoryStream())
+                    using (var fileStream = new FileStream(tempFile, FileMode.Create))
                     {
-                        using (var writer = new Utf8JsonWriter(stream))
+                        using (var memoryStream = new MemoryStream())
                         {
-                            writer.WriteStartObject();
-                            writer.WriteString(dataProp, Convert.ToBase64String(encryptedBytes));
-                            writer.WriteString(hashProp, dataHash);
-                            writer.WriteString(scopeProp, scopeHash);
-                            writer.WriteEndObject();
-                        }
+                            using (var writer = new Utf8JsonWriter(memoryStream))
+                            {
+                                writer.WriteStartObject();
+                                writer.WriteString(dataProp, Convert.ToBase64String(encryptedBytes));
+                                writer.WriteString(hashProp, dataHash);
+                                writer.WriteString(scopeProp, scopeHash);
+                                writer.WriteEndObject();
+                            }
 
-                        string jsonString = Encoding.UTF8.GetString(stream.ToArray());
-                        File.WriteAllText(tempFile, jsonString);
+                            memoryStream.Position = 0;
+                            memoryStream.CopyTo(fileStream);
+                            fileStream.Flush();
+                        }
                     }
 
                     await this.DoUpdate(tempFile).ConfigureAwait(false);
