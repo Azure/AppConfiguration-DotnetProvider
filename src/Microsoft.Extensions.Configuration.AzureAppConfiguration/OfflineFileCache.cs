@@ -113,10 +113,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    string json = File.ReadAllText(_localCachePath);
                     string data = null, dataHash = null, scopeHash = null;
-
-                    byte[] bytes = File.ReadAllBytes(json);
+                    byte[] bytes = File.ReadAllBytes(_localCachePath);
                     var reader = new Utf8JsonReader(bytes);
 
                     while (reader.Read())
