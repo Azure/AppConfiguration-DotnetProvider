@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     {
         public static string ReadAsString(this Utf8JsonReader reader)
         {
-            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+            if (reader.Read())
             {
                 return reader.GetString();
             }
