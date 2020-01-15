@@ -1,8 +1,8 @@
 ﻿using Azure.Data.AppConfiguration;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,16 +10,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
-        private static readonly JsonSerializerSettings s_SerializationSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
-
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag;
             try
             {
-                 featureFlag = JsonConvert.DeserializeObject<FeatureFlag>(setting.Value, s_SerializationSettings);
+                 featureFlag = JsonSerializer.Deserialize<FeatureFlag>(setting.Value);
             }
-            catch (JsonReaderException e)
+            catch (JsonException e)
             {
                 throw new FormatException(setting.Key, e);
             }
@@ -50,12 +48,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
 
-                        if (clientFilter.Parameters != null)
+                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
                         {
-                            foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
-                            {
-                                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
-                            }
+                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
                         }
                     }
                 }

@@ -1,8 +1,7 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -12,70 +11,50 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private readonly Stack<string> _context = new Stack<string>();
         private string _currentPath;
 
-        public List<KeyValuePair<string, string>> FlattenJson(JObject original)
+        public List<KeyValuePair<string, string>> FlattenJson(JsonElement rootElement)
         {
-            VisitJObject(original);
-
+            VisitJsonElement(rootElement);
             return _data;
         }
 
-        private void VisitJObject(JObject jObject)
+        private void VisitJsonProperty(JsonProperty property)
         {
-            foreach (var property in jObject.Properties())
-            {
-                EnterContext(property.Name);
-                VisitProperty(property);
-                ExitContext();
-            }
+            EnterContext(property.Name);
+            VisitJsonElement(property.Value);
+            ExitContext();
         }
 
-        private void VisitProperty(JProperty property)
+        private void VisitJsonElement(JsonElement element)
         {
-            VisitToken(property.Value);
-        }
-
-        private void VisitToken(JToken token)
-        {
-            switch (token.Type)
+            switch (element.ValueKind)
             {
-                case JTokenType.Object:
-                    VisitJObject(token.Value<JObject>());
+                case JsonValueKind.Object:
+                    foreach (JsonProperty property in element.EnumerateObject())
+                    {
+                        VisitJsonProperty(property);
+                    }
                     break;
 
-                case JTokenType.Array:
-                    VisitArray(token.Value<JArray>());
+                case JsonValueKind.Array:
+                    for (int index = 0; index < element.GetArrayLength(); index++)
+                    {
+                        EnterContext(index.ToString());
+                        VisitJsonElement(element[index]);
+                        ExitContext();
+                    }
                     break;
 
-                case JTokenType.Integer:
-                case JTokenType.Float:
-                case JTokenType.String:
-                case JTokenType.Boolean:
-                case JTokenType.Bytes:
-                case JTokenType.Raw:
-                case JTokenType.Null:
-                case JTokenType.Guid:
-                case JTokenType.TimeSpan:
-                    VisitPrimitive(token.Value<JValue>());
+                case JsonValueKind.String:
+                case JsonValueKind.Number:
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                case JsonValueKind.Null:
+                    _data.Add(new KeyValuePair<string, string>(_currentPath, element.ToString()));
                     break;
 
                 default:
                     break;
             }
-        }
-
-        private void VisitArray(JArray array)
-        {
-            for (int index = 0; index < array.Count; index++)
-            {
-                EnterContext(index.ToString());
-                VisitToken(array[index]);
-                ExitContext();
-            }
-        }
-
-        private void VisitPrimitive(JValue data)
-        {
-            _data.Add(new KeyValuePair<string, string>(_currentPath, data.ToString(CultureInfo.InvariantCulture)));
         }
 
         private void EnterContext(string context)

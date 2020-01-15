@@ -41,6 +41,13 @@ namespace Tests.AzureAppConfiguration
                           },
                           {
                             ""name"": ""SuperUsers""
+                          },
+                          {
+                            ""name"": ""TimeWindow"",
+                            ""parameters"": {
+	                          ""Start"": ""\/Date(1578643200000)\/"",
+	                          ""End"": ""\/Date(1578686400000)\/""
+                            }
                           }
                         ]
                       }
@@ -99,6 +106,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
             Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
             Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
+            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
         }
 
         [Fact]
@@ -130,6 +140,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
             Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
             Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
+            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
 
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
