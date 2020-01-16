@@ -12,14 +12,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _provider = provider;
         }
 
-        public async Task Refresh()
+        public async Task RefreshAsync()
         {
             if (_provider == null)
             {
-                throw new InvalidOperationException("Refresh operation cannot be invoked before Azure App Configuration Provider is initialized.");
+                throw new InvalidOperationException("ConfigurationBuilder.Build() must be called before this operation can be performed.");
             }
 
-            await _provider.Refresh().ConfigureAwait(false);
+            await _provider.RefreshAsync().ConfigureAwait(false);
+        }
+
+        public async Task<bool> TryRefreshAsync()
+        {
+            if (_provider == null)
+            {
+                return false;
+            }
+
+            return await _provider.TryRefreshAsync().ConfigureAwait(false);
         }
     }
 }

@@ -48,18 +48,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_DefaultUseQuery()
         {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-
-            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
-            {
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
-            }
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+            var mockClient = GetMockConfigurationClient();
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -79,18 +68,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_CustomUseQuery()
         {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-
-            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
-            {
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
-            }
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+            var mockClient = GetMockConfigurationClient();
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -114,20 +92,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshIsSkippedIfCacheIsNotExpired()
         {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-
-            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
-            {
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
-            }
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
-
             IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -150,7 +116,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for some time but not enough to let the cache expire
             Thread.Sleep(5000);
 
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
@@ -158,20 +124,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshIsNotSkippedIfCacheIsExpired()
         {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-
-            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
-            {
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
-            }
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
-
             IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -194,7 +148,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
         }
@@ -264,7 +218,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.NotEqual("newValue", config["TestKey2"]);
@@ -336,7 +290,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("newValue", config["TestKey2"]);
@@ -409,7 +363,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
@@ -484,7 +438,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
 
             // Validate that key-values registered for refresh were updated
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -621,10 +575,133 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<InvalidOperationException>(action);
         }
 
+        [Fact]
+        public void RefreshTests_RefreshAsyncThrowsOnRequestFailedException()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue";
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException("Request failed."));
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            Action action = () => refresher.RefreshAsync().Wait();
+            Assert.Throws<AggregateException>(action);
+
+            Assert.NotEqual("newValue", config["TestKey1"]);
+        }
+
+        [Fact]
+        public void RefreshTests_TryRefreshAsyncReturnsFalseOnRequestFailedException()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue";
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException("Request failed."));
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            bool result = refresher.TryRefreshAsync().Result;
+            Assert.False(result);
+
+            Assert.NotEqual("newValue", config["TestKey1"]);
+        }
+
+        [Fact]
+        public void RefreshTests_TryRefreshAsyncUpdatesConfigurationAndReturnsTrueOnSuccess()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            bool result = refresher.TryRefreshAsync().Result;
+            Assert.True(result);
+
+            Assert.Equal("newValue", config["TestKey1"]);
+        }
+
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();
-            refresher.Refresh().Wait();
+            refresher.RefreshAsync().Wait();
+        }
+
+        private Mock<ConfigurationClient> GetMockConfigurationClient()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
+            {
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollection));
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            return mockClient;
         }
     }
 }

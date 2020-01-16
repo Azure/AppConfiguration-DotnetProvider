@@ -169,7 +169,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             featureFlags.Add(_kv2);
-            refresher.Refresh();
+            refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
