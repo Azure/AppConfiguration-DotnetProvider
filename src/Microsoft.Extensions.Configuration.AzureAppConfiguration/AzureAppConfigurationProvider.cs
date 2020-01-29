@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
 
-        private const int MaxRetries = 12;
+        private const int MaxRetries = 2;
         private const int RetryWaitMinutes = 1;
 
         private readonly HostType _hostType;
