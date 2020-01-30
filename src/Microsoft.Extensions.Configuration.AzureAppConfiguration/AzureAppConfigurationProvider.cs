@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly bool _requestTracingEnabled;
 
         private const int MaxRetries = 2;
-        private const int RetryWaitMinutes = 1;
+        private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
         private readonly HostType _hostType;
         private readonly ConfigurationClient _client;
@@ -106,7 +106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
             clientOptions.Retry.MaxRetries = MaxRetries;
-            clientOptions.Retry.MaxDelay = TimeSpan.FromMinutes(RetryWaitMinutes);
+            clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
 
