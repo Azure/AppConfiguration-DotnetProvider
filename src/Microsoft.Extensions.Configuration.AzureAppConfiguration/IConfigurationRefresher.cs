@@ -12,12 +12,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Refreshes the data from the configuration store asynchronously.
         /// </summary>
-        /// <exception cref="KeyVaultReferenceException">An error occurred when resolving a reference to Azure Key Vault resource.</exception>
+        /// <exception cref="KeyVaultReferenceException">An error occurred when resolving a reference to an Azure Key Vault resource.</exception>
         /// <exception cref="RequestFailedException">The request failed with an error code from the server.</exception>
         /// <exception cref="AggregateException">
         /// The refresh operation failed with one or more errors. Check <see cref="AggregateException.InnerExceptions"/> for more details.
         /// </exception>
-        /// <exception cref="InvalidOperationException">The refresh operation is invoked before Azure App Configuration Provider is initialized.</exception>
+        /// <exception cref="InvalidOperationException">The refresh operation was invoked before Azure App Configuration Provider was initialized.</exception>
         Task RefreshAsync();
 
         /// <summary>
