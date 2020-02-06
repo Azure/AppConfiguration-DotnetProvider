@@ -96,10 +96,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _isInitialLoadComplete = true;
         }
 
-        public async Task Refresh()
+        public async Task RefreshAsync()
         {
             await RefreshIndividualKeyValues().ConfigureAwait(false);
             await RefreshKeyValueCollections().ConfigureAwait(false);
+        }
+
+        public async Task<bool> TryRefreshAsync()
+        {
+            try
+            {
+                await RefreshAsync().ConfigureAwait(false);
+            }
+            catch (Exception e) when (
+                e is KeyVaultReferenceException ||
+                e is RequestFailedException ||
+                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         internal static ConfigurationClientOptions GetClientOptions()

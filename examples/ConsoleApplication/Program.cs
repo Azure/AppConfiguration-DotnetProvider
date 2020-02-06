@@ -71,7 +71,7 @@
             while (!token.IsCancellationRequested)
             {
                 // Trigger an async refresh for registered configuration settings without wait
-                _ = _refresher.Refresh();
+                _ = _refresher.TryRefreshAsync();
 
                 sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();
