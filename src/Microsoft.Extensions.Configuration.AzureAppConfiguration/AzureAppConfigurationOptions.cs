@@ -17,6 +17,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationOptions
     {
+        internal const int MaxRetries = 2;
+        internal static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+
         internal static readonly TimeSpan DefaultFeatureFlagsCacheExpiration = TimeSpan.FromSeconds(30);
         internal static readonly TimeSpan MinimumFeatureFlagsCacheExpiration = TimeSpan.FromMilliseconds(1000);
 
@@ -79,6 +82,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
         internal ConfigurationClient Client { get; set; }
+
+        /// <summary>
+        /// Options used to configure the client used to communicate with Azure App Configuration.
+        /// </summary>
+        internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -230,9 +238,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Configure the client used to communicate with Azure App Configuration.
+        /// </summary>
+        /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
+        public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
+        {
+            configure?.Invoke(ClientOptions);
+            return this;
+        }
+
+        /// <summary>
         /// Configure refresh for key-values in the configuration provider.
         /// </summary>
-        /// <param name="configure">>A callback used to configure Azure App Configuration refresh options.</param>
+        /// <param name="configure">A callback used to configure Azure App Configuration refresh options.</param>
         public AzureAppConfigurationOptions ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> configure)
         {
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
@@ -269,6 +287,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients)));
 
             return this;
+        }
+
+        private static ConfigurationClientOptions GetDefaultClientOptions()
+        {
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
+            clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.MaxDelay = MaxRetryDelay;
+            clientOptions.Retry.Mode = RetryMode.Exponential;
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
+
+            return clientOptions;
         }
     }
 }

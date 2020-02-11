@@ -9,15 +9,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class ConfigurationClientFactory : IConfigurationClientFactory
     {
-        public ConfigurationClient CreateConfigurationClient(string connectionString)
+        public ConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
         {
-            var clientOptions = AzureAppConfigurationProvider.GetClientOptions();
             return new ConfigurationClient(connectionString, clientOptions); 
         }
 
-        public ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential)
+        public ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
-            var clientOptions = AzureAppConfigurationProvider.GetClientOptions();
             return new ConfigurationClient(endpoint, credential, clientOptions);
         }
     }

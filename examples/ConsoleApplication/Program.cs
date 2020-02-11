@@ -52,6 +52,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
                 options.Connect(configuration["connection_string"])
                        .Select("AppName")
                        .Select("Settings:BackgroundColor")
+                       .ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 5)
                        .ConfigureRefresh(refresh =>
                        {
                            refresh.Register("AppName")

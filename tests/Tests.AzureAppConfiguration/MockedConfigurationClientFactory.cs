@@ -14,20 +14,23 @@ namespace Tests.AzureAppConfiguration
         private readonly Mock<ConfigurationClient> _mockClient;
         internal int ConnectionStringCallCount { get; set; } = 0;
         internal int TokenCredentialCallCount { get; set; } = 0;
+        internal ConfigurationClientOptions ClientOptions;
 
         public MockedConfigurationClientFactory(Mock<ConfigurationClient> mockClient)
         {
             _mockClient = mockClient;
         }
 
-        ConfigurationClient IConfigurationClientFactory.CreateConfigurationClient(string connectionString)
+        ConfigurationClient IConfigurationClientFactory.CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
         {
+            ClientOptions = clientOptions;
             ConnectionStringCallCount++;
             return _mockClient.Object;
         }
 
-        ConfigurationClient IConfigurationClientFactory.CreateConfigurationClient(Uri endpoint, TokenCredential credential)
+        ConfigurationClient IConfigurationClientFactory.CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
+            ClientOptions = clientOptions;
             TokenCredentialCallCount++;
             return _mockClient.Object;
         }
