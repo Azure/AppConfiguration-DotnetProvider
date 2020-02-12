@@ -1,4 +1,7 @@
-﻿using Azure.Data.AppConfiguration;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
