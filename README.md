@@ -1,64 +1,18 @@
-# Azure Config Store - .NET Core
+# Azure App Configuration - .NET Core
 
-This package contains a .NET Core configuration provider for the Azure Config Store. The API design follows the patterns outlined by the [ASP.NET configuration](https://github.com/aspnet/configuration/) system to make switching to the Azure Config Store a familiar experience.
+The [Azure App Configuration](https://docs.microsoft.com/en-us/azure/azure-app-configuration/overview) provider for .NET Core enables developers to configure their applications using centralized configuration located in Azure App Configuration. The API design follows the patterns outlined by the [ASP.NET configuration](https://github.com/aspnet/configuration/) system to make switching to the Azure App Configuration a familiar experience.
 
-Use this SDK to:
 
-* Add Azure Config Store data to the .NET Core configuration system
-* Listen for configuration changes
-* Format configuration values based off of content type
+## Getting Started
+
+Official documentation on how to use the Azure App Configuration provider can be found [here](https://docs.microsoft.com/en-us/azure/azure-app-configuration/quickstart-dotnet-core-app).
+
 
 ## Examples
 
-Examples can be found [here](./examples).
+* [.NET Core Console App](.examples/ConsoleApplication)
+* [ASP.NET Core Web App](./examples/ConfigStoreDemo)
 
-```c#
-var builder = new ConfigurationBuilder();
-
-builder.AddAzconfig("https://<Azure Config Store URL>", new AzconfigOptions()
-{
-    Prefix = "App1/",
-    AcceptVersion = "2.0"
-}
-.Listen("AppName", 30 * 60 * 1000));
-
-IConfiguration configuration = builder.Build();
-```
-
-## Notable API
-
-### AzconfigConfigurationExtensions
-
-```csharp
-static IConfigurationBuilder AddAzconfig(this IConfigurationBuilder configurationBuilder, string azconfigUri);
-
-static IConfigurationBuilder AddAzconfig(this IConfigurationBuilder configurationBuilder, string azconfigUri, AzconfigOptions options);
-
-static IConfigurationBuilder AddAzconfig(this IConfigurationBuilder configurationBuilder, string azconfigUri, AzconfigOptions options, IAzconfigClient client);
-```
-### AzconfigOptions
-
-```csharp
-string AcceptVersion { get; set; }
-
-string Prefix { get; set; }
-
-IKeyValueFormatter KeyValueFormatter { get; set; }
-
-IEnumerable<KeyValueListener> ChangeListeners { get; }
-
-AzconfigOptions Listen(string key, int pollInterval);
-```
-
-### IAzconfigClient
-
-```csharp
-Task<IEnumerable<IKeyValue>> GetSettings(string azconfigUri, string prefix)
-
-Task<IKeyValue> GetSetting(string azconfigUri, string key)
-
-Task<string> GetETag(string azconfigUri, string key)
-```
 
 # Contributing
 
