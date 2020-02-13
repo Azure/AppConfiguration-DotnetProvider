@@ -9,6 +9,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
         public const string AzureFunctionEnvironmentVariable = "FUNCTIONS_EXTENSION_VERSION";
         public const string AzureWebAppEnvironmentVariable = "WEBSITE_SITE_NAME";
         public const string KubernetesEnvironmentVariable = "KUBERNETES_PORT";
+
+        // Documentation : https://docs.microsoft.com/en-us/azure/service-fabric/service-fabric-environment-variables-reference
         public const string ServiceFabricEnvironmentVariable = "Fabric_NodeName";
 
         public const string IISExpressProcessName = "iisexpress";
