@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;

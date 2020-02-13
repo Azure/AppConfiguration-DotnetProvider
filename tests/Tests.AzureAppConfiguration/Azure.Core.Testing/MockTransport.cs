@@ -1,4 +1,7 @@
-﻿using Azure.Core.Pipeline;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Core.Pipeline;
 using System;
 using System.Collections.Generic;
 using System.Linq;

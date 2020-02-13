@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.IO;
 using System.Linq;

@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
     internal class FeatureManagementConstants
     {
