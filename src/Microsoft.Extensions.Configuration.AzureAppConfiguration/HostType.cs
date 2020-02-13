@@ -13,6 +13,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         Kubernetes,
 
-        IISExpress
+        IISExpress,
+
+        ServiceFabric
     }
 }
