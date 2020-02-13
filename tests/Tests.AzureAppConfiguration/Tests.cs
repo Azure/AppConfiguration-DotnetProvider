@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
 using Azure;
 using Azure.Core;
 using Azure.Core.Testing;

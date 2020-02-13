@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;

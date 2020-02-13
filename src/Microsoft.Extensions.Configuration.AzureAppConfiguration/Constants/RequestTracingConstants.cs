@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
 {
     internal class RequestTracingConstants
     {
@@ -6,7 +9,7 @@
 
         public const string AzureFunctionEnvironmentVariable = "FUNCTIONS_EXTENSION_VERSION";
 
-        public const string AzureWebAppEnvironmentVariable = "WEBSITE_NODE_DEFAULT_VERSION";
+        public const string AzureWebAppEnvironmentVariable = "WEBSITE_SITE_NAME";
 
         public const string KubernetesEnvironmentVariable = "KUBERNETES_PORT";
 

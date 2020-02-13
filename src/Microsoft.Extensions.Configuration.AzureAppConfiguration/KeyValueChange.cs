@@ -1,4 +1,7 @@
-﻿using Azure.Data.AppConfiguration;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Data.AppConfiguration;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

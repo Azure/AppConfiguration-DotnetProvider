@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class LabelFilters
     {

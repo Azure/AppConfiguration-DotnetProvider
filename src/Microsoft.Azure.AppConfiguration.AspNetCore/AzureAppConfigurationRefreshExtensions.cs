@@ -1,4 +1,7 @@
-﻿using Microsoft.Azure.AppConfiguration.AspNetCore;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Microsoft.Azure.AppConfiguration.AspNetCore;
 
 namespace Microsoft.AspNetCore.Builder
 {
