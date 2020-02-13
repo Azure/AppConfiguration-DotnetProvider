@@ -1,7 +1,7 @@
 ﻿using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Xunit;
@@ -28,14 +28,11 @@ namespace Tests.AzureAppConfiguration
             // Act
             configBuilder.Build();
 
-            // Assert
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Once);
-            Assert.Equal(1, configurationClientFactory.ConnectionStringCallCount);
-            Assert.Equal(AzureAppConfigurationOptions.MaxRetries, configurationClientFactory.ClientOptions.Retry.MaxRetries);
-            Assert.Equal(AzureAppConfigurationOptions.MaxRetryDelay, configurationClientFactory.ClientOptions.Retry.MaxDelay);
+            int defaultMaxRetries = configurationClientFactory.ClientOptions.Retry.MaxRetries;
+            TimeSpan defaultMaxRetryDelay = configurationClientFactory.ClientOptions.Retry.MaxDelay;
 
             // Arrange
-            int maxRetries = 5;
+            int maxRetries = defaultMaxRetries + 1;
             mockClient.ResetCalls();
             configurationClientFactory = new MockedConfigurationClientFactory(mockClient);
 
@@ -53,7 +50,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Once);
             Assert.Equal(1, configurationClientFactory.ConnectionStringCallCount);
             Assert.Equal(maxRetries, configurationClientFactory.ClientOptions.Retry.MaxRetries);
-            Assert.Equal(AzureAppConfigurationOptions.MaxRetryDelay, configurationClientFactory.ClientOptions.Retry.MaxDelay);
+            Assert.Equal(defaultMaxRetryDelay, configurationClientFactory.ClientOptions.Retry.MaxDelay);
         }
     }
 }

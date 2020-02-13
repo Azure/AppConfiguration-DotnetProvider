@@ -17,11 +17,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationOptions
     {
-        internal const int MaxRetries = 2;
-        internal static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
-
         internal static readonly TimeSpan DefaultFeatureFlagsCacheExpiration = TimeSpan.FromSeconds(30);
         internal static readonly TimeSpan MinimumFeatureFlagsCacheExpiration = TimeSpan.FromMilliseconds(1000);
+
+        private const int MaxRetries = 2;
+        private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
