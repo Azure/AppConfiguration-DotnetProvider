@@ -72,6 +72,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     hostType = HostType.Kubernetes;
                 }
+                else if (Environment.GetEnvironmentVariable(RequestTracingConstants.ServiceFabricEnvironmentVariable) != null)
+                {
+                    hostType = HostType.ServiceFabric;
+                }
                 else
                 {
                     try
