@@ -1,6 +1,6 @@
 # Azure App Configuration - .NET Core
 
-The [Azure App Configuration](https://docs.microsoft.com/en-us/azure/azure-app-configuration/overview) provider for .NET Core enables developers to configure their applications using centralized configuration located in Azure App Configuration. The API design follows the patterns outlined by the [ASP.NET configuration](https://github.com/aspnet/configuration/) system to make switching to the Azure App Configuration a familiar experience.
+The [Azure App Configuration](https://docs.microsoft.com/en-us/azure/azure-app-configuration/overview) provider for .NET Core enables developers to configure their applications using centralized configuration located in Azure App Configuration. The API design follows the patterns outlined by the [ASP.NET configuration](https://github.com/aspnet/configuration/) system to make switching to Azure App Configuration a familiar experience.
 
 
 ## Getting Started
