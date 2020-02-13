@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
 {
     internal class RequestTracingConstants
     {

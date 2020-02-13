@@ -1,4 +1,7 @@
-﻿using Azure.Core;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Core;
 using Azure.Core.Pipeline;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;

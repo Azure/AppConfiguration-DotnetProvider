@@ -1,4 +1,7 @@
-﻿using Azure;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure;
 using System;
 using System.Threading.Tasks;
 

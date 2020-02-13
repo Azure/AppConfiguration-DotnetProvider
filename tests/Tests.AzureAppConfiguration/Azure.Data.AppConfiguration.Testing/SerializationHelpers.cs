@@ -1,4 +1,7 @@
-﻿using Azure.Core;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Core;
 using System.Text.Json;
 
 namespace Azure.Data.AppConfiguration.Tests

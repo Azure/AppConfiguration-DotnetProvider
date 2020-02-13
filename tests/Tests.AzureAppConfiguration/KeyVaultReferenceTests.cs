@@ -1,4 +1,7 @@
-﻿using Azure;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
