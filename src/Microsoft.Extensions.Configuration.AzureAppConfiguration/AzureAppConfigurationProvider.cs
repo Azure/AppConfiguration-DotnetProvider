@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure;
-using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -28,9 +27,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
-
-        private const int MaxRetries = 2;
-        private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
         private readonly HostType _hostType;
         private readonly ConfigurationClient _client;
@@ -120,17 +116,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return true;
-        }
-
-        internal static ConfigurationClientOptions GetClientOptions()
-        {
-            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
-            clientOptions.Retry.MaxRetries = MaxRetries;
-            clientOptions.Retry.MaxDelay = MaxRetryDelay;
-            clientOptions.Retry.Mode = RetryMode.Exponential;
-            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
-
-            return clientOptions;
         }
 
         private async Task LoadAll()

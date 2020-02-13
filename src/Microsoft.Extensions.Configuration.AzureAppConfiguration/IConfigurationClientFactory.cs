@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientFactory
     {
-        ConfigurationClient CreateConfigurationClient(string connectionString);
-        ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential);
+        ConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions);
+        ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions);
     }
 }

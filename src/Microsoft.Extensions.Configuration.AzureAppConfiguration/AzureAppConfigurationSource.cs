@@ -39,11 +39,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else if (!string.IsNullOrWhiteSpace(options.ConnectionString))
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString, options.ClientOptions);
                 }
                 else if (options.Endpoint != null && options.Credential != null)
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoint, options.Credential);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoint, options.Credential, options.ClientOptions);
                 }
                 else
                 {
