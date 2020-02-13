@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
 
         public const string AzureFunctionEnvironmentVariable = "FUNCTIONS_EXTENSION_VERSION";
 
-        public const string AzureWebAppEnvironmentVariable = "WEBSITE_NODE_DEFAULT_VERSION";
+        public const string AzureWebAppEnvironmentVariable = "WEBSITE_SITE_NAME";
 
         public const string KubernetesEnvironmentVariable = "KUBERNETES_PORT";
 
