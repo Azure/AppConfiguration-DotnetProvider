@@ -31,6 +31,4 @@
     <Revision>$(Floored)</Revision>
     <Version>3.0.0-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
   </PropertyGroup>
-
-  </PropertyGroup>
 </Project>
