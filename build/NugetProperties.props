@@ -29,6 +29,6 @@
     <MinutesSinceMidnight>$([MSBuild]::Divide($(TicksSinceMidnight), 600000000))</MinutesSinceMidnight>
     <Floored>$([System.Math]::Floor($(MinutesSinceMidnight)))</Floored>
     <Revision>$(Floored)</Revision>
-    <Version>3.0.0-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+    <Version>3.0.0-preview-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
   </PropertyGroup>
 </Project>
