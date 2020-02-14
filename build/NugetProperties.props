@@ -14,7 +14,11 @@
     <Version>3.9.9999</Version>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!=''">
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
+    <Version>3.0.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'!='Official'">
     <!-- Note that CDP_PACKAGE_VERSION_NUMERIC uses format Major.Minor.MMddyyrrrr, which causes compile error CS7034 because .NET Core doesn't allow version numbers higher than 65534. -->
     <!-- CDP_PATCH_NUMBER is updated daily by the build system, the addition of a revision number makes the build number unique by the minute -->
     <!-- The revision number is the number of minutes since midnight [0, 1440) -->
@@ -25,6 +29,8 @@
     <MinutesSinceMidnight>$([MSBuild]::Divide($(TicksSinceMidnight), 600000000))</MinutesSinceMidnight>
     <Floored>$([System.Math]::Floor($(MinutesSinceMidnight)))</Floored>
     <Revision>$(Floored)</Revision>
-    <Version>3.0.0-preview-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+    <Version>3.0.0-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+  </PropertyGroup>
+
   </PropertyGroup>
 </Project>
