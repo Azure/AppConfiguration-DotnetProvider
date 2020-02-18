@@ -4,8 +4,6 @@
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
@@ -519,63 +517,6 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal(2, requestCount);
-        }
-
-        [Fact]
-        public void RefreshMiddlewareTests_MiddlewareConstructorParsesIConfigurationRefresher()
-        {
-            // Arrange
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-
-            var delegateMock = new Mock<RequestDelegate>();
-            var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
-                .Build();
-
-            // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
-
-            // Assert
-            Assert.NotNull(middleware.Refreshers);
-            Assert.Equal(1, middleware.Refreshers.Count);
-        }
-
-        [Fact]
-        public void RefreshMiddlewareTests_MiddlewareConstructorParsesMultipleIConfigurationRefreshers()
-        {
-            // Arrange
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-
-            var delegateMock = new Mock<RequestDelegate>();
-            var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
-                .Build();
-
-            // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
-
-            // Assert
-            Assert.NotNull(middleware.Refreshers);
-            Assert.Equal(2, middleware.Refreshers.Count);
-        }
-
-        [Fact]
-        public void RefreshMiddlewareTests_InvalidOperationExceptionOnIConfigurationCastFailure()
-        {
-            // Arrange
-            var delegateMock = new Mock<RequestDelegate>();
-            var configMock = new Mock<IConfiguration>();
-            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object);
-
-            // Act and Assert
-            Assert.Throws<InvalidOperationException>(action);
         }
 
         [Fact]
