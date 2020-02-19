@@ -14,6 +14,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="3.0.0-preview-011100001-1152" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="3.0.0-preview-011440008-1386" />
   </ItemGroup>
 </Project>
