@@ -344,5 +344,20 @@ namespace Tests.AzureAppConfiguration
                 .Build();
             });
         }
+
+        [Fact]
+        public void DoesNotThrowKeyVaultExceptionWhenProviderIsOptional()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Throws(new KeyVaultReferenceException("Key vault error", null));
+
+            new ConfigurationBuilder()
+            .AddAzureAppConfiguration(options =>
+            {
+                options.Client = mockClient.Object;
+            }, optional: true)
+            .Build();
+        }
     }
 }

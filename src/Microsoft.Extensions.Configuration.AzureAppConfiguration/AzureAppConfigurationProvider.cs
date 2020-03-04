@@ -110,7 +110,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             catch (Exception e) when (
                 e is KeyVaultReferenceException ||
                 e is RequestFailedException ||
-                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
+                e is OperationCanceledException)
             {
                 return false;
             }
@@ -177,9 +178,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                 await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception.InnerException is RequestFailedException ||
-                                              exception.InnerException is HttpRequestException ||
-                                              exception.InnerException is OperationCanceledException)
+            catch (Exception exception) when (exception is KeyVaultReferenceException ||
+                                              exception is RequestFailedException ||
+                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
+                                              exception is OperationCanceledException)
             {
                 if (_options.OfflineCache != null)
                 {
