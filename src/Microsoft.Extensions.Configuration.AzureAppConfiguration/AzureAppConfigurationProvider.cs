@@ -110,7 +110,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             catch (Exception e) when (
                 e is KeyVaultReferenceException ||
                 e is RequestFailedException ||
-                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
+                e is OperationCanceledException)
             {
                 return false;
             }
