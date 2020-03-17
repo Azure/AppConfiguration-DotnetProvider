@@ -234,5 +234,28 @@ namespace Tests.AzureAppConfiguration
             Assert.True(performedDefaultQuery);
             Assert.True(queriedFeatureFlags);
         }
+
+        [Fact]
+        public void UsesEtagForFeatureFlagRefresh()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseFeatureFlags();
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            refresher.TryRefreshAsync().Wait();
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
     }
 }

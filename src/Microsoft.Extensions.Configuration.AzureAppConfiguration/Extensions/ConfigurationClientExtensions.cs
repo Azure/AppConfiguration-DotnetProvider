@@ -119,7 +119,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 {
                     await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
                     {
-                        if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
+                        if (!eTagMap.TryGetValue(setting.Key, out string etag) || !setting.ETag.Equals(etag))
                         {
                             hasKeyValueCollectionChanged = true;
                             break;
@@ -152,7 +152,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     {
                         await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
                         {
-                            if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
+                            if (!eTagMap.TryGetValue(setting.Key, out string etag) || !setting.ETag.Equals(etag))
                             {
                                 changes.Add(new KeyValueChange
                                 {
