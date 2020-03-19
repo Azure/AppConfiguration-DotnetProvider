@@ -111,7 +111,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
 
             // Dictionary of eTags that we write to and use for comparison
-            var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
+            var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
@@ -119,7 +119,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 {
                     await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
                     {
-                        if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
+                        if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                         {
                             hasKeyValueCollectionChanged = true;
                             break;
@@ -146,13 +146,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label
                 };
 
-                eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag.ToString());
+                eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
                 await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
                     async () =>
                     {
                         await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
                         {
-                            if (!eTagMap.TryGetValue(setting.Key, out string etag) || !etag.Equals(setting.ETag))
+                            if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                             {
                                 changes.Add(new KeyValueChange
                                 {
