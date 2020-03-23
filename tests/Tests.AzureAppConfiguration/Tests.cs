@@ -208,6 +208,10 @@ namespace Tests.AzureAppConfiguration
             MockRequest request = mockTransport.SingleRequest;
 
             string appUserAgent = TracingUtils.GenerateUserAgent("SdkUserAgent");
+
+            // Validate the user agent has information version (3.9.9999) instead of assembly version (3.9.9999.0)
+            Assert.Equal("Microsoft.Extensions.Configuration.AzureAppConfiguration/3.9.9999 SdkUserAgent", appUserAgent);
+
             appUserAgent = appUserAgent.Replace("SdkUserAgent", "");
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
             Assert.Contains(appUserAgent, userAgentHeader);
