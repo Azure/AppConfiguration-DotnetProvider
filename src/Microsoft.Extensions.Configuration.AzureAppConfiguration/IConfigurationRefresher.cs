@@ -21,6 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The refresh operation failed with one or more errors. Check <see cref="AggregateException.InnerExceptions"/> for more details.
         /// </exception>
         /// <exception cref="InvalidOperationException">The refresh operation was invoked before Azure App Configuration Provider was initialized.</exception>
+        /// <exception>An Azure.Identity.AuthenticationFailedException is thrown if authentication using TokenCredential passed to <see cref="AzureAppConfigurationKeyVaultOptions.SetCredential"/> method failed.</exception>
         Task RefreshAsync();
 
         /// <summary>
