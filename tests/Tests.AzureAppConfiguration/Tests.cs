@@ -209,8 +209,11 @@ namespace Tests.AzureAppConfiguration
 
             string appUserAgent = TracingUtils.GenerateUserAgent("SdkUserAgent");
 
-            // Validate the user agent has information version (3.9.9999) instead of assembly version (3.9.9999.0)
-            Assert.Equal("Microsoft.Extensions.Configuration.AzureAppConfiguration/3.9.9999 SdkUserAgent", appUserAgent);
+            // Validate the user agent format corresponds to informational version instead of assembly version
+            // Informational version examples : 3.0.0 or 2.1.0-preview-010380001-1099
+            // Assembly version examples : 3.0.0.0 or 2.1.0.0
+            var nugetPackageVersionRegex = @"\d+\.\d+\.\d+(-preview-\d+-\d+)?";
+            Assert.Matches($@"Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/{nugetPackageVersionRegex} SdkUserAgent", appUserAgent);
 
             appUserAgent = appUserAgent.Replace("SdkUserAgent", "");
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
