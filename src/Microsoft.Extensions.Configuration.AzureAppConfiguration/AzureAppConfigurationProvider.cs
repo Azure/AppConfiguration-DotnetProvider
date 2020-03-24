@@ -113,7 +113,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 e is RequestFailedException ||
                 ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
                 e is OperationCanceledException ||
-                e.Source.Equals(AzureIdentityExceptionSource, StringComparison.OrdinalIgnoreCase))
+                (e.Source?.Equals(AzureIdentityExceptionSource, StringComparison.OrdinalIgnoreCase) ?? false))
             {
                 return false;
             }
