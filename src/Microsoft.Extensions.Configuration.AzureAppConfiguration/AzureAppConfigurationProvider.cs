@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Security;
 using System.Text.Json;
 using System.Threading;
@@ -33,7 +32,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
-        private const string AzureIdentityExceptionSource = "Azure.Identity";
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
@@ -112,8 +110,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 e is KeyVaultReferenceException ||
                 e is RequestFailedException ||
                 ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                e is OperationCanceledException ||
-                (e.Source?.Equals(AzureIdentityExceptionSource, StringComparison.OrdinalIgnoreCase) ?? false))
+                e is OperationCanceledException)
             {
                 return false;
             }

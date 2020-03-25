@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,7 +51,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
             }
-            catch (UnauthorizedAccessException e)
+            catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AssemblyNames.AzureIdentity, StringComparison.OrdinalIgnoreCase) ?? false))
             {
                 throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRef);
             }
