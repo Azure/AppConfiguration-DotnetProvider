@@ -4,6 +4,7 @@
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
@@ -622,6 +623,51 @@ namespace Tests.AzureAppConfiguration
             Assert.True(result);
 
             Assert.Equal("newValue", config["TestKey1"]);
+        }
+
+        [Fact]
+        public void RefreshTests_TryRefreshAsyncReturnsFalseForAuthenticationFailedException()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollection));
+            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync("TestKey1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
+                .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
+                .Throws(new AuthenticationFailedException("Authentication failed.") { Source = "Azure.Identity" });
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            // Second call to GetConfigurationSettingAsync does not throw
+            Assert.True(refresher.TryRefreshAsync().Result);
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            // Third call to GetConfigurationSettingAsync throws AuthenticationFailedException
+            Assert.False(refresher.TryRefreshAsync().Result);
         }
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)

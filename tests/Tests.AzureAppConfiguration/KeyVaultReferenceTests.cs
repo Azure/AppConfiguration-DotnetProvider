@@ -284,7 +284,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
-            KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
+            Assert.Throws<AuthenticationFailedException>(() =>
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
@@ -293,8 +293,6 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
             });
-
-            Assert.IsType<RequestFailedException>(ex.InnerException);
         }
 
         [Fact]
