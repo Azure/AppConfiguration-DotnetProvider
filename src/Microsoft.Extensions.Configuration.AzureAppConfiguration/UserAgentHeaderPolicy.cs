@@ -3,7 +3,6 @@
 //
 using Azure.Core;
 using Azure.Core.Pipeline;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;

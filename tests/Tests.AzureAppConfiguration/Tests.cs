@@ -8,7 +8,6 @@ using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Moq;
 using System;
 using System.Collections.Generic;
