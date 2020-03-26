@@ -634,10 +634,12 @@ namespace Tests.AzureAppConfiguration
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
+
+            var innerException = new AuthenticationFailedException("Authentication failed.") { Source = "Azure.Identity" };
             mockClient.SetupSequence(c => c.GetConfigurationSettingAsync("TestKey1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
                 .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
-                .Throws(new AuthenticationFailedException("Authentication failed.") { Source = "Azure.Identity" });
+                .Throws(new KeyVaultReferenceException(innerException.Message, innerException));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -666,7 +668,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            // Third call to GetConfigurationSettingAsync throws AuthenticationFailedException
+            // Third call to GetConfigurationSettingAsync throws KeyVaultReferenceException
             Assert.False(refresher.TryRefreshAsync().Result);
         }
 
