@@ -143,7 +143,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (options.CacheExpirationTime < MinimumFeatureFlagsCacheExpiration)
             {
                 throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationTime), options.CacheExpirationTime.TotalMilliseconds,
-                    string.Format(Constants.ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpiration.TotalMilliseconds));
+                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpiration.TotalMilliseconds));
             }
 
             if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
