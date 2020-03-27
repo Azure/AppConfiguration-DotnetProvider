@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                LoadAll().ConfigureAwait(false).GetAwaiter().GetResult();
+                LoadAll(_optional).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -117,7 +117,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        private async Task LoadAll()
+        private async Task LoadAll(bool ignoreFailures)
         {
             IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
@@ -192,7 +192,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }
 
-                if (!_optional)
+                if (!ignoreFailures)
                 {
                     throw;
                 }
@@ -328,7 +328,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
             if (shouldRefreshAll)
             {
-                await LoadAll().ConfigureAwait(false);
+                await LoadAll(ignoreFailures: false).ConfigureAwait(false);
             }
         }
 
