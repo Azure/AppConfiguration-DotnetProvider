@@ -21,14 +21,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public static string GenerateUserAgent(string currentUserAgent = null)
         {
             Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
-            var userAgent = new StringBuilder($"{assembly.GetName().Name}/{assembly.GetName().Version}");
+            string informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+            var userAgent = new StringBuilder($"{assembly.GetName().Name}/{informationalVersion}");
 
-            //
-            // If currentUserAgent is not null, prepend current assembly name and version to it,
-            // and return without any further processing.
+            // If currentUserAgent is not null, prepend current assembly name and version to it, and return without any further processing.
             if (!string.IsNullOrWhiteSpace(currentUserAgent))
             {
-                 return $"{userAgent.ToString()} {currentUserAgent}";
+                return $"{userAgent.ToString()} {currentUserAgent}";
             }
 
             IEnumerable<TargetFrameworkAttribute> targetFrameworkAttributes = assembly.GetCustomAttributes(true)?.OfType<TargetFrameworkAttribute>();
