@@ -31,6 +31,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
+        private static TimeSpan? MinCacheExpirationTime;
+        private static DateTimeOffset LastRefreshAttemptTime = default;
+        private static readonly SemaphoreSlim RefreshAttemptSemaphore = new SemaphoreSlim(1);
+
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
@@ -95,6 +99,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task RefreshAsync()
         {
+            // Check if initial configuration load had failed
+            if (_settings == null)
+            {
+                await LoadInitialConfiguration().ConfigureAwait(false);
+                return;
+            }
+
             await RefreshIndividualKeyValues().ConfigureAwait(false);
             await RefreshKeyValueCollections().ConfigureAwait(false);
         }
@@ -205,6 +216,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_options.OfflineCache != null)
             {
                 _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
+            }
+        }
+
+        private async Task LoadInitialConfiguration()
+        {
+            // Check if this is the first attempt to load the configuration for failed startup load as a part of refresh
+            if (MinCacheExpirationTime == null)
+            {
+                IEnumerable<KeyValueWatcher> watchers = _options.ChangeWatchers.Union(_options.MultiKeyWatchers);
+
+                if (!watchers.Any())
+                {
+                    // No registration was found for refresh
+                    return;
+                }
+
+                MinCacheExpirationTime = watchers.Min(w => w.CacheExpirationTime);
+            }
+
+            var timeElapsedSinceLastLoadAttempt = DateTimeOffset.UtcNow - LastRefreshAttemptTime;
+
+            if (timeElapsedSinceLastLoadAttempt < MinCacheExpirationTime || !RefreshAttemptSemaphore.Wait(0))
+            {
+                return;
+            }
+
+            LastRefreshAttemptTime = DateTimeOffset.UtcNow;
+
+            try
+            {
+                await LoadAll(ignoreFailures: false).ConfigureAwait(false);
+            }
+            finally
+            {
+                RefreshAttemptSemaphore.Release();
             }
         }
 
