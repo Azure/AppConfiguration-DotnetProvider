@@ -165,7 +165,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue( serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
+                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
@@ -237,7 +237,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue( serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
+                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
@@ -711,6 +711,64 @@ namespace Tests.AzureAppConfiguration
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
                 await refresher.RefreshAsync()
             );
+        }
+
+        [Fact]
+        public async Task RefreshTests_UpdatesAllSettingsIfInitialLoadFails()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException("Request failed"))
+                .Throws(new RequestFailedException("Request failed"))
+                .Returns(new MockAsyncPageable(_kvCollection));
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync("TestKey1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)));
+
+            IConfigurationRefresher refresher = null;
+            IConfiguration configuration = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(options =>
+            {
+                options.Select("TestKey*");
+                options.Client = mockClient.Object;
+                options.ConfigureRefresh(refreshOptions =>
+                {
+                    refreshOptions.Register("TestKey1")
+                        .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                });
+
+                refresher = options.GetRefresher();
+            }, optional: true)
+            .Build();
+
+            // Validate initial load failed to retrieve any setting
+            Assert.Null(configuration["TestKey1"]);
+            Assert.Null(configuration["TestKey2"]);
+            Assert.Null(configuration["TestKey3"]);
+
+            // Act
+            await Assert.ThrowsAsync<RequestFailedException>(async () =>
+            {
+                await refresher.RefreshAsync();
+            });
+
+            await refresher.RefreshAsync();
+
+            Assert.Null(configuration["TestKey1"]);
+            Assert.Null(configuration["TestKey2"]);
+            Assert.Null(configuration["TestKey3"]);
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            // Validate all settings were loaded, including the ones not registered for refresh
+            Assert.Equal("TestValue1", configuration["TestKey1"]);
+            Assert.Equal("TestValue2", configuration["TestKey2"]);
+            Assert.Equal("TestValue3", configuration["TestKey3"]);
         }
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)

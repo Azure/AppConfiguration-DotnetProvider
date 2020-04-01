@@ -31,6 +31,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
+        private readonly TimeSpan MinCacheExpirationTime;
+        private readonly SemaphoreSlim InitializationSemaphore = new SemaphoreSlim(1);
+
+        // The most-recent time when the refresh operation attempted to load the initial configuration
+        private DateTimeOffset LastRefreshAttemptTime = default;
+
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
@@ -38,6 +44,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+
+            IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
+
+            if (watchers.Any())
+            {
+                MinCacheExpirationTime = watchers.Min(w => w.CacheExpirationTime);
+            }
+            else
+            {
+                MinCacheExpirationTime = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationTime;
+            }
 
             // Enable request tracing if not opt-out
             string requestTracingDisabled = null;
@@ -95,6 +112,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task RefreshAsync()
         {
+            // Check if initial configuration load had failed
+            if (_settings == null)
+            {
+                await RefreshInitialConfiguration().ConfigureAwait(false);
+                return;
+            }
+
             await RefreshIndividualKeyValues().ConfigureAwait(false);
             await RefreshKeyValueCollections().ConfigureAwait(false);
         }
@@ -205,6 +229,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_options.OfflineCache != null)
             {
                 _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
+            }
+        }
+
+        private async Task RefreshInitialConfiguration()
+        {
+            var timeElapsedSinceLastLoadAttempt = DateTimeOffset.UtcNow - LastRefreshAttemptTime;
+
+            if (timeElapsedSinceLastLoadAttempt < MinCacheExpirationTime || !InitializationSemaphore.Wait(0))
+            {
+                return;
+            }
+
+            LastRefreshAttemptTime = DateTimeOffset.UtcNow;
+
+            try
+            {
+                await LoadAll(ignoreFailures: false).ConfigureAwait(false);
+            }
+            finally
+            {
+                InitializationSemaphore.Release();
             }
         }
 
