@@ -31,9 +31,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
-        private static TimeSpan? MinCacheExpirationTime;
-        private static DateTimeOffset LastRefreshAttemptTime = default;
-        private static readonly SemaphoreSlim RefreshAttemptSemaphore = new SemaphoreSlim(1);
+        private readonly TimeSpan MinCacheExpirationTime;
+        private readonly SemaphoreSlim InitializationSemaphore = new SemaphoreSlim(1);
+
+        // The most-recent time when the refresh operation attempted to load the initial configuration
+        private DateTimeOffset LastRefreshAttemptTime = default;
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
@@ -42,6 +44,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+
+            IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
+
+            if (watchers.Any())
+            {
+                MinCacheExpirationTime = watchers.Min(w => w.CacheExpirationTime);
+            }
+            else
+            {
+                MinCacheExpirationTime = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationTime;
+            }
 
             // Enable request tracing if not opt-out
             string requestTracingDisabled = null;
@@ -102,7 +115,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Check if initial configuration load had failed
             if (_settings == null)
             {
-                await LoadInitialConfiguration().ConfigureAwait(false);
+                await RefreshInitialConfiguration().ConfigureAwait(false);
                 return;
             }
 
@@ -219,25 +232,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task LoadInitialConfiguration()
+        private async Task RefreshInitialConfiguration()
         {
-            // Check if this is the first attempt to load the configuration for failed startup load as a part of refresh
-            if (MinCacheExpirationTime == null)
-            {
-                IEnumerable<KeyValueWatcher> watchers = _options.ChangeWatchers.Union(_options.MultiKeyWatchers);
-
-                if (!watchers.Any())
-                {
-                    // No registration was found for refresh
-                    return;
-                }
-
-                MinCacheExpirationTime = watchers.Min(w => w.CacheExpirationTime);
-            }
-
             var timeElapsedSinceLastLoadAttempt = DateTimeOffset.UtcNow - LastRefreshAttemptTime;
 
-            if (timeElapsedSinceLastLoadAttempt < MinCacheExpirationTime || !RefreshAttemptSemaphore.Wait(0))
+            if (timeElapsedSinceLastLoadAttempt < MinCacheExpirationTime || !InitializationSemaphore.Wait(0))
             {
                 return;
             }
@@ -250,7 +249,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             finally
             {
-                RefreshAttemptSemaphore.Release();
+                InitializationSemaphore.Release();
             }
         }
 
