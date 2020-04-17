@@ -89,6 +89,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
 
         /// <summary>
+        /// Cache expiration time for refresh when no settings were registered for refresh and initial configuration failed to load.
+        /// </summary>
+        internal TimeSpan RefreshCacheExpirationTime { get; private set; } = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationTime;
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -255,6 +260,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
             configure?.Invoke(refreshOptions);
+            RefreshCacheExpirationTime = refreshOptions.CacheExpirationTime;
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {

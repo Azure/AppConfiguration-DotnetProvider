@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                MinCacheExpirationTime = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationTime;
+                MinCacheExpirationTime = options.RefreshCacheExpirationTime;
             }
 
             // Enable request tracing if not opt-out
