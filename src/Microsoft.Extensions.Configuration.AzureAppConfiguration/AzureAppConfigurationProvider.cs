@@ -141,6 +141,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
+        public void ResetCache()
+        {
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+            {
+                changeWatcher.LastRefreshTime = DateTimeOffset.MinValue;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                changeWatcher.LastRefreshTime = DateTimeOffset.MinValue;
+            }
+        }
+
         private async Task LoadAll(bool ignoreFailures)
         {
             IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);

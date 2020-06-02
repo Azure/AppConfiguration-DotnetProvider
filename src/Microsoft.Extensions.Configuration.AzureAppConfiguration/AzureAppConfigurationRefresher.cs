@@ -17,11 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task RefreshAsync()
         {
-            if (_provider == null)
-            {
-                throw new InvalidOperationException("ConfigurationBuilder.Build() must be called before this operation can be performed.");
-            }
-
+            ThrowIfNullProvider();
             await _provider.RefreshAsync().ConfigureAwait(false);
         }
 
@@ -33,6 +29,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return await _provider.TryRefreshAsync().ConfigureAwait(false);
+        }
+
+        public void ResetCache()
+        {
+            ThrowIfNullProvider();
+            _provider.ResetCache();
+        }
+
+        private void ThrowIfNullProvider()
+        {
+            if (_provider == null)
+            {
+                throw new InvalidOperationException("ConfigurationBuilder.Build() must be called before this operation can be performed.");
+            }
         }
     }
 }

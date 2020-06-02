@@ -27,5 +27,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Refreshes the data from the configuration store asynchronously. A return value indicates whether the operation succeeded.
         /// </summary>
         Task<bool> TryRefreshAsync();
+
+        /// <summary>
+        /// Resets the cache for the key-values registered for refresh.
+        /// The next call to <see cref="RefreshAsync"/> or <see cref="TryRefreshAsync"/> would force settings to be refreshed from the server.
+        /// </summary>
+        void ResetCache();
     }
 }
