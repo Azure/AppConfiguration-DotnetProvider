@@ -12,10 +12,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationRefreshOptions
     {
-        internal static readonly TimeSpan DefaultCacheExpirationTime = TimeSpan.FromSeconds(30);
-        internal static readonly TimeSpan MinimumCacheExpirationTime = TimeSpan.FromMilliseconds(1000);
+        internal static readonly TimeSpan DefaultCacheExpirationInterval = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan MinimumCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
 
-        internal TimeSpan CacheExpirationTime { get; private set; } = DefaultCacheExpirationTime;
+        internal TimeSpan CacheExpirationInterval { get; private set; } = DefaultCacheExpirationInterval;
         internal IDictionary<string, KeyValueWatcher> RefreshRegistrations = new Dictionary<string, KeyValueWatcher>();
 
         /// <summary>
@@ -55,13 +55,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="cacheExpirationTime">Minimum time that must elapse before the cache is expired.</param>
         public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpirationTime)
         {
-            if (cacheExpirationTime < MinimumCacheExpirationTime)
+            if (cacheExpirationTime < MinimumCacheExpirationInterval)
             {
                 throw new ArgumentOutOfRangeException(nameof(cacheExpirationTime), cacheExpirationTime.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumCacheExpirationTime.TotalMilliseconds));
+                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumCacheExpirationInterval.TotalMilliseconds));
             }
 
-            CacheExpirationTime = cacheExpirationTime;
+            CacheExpirationInterval = cacheExpirationTime;
             return this;
         }
     }

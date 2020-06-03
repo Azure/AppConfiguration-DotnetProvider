@@ -26,12 +26,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// The minimum time that must elapse before the key-value is refreshed.
         /// </summary>
-        public TimeSpan CacheExpirationTime { get; set; }
+        public TimeSpan CacheExpirationInterval { get; set; }
 
         /// <summary>
-        /// The most-recent time when the key-value was refreshed.
+        /// The cache expiration time for the key-value.
         /// </summary>
-        public DateTimeOffset LastRefreshTime { get; set; }
+        public DateTimeOffset CacheExpirationTime { get; set; }
 
         /// <summary>
         /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.

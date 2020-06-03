@@ -162,7 +162,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = FeatureManagementConstants.FeatureFlagMarker,
                     Label = options.Label,
-                    CacheExpirationTime = options.CacheExpirationTime
+                    CacheExpirationInterval = options.CacheExpirationTime
                 });
             }
 
@@ -258,7 +258,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.Value.CacheExpirationTime = refreshOptions.CacheExpirationTime;
+                item.Value.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
                 _changeWatchers[item.Key] = item.Value;
             }
 
