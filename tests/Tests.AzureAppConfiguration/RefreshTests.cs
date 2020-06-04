@@ -795,6 +795,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue";
 
+            refresher.RefreshAsync().Wait();
+            Assert.Equal("TestValue1", config["TestKey1"]);
+
             // Invalidate the cache to force next refresh
             refresher.ResetCache();
 
