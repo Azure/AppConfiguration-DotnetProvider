@@ -798,8 +798,7 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
             Assert.Equal("TestValue1", config["TestKey1"]);
 
-            // Invalidate the cache to force next refresh
-            refresher.ResetCache();
+            refresher.SetDirty();
 
             refresher.RefreshAsync().Wait();
             Assert.Equal("newValue", config["TestKey1"]);

@@ -31,10 +31,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return await _provider.TryRefreshAsync().ConfigureAwait(false);
         }
 
-        public void ResetCache()
+        public void SetDirty()
         {
             ThrowIfNullProvider();
-            _provider.ResetCache();
+            _provider.SetDirty();
         }
 
         private void ThrowIfNullProvider()

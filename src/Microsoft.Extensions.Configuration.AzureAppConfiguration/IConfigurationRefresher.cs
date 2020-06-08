@@ -29,9 +29,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         Task<bool> TryRefreshAsync();
 
         /// <summary>
-        /// Resets the cache for the key-values registered for refresh.
-        /// The next call to <see cref="RefreshAsync"/> or <see cref="TryRefreshAsync"/> would force settings to be refreshed from the server.
+        /// Sets the cached value for key-values registered for refresh as dirty.
+        /// The next call to <see cref="RefreshAsync"/> or <see cref="TryRefreshAsync"/> would cause cached values to be revalidated.
         /// </summary>
-        void ResetCache();
+        void SetDirty();
     }
 }

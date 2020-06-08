@@ -141,7 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        public void ResetCache()
+        public void SetDirty()
         {
             DateTimeOffset currentTime = DateTimeOffset.UtcNow;
 
