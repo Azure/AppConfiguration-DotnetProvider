@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// The cache expiration time for the key-value.
         /// </summary>
-        public DateTimeOffset CacheExpirationTime { get; set; }
+        public DateTimeOffset CacheExpires { get; set; }
 
         /// <summary>
         /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.

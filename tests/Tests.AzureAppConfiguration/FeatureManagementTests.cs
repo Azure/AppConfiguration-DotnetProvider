@@ -130,7 +130,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object; ;
-                    options.UseFeatureFlags(o => o.CacheExpirationTime = TimeSpan.FromSeconds(1));
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(1));
 
                     refresher = options.GetRefresher();
                 })

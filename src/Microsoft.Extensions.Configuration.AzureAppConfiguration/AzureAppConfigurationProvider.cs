@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly SemaphoreSlim InitializationSemaphore = new SemaphoreSlim(1);
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
-        private DateTimeOffset InitializationCacheExpirationTime = default;
+        private DateTimeOffset InitializationCacheExpires = default;
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
@@ -95,11 +95,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
                 // Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
 
-                var waitTime = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
+                var waitInterval = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
 
-                if (waitTime.Ticks > 0)
+                if (waitInterval.Ticks > 0)
                 {
-                    Task.Delay(waitTime).ConfigureAwait(false).GetAwaiter().GetResult();
+                    Task.Delay(waitInterval).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
 
                 // Re-throw the exception after the additional delay (if required)
@@ -143,16 +143,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void SetDirty()
         {
-            DateTimeOffset currentTime = DateTimeOffset.UtcNow;
+            DateTimeOffset now = DateTimeOffset.UtcNow;
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                changeWatcher.CacheExpirationTime = currentTime;
+                changeWatcher.CacheExpires = now;
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                changeWatcher.CacheExpirationTime = currentTime;
+                changeWatcher.CacheExpires = now;
             }
         }
 
@@ -249,12 +249,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshInitialConfiguration()
         {
-            if (DateTimeOffset.UtcNow < InitializationCacheExpirationTime || !InitializationSemaphore.Wait(0))
+            if (DateTimeOffset.UtcNow < InitializationCacheExpires || !InitializationSemaphore.Wait(0))
             {
                 return;
             }
 
-            InitializationCacheExpirationTime = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
+            InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
 
             try
             {
@@ -290,7 +290,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     watchedKv = null;
                 }
 
-                changeWatcher.CacheExpirationTime = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
+                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
@@ -310,7 +310,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 string watchedLabel = changeWatcher.Label;
 
                 // Skip the refresh for this key if the cached value has not expired or a refresh operation is in progress
-                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpirationTime || !changeWatcher.Semaphore.Wait(0))
+                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
@@ -328,7 +328,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType,
                             async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
 
-                        changeWatcher.CacheExpirationTime = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
+                        changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                         // Check if a change has been detected in the key-value registered for refresh
                         if (keyValueChange.ChangeType != KeyValueChangeType.None)
@@ -351,7 +351,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             watchedKv = null;
                         }
 
-                        changeWatcher.CacheExpirationTime = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
+                        changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                         if (watchedKv != null)
                         {
@@ -394,7 +394,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
                 // Skip the refresh for this key-prefix if the cached value has not expired or a refresh operation is in progress
-                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpirationTime || !changeWatcher.Semaphore.Wait(0))
+                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
@@ -414,7 +414,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         HostType = _hostType
                     }).ConfigureAwait(false);
 
-                    changeWatcher.CacheExpirationTime = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
+                    changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                     if (keyValueChanges?.Any() == true)
                     {

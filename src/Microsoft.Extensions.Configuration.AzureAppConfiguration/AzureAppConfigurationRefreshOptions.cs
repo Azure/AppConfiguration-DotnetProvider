@@ -52,16 +52,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Sets the cache expiration time for the key-values registered for refresh. Default value is 30 seconds. Must be greater than 1 second.
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key until the cached value for that key has expired.
         /// </summary>
-        /// <param name="cacheExpirationTime">Minimum time that must elapse before the cache is expired.</param>
-        public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpirationTime)
+        /// <param name="cacheExpiration">Minimum time that must elapse before the cache is expired.</param>
+        public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpiration)
         {
-            if (cacheExpirationTime < MinimumCacheExpirationInterval)
+            if (cacheExpiration < MinimumCacheExpirationInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(cacheExpirationTime), cacheExpirationTime.TotalMilliseconds,
+                throw new ArgumentOutOfRangeException(nameof(cacheExpiration), cacheExpiration.TotalMilliseconds,
                     string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumCacheExpirationInterval.TotalMilliseconds));
             }
 
-            CacheExpirationInterval = cacheExpirationTime;
+            CacheExpirationInterval = cacheExpiration;
             return this;
         }
     }
