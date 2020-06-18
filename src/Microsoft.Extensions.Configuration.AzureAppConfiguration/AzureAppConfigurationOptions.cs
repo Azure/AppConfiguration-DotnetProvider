@@ -17,8 +17,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationOptions
     {
-        internal static readonly TimeSpan DefaultFeatureFlagsCacheExpiration = TimeSpan.FromSeconds(30);
-        internal static readonly TimeSpan MinimumFeatureFlagsCacheExpiration = TimeSpan.FromMilliseconds(1000);
+        internal static readonly TimeSpan DefaultFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan MinimumFeatureFlagsCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
 
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
@@ -140,10 +140,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
 
-            if (options.CacheExpirationTime < MinimumFeatureFlagsCacheExpiration)
+            if (options.CacheExpirationInterval < MinimumFeatureFlagsCacheExpirationInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationTime), options.CacheExpirationTime.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpiration.TotalMilliseconds));
+                throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationInterval), options.CacheExpirationInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
             }
 
             if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
@@ -162,7 +162,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = FeatureManagementConstants.FeatureFlagMarker,
                     Label = options.Label,
-                    CacheExpirationTime = options.CacheExpirationTime
+                    CacheExpirationInterval = options.CacheExpirationInterval
                 });
             }
 
@@ -258,7 +258,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.Value.CacheExpirationTime = refreshOptions.CacheExpirationTime;
+                item.Value.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
                 _changeWatchers[item.Key] = item.Value;
             }
 

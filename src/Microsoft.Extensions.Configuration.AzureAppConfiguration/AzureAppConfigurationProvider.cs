@@ -31,11 +31,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
 
-        private readonly TimeSpan MinCacheExpirationTime;
+        private readonly TimeSpan MinCacheExpirationInterval;
         private readonly SemaphoreSlim InitializationSemaphore = new SemaphoreSlim(1);
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
-        private DateTimeOffset LastRefreshAttemptTime = default;
+        private DateTimeOffset InitializationCacheExpires = default;
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
@@ -49,11 +49,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (watchers.Any())
             {
-                MinCacheExpirationTime = watchers.Min(w => w.CacheExpirationTime);
+                MinCacheExpirationInterval = watchers.Min(w => w.CacheExpirationInterval);
             }
             else
             {
-                MinCacheExpirationTime = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationTime;
+                MinCacheExpirationInterval = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationInterval;
             }
 
             // Enable request tracing if not opt-out
@@ -95,11 +95,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
                 // Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
 
-                var waitTime = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
+                var waitInterval = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
 
-                if (waitTime.Ticks > 0)
+                if (waitInterval.Ticks > 0)
                 {
-                    Task.Delay(waitTime).ConfigureAwait(false).GetAwaiter().GetResult();
+                    Task.Delay(waitInterval).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
 
                 // Re-throw the exception after the additional delay (if required)
@@ -139,6 +139,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return true;
+        }
+
+        public void SetDirty()
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+            {
+                changeWatcher.CacheExpires = now;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                changeWatcher.CacheExpires = now;
+            }
         }
 
         private async Task LoadAll(bool ignoreFailures)
@@ -234,14 +249,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshInitialConfiguration()
         {
-            var timeElapsedSinceLastLoadAttempt = DateTimeOffset.UtcNow - LastRefreshAttemptTime;
-
-            if (timeElapsedSinceLastLoadAttempt < MinCacheExpirationTime || !InitializationSemaphore.Wait(0))
+            if (DateTimeOffset.UtcNow < InitializationCacheExpires || !InitializationSemaphore.Wait(0))
             {
                 return;
             }
 
-            LastRefreshAttemptTime = DateTimeOffset.UtcNow;
+            InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
 
             try
             {
@@ -277,7 +290,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     watchedKv = null;
                 }
 
-                changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
+                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
@@ -295,10 +308,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
-                var timeElapsedSinceLastRefresh = DateTimeOffset.UtcNow - changeWatcher.LastRefreshTime;
 
                 // Skip the refresh for this key if the cached value has not expired or a refresh operation is in progress
-                if (timeElapsedSinceLastRefresh < changeWatcher.CacheExpirationTime || !changeWatcher.Semaphore.Wait(0))
+                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
@@ -316,7 +328,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType,
                             async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
 
-                        changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
+                        changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                         // Check if a change has been detected in the key-value registered for refresh
                         if (keyValueChange.ChangeType != KeyValueChangeType.None)
@@ -339,7 +351,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             watchedKv = null;
                         }
 
-                        changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
+                        changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                         if (watchedKv != null)
                         {
@@ -381,10 +393,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                var timeElapsedSinceLastRefresh = DateTimeOffset.UtcNow - changeWatcher.LastRefreshTime;
-
                 // Skip the refresh for this key-prefix if the cached value has not expired or a refresh operation is in progress
-                if (timeElapsedSinceLastRefresh < changeWatcher.CacheExpirationTime || !changeWatcher.Semaphore.Wait(0))
+                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires || !changeWatcher.Semaphore.Wait(0))
                 {
                     continue;
                 }
@@ -404,7 +414,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         HostType = _hostType
                     }).ConfigureAwait(false);
 
-                    changeWatcher.LastRefreshTime = DateTimeOffset.UtcNow;
+                    changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                     if (keyValueChanges?.Any() == true)
                     {

@@ -771,6 +771,39 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", configuration["TestKey3"]);
         }
 
+        [Fact]
+        public void RefreshTests_ResetCacheForcesNextRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1")
+                            .SetCacheExpiration(TimeSpan.FromDays(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue";
+
+            refresher.RefreshAsync().Wait();
+            Assert.Equal("TestValue1", config["TestKey1"]);
+
+            refresher.SetDirty();
+
+            refresher.RefreshAsync().Wait();
+            Assert.Equal("newValue", config["TestKey1"]);
+        }
+
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();
