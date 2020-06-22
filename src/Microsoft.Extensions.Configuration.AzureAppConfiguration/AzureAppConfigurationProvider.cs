@@ -39,6 +39,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
 
+        // TODO : Make the property private in separate PR that allows overriding this value
+        internal static TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
+
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
@@ -143,16 +146,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void SetDirty()
         {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, DefaultMaxSetDirtyDelay);
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                changeWatcher.CacheExpires = now;
+                changeWatcher.CacheExpires = cacheExpires;
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                changeWatcher.CacheExpires = now;
+                changeWatcher.CacheExpires = cacheExpires;
             }
         }
 
@@ -506,6 +509,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
             await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _hostType, clientCall).ConfigureAwait(false);
+        }
+
+        private DateTimeOffset AddRandomDelay(DateTimeOffset dt, TimeSpan maxDelay)
+        {
+            long randomTicks = (long)(maxDelay.Ticks * RandomGenerator.NextDouble());
+            return dt.AddTicks(randomTicks);
         }
     }
 }
