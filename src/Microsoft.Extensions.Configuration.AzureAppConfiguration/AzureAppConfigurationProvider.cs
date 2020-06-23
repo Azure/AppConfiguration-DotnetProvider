@@ -38,9 +38,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset InitializationCacheExpires = default;
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
-
-        // TODO : Make the property private in separate PR that allows overriding this value
-        internal static TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
 
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
@@ -144,9 +142,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        public void SetDirty()
+        public void SetDirty(TimeSpan? maxDelay)
         {
-            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, DefaultMaxSetDirtyDelay);
+            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
