@@ -31,10 +31,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return await _provider.TryRefreshAsync().ConfigureAwait(false);
         }
 
-        public void SetDirty()
+        public void SetDirty(TimeSpan? maxDelay)
         {
             ThrowIfNullProvider();
-            _provider.SetDirty();
+            _provider.SetDirty(maxDelay);
         }
 
         private void ThrowIfNullProvider()
