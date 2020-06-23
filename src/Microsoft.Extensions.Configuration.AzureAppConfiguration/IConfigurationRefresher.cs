@@ -31,7 +31,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Sets the cached value for key-values registered for refresh as dirty.
         /// A random delay is added before the cached value is marked as dirty to reduce potential throttling in case multiple instances refresh at the same time.
-        /// After the cache is marked as dirty, the subsequent call to <see cref="RefreshAsync"/> or <see cref="TryRefreshAsync"/> would cause cached values to be revalidated.
         /// </summary>
         /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
         void SetDirty(TimeSpan? maxDelay = null);
