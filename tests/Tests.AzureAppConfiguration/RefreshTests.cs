@@ -772,7 +772,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_ResetCacheForcesNextRefresh()
+        public void RefreshTests_SetDirtyForcesNextRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -798,7 +798,13 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
             Assert.Equal("TestValue1", config["TestKey1"]);
 
+            // TODO : Update this in separate PR that allows overriding this value
+            AzureAppConfigurationProvider.DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(1);
+
             refresher.SetDirty();
+
+            // Wait for the cache to expire based on the randomized delay in SetDirty()
+            Thread.Sleep(1200);
 
             refresher.RefreshAsync().Wait();
             Assert.Equal("newValue", config["TestKey1"]);
