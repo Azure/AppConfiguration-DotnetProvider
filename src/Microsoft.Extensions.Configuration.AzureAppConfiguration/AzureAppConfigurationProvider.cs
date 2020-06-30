@@ -321,8 +321,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Check if a change has been detected in the key-value registered for refresh
                         if (keyValueChange.ChangeType != KeyValueChangeType.None)
                         {
-                            ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
+                            if (changeWatcher.RefreshAll)
+                            {
+                                shouldRefreshAll = true;
+                                break;
+                            }
+
                             hasChanged = true;
+                            ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
                         }
                     }
                     else
@@ -343,25 +349,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (watchedKv != null)
                         {
+                            if (changeWatcher.RefreshAll)
+                            {
+                                shouldRefreshAll = true;
+                                break;
+                            }
+
+                            hasChanged = true;
+
                             // Add the key-value if it is not loaded, or update it if it was loaded with a different label
                             _settings[watchedKey] = watchedKv;
-                            hasChanged = true;
                         }
                     }
 
                     if (hasChanged)
                     {
-                        if (changeWatcher.RefreshAll)
-                        {
-                            shouldRefreshAll = true;
-
-                            // Skip refresh for other key-values since refreshAll will populate configuration from scratch
-                            break;
-                        }
-                        else
-                        {
-                            await SetData(_settings).ConfigureAwait(false);
-                        }
+                        await SetData(_settings).ConfigureAwait(false);
                     }
                 }
                 finally
