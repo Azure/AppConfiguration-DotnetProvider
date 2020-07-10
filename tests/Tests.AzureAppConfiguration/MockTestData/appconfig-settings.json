@@ -1,0 +1,132 @@
+[
+  {
+    "key": "key01",
+    "value": "Some Text",
+    "contentType": "application/json"
+  },
+  {
+    "key": "key02",
+    "value": true,
+    "contentType": "application/json;"
+  },
+  {
+    "key": "key03",
+    "value": null,
+    "contentType": "application/activity+json"
+  },
+  {
+    "key": "key04",
+    "value": "false",
+    "contentType": "application/json+text;"
+  },
+  {
+    "key": "key05",
+    "value": "null",
+    "contentType": "application/json; charset=utf-8;"
+  },
+  {
+    "key": "key06",
+    "value": 23.4,
+    "contentType": "application/json;charset=utf-8;param=value"
+  },
+  {
+    "key": "key07",
+    "value": [ 1, 2, 3 ],
+    "contentType": "application/vnd.dummy+json+foobar"
+  },
+  {
+    "key": "key08",
+    "value": [ "abc", "def", "ghi" ],
+    "contentType": "application/vnd.microsoft.appconfig+json;charset=utf-8"
+  },
+  {
+    "key": "key09",
+    "value": [],
+    "contentType": "application/json"
+  },
+  {
+    "key": "key10",
+    "value": [
+      1000,
+      true,
+      "AppConfig string value",
+      [ "NestedArray", 12, false, null ],
+      {
+        "ObjectSetting": {
+          "Logging": {
+            "LogLevel": "Information",
+            "Default": "Debug"
+          }
+        }
+      }
+    ],
+    "contentType": "application/json"
+  },
+  {
+    "key": "key11",
+    "value": [
+      [ "NestedArray4", 34 ],
+      [ "NestedArray5", true, null ],
+      [
+        "NestedArray6",
+        {
+          "MyNullValue": null,
+          "MyObject": {
+            "Property": {
+              "Name": {
+                "Name1": "Value1",
+                "Name2": "Value2"
+              }
+            }
+          }
+        }
+      ]
+    ],
+    "contentType": " application/foo+bar+json "
+  },
+  {
+    "key": "key12",
+    "value": {
+      "ObjectSetting": {
+        "Logging": {
+          "Default": "Debug",
+          "LogLevel": "Information"
+        }
+      }
+    },
+    "contentType": "application/json"
+  },
+  {
+    "key": "key13",
+    "value": {
+      "Obj1": null,
+      "Obj2": false,
+      "Obj3": 666
+    },
+    "contentType": "application/json"
+  },
+  {
+    "key": "key14",
+    "value": {},
+    "contentType": "application/json"
+  },
+  {
+    "key": "key15",
+    "value": "",
+    "contentType": "application/json"
+  },
+  {
+    "key": "key16",
+    "value": [
+      [ "NestedArray1", "12", "false", "null" ],
+      [ "NestedArray2", "text" ],
+      [ "NestedArray3" ]
+    ],
+    "contentType": "application/json"
+  },
+  {
+    "key": "key17",
+    "value": "2020-01-01T12:34:56.789Z",
+    "contentType": "application/json"
+  }
+]

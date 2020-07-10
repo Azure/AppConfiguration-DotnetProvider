@@ -40,14 +40,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return true;
                             }
                         }
-                        else if (Equals(subType, "json"))
+                        else if (Equals(subType, acceptedSubType))
                         {
                             return true;
                         }
                     }
                 }
             }
-            catch (Exception ex) when (ex is ArgumentException || ex is FormatException)
+            catch (Exception ex) when (ex is ArgumentException || ex is FormatException || ex is NullReferenceException)
             {
                 // not a valid JSON content type
             }
