@@ -27,5 +27,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Refreshes the data from the configuration store asynchronously. A return value indicates whether the operation succeeded.
         /// </summary>
         Task<bool> TryRefreshAsync();
+
+        /// <summary>
+        /// Sets the cached value for key-values registered for refresh as dirty.
+        /// A random delay is added before the cached value is marked as dirty to reduce potential throttling in case multiple instances refresh at the same time.
+        /// </summary>
+        /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
+        void SetDirty(TimeSpan? maxDelay = null);
     }
 }

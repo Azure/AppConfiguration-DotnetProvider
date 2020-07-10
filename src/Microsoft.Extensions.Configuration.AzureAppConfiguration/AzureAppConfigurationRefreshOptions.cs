@@ -12,10 +12,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationRefreshOptions
     {
-        internal static readonly TimeSpan DefaultCacheExpirationTime = TimeSpan.FromSeconds(30);
-        internal static readonly TimeSpan MinimumCacheExpirationTime = TimeSpan.FromMilliseconds(1000);
+        internal static readonly TimeSpan DefaultCacheExpirationInterval = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan MinimumCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
 
-        internal TimeSpan CacheExpirationTime { get; private set; } = DefaultCacheExpirationTime;
+        internal TimeSpan CacheExpirationInterval { get; private set; } = DefaultCacheExpirationInterval;
         internal IDictionary<string, KeyValueWatcher> RefreshRegistrations = new Dictionary<string, KeyValueWatcher>();
 
         /// <summary>
@@ -52,16 +52,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Sets the cache expiration time for the key-values registered for refresh. Default value is 30 seconds. Must be greater than 1 second.
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key until the cached value for that key has expired.
         /// </summary>
-        /// <param name="cacheExpirationTime">Minimum time that must elapse before the cache is expired.</param>
-        public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpirationTime)
+        /// <param name="cacheExpiration">Minimum time that must elapse before the cache is expired.</param>
+        public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpiration)
         {
-            if (cacheExpirationTime < MinimumCacheExpirationTime)
+            if (cacheExpiration < MinimumCacheExpirationInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(cacheExpirationTime), cacheExpirationTime.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumCacheExpirationTime.TotalMilliseconds));
+                throw new ArgumentOutOfRangeException(nameof(cacheExpiration), cacheExpiration.TotalMilliseconds,
+                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumCacheExpirationInterval.TotalMilliseconds));
             }
 
-            CacheExpirationTime = cacheExpirationTime;
+            CacheExpirationInterval = cacheExpiration;
             return this;
         }
     }
