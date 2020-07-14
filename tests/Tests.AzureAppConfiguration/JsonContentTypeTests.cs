@@ -4,7 +4,9 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -136,7 +138,60 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal(compactJsonValue, config[FeatureManagementConstants.FeatureFlagMarker + "Beta"]);
+        }
 
+        [Fact]
+        public void JsonContentTypeTests_FlattenFeatureFlagWhenContentTypeIsNotFeatureManagementContentType()
+        {
+            var compactJsonValue = "{\"id\":\"Beta\",\"description\":\"\",\"enabled\":true,\"conditions\":{\"client_filters\":[{\"name\":\"Browser\",\"parameters\":{\"AllowedBrowsers\":[\"Firefox\",\"Safari\"]}}]}}";
+            _kvCollection.Clear();
+            _kvCollection.Add(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
+                    value: compactJsonValue,
+                    contentType: "application/json"));
+
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .Build();
+
+            Assert.Equal("Beta", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:id"]);
+            Assert.Equal("", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:description"]);
+            Assert.Equal("True", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:enabled"]);
+            Assert.Equal("Browser", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+        }
+
+        [Fact]
+        public void JsonContentTypeTests_JsonKeyValueAdapterCannotProcessFeatureFlags()
+        {
+            var compactJsonValue = "{\"id\":\"Beta\",\"description\":\"\",\"enabled\":true,\"conditions\":{\"client_filters\":[{\"name\":\"Browser\",\"parameters\":{\"AllowedBrowsers\":[\"Firefox\",\"Safari\"]}}]}}";
+            ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
+                value: compactJsonValue,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8");
+
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
+            Assert.False(jsonKeyValueAdapter.CanProcess(setting));
+        }
+
+        [Fact]
+        public void JsonContentTypeTests_JsonKeyValueAdapterCannotProcessKeyVaultReferences()
+        {
+            ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
+                key: "TK1",
+                value: @"
+                    {
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                    }
+                   ",
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
+
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
+            Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

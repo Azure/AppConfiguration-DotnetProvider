@@ -16,20 +16,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
     {
         public static bool IsJsonContentType(string contentType)
         {
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                return false;
+            }
+            string acceptedMainType = "application";
+            string acceptedSubType = "json";
+
             try
             {
-                if (string.IsNullOrEmpty(contentType))
-                {
-                    return false;
-                }
-
-                string acceptedMainType = "application";
-                string acceptedSubType = "json";
-
                 ContentType ct = new ContentType(contentType.Trim().ToLower());
                 var type = ct.MediaType;
-                if (string.Equals(type, FeatureManagementConstants.ContentType)
-                    || string.Equals(type, KeyVaultConstants.ContentType))
+                if (type == FeatureManagementConstants.ContentType ||
+                    type == KeyVaultConstants.ContentType)
                 {
                     return false;
                 }
@@ -38,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
                 {
                     string mainType = type.Split('/')[0];
                     string subType = type.Split('/')[1];
-                    if (string.Equals(mainType, acceptedMainType))
+                    if (mainType == acceptedMainType)
                     {
                         if (subType.Contains('+'))
                         {
@@ -48,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
                                 return true;
                             }
                         }
-                        else if (string.Equals(subType, acceptedSubType))
+                        else if (subType == acceptedSubType)
                         {
                             return true;
                         }
@@ -65,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
         public static List<KeyValuePair<string, string>> ParseJsonSetting(ConfigurationSetting setting)
         {
             List<KeyValuePair<string, string>> keyValues = new List<KeyValuePair<string, string>>();
-            SortedDictionary<string, string> keyValueDict = new SortedDictionary<string, string>();
+            Dictionary<string, string> keyValueDict = new Dictionary<string, string>();
             ParseSetting(setting.Key, setting.Value, keyValueDict);
             foreach (KeyValuePair<string, string> entry in keyValueDict)
             {
@@ -75,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
         }
 
 
-        public static void ParseSetting(string currentKey, string currentValue, SortedDictionary<string, string> keyValueDict)
+        public static void ParseSetting(string currentKey, string currentValue, Dictionary<string, string> keyValueDict)
         {
             try
             {
@@ -106,7 +105,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
                 }
 
             }
-            catch (Exception ex) when (ex is ArgumentNullException || ex is JsonException || ex is NotSupportedException)
+            catch (Exception ex) when (ex is JsonException || ex is NotSupportedException)
             {
                 // If it's not a valid JSON, treat it like regular string value
                 keyValueDict[currentKey] = currentValue;

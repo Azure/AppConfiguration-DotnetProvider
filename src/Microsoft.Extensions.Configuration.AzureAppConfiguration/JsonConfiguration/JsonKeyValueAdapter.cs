@@ -12,13 +12,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
     {
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
-            var keyValues = JsonConfigurationParser.ParseJsonSetting(setting);
+            List<KeyValuePair<string, string>> keyValues = JsonConfigurationParser.ParseJsonSetting(setting);
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
         }
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            return JsonConfigurationParser.IsJsonContentType(setting?.ContentType);
+            if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
+            {
+                return false;
+            }
+
+            return JsonConfigurationParser.IsJsonContentType(setting.ContentType);
         }
     }
 }
