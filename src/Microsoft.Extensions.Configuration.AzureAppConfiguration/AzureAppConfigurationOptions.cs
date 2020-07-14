@@ -5,6 +5,7 @@ using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() { new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()) };
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() { new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()), new JsonKeyValueAdapter() };
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 

@@ -23,7 +23,7 @@ namespace Tests.AzureAppConfiguration
             string appconfigFilePath = "./MockTestData/appconfig-settings.json";
             string jsonFilePath = "./MockTestData/jsonconfig-settings.json";
             _kvCollection.Clear();
-            _kvCollection = TestHelpers.LoadJsonSettingsFromfile(appconfigFilePath);
+            _kvCollection = TestHelpers.LoadJsonSettingsFromFile(appconfigFilePath);
             var mockClient = GetMockConfigurationClient();
 
             var appconfigSettings = new ConfigurationBuilder()

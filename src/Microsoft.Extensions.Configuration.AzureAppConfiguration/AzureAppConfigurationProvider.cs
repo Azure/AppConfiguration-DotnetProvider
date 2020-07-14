@@ -179,14 +179,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, CancellationToken.None).ConfigureAwait(false))
                         {
-                            if (JsonConfigurationParser.IsJsonContentType(setting.ContentType))
-                            {
-                                JsonConfigurationParser.ParseJsonSetting(setting, data);
-                            }
-                            else
-                            {
-                                data[setting.Key] = setting;
-                            }
+                            data[setting.Key] = setting;
                         }
                     }).ConfigureAwait(false);
                 }

@@ -1,4 +1,7 @@
-﻿using Azure.Data.AppConfiguration;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
@@ -7,7 +10,7 @@ using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfiguration
 {
     internal static class JsonConfigurationParser
     {
@@ -15,13 +18,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             try
             {
+                if (string.IsNullOrEmpty(contentType))
+                {
+                    return false;
+                }
+
                 string acceptedMainType = "application";
                 string acceptedSubType = "json";
 
                 ContentType ct = new ContentType(contentType.Trim().ToLower());
                 var type = ct.MediaType;
-                if (Equals(type, FeatureManagementConstants.ContentType)
-                    || Equals(type, KeyVaultConstants.ContentType))
+                if (string.Equals(type, FeatureManagementConstants.ContentType)
+                    || string.Equals(type, KeyVaultConstants.ContentType))
                 {
                     return false;
                 }
@@ -30,7 +38,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     string mainType = type.Split('/')[0];
                     string subType = type.Split('/')[1];
-                    if (Equals(mainType, acceptedMainType))
+                    if (string.Equals(mainType, acceptedMainType))
                     {
                         if (subType.Contains('+'))
                         {
@@ -40,30 +48,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return true;
                             }
                         }
-                        else if (Equals(subType, acceptedSubType))
+                        else if (string.Equals(subType, acceptedSubType))
                         {
                             return true;
                         }
                     }
                 }
             }
-            catch (Exception ex) when (ex is ArgumentException || ex is FormatException || ex is NullReferenceException)
+            catch (Exception ex) when (ex is ArgumentException || ex is FormatException)
             {
                 // not a valid JSON content type
             }
             return false;
         }
 
-        public static void ParseJsonSetting(ConfigurationSetting setting, IDictionary<string, ConfigurationSetting> data)
+        public static List<KeyValuePair<string, string>> ParseJsonSetting(ConfigurationSetting setting)
         {
+            List<KeyValuePair<string, string>> keyValues = new List<KeyValuePair<string, string>>();
             SortedDictionary<string, string> keyValueDict = new SortedDictionary<string, string>();
             ParseSetting(setting.Key, setting.Value, keyValueDict);
             foreach (KeyValuePair<string, string> entry in keyValueDict)
             {
-                ConfigurationSetting newSetting = new ConfigurationSetting(entry.Key, entry.Value, setting.Label);
-                newSetting.ContentType = setting.ContentType;
-                data[newSetting.Key] = newSetting;
+                keyValues.Add(entry);
             }
+            return keyValues;
         }
 
 

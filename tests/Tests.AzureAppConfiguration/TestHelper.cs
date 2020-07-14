@@ -63,7 +63,7 @@ namespace Tests.AzureAppConfiguration
             return ConfigurationModelFactory.ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ContentType, setting.ETag, setting.LastModified);
         }
 
-        public static List<ConfigurationSetting> LoadJsonSettingsFromfile(string path)
+        public static List<ConfigurationSetting> LoadJsonSettingsFromFile(string path)
         {
             List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>();
             var valueArray = JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(path)).EnumerateArray();
