@@ -18,15 +18,13 @@ namespace Tests.AzureAppConfiguration
 {
     public class JsonContentTypeTests
     {
-        List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>();
         [Fact]
         public void JsonContentTypeTests_CompareJsonSettingsBetweenAppConfigAndJsonFile()
         {
             string appconfigFilePath = "./MockTestData/appconfig-settings.json";
             string jsonFilePath = "./MockTestData/jsonconfig-settings.json";
-            _kvCollection.Clear();
-            _kvCollection = TestHelpers.LoadJsonSettingsFromFile(appconfigFilePath);
-            var mockClient = GetMockConfigurationClient();
+            List<ConfigurationSetting> _kvCollection = TestHelpers.LoadJsonSettingsFromFile(appconfigFilePath);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var appconfigSettings = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
@@ -49,24 +47,26 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void JsonContentTypeTests_LoadInvalidJsonValueAsStringValue()
         {
-            _kvCollection.Clear();
-            _kvCollection.Add(
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey1",
                     value: "True",
-                    contentType: "application/json"));
-            _kvCollection.Add(
+                    contentType: "application/json"),
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey2",
                     value: "[abc,def,ghi]",
-                    contentType: "application/json"));
-            _kvCollection.Add(
+                    contentType: "application/json"),
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey3",
                     value: "{\"Name\": Foo}",
-                    contentType: "application/json"));
-
-            var mockClient = GetMockConfigurationClient();
+                    contentType: "APPLICATION/JSON"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "TestKey4",
+                    value: null,
+                    contentType: "APPLICATION/JSON")
+            };
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
@@ -75,39 +75,45 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("True", config["TestKey1"]);
             Assert.Equal("[abc,def,ghi]", config["TestKey2"]);
             Assert.Equal("{\"Name\": Foo}", config["TestKey3"]);
+            Assert.Null(config["TestKey4"]);
         }
 
         [Fact]
         public void JsonContentTypeTests_LoadSettingsWithInvalidJsonContentTypeAsString()
         {
-            _kvCollection.Clear();
-            _kvCollection.Add(
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey1",
                     value: "true",
-                    contentType: "application/notjson"));
-            _kvCollection.Add(
+                    contentType: "application/notjson"),
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey2",
                     value: "[1,2,3]",
-                    contentType: "text/json"));
-            _kvCollection.Add(
+                    contentType: "text/json"),
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey3",
                     value: "{\"Name\": \"Foo\"}",
-                    contentType: null));
-            _kvCollection.Add(
+                    contentType: null),
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey4",
                     value: "99",
-                    contentType: ""));
-            _kvCollection.Add(
+                    contentType: ""),
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey5",
                     value: "null",
-                    contentType: "application/vnd.json"));
+                    contentType: "json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "TestKey6",
+                    value: null,
+                    contentType: "/"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "TestKey7",
+                    value: "{}",
+                    contentType: "application/")
+                };
 
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
@@ -118,20 +124,97 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("{\"Name\": \"Foo\"}", config["TestKey3"]);
             Assert.Equal("99", config["TestKey4"]);
             Assert.Equal("null", config["TestKey5"]);
+            Assert.Null(config["TestKey6"]);
+            Assert.Equal("{}", config["TestKey7"]);
+        }
+
+        [Fact]
+        public void JsonContentTypeTests_OverwriteValuesForDuplicateKeysAfterFlatteningJson()
+        {
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyNumberList",
+                    value:  "[10, 20, 30, 40]",
+                    contentType: "application/json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyNumberList:0",
+                    value: "11",
+                    contentType: "application/json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyNumberList:1",
+                    value: "22",
+                    contentType: "application/json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyNumberList:2",
+                    value: "33",
+                    contentType: "application/json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyNumberList:3",
+                    value: "44",
+                    contentType: "application/json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyObject",
+                    value: "{\"ObjectSetting\": {\"Logging\": {\"LogLevel\": \"Information\", \"Default\": \"Debug\"}}}",
+                    contentType: "application/json"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyObject:ObjectSetting:Logging:Default",
+                    value: "\"Debug2\"",
+                    contentType: "application/json"),
+                 ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyObject:ObjectSetting:Logging:LogLevel",
+                    value: "\"Information2\"",
+                    contentType: "application/json"),
+                 ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MyObjectWithDuplicateProperties",
+                    value: "{\"Name\": \"Value1\", \"Name\": \"Value2\"}",
+                    contentType: "application/json"),
+                 ConfigurationModelFactory.ConfigurationSetting(
+                    key: "CaseSensitiveKey",
+                    value: "\"foobar\"",
+                    contentType: "application/json"),
+                 ConfigurationModelFactory.ConfigurationSetting(
+                    key: "casesensitivekey",
+                    value: "\"foobar-overwritten\"",
+                    contentType: "application/json")
+                };
+
+            var mockClient = GetMockConfigurationClient(_kvCollection);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .Build();
+
+            Assert.Null(config["MyNumberList"]);
+            Assert.Equal("11", config["MyNumberList:0"]);
+            Assert.Equal("22", config["MyNumberList:1"]);
+            Assert.Equal("33", config["MyNumberList:2"]);
+            Assert.Equal("44", config["MyNumberList:3"]);
+
+            Assert.Null(config["MyObject"]);
+            Assert.Equal("Debug2", config["MyObject:ObjectSetting:Logging:Default"]);
+            Assert.Equal("Information2", config["MyObject:ObjectSetting:Logging:LogLevel"]);
+
+            Assert.Null(config["MyObjectWithDuplicateProperties"]);
+            Assert.Equal("Value2", config["MyObjectWithDuplicateProperties:Name"]);
+
+            Assert.Equal("foobar-overwritten", config["CaseSensitiveKey"]);
+            Assert.Equal("foobar-overwritten", config["casesensitivekey"]);
         }
 
         [Fact]
         public void JsonContentTypeTests_DontFlattenFeatureFlagAsJsonObject()
         {
             var compactJsonValue = "{\"id\":\"Beta\",\"description\":\"\",\"enabled\":true,\"conditions\":{\"client_filters\":[{\"name\":\"Browser\",\"parameters\":{\"AllowedBrowsers\":[\"Firefox\",\"Safari\"]}}]}}";
-            _kvCollection.Clear();
-            _kvCollection.Add(
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
                     value: compactJsonValue,
-                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8")
+            };
 
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
@@ -144,14 +227,15 @@ namespace Tests.AzureAppConfiguration
         public void JsonContentTypeTests_FlattenFeatureFlagWhenContentTypeIsNotFeatureManagementContentType()
         {
             var compactJsonValue = "{\"id\":\"Beta\",\"description\":\"\",\"enabled\":true,\"conditions\":{\"client_filters\":[{\"name\":\"Browser\",\"parameters\":{\"AllowedBrowsers\":[\"Firefox\",\"Safari\"]}}]}}";
-            _kvCollection.Clear();
-            _kvCollection.Add(
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
                     value: compactJsonValue,
-                    contentType: "application/json"));
+                    contentType: "application/json")
+            };
 
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
@@ -194,7 +278,7 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
-        private Mock<ConfigurationClient> GetMockConfigurationClient()
+        private Mock<ConfigurationClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());

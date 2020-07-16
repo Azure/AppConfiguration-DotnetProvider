@@ -60,5 +60,21 @@
     [ "NestedArray2", "text" ],
     [ "NestedArray3" ]
   ],
-  "key17": "2020-01-01T12:34:56.789Z"
+  "key17": "2020-01-01T12:34:56.789Z",
+  "key18": [ "0.0", 1.1, 2.2 ],
+  "key19": {
+    "Object": {
+      "Parameters": [
+        {
+          "Name": "foo",
+          "Value": "bar"
+        },
+        {
+          "Name": "foo2",
+          "Value": "bar2"
+        }
+      ]
+    }
+  },
+  "": "KeyNameIsEmptyString"
 }

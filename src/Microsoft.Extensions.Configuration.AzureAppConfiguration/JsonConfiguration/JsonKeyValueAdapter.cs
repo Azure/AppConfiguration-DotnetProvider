@@ -12,8 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
     {
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
-            List<KeyValuePair<string, string>> keyValues = JsonConfigurationParser.ParseJsonSetting(setting);
-            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+            IEnumerable<KeyValuePair<string, string>> keyValues = JsonConfigurationParser.Parse(setting);
+            return Task.FromResult(keyValues);
         }
 
         public bool CanProcess(ConfigurationSetting setting)

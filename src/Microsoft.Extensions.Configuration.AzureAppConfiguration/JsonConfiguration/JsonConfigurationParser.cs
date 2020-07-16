@@ -14,102 +14,67 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.JsonConfigura
 {
     internal static class JsonConfigurationParser
     {
+        private static IEnumerable<string> _excludedJsonContentTypes = new[] { FeatureManagementConstants.ContentType, KeyVaultConstants.ContentType };
+
         public static bool IsJsonContentType(string contentType)
         {
             if (string.IsNullOrWhiteSpace(contentType))
             {
                 return false;
             }
+
             string acceptedMainType = "application";
             string acceptedSubType = "json";
+            string mediaType;
 
             try
             {
                 ContentType ct = new ContentType(contentType.Trim().ToLower());
-                var type = ct.MediaType;
-                if (type == FeatureManagementConstants.ContentType ||
-                    type == KeyVaultConstants.ContentType)
-                {
-                    return false;
-                }
+                mediaType = ct.MediaType;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Bug in System.Net.Mime.ContentType throws this if contentType is "xyz/"
+                return false;
+            }
 
-                if (type.Contains('/'))
+            if (!_excludedJsonContentTypes.Contains(mediaType))
+            {
+                // Since contentType has been validated using System.Net.Mime.ContentType,
+                // mediaType will always have exactly 2 parts after splitting on '/'
+                string[] types = mediaType.Split('/');
+                if (types[0] == acceptedMainType)
                 {
-                    string mainType = type.Split('/')[0];
-                    string subType = type.Split('/')[1];
-                    if (mainType == acceptedMainType)
+                    string[] subTypes = types[1].Split('+');
+                    if (subTypes.Contains(acceptedSubType))
                     {
-                        if (subType.Contains('+'))
-                        {
-                            var subTypes = subType.Split('+');
-                            if (Array.Exists(subTypes, x => x == acceptedSubType))
-                            {
-                                return true;
-                            }
-                        }
-                        else if (subType == acceptedSubType)
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
             }
-            catch (Exception ex) when (ex is ArgumentException || ex is FormatException)
-            {
-                // not a valid JSON content type
-            }
+
             return false;
         }
 
-        public static List<KeyValuePair<string, string>> ParseJsonSetting(ConfigurationSetting setting)
+        public static IEnumerable<KeyValuePair<string, string>> Parse(ConfigurationSetting setting)
         {
-            List<KeyValuePair<string, string>> keyValues = new List<KeyValuePair<string, string>>();
-            Dictionary<string, string> keyValueDict = new Dictionary<string, string>();
-            ParseSetting(setting.Key, setting.Value, keyValueDict);
-            foreach (KeyValuePair<string, string> entry in keyValueDict)
-            {
-                keyValues.Add(entry);
-            }
-            return keyValues;
-        }
-
-
-        public static void ParseSetting(string currentKey, string currentValue, Dictionary<string, string> keyValueDict)
-        {
+            string rootJson = $"{{\"{setting.Key}\":{setting.Value}}}";
+            JsonElement jsonData;
             try
             {
-                var json_data = JsonSerializer.Deserialize<JsonElement>(currentValue);
-                switch (json_data.ValueKind)
-                {
-                    case JsonValueKind.Array:
-                        var valueArray = json_data.EnumerateArray();
-                        for (int index = 0; index < valueArray.Count(); index++)
-                        {
-                            var newKey = ConfigurationPath.Combine(new List<string> { currentKey, index.ToString() });
-                            ParseSetting(newKey, valueArray.ElementAt(index).GetRawText(), keyValueDict);
-                        }
-                        break;
-
-                    case JsonValueKind.Object:
-                        var valueObject = json_data.EnumerateObject();
-                        foreach(JsonProperty entry in valueObject)
-                        {
-                            var newKey = ConfigurationPath.Combine(new List<string> { currentKey, entry.Name.ToString() });
-                            ParseSetting(newKey, entry.Value.GetRawText(), keyValueDict);
-                        }
-                        break;
-
-                    default:
-                        keyValueDict[currentKey] = json_data.ToString();
-                        break;
-                }
-
+                jsonData = JsonSerializer.Deserialize<JsonElement>(rootJson);
             }
-            catch (Exception ex) when (ex is JsonException || ex is NotSupportedException)
+            catch (JsonException)
             {
-                // If it's not a valid JSON, treat it like regular string value
-                keyValueDict[currentKey] = currentValue;
+                // If the value is not a valid JSON, treat it like regular string value
+                return new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>(setting.Key, setting.Value) };
             }
+
+            return new JsonFlattener().FlattenJson(jsonData);
         }
     }
 }

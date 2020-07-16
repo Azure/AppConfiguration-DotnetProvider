@@ -128,5 +128,45 @@
     "key": "key17",
     "value": "2020-01-01T12:34:56.789Z",
     "contentType": "application/json"
+  },
+  {
+    "key": "key18:0",
+    "value": "0.0",
+    "contentType": "Application/JSON"
+  },
+  {
+    "key": "key18:1",
+    "value": 1.1,
+    "contentType": "Application/JSON"
+  },
+  {
+    "key": "key18:2",
+    "value": 2.2,
+    "contentType": "Application/JSON"
+  },
+  {
+    "key": "key19:Object:Parameters:0:Name",
+    "value": "foo",
+    "contentType": "  application/json  "
+  },
+  {
+    "key": "key19:Object:Parameters:0:Value",
+    "value": "bar",
+    "contentType": "  application/json  "
+  },
+  {
+    "key": "key19:Object:Parameters:1:Name",
+    "value": "foo2",
+    "contentType": "  application/json  "
+  },
+  {
+    "key": "key19:Object:Parameters:1:Value",
+    "value": "bar2",
+    "contentType": "  application/json  "
+  },
+  {
+    "key": "",
+    "value": "KeyNameIsEmptyString",
+    "contentType": "application/json  ;"
   }
 ]
