@@ -5,10 +5,10 @@ using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.AppConfiguration.AspNetCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Xunit;
 using static Tests.AzureAppConfiguration.AspNetCore.TestHelper;
@@ -42,7 +42,7 @@ namespace Tests.AzureAppConfiguration.AspNetCore
         };
 
         [Fact]
-        public void RefreshMiddlewareTests_MiddlewareConstructorParsesIConfigurationRefresher()
+        public void RefreshMiddlewareTests_MiddlewareConstructorRetrievesIConfigurationRefresher()
         {
             // Arrange
             var mockResponse = new Mock<Response>();
@@ -50,21 +50,21 @@ namespace Tests.AzureAppConfiguration.AspNetCore
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
 
+            IConfigurationRefresher[] refreshers = { new AzureAppConfigurationRefresher() };
+            var mockRefresherProvider = new Mock<IConfigurationRefresherProvider>(MockBehavior.Strict);
+            mockRefresherProvider.SetupGet(provider => provider.Refreshers).Returns(refreshers);
             var delegateMock = new Mock<RequestDelegate>();
-            var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
-                .Build();
 
             // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, mockRefresherProvider.Object);
 
             // Assert
             Assert.NotNull(middleware.Refreshers);
-            Assert.Equal(1, middleware.Refreshers.Count);
+            Assert.Single(middleware.Refreshers);
         }
 
         [Fact]
-        public void RefreshMiddlewareTests_MiddlewareConstructorParsesMultipleIConfigurationRefreshers()
+        public void RefreshMiddlewareTests_MiddlewareConstructorRetrievesMultipleIConfigurationRefreshers()
         {
             // Arrange
             var mockResponse = new Mock<Response>();
@@ -72,30 +72,17 @@ namespace Tests.AzureAppConfiguration.AspNetCore
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
 
+            IConfigurationRefresher[] refreshers = { new AzureAppConfigurationRefresher(), new AzureAppConfigurationRefresher() };
+            var mockRefresherProvider = new Mock<IConfigurationRefresherProvider>(MockBehavior.Strict);
+            mockRefresherProvider.SetupGet(provider => provider.Refreshers).Returns(refreshers);
             var delegateMock = new Mock<RequestDelegate>();
-            var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
-                .Build();
 
             // Act
-            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configuration);
+            var middleware = new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, mockRefresherProvider.Object);
 
             // Assert
             Assert.NotNull(middleware.Refreshers);
-            Assert.Equal(2, middleware.Refreshers.Count);
-        }
-
-        [Fact]
-        public void RefreshMiddlewareTests_InvalidOperationExceptionOnIConfigurationCastFailure()
-        {
-            // Arrange
-            var delegateMock = new Mock<RequestDelegate>();
-            var configMock = new Mock<IConfiguration>();
-            Action action = () => new AzureAppConfigurationRefreshMiddleware(delegateMock.Object, configMock.Object);
-
-            // Act and Assert
-            Assert.Throws<InvalidOperationException>(action);
+            Assert.Equal(2, middleware.Refreshers.Count());
         }
     }
 }

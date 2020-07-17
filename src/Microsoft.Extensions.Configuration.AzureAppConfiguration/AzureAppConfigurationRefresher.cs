@@ -10,9 +10,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private AzureAppConfigurationProvider _provider = null;
 
+        public Uri AppConfigurationEndpoint { get; } = null;
+
         public void SetProvider(AzureAppConfigurationProvider provider)
         {
-            _provider = provider;
+            _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            AppConfigurationEndpoint = _provider.AppConfigurationEndpoint;
         }
 
         public async Task RefreshAsync()

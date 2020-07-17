@@ -40,6 +40,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
 
+        public Uri AppConfigurationEndpoint
+        {
+            get
+            {
+                if (_options.Endpoint != null)
+                {
+                    return _options.Endpoint;
+                }
+
+                if (_options.ConnectionString != null)
+                {
+                    return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, "Endpoint"));
+                }
+
+                throw new InvalidOperationException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
+            }
+        }
+
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));

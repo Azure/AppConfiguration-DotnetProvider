@@ -8,12 +8,17 @@ using System.Threading.Tasks;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// An interface used to trigger an update for the data registered for refresh with the configuration store.
+    /// An interface used to trigger an update for the data registered for refresh with App Configuration.
     /// </summary>
     public interface IConfigurationRefresher
     {
         /// <summary>
-        /// Refreshes the data from the configuration store asynchronously.
+        /// Uri of the App Configuration endpoint.
+        /// </summary>
+        Uri AppConfigurationEndpoint { get; }
+
+        /// <summary>
+        /// Refreshes the data from App Configuration asynchronously.
         /// </summary>
         /// <exception cref="KeyVaultReferenceException">An error occurred when resolving a reference to an Azure Key Vault resource.</exception>
         /// <exception cref="RequestFailedException">The request failed with an error code from the server.</exception>
@@ -24,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         Task RefreshAsync();
 
         /// <summary>
-        /// Refreshes the data from the configuration store asynchronously. A return value indicates whether the operation succeeded.
+        /// Refreshes the data from App Configuration asynchronously. A return value indicates whether the operation succeeded.
         /// </summary>
         Task<bool> TryRefreshAsync();
 
