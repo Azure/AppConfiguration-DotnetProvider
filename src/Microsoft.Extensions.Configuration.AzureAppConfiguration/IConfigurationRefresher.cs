@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public interface IConfigurationRefresher
     {
         /// <summary>
-        /// Uri of the App Configuration endpoint.
+        /// The App Configuration endpoint.
         /// </summary>
         Uri AppConfigurationEndpoint { get; }
 

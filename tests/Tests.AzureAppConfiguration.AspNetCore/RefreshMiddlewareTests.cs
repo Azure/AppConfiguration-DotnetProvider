@@ -45,11 +45,6 @@ namespace Tests.AzureAppConfiguration.AspNetCore
         public void RefreshMiddlewareTests_MiddlewareConstructorRetrievesIConfigurationRefresher()
         {
             // Arrange
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, CreateMockEndpointString());
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-
             IConfigurationRefresher[] refreshers = { new AzureAppConfigurationRefresher() };
             var mockRefresherProvider = new Mock<IConfigurationRefresherProvider>(MockBehavior.Strict);
             mockRefresherProvider.SetupGet(provider => provider.Refreshers).Returns(refreshers);
@@ -67,11 +62,6 @@ namespace Tests.AzureAppConfiguration.AspNetCore
         public void RefreshMiddlewareTests_MiddlewareConstructorRetrievesMultipleIConfigurationRefreshers()
         {
             // Arrange
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, CreateMockEndpointString());
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
-
             IConfigurationRefresher[] refreshers = { new AzureAppConfigurationRefresher(), new AzureAppConfigurationRefresher() };
             var mockRefresherProvider = new Mock<IConfigurationRefresherProvider>(MockBehavior.Strict);
             mockRefresherProvider.SetupGet(provider => provider.Refreshers).Returns(refreshers);

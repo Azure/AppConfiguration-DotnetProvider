@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, "Endpoint"));
                 }
 
-                throw new InvalidOperationException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
+                return null;
             }
         }
 
