@@ -1,0 +1,80 @@
+{
+  "key01": "Some Text",
+  "key02": true,
+  "key03": null,
+  "key04": "false",
+  "key05": "null",
+  "key06": 23.4,
+  "key07": [ 1, 2, 3 ],
+  "key08": [ "abc", "def", "ghi" ],
+  "key09": [],
+  "key10": [
+    1000,
+    true,
+    "AppConfig string value",
+    [ "NestedArray", 12, false, null ],
+    {
+      "ObjectSetting": {
+        "Logging": {
+          "LogLevel": "Information",
+          "Default": "Debug"
+        }
+      }
+    }
+  ],
+  "key11": [
+    [ "NestedArray4", 34 ],
+    [ "NestedArray5", true, null ],
+    [
+      "NestedArray6",
+      {
+        "MyNullValue": null,
+        "MyObject": {
+          "Property": {
+            "Name": {
+              "Name1": "Value1",
+              "Name2": "Value2"
+            }
+          }
+        }
+      }
+    ]
+  ],
+  "key12": {
+    "ObjectSetting": {
+      "Logging": {
+        "Default": "Debug",
+        "LogLevel": "Information"
+      }
+    }
+  },
+  "key13": {
+    "Obj1": null,
+    "Obj2": false,
+    "Obj3": 666
+  },
+  "key14": {},
+  "key15": "",
+  "key16": [
+    [ "NestedArray1", "12", "false", "null" ],
+    [ "NestedArray2", "text" ],
+    [ "NestedArray3" ]
+  ],
+  "key17": "2020-01-01T12:34:56.789Z",
+  "key18": [ "0.0", 1.1, 2.2 ],
+  "key19": {
+    "Object": {
+      "Parameters": [
+        {
+          "Name": "foo",
+          "Value": "bar"
+        },
+        {
+          "Name": "foo2",
+          "Value": "bar2"
+        }
+      ]
+    }
+  },
+  "": "KeyNameIsEmptyString"
+}

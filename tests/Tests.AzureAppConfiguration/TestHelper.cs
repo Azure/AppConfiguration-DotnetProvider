@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 
@@ -60,6 +61,22 @@ namespace Tests.AzureAppConfiguration
         public static ConfigurationSetting CloneSetting(ConfigurationSetting setting)
         {
             return ConfigurationModelFactory.ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ContentType, setting.ETag, setting.LastModified);
+        }
+
+        public static List<ConfigurationSetting> LoadJsonSettingsFromFile(string path)
+        {
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>();
+            var valueArray = JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(path)).EnumerateArray();
+            foreach (var setting in valueArray)
+            {
+                ConfigurationSetting kv = ConfigurationModelFactory
+                    .ConfigurationSetting(
+                        key: setting.GetProperty("key").ToString(), 
+                        value: setting.GetProperty("value").GetRawText(), 
+                        contentType: setting.GetProperty("contentType").ToString());
+                _kvCollection.Add(kv);
+            }
+            return _kvCollection;
         }
     }
 
