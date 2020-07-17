@@ -20,6 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<Settings>(Configuration.GetSection("Settings"));
+            services.AddAzureAppConfiguration();
             services.AddMvc();
         }
 
