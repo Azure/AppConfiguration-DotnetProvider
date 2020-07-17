@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter
+    internal class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter
     {
         private const string AzureIdentityAssemblyName = "Azure.Identity";
 

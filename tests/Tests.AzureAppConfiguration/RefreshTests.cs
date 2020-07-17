@@ -881,23 +881,27 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_AzureAppConfigurationRefresherProviderReturnsRefreshers()
         {
-            IConfiguration configuration = new ConfigurationBuilder().Build();
-            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration);
-            Assert.Empty(refresherProvider.Refreshers);
-
             static void optionsInitializer(AzureAppConfigurationOptions options)
             {
                 options.Connect(TestHelpers.CreateMockEndpointString());
                 options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
             }
 
-            configuration = new ConfigurationBuilder()
+            IConfiguration configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
                 .Build();
 
-            refresherProvider = new AzureAppConfigurationRefresherProvider(configuration);
+            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration);
             Assert.Equal(2, refresherProvider.Refreshers.Count());
+        }
+
+        [Fact]
+        public void RefreshTests_AzureAppConfigurationRefresherProviderThrowsIfNoRefresher()
+        {
+            IConfiguration configuration = new ConfigurationBuilder().Build();
+            void action() => new AzureAppConfigurationRefresherProvider(configuration);
+            Assert.Throws<InvalidOperationException>(action);
         }
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)

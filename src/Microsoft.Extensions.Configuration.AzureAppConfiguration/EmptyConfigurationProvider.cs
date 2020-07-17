@@ -3,7 +3,7 @@
 //
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    class EmptyConfigurationProvider : ConfigurationProvider
+    internal class EmptyConfigurationProvider : ConfigurationProvider
     {
     }
 }

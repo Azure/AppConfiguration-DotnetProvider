@@ -51,7 +51,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (_options.ConnectionString != null)
                 {
-                    return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, "Endpoint"));
+                    // Use try-catch block to avoid throwing exceptions from property getter.
+                    // https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/property
+
+                    try
+                    {
+                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, "Endpoint"));
+                    }
+                    catch (ArgumentException) { }
+                    catch (UriFormatException) { }
                 }
 
                 return null;

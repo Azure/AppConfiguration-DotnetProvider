@@ -11,7 +11,7 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
     /// <summary>
     /// Middleware for Azure App Configuration to use activity-based refresh for key-values registered in the provider.
     /// </summary>
-    class AzureAppConfigurationRefreshMiddleware
+    internal class AzureAppConfigurationRefreshMiddleware
     {
         private readonly RequestDelegate _next;
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
