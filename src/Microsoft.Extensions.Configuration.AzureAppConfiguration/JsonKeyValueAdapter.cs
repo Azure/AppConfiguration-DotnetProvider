@@ -16,7 +16,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class JsonKeyValueAdapter : IKeyValueAdapter
     {
-        private static readonly IEnumerable<string> _excludedJsonContentTypes = new[] {
+        private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[] 
+        {
             FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
         };
@@ -71,7 +72,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return false;
             }
 
-            if (!_excludedJsonContentTypes.Contains(mediaType, StringComparer.OrdinalIgnoreCase))
+            if (!ExcludedJsonContentTypes.Contains(mediaType, StringComparer.OrdinalIgnoreCase))
             {
                 // Since contentType has been validated using System.Net.Mime.ContentType,
                 // mediaType will always have exactly 2 parts after splitting on '/'
