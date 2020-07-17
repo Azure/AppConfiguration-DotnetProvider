@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private AzureAppConfigurationProvider _provider = null;
 
-        public Uri AppConfigurationEndpoint { get; } = null;
+        public Uri AppConfigurationEndpoint { get; private set; } = null;
 
         public void SetProvider(AzureAppConfigurationProvider provider)
         {
