@@ -6,7 +6,7 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    class AzureAppConfigurationSource : IConfigurationSource
+    internal class AzureAppConfigurationSource : IConfigurationSource
     {
         private readonly bool _optional;
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;

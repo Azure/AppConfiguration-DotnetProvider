@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    class AzureKeyVaultSecretProvider
+    internal class AzureKeyVaultSecretProvider
     {
         private readonly IDictionary<string, SecretClient> _secretClients;
         private readonly TokenCredential _credential;

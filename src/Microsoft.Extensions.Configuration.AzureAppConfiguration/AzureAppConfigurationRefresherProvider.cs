@@ -3,30 +3,33 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    class AzureAppConfigurationRefresherProvider : IConfigurationRefresherProvider
+    internal class AzureAppConfigurationRefresherProvider : IConfigurationRefresherProvider
     {
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
         public AzureAppConfigurationRefresherProvider(IConfiguration configuration)
         {
             var configurationRoot = configuration as IConfigurationRoot;
-
-            if (configurationRoot == null)
-            {
-                throw new InvalidOperationException("Unable to access the Azure App Configuration provider. Please ensure that it has been configured correctly.");
-            }
-
             var refreshers = new List<IConfigurationRefresher>();
 
-            foreach (IConfigurationProvider provider in configurationRoot.Providers)
+            if (configurationRoot != null)
             {
-                if (provider is IConfigurationRefresher refresher)
+                foreach (IConfigurationProvider provider in configurationRoot.Providers)
                 {
-                    refreshers.Add(refresher);
+                    if (provider is IConfigurationRefresher refresher)
+                    {
+                        refreshers.Add(refresher);
+                    }
                 }
+            }
+
+            if (!refreshers.Any())
+            {
+                throw new InvalidOperationException("Unable to access the Azure App Configuration provider. Please ensure that it has been configured correctly.");
             }
 
             Refreshers = refreshers;
