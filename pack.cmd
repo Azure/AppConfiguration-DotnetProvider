@@ -1,1 +1,7 @@
-powershell.exe -ExecutionPolicy Unrestricted -NoProfile -File "%~dp0pack.ps1"
+call %~dp0build\ChoosePowerShell.cmd
+
+IF %ERRORLEVEL% NEQ 0 (
+    exit /B 1
+)
+
+%PowerShell% "%~dp0pack.ps1" %*
