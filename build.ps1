@@ -10,12 +10,14 @@ Indicates whether the build config should be set to Debug or Release. The defaul
 param(
     [Parameter()]
     [ValidateSet('Debug','Release')]
-    [string]$BuildConfig = "Release"
+    [string]$BuildConfig = "Release",
+    
+    [Parameter()]
+    [switch]$RestoreOnly = $false
 )
 
 $ErrorActionPreference = "Stop"
 
-$BuildRelativePath = "bin\BuildOutput"
 $LogDirectory = "$PSScriptRoot\buildlogs"
 $Solution     = "$PSScriptRoot\Microsoft.Extensions.Configuration.AzureAppConfiguration.sln"
 
@@ -24,7 +26,13 @@ if ((Test-Path -Path $LogDirectory) -ne $true) {
     New-Item -ItemType Directory -Path $LogDirectory | Write-Verbose
 }
 
-# Build (We use 'publish' to pull the Microsoft.Azure.AppConfiguration.AzconfigClient.dll to be able to include it in the Microsoft.Extensions.Configuration.AzureAppConfiguration NuGet package)
-dotnet publish -o "$BuildRelativePath" -c $BuildConfig "$Solution" /p:OutDir=$BuildRelativePath | Tee-Object -FilePath "$LogDirectory\build.log"
+if ($RestoreOnly)
+{
+    dotnet restore "$Solution"
+}
+else
+{
+    dotnet build -c $BuildConfig "$Solution" | Tee-Object -FilePath "$LogDirectory\build.log"
+}
 
 exit $LASTEXITCODE
