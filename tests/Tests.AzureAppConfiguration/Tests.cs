@@ -184,40 +184,32 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TestUserAgentHeader()
         {
+            // Regex to perform the following validations
+            // 1. Contains the name of the configuration provider package
+            // 2. Contains the informational version (not the assembly version) of the package
+            // 3. Contains a valid version format for a stable or preview version of the package
+            // 4. Contains the name and version of the App Configuration SDK package
+            // 5. Contains the runtime information (target framework, OS description etc.) in the format set by the SDK
+            // 6. Does not contain any additional components
+            string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(-preview-\d+-\d+)?,azsdk-net-Data.AppConfiguration/[.+\w]+ \([.;\w\s]+\)$";
+            
             var response = new MockResponse(200);
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
             var mockTransport = new MockTransport(response);
-
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
-
-            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerRetry);
+            var clientOptions = new ConfigurationClientOptions { Transport = mockTransport };
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = new ConfigurationClient(_connectionString, clientOptions);
-                    options.Select("*", null);
-                })
-                .Build();
+                }).Build();
 
             MockRequest request = mockTransport.SingleRequest;
-
-            string appUserAgent = TracingUtils.GenerateUserAgent("SdkUserAgent");
-
-            // Validate the user agent format corresponds to informational version instead of assembly version
-            // Informational version examples : 3.0.0 or 2.1.0-preview-010380001-1099
-            // Assembly version examples : 3.0.0.0 or 2.1.0.0
-            var nugetPackageVersionRegex = @"\d+\.\d+\.\d+(-preview-\d+-\d+)?";
-            Assert.Matches($@"Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/{nugetPackageVersionRegex} SdkUserAgent", appUserAgent);
-
-            appUserAgent = appUserAgent.Replace("SdkUserAgent", "");
+            string appUserAgent = TracingUtils.GenerateUserAgent();
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
-            Assert.Contains(appUserAgent, userAgentHeader);
-            Assert.NotEqual(appUserAgent.Length, userAgentHeader.Length);
+            Assert.Matches(userAgentRegex, userAgentHeader);
         }
 
         [Fact]
