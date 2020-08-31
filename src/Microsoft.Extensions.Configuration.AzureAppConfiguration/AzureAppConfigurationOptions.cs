@@ -70,7 +70,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<IKeyValueAdapter> Adapters => _adapters;
+        internal IEnumerable<IKeyValueAdapter> Adapters
+        {
+            get => _adapters;
+            set => _adapters = value?.ToList();
+        }
 
         /// <summary>
         /// A collection of key prefixes to be trimmed.

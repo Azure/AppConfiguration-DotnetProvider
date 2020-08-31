@@ -242,8 +242,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                 await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is KeyVaultReferenceException ||
-                                              exception is RequestFailedException ||
+            catch (Exception exception) when (exception is RequestFailedException ||
                                               ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
                                               exception is OperationCanceledException)
             {
@@ -253,7 +252,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (data != null)
                     {
-                        await SetData(data).ConfigureAwait(false);
+                        await SetData(data, ignoreFailures).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -266,7 +265,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return;
             }
 
-            await SetData(data).ConfigureAwait(false);
+            await SetData(data, ignoreFailures).ConfigureAwait(false);
 
             if (_options.OfflineCache != null)
             {
@@ -460,7 +459,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task SetData(IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task SetData(IDictionary<string, ConfigurationSetting> data, bool ignoreFailures = false, CancellationToken cancellationToken = default)
         {
             // Update cache of settings
             this._settings = data as ConcurrentDictionary<string, ConfigurationSetting> ??
@@ -471,7 +470,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
-                foreach (KeyValuePair<string, string> kv in await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false))
+                IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+
+                try
+                {
+                    keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
+                }
+                catch (KeyVaultReferenceException)
+                {
+                    if (!ignoreFailures)
+                    {
+                        throw;
+                    }
+
+                    return;
+                }
+
+                foreach (KeyValuePair<string, string> kv in keyValuePairs)
                 {
                     string key = kv.Key;
                     foreach (string prefix in _options.KeyPrefixes)
