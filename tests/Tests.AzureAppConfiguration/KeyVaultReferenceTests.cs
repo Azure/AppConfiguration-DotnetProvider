@@ -351,12 +351,19 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            var mockKeyValueAdapter = new Mock<IKeyValueAdapter>(MockBehavior.Strict);
+            mockKeyValueAdapter.Setup(adapter => adapter.CanProcess(_kv))
+                .Returns(true);
+            mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(_kv, It.IsAny<CancellationToken>()))
                 .Throws(new KeyVaultReferenceException("Key vault error", null));
 
             new ConfigurationBuilder()
             .AddAzureAppConfiguration(options =>
             {
                 options.Client = mockClient.Object;
+                options.Adapters = new List<IKeyValueAdapter> { mockKeyValueAdapter.Object };
             }, optional: true)
             .Build();
         }
