@@ -10,6 +10,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>Microsoft.Azure.AppConfiguration.AspNetCore</AssemblyName>
     <PackageReleaseNotes>https://aka.ms/MicrosoftAzureAppConfigurationAspNetCoreReleaseNotes</PackageReleaseNotes>
+    <PackageTags>Microsoft Azure Configuration AppConfig AppConfiguration aspnetcore</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
