@@ -37,5 +37,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.
         /// </summary>
         public SemaphoreSlim Semaphore { get; } = new SemaphoreSlim(1);
+
+        public override int GetHashCode()
+        {
+            if (Label == null)
+            {
+                return Key.GetHashCode();
+            }
+
+            return Key.GetHashCode() ^ Label.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is KeyValueWatcher keyLabel)
+            {
+                return string.Equals(Key, keyLabel.Key, StringComparison.Ordinal)
+                    && string.Equals(Label, keyLabel.Label, StringComparison.Ordinal);
+            }
+
+            return false;
+        }
     }
 }

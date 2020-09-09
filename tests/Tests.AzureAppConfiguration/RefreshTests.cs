@@ -904,6 +904,19 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<InvalidOperationException>(action);
         }
 
+        [Fact]
+        public void RefreshTests_MultipleRefreshRegistrationsForSameKeyAndDifferentLabel()
+        {
+            var refreshOptions = new AzureAppConfigurationRefreshOptions()
+                .Register("TestKey")
+                .Register("TestKey", "Label 1")
+                .Register("TestKey", "Label 2")
+                .Register("TestKey", "Label 1")     // Duplicate registration
+                .Register("TestKey", "Label 2");    // Duplicate registration
+
+            Assert.Equal(3, refreshOptions.RefreshRegistrations.Count);
+        }
+
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();
