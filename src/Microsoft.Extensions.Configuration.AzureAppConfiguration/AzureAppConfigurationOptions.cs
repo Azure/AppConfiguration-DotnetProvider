@@ -266,7 +266,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!refreshOptions.RefreshRegistrations.Any())
             {
-                throw new ArgumentException("ConfigureRefresh() must have at least one key-value registered for refresh.");
+                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
             }
 
             foreach (var item in refreshOptions.RefreshRegistrations)
