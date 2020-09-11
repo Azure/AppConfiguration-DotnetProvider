@@ -5,11 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 using System.Security;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -17,34 +13,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal static class TracingUtils
     {
         static private HostType? _hostType = null;
-
-        public static string GenerateUserAgent(string currentUserAgent = null)
-        {
-            Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
-            string informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
-            var userAgent = new StringBuilder($"{assembly.GetName().Name}/{informationalVersion}");
-
-            // If currentUserAgent is not null, prepend current assembly name and version to it, and return without any further processing.
-            if (!string.IsNullOrWhiteSpace(currentUserAgent))
-            {
-                return $"{userAgent.ToString()} {currentUserAgent}";
-            }
-
-            IEnumerable<TargetFrameworkAttribute> targetFrameworkAttributes = assembly.GetCustomAttributes(true)?.OfType<TargetFrameworkAttribute>();
-            if (targetFrameworkAttributes != null && targetFrameworkAttributes.Any())
-            {
-                var frameworkName = new FrameworkName(targetFrameworkAttributes.First().FrameworkName);
-                userAgent.Append($" {frameworkName.Identifier}/{frameworkName.Version}");
-            }
-
-            string comment = RuntimeInformation.OSDescription;
-            if (!string.IsNullOrEmpty(comment))
-            {
-                userAgent.Append($" ({comment})");
-            }
-
-            return userAgent.ToString();
-        }
 
         public static HostType GetHostType()
         {

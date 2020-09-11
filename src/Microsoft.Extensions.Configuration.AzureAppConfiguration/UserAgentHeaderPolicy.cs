@@ -5,6 +5,7 @@ using Azure.Core;
 using Azure.Core.Pipeline;
 using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -21,11 +22,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return ProcessAsync(message, pipeline, true);
         }
 
+        internal static string GenerateUserAgent()
+        {
+            Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
+            string informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+            return $"{assembly.GetName().Name}/{informationalVersion}";
+        }
+
         private async ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline, bool async)
         {
-            string headerValue = message.Request.Headers.TryGetValue(RequestTracingConstants.UserAgentHeader, out string sdkUserAgent)
-                ? TracingUtils.GenerateUserAgent(sdkUserAgent) : TracingUtils.GenerateUserAgent();
-            message.Request.Headers.SetValue(RequestTracingConstants.UserAgentHeader, headerValue);
+            message.Request.Headers.Add(RequestTracingConstants.UserAgentHeader, GenerateUserAgent());
 
             if (async)
             {
