@@ -10,6 +10,7 @@
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
     <AssemblyName>Microsoft.Extensions.Configuration.AzureAppConfiguration</AssemblyName>
     <PackageReleaseNotes>https://aka.ms/MicrosoftExtensionsConfigurationAzureAppConfigurationReleaseNotes</PackageReleaseNotes>
+    <PackageTags>Microsoft Azure Configuration AppConfig AppConfiguration AzureAppConfiguration</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
