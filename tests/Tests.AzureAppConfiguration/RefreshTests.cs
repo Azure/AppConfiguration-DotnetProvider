@@ -904,6 +904,22 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<InvalidOperationException>(action);
         }
 
+        [Fact]
+        public void RefreshTests_ConfigureRefreshThrowsOnNoRegistration()
+        {
+            void action() => new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+                })
+                .Build();
+
+            Assert.Throws<ArgumentException>(action);
+        }
+
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();

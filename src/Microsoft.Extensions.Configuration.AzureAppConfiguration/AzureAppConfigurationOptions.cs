@@ -264,6 +264,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
             configure?.Invoke(refreshOptions);
 
+            if (!refreshOptions.RefreshRegistrations.Any())
+            {
+                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
+            }
+
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
                 item.Value.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
