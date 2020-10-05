@@ -121,8 +121,6 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    // NOTE: This select clause is redundant, we are loading all settings by default in GetMockConfigurationClient()
-                    options.Select("TestKey*"); 
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")

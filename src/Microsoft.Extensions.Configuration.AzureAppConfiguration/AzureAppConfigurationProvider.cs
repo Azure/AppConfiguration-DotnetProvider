@@ -134,14 +134,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             // Set the cache expiration time for all refresh registered settings
+            var initialLoadTime = DateTimeOffset.UtcNow;
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
+                changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
+                changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
             }
 
             // Mark all settings have loaded at startup.
@@ -240,7 +241,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
-                    // Load all key-values with the specified label.
                     await CallWithRequestTracing(async () =>
                     {
                         await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, CancellationToken.None).ConfigureAwait(false))
