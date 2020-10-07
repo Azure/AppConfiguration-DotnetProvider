@@ -254,27 +254,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void CacheExpiresIsNotDefaultValue()
-        {
-            var featureFlags = new List<ConfigurationSetting> { _kv };
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
-
-            AzureAppConfigurationOptions configOptions = null;
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.Client = mockClient.Object;
-                    options.UseFeatureFlags();
-                    configOptions = options;
-                }).Build();
-
-            Assert.Single(configOptions.MultiKeyWatchers);
-            Assert.DoesNotContain(configOptions.MultiKeyWatchers, cw => cw.CacheExpires == DateTimeOffset.MinValue);
-        }
-
-        [Fact]
         public void PreservesDefaultQuery()
         {
             var response = new MockResponse(200);
