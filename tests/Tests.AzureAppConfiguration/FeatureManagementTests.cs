@@ -126,11 +126,12 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(featureFlags));
 
             IConfigurationRefresher refresher = null;
+            var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(1));
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
                     refresher = options.GetRefresher();
                 })
@@ -174,7 +175,7 @@ namespace Tests.AzureAppConfiguration
             featureFlags.Add(_kv2);
 
             // Sleep to let the cache expire
-            Thread.Sleep(1000);
+            Thread.Sleep(cacheExpirationTimeSpan);
             refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -243,8 +244,6 @@ namespace Tests.AzureAppConfiguration
 
             featureFlags.Add(_kv2);
 
-            // Sleep for some time but not enough to let the cache expire
-            Thread.Sleep(1000);
             refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -316,19 +315,19 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             IConfigurationRefresher refresher = null;
-
+            var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(1));
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
                     refresher = options.GetRefresher();
                 })
                 .Build();
 
             // Sleep to let the cache expire
-            Thread.Sleep(1000);
+            Thread.Sleep(cacheExpirationTimeSpan);
 
             refresher.TryRefreshAsync().Wait();
             mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
