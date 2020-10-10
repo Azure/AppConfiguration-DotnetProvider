@@ -186,6 +186,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task LoadAll(bool ignoreFailures)
         {
             IDictionary<string, ConfigurationSetting> data = null;
+            string cachedData = null;
 
             try
             {
@@ -242,12 +243,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                 await Task.Run(() => LoadKeyValuesRegisteredForRefresh(serverData).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
-
-                if (_options.OfflineCache != null)
-                {
-                    _options.OfflineCache.Export(_options, JsonSerializer.Serialize(serverData));
-                }
-
                 data = serverData;
             }
             catch (Exception exception) when (exception is RequestFailedException ||
@@ -257,7 +252,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_options.OfflineCache != null)
                 {
                     // During startup or refreshAll scenario, we'll try to populate config from offline cache, if available
-                    string cachedData = _options.OfflineCache.Import(_options);
+                    cachedData = _options.OfflineCache.Import(_options);
+                    
                     if (cachedData != null)
                     {
                         data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(cachedData);
@@ -277,6 +273,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 // Set the cache expiration time for all refresh registered settings
                 var initialLoadTime = DateTimeOffset.UtcNow;
+                
                 foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
                 {
                     changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
@@ -285,6 +282,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
                 {
                     changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
+                }
+
+                if (_options.OfflineCache != null && cachedData == null)
+                {
+                    _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
                 }
             }
         }
