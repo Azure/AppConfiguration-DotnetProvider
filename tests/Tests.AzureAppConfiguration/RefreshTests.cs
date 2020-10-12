@@ -115,8 +115,34 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            // Wait for some time but not enough to let the cache expire
-            Thread.Sleep(5000);
+            refresher.RefreshAsync().Wait();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+        }
+
+        [Fact]
+        public void RefreshTests_RefreshIsSkippedIfKvNotInSelectAndCacheIsNotExpired()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClientSelectKeyLabel();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey2", "label");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
 
             refresher.RefreshAsync().Wait();
 
@@ -940,6 +966,43 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollection));
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            return mockClient;
+        }
+
+        private Mock<ConfigurationClient> GetMockConfigurationClientSelectKeyLabel()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == selector.KeyFilter && s.Label == selector.LabelFilter));
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            }
+
+            Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
+            {
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => (s.Key == k && s.Label == l)), mockResponse.Object);
+            }
+
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool cond, CancellationToken ct)
+            {
+                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(newSetting, response);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
             return mockClient;
         }

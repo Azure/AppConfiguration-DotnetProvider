@@ -285,7 +285,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k), mockResponse.Object);
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))

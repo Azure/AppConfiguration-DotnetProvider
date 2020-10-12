@@ -185,10 +185,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAll(bool ignoreFailures)
         {
-            IDictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+            IDictionary<string, ConfigurationSetting> data = null;
+            string cachedData = null;
 
             try
             {
+                var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+
                 // Use default query if there are no key-values specified for use other than the feature flags
                 bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
 
@@ -205,7 +208,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, CancellationToken.None).ConfigureAwait(false))
                         {
-                            data[setting.Key] = setting;
+                            serverData[setting.Key] = setting;
                         }
                     }).ConfigureAwait(false);
                 }
@@ -229,18 +232,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
-                    // Load all key-values with the null label.
                     await CallWithRequestTracing(async () =>
                     {
                         await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, CancellationToken.None).ConfigureAwait(false))
                         {
-                            data[setting.Key] = setting;
+                            serverData[setting.Key] = setting;
                         }
                     }).ConfigureAwait(false);
                 }
 
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(data).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
+                await Task.Run(() => LoadKeyValuesRegisteredForRefresh(serverData).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
+                data = serverData;
             }
             catch (Exception exception) when (exception is RequestFailedException ||
                                               ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
@@ -248,28 +251,43 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.OfflineCache != null)
                 {
-                    data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(_options.OfflineCache.Import(_options));
-
-                    if (data != null)
+                    // During startup or refreshAll scenario, we'll try to populate config from offline cache, if available
+                    cachedData = _options.OfflineCache.Import(_options);
+                    
+                    if (cachedData != null)
                     {
-                        await SetData(data, ignoreFailures).ConfigureAwait(false);
-                        return;
+                        data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(cachedData);
                     }
                 }
 
-                if (!ignoreFailures)
+                // If we're unable to load data from offline cache, check if we need to ignore or rethrow the exception 
+                if (data == null && !ignoreFailures)
                 {
                     throw;
                 }
-
-                return;
             }
 
-            await SetData(data, ignoreFailures).ConfigureAwait(false);
-
-            if (_options.OfflineCache != null)
+            if (data != null)
             {
-                _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
+                await SetData(data, ignoreFailures).ConfigureAwait(false);
+
+                // Set the cache expiration time for all refresh registered settings
+                var initialLoadTime = DateTimeOffset.UtcNow;
+                
+                foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+                {
+                    changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
+                }
+
+                foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+                {
+                    changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
+                }
+
+                if (_options.OfflineCache != null && cachedData == null)
+                {
+                    _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
+                }
             }
         }
 
@@ -315,8 +333,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     watchedKv = null;
                 }
-
-                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
