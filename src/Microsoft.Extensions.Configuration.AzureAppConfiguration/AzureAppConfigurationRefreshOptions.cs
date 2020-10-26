@@ -16,8 +16,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal static readonly TimeSpan MinimumCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
 
         internal TimeSpan CacheExpirationInterval { get; private set; } = DefaultCacheExpirationInterval;
-        internal IDictionary<string, KeyValueWatcher> RefreshRegistrations = new Dictionary<string, KeyValueWatcher>();
-
+        internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
+        
         /// <summary>
         /// Register the specified key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
@@ -38,12 +38,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="refreshAll">If true, a change in the value of this key refreshes all key-values being used by the configuration provider.</param>
         public AzureAppConfigurationRefreshOptions Register(string key, string label = LabelFilter.Null, bool refreshAll = false)
         {
-            RefreshRegistrations[key] = new KeyValueWatcher
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
+
+            RefreshRegistrations.Add(new KeyValueWatcher
             {
                 Key = key,
                 Label = label,
                 RefreshAll = refreshAll
-            };
+            });
 
             return this;
         }

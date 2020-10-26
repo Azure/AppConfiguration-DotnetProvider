@@ -30,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
         private ConcurrentDictionary<string, ConfigurationSetting> _settings;
+        private ConcurrentDictionary<KeyLabelIdentifier, ConfigurationSetting> _refreshRegisteredSettings = new ConcurrentDictionary<KeyLabelIdentifier, ConfigurationSetting>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
         private readonly SemaphoreSlim InitializationSemaphore = new SemaphoreSlim(1);
@@ -316,10 +317,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
+                KeyLabelIdentifier watchedKeyLabel = new KeyLabelIdentifier(watchedKey, watchedLabel);
 
                 // Skip the loading for the key-value in case it has already been loaded
                 if (data.ContainsKey(watchedKey) && data[watchedKey].Label == watchedLabel.NormalizeNull())
                 {
+                    _refreshRegisteredSettings[watchedKeyLabel] = data[watchedKey];
                     continue;
                 }
 
@@ -338,6 +341,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (watchedKv != null)
                 {
                     data[watchedKey] = watchedKv;
+                    _refreshRegisteredSettings[watchedKeyLabel] = watchedKv;
                 }
             }
         }
@@ -361,10 +365,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     bool hasChanged = false;
                     ConfigurationSetting watchedKv = null;
+                    KeyLabelIdentifier watchedKeyLabel = new KeyLabelIdentifier(watchedKey, watchedLabel);
 
-                    if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
+                    if (_refreshRegisteredSettings.ContainsKey(watchedKeyLabel))
                     {
-                        watchedKv = _settings[watchedKey];
+                        watchedKv = _refreshRegisteredSettings[watchedKeyLabel];
 
                         KeyValueChange keyValueChange = default;
                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType,
@@ -381,8 +386,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 break;
                             }
 
-                            hasChanged = true;
-                            ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
+                            // If this key-value exists in _settings cache, it needs to be updated.
+                            if (_settings.ContainsKey(watchedKey) && _settings[watchedKey].Label == watchedLabel.NormalizeNull())
+                            {
+                                hasChanged = true;
+                                ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
+                            }
+                            else
+                            {
+                                // This is only a refresh registered setting with 'RefreshAll=false'.
+                                // Change in this key-value will not affect any other key-values in IConfiguration.
+                                _refreshRegisteredSettings[watchedKeyLabel] = keyValueChange.Current;
+                            }
                         }
                     }
                     else
@@ -410,6 +425,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
 
                             hasChanged = true;
+                            _refreshRegisteredSettings[watchedKeyLabel] = watchedKv;
 
                             // Add the key-value if it is not loaded, or update it if it was loaded with a different label
                             _settings[watchedKey] = watchedKv;
