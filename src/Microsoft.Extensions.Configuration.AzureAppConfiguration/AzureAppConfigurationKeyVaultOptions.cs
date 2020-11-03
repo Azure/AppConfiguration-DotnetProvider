@@ -3,7 +3,9 @@
 //
 using Azure.Core;
 using Azure.Security.KeyVault.Secrets;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -14,6 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         internal TokenCredential Credential;
         internal List<SecretClient> SecretClients = new List<SecretClient>();
+        internal Func<Uri, ValueTask<string>> SecretResolver;
 
         /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
@@ -32,6 +35,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationKeyVaultOptions Register(SecretClient secretClient)
         {
             SecretClients.Add(secretClient);
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the callback to be invoked for resolving those key vault references that have no registered <see cref="SecretClient"/>.
+        /// </summary>
+        /// <param name="secretResolver">A callback which returns a value for the given Key Vault reference.</param>
+        public AzureAppConfigurationKeyVaultOptions SetSecretResolver(Func<Uri, ValueTask<string>> secretResolver)
+        {
+            SecretResolver = secretResolver;
             return this;
         }
     }

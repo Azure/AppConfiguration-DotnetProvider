@@ -15,12 +15,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
     {
         private readonly IDictionary<string, SecretClient> _secretClients;
         private readonly TokenCredential _credential;
+        private readonly Func<Uri, ValueTask<string>> _secretResolver;
 
-        public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null)
+        public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null, Func<Uri, ValueTask<string>> secretResolver = null)
         {
+            if (credential != null && secretResolver != null)
+            {
+                throw new InvalidOperationException($"Cannot configure both default credentials and secret resolver for Key Vault references. Please call only one of 'SetCredential()' or 'SetSecretResolver()' methods.");
+            }
+
             _credential = credential;
             _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
-            
+            _secretResolver = secretResolver;
+
             if (secretClients != null)
             {
                 foreach (SecretClient client in secretClients)
@@ -45,7 +52,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             if (client == null)
             {
-                throw new UnauthorizedAccessException("No key vault credential configured and no matching secret client could be found.");
+                if (_secretResolver == null)
+                {
+                    throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
+                }
+                else
+                {
+                    return await _secretResolver(secretUri);
+                }
             }
 
             KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);

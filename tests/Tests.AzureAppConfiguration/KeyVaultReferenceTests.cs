@@ -328,7 +328,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ThrowsWhenSecretClientAndCredentialAreMissing()
+        public void ThrowsWhenSecretClientAndSecretResolverAndDefaultCredentialAreMissing()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
@@ -366,6 +366,123 @@ namespace Tests.AzureAppConfiguration
                 options.Adapters = new List<IKeyValueAdapter> { mockKeyValueAdapter.Object };
             }, optional: true)
             .Build();
+        }
+
+        [Fact]
+        public void CallsSecretResolverCallbackWhenNoMatchingSecretClientIsFound()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetSecretResolver((secretUri) =>
+                        {
+                            return new ValueTask<string>(secretUri.ToString());
+                        });
+                    });
+                })
+                .Build();
+
+            Assert.Equal("https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret", config["TestKey1"]);
+        }
+
+        [Fact]
+        public void ThrowsWhenBothDefaultCredentialAndSecretResolverCallbackAreSet()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            ArgumentException ex = Assert.Throws<ArgumentException>(() =>
+            {
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetSecretResolver((secretUri) =>
+                        {
+                            return new ValueTask<string>(secretUri.ToString());
+                        });
+
+                        kv.SetCredential(new DefaultAzureCredential());
+                    });
+                })
+                .Build();
+            });
+
+            Assert.NotNull(ex.InnerException);
+            Assert.IsType<InvalidOperationException>(ex.InnerException);
+        }
+
+        [Fact]
+        public void LastKeyVaultOptionsWinWithMultipleConfigureKeyVaultCalls()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetCredential(new DefaultAzureCredential());
+                    });
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetSecretResolver((secretUri) =>
+                        {
+                            return new ValueTask<string>(secretUri.ToString());
+                        });
+                    });
+                })
+                .Build();
+
+            Assert.Equal("https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret", config["TestKey1"]);
+        }
+
+        [Fact]
+        public void DontUseSecretResolverCallbackWhenMatchingSecretClientIsPresent()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
+
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetSecretResolver((secretUri) =>
+                        {
+                            return new ValueTask<string>(secretUri.ToString());
+                        });
+
+                        kv.Register(mockSecretClient.Object);
+                    });
+                })
+                .Build();
+
+            Assert.Equal(_secretValue, configuration[_kv.Key]);
         }
     }
 }

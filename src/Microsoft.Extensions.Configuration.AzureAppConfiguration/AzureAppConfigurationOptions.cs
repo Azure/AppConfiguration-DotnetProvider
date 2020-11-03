@@ -297,7 +297,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             configure?.Invoke(keyVaultOptions);
 
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
-            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients)));
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients, keyVaultOptions.SecretResolver)));
 
             return this;
         }
