@@ -17,7 +17,7 @@ namespace Microsoft.Extensions.Configuration
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="connectionString">The connection string used to connect to the configuration store.</param>
-        /// <param name="optional">If true, this method will not throw an exception if the configuration store cannot be accessed.</param>
+        /// <param name="optional">If true, and if an exception occurs while loading key-values from App Configuration store, this method will neither throw the exception nor load any key-values from App Configuration store.</param>
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.Configuration
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="action">A callback used to configure Azure App Configuration options.</param>
-        /// <param name="optional">If true, this method will not throw an exception if the configuration store cannot be accessed.</param>
+        /// <param name="optional">If true, and if an exception occurs while loading key-values from App Configuration store, this method will neither throw the exception nor load any key-values from App Configuration store.</param>
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
