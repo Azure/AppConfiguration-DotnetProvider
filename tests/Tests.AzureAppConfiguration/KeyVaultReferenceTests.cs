@@ -296,7 +296,6 @@ namespace Tests.AzureAppConfiguration
             });
 
             Assert.NotNull(ex.InnerException);
-            Assert.IsType<AuthenticationFailedException>(ex.InnerException);
         }
 
         [Fact]
