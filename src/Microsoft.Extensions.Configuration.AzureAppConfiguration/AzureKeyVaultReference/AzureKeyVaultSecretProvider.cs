@@ -19,11 +19,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null, Func<Uri, ValueTask<string>> secretResolver = null)
         {
-            if (credential != null && secretResolver != null)
-            {
-                throw new InvalidOperationException($"Cannot configure both default credentials and secret resolver for Key Vault references. Please call only one of 'SetCredential()' or 'SetSecretResolver()' methods.");
-            }
-
             _credential = credential;
             _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
             _secretResolver = secretResolver;
@@ -47,23 +42,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
             string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
+            string secretValue;
 
             SecretClient client = GetSecretClient(secretUri);
 
-            if (client == null)
+            if (client != null)
             {
-                if (_secretResolver == null)
-                {
-                    throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
-                }
-                else
-                {
-                    return await _secretResolver(secretUri);
-                }
+                KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                secretValue = secret?.Value;
+            }
+            else if (_secretResolver != null)
+            {
+                secretValue = await _secretResolver(secretUri);
+            }
+            else
+            {
+                throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
             }
 
-            KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-            return secret?.Value;
+            return secretValue;
         }
 
         private SecretClient GetSecretClient(Uri secretUri)
