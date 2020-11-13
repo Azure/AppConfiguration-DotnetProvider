@@ -41,7 +41,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Sets the callback used to resolve key vault references that have no registered <see cref="SecretClient"/>.
         /// </summary>
-        /// <param name="secretResolver">A callback which returns a value for the given Key Vault reference.</param>
+        /// <param name="secretResolver">A callback that maps the <see cref="Uri"/> of the secret to its value.</param>
         /// <remarks>
         /// The input to the callback will be a key vault secret <see cref="Uri"/>, for example "https://{vault-name}.vault.azure.net/secrets/{name}/{version}"
         /// </remarks>
