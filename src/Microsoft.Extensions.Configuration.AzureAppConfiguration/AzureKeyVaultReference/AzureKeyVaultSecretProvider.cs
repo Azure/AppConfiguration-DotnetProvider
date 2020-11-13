@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             else if (_secretResolver != null)
             {
-                secretValue = await _secretResolver(secretUri);
+                secretValue = await _secretResolver(secretUri).ConfigureAwait(false);
             }
             else
             {

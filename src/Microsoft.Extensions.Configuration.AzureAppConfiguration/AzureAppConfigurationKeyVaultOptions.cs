@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="secretResolver">A callback which returns a value for the given Key Vault reference.</param>
         /// <remarks>
-        /// The input to the callback will be a <see cref="Uri"/> in key vault reference format: "https://{vault-name}.vault.azure.net/{type}/{name}/{version}". 
+        /// The input to the callback will be a key vault secret <see cref="Uri"/>, for example "https://{vault-name}.vault.azure.net/secrets/{name}/{version}"
         /// </remarks>
         public AzureAppConfigurationKeyVaultOptions SetSecretResolver(Func<Uri, ValueTask<string>> secretResolver)
         {
