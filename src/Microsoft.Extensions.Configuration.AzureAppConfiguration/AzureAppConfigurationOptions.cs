@@ -298,7 +298,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (keyVaultOptions.Credential != null && keyVaultOptions.SecretResolver != null)
             {
-                throw new InvalidOperationException($"Cannot configure both default credentials and secret resolver for Key Vault references. Please call only one of {nameof(keyVaultOptions.SetCredential)}() or {nameof(keyVaultOptions.SetSecretResolver)}() methods.");
+                throw new InvalidOperationException($"Cannot configure both default credentials and secret resolver for Key Vault references. Please call either {nameof(keyVaultOptions.SetCredential)} or {nameof(keyVaultOptions.SetSecretResolver)} method, not both.");
             }
 
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
