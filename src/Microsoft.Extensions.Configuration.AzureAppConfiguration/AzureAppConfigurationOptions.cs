@@ -296,8 +296,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var keyVaultOptions = new AzureAppConfigurationKeyVaultOptions();
             configure?.Invoke(keyVaultOptions);
 
+            if (keyVaultOptions.Credential != null && keyVaultOptions.SecretResolver != null)
+            {
+                throw new InvalidOperationException($"Cannot configure both default credentials and secret resolver for Key Vault references. Please call either {nameof(keyVaultOptions.SetCredential)} or {nameof(keyVaultOptions.SetSecretResolver)} method, not both.");
+            }
+
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
-            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients)));
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients, keyVaultOptions.SecretResolver)));
 
             return this;
         }
