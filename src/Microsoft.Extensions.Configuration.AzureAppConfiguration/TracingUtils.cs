@@ -12,15 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class TracingUtils
     {
-        static private HostType? _hostType = null;
-
         public static HostType GetHostType()
         {
-            if (_hostType.HasValue)
-            {
-                return _hostType.Value;
-            }
-
             HostType hostType = HostType.Unidentified;
 
             try
@@ -57,8 +50,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
             catch (SecurityException) { }
-
-            _hostType = hostType;
 
             return hostType;
         }
