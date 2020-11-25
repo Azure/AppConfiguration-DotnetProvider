@@ -38,11 +38,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="refreshAll">If true, a change in the value of this key refreshes all key-values being used by the configuration provider.</param>
         public AzureAppConfigurationRefreshOptions Register(string key, string label = LabelFilter.Null, bool refreshAll = false)
         {
-            if (string.IsNullOrEmpty(key))
-            {
-                throw new ArgumentNullException(nameof(key));
-            }
-
             RefreshRegistrations.Add(new KeyValueWatcher
             {
                 Key = key,
