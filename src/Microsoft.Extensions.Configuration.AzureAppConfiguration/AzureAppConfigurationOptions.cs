@@ -154,9 +154,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
             }
 
-            if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
+            if (options.FeatureFlagKeyFilters.Count == 0)
             {
-                Select(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
+                if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
+                {
+                    Select(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
+                }
+            }
+            else
+            {
+                foreach (var featureFlagKeyFilter in options.FeatureFlagKeyFilters)
+                {
+                    Select(FeatureManagementConstants.FeatureFlagMarker + featureFlagKeyFilter, options.Label);
+                }
             }
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
@@ -164,13 +174,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
-            if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
+            if (options.RefreshRegistrationKeys.Count == 0)
             {
-                _multiKeyWatchers.Add(new KeyValueWatcher
+                if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
                 {
-                    Key = FeatureManagementConstants.FeatureFlagMarker,
-                    Label = options.Label,
-                    CacheExpirationInterval = options.CacheExpirationInterval
+                    _multiKeyWatchers.Add(new KeyValueWatcher
+                    {
+                        Key = FeatureManagementConstants.FeatureFlagMarker,
+                        Label = options.Label,
+                        CacheExpirationInterval = options.CacheExpirationInterval
+                    });
+                }
+            }
+            else
+            {
+                ConfigureRefresh(r =>
+                {
+                    r.SetCacheExpiration(options.CacheExpirationInterval);
+
+                    foreach (var key in options.RefreshRegistrationKeys)
+                    {
+                        r.Register(key, options.Label, true);
+                    }
                 });
             }
 

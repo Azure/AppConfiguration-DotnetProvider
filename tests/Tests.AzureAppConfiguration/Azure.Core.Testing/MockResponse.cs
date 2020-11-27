@@ -91,6 +91,8 @@ namespace Azure.Core.Testing
     class MockResponse<T> : Response<T>
     {
         private T _value;
+        private readonly Response _rawResponse;
+
         public override T Value => _value;
 
         public MockResponse(T value)
@@ -98,9 +100,15 @@ namespace Azure.Core.Testing
             _value = value;
         }
 
+        public MockResponse(T value, Response rawResponse)
+        {
+            _value = value;
+            _rawResponse = rawResponse;
+        }
+
         public override Response GetRawResponse()
         {
-            throw new NotImplementedException();
+            return _rawResponse ?? throw new NotImplementedException();
         }
     }
 }

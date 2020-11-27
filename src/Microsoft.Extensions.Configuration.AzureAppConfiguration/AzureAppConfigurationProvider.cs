@@ -193,7 +193,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
                 // Use default query if there are no key-values specified for use other than the feature flags
-                bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
+                bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => selector.KeyFilter != FeatureManagementConstants.FeatureFlagMarker + "*");
 
                 if (useDefaultQuery)
                 {
