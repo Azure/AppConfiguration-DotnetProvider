@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
-    internal struct KeyLabelIdentifier
+    internal struct KeyLabel
     {
         /// <summary>
         /// Key of the key-value in App Configuration.
@@ -17,7 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// </summary>
         public string Label { get; set; }
 
-        public KeyLabelIdentifier(string key, string label)
+        public KeyLabel(string key, string label)
         {
             Key = key;
             Label = label;
@@ -25,10 +25,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 
         public override bool Equals(object obj)
         {
-            if (obj is KeyLabelIdentifier keyLabel)
+            if (obj is KeyLabel keyLabel)
             {
-                return string.Equals(Key, keyLabel.Key, StringComparison.Ordinal)
-                    && string.Equals(Label, keyLabel.Label, StringComparison.Ordinal);
+                return Key == keyLabel.Key && Label == keyLabel.Label;
             }
 
             return false;

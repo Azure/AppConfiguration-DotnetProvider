@@ -42,8 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         {
             if (obj is KeyValueWatcher kvWatcher)
             {
-                return string.Equals(Key, kvWatcher.Key, StringComparison.Ordinal)
-                    && string.Equals(Label, kvWatcher.Label, StringComparison.Ordinal);
+                return Key == kvWatcher.Key && Label == kvWatcher.Label;
             }
 
             return false;
