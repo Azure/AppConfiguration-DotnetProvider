@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -37,6 +38,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
+
+        private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _userDefinedMappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
+
+        internal IEnumerable<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> UserDefinedMappers => _userDefinedMappers;
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -98,6 +103,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
+
+        /// <summary>
+        /// Perform custom transformations on the key-values retrieved from Azure App Configuration.
+        /// If <see cref="Map"/> is invoked multiple times, all transformations will be applied to each <see cref="ConfigurationSetting"/> in the order that they were invoked.
+        /// </summary>
+        /// <param name="mapper">
+        /// A callback that performs transformations on each <see cref="ConfigurationSetting"/> and returns updated <see cref="ConfigurationSetting"/>
+        /// </param>
+        public AzureAppConfigurationOptions Map(Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> mapper)
+        {
+            if (mapper == null)
+            {
+                throw new ArgumentNullException(nameof(mapper));
+            }
+
+            _userDefinedMappers.Add(mapper);
+            return this;
+        }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.

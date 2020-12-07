@@ -29,6 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
+        private Dictionary<string, ConfigurationSetting> _mappedSettings;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
@@ -301,7 +302,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.InvalidateCache();
                 }
 
-                await SetData(data, ignoreFailures).ConfigureAwait(false);
+                // Cache original ConfigurationSettings for using in RefreshKeyValueCollections
+                _applicationSettings = data as Dictionary<string, ConfigurationSetting> ??
+                    new Dictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
+
+                await MapSettings(data).ConfigureAwait(false);
+
+                await SetData(ignoreFailures).ConfigureAwait(false);
 
                 // Set the cache expiration time for all refresh registered settings
                 var initialLoadTime = DateTimeOffset.UtcNow;
@@ -406,7 +413,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         hasChanged = true;
-                        ProcessChanges(Enumerable.Repeat(keyValueChange, 1));
+                        await ProcessChanges(Enumerable.Repeat(keyValueChange, 1)).ConfigureAwait(false);
                     }
                 }
                 else
@@ -436,21 +443,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         hasChanged = true;
 
-                            // Add the key-value if it is not loaded, or update it if it was loaded with a different label
-                            _applicationSettings[watchedKey] = watchedKv;
-                            _watchedSettings[watchedKeyLabel] = watchedKv;
+                        // Add the key-value if it is not loaded, or update it if it was loaded with a different label
+                        _applicationSettings[watchedKey] = watchedKv;
+                        _watchedSettings[watchedKeyLabel] = watchedKv;
 
-                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                            foreach (IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(watchedKv);
-                            }
+                        // Map the changed configuration setting and update cache of mapped settings
+                        ConfigurationSetting mappedSetting = await MapSetting(watchedKv).ConfigureAwait(false);
+                        _mappedSettings[watchedKey] = mappedSetting;
+
+                        // Invalidate the cached Key Vault secret (if any) for this mapped ConfigurationSetting.
+                        foreach (IKeyValueAdapter adapter in _options.Adapters)
+                        {
+                            adapter.InvalidateCache(mappedSetting);
                         }
                     }
+                }
 
                 if (hasChanged)
                 {
-                    await SetData(_applicationSettings).ConfigureAwait(false);
+                    await SetData().ConfigureAwait(false);
                 }
             }
 
@@ -465,7 +476,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
             {
-                SetData(_applicationSettings);
+                // We don't need to map again as the ConfigurationSetting has not changed in AppConfig
+                SetData();
             }
         }
 
@@ -510,24 +522,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (keyValueChanges?.Any() == true)
                 {
-                    ProcessChanges(keyValueChanges);
+                    await ProcessChanges(keyValueChanges).ConfigureAwait(false);
 
-                    await SetData(_applicationSettings).ConfigureAwait(false);
+                    await SetData().ConfigureAwait(false);
                 }
             }
         }
 
-        private async Task SetData(IDictionary<string, ConfigurationSetting> data, bool ignoreFailures = false, CancellationToken cancellationToken = default)
+        private async Task SetData(bool ignoreFailures = false, CancellationToken cancellationToken = default)
         {
-            // Update cache of settings
-            this._applicationSettings = data as Dictionary<string, ConfigurationSetting> ??
-                new Dictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
-
             // Set the application data for the configuration provider
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in _mappedSettings)
             {
+                if (kvp.Value == null)
+                {
+                    // No need to process if the mapped configuration setting has been set to null.
+                    continue;
+                }
+
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
 
                 try
@@ -590,23 +604,63 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(setting.Key, setting.Value), 1);
         }
 
-        private void ProcessChanges(IEnumerable<KeyValueChange> changes)
+        private async Task ProcessChanges(IEnumerable<KeyValueChange> changes)
         {
             foreach (KeyValueChange change in changes)
             {
+                ConfigurationSetting mappedSetting = await MapSetting(change.Current).ConfigureAwait(false);
+
                 if (change.ChangeType == KeyValueChangeType.Deleted)
                 {
                     _applicationSettings.Remove(change.Key);
+                    _mappedSettings.Remove(change.Key);
                 }
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
                     _applicationSettings[change.Key] = change.Current;
+                    _mappedSettings[change.Key] = mappedSetting;
                 }
 
-                // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                // Invalidate the cached Key Vault secret (if any) for this mapped ConfigurationSetting.
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
                 {
-                    adapter.InvalidateCache(change.Current);
+                    adapter.InvalidateCache(mappedSetting);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Make changes to a <see cref="ConfigurationSetting"/> according to user defined mappers.
+        /// </summary>
+        /// <param name="originalSetting">Original ConfigurationSetting retrieved from App Configuration service.</param>
+        /// <returns>ConfigurationSetting after processing all user defined mappers. If there are no user defined mappers, return the original setting.</returns>
+        private async Task<ConfigurationSetting> MapSetting(ConfigurationSetting originalSetting)
+        {
+            ConfigurationSetting mappedSetting = originalSetting;
+            
+            foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> userDefinedMapper in _options.UserDefinedMappers)
+            {
+                mappedSetting = await userDefinedMapper(originalSetting).ConfigureAwait(false);
+                originalSetting = mappedSetting;
+            }
+
+            return mappedSetting;
+        }
+
+        /// <summary>
+        /// Convert all ConfigurationSettings retrieved from AppConfig to their respective mapped settings in _mappedSettings cache.
+        /// If there are no user defined mappers, _mappedSettings will be the same as _applicationSettings.
+        /// </summary>
+        private async Task MapSettings(IDictionary<string, ConfigurationSetting> data)
+        {
+            _mappedSettings = data as Dictionary<string, ConfigurationSetting> ??
+                    new Dictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
+
+            if (_options.UserDefinedMappers.Any())
+            {
+                foreach (KeyValuePair<string, ConfigurationSetting> setting in data)
+                {
+                    _mappedSettings[setting.Key] = await MapSetting(setting.Value).ConfigureAwait(false);
                 }
             }
         }
