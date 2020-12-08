@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
-    internal struct KeyLabel
+    internal struct KeyValueIdentifier
     {
         /// <summary>
         /// Key of the key-value in App Configuration.
@@ -17,15 +17,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// </summary>
         public string Label { get; set; }
 
-        public KeyLabel(string key, string label)
+        public KeyValueIdentifier(string key, string label)
         {
             Key = key;
-            Label = label;
+            Label = label.NormalizeNull();
         }
 
         public override bool Equals(object obj)
         {
-            if (obj is KeyLabel keyLabel)
+            if (obj is KeyValueIdentifier keyLabel)
             {
                 return Key == keyLabel.Key && Label == keyLabel.Label;
             }
