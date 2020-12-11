@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
-        private Dictionary<string, KeyValueWatcher> _changeWatchers = new Dictionary<string, KeyValueWatcher>();
+        private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
         { 
@@ -60,7 +60,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers.Values;
+        internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -68,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
 
         /// <summary>
-        /// A collection of <see cref="KeyValueWatcher"/>.
+        /// A collection of <see cref="IKeyValueAdapter"/>.
         /// </summary>
         internal IEnumerable<IKeyValueAdapter> Adapters
         {
@@ -271,8 +271,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.Value.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
-                _changeWatchers[item.Key] = item.Value;
+                item.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
+                _changeWatchers.Add(item);
             }
 
             return this;
