@@ -31,16 +31,16 @@
   
   <!-- Nuget Package Version Settings -->
   
-  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'==''">
-    <Version>4.9.9999</Version>
+  <PropertyGroup>
+    <OfficialVersion>4.1.0</OfficialVersion>
   </PropertyGroup>
-
+  
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
-    <Version>4.1.0</Version>
+    <Version>$(OfficialVersion)</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'!='Official'">
-    <Version>4.1.0-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+    <Version>$(OfficialVersion)-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
   </PropertyGroup>
-
+  
 </Project>

@@ -10,6 +10,10 @@
     <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'==''">
+    <Version>4.9.9999</Version>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'!='Official'">
     <!-- Note that CDP_PACKAGE_VERSION_NUMERIC uses format Major.Minor.MMddyyrrrr, which causes compile error CS7034 because .NET Core doesn't allow version numbers higher than 65534. -->
     <!-- CDP_PATCH_NUMBER is updated daily by the build system, the addition of a revision number makes the build number unique by the minute -->
@@ -22,5 +26,4 @@
     <Floored>$([System.Math]::Floor($(MinutesSinceMidnight)))</Floored>
     <Revision>$(Floored)</Revision>
   </PropertyGroup>
-
 </Project>
