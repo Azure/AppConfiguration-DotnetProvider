@@ -28,5 +28,19 @@
   <Target Name="PrepublishScript" BeforeTargets="PrepareForPublish">
     <Copy SourceFiles="$(DocumentationFile)" DestinationFolder="$(OutDir)\XMLComments" SkipUnchangedFiles="false" />
   </Target>
+  
+  <!-- Nuget Package Version Settings -->
+  
+  <PropertyGroup>
+    <OfficialVersion>4.1.0</OfficialVersion>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
+    <Version>$(OfficialVersion)</Version>
+  </PropertyGroup>
 
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'!='Official'">
+    <Version>$(OfficialVersion)-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+  </PropertyGroup>
+  
 </Project>
