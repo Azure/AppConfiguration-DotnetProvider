@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,6 +41,20 @@ namespace Tests.AzureAppConfiguration
                 label: "label",
                 value: "TestValue3",
                 eTag: new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
+                contentType: "text"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: "TestKeyWithMultipleLabels",
+                label: "label1",
+                value: "TestValueForLabel1",
+                eTag: new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
+                contentType: "text"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: "TestKeyWithMultipleLabels",
+                label: "label2",
+                value: "TestValueForLabel2",
+                eTag: new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
                 contentType: "text")
         };
 
@@ -48,18 +63,18 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshRegisteredKeysAreLoadedOnStartup_DefaultUseQuery()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
-                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == key && s.Label == label), mockResponse.Object);
+                return Response.FromValue(keyValueCollection.FirstOrDefault(s => s.Key == key && s.Label == label), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
-                var newSetting = serviceCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
+                var newSetting = keyValueCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
@@ -67,7 +82,7 @@ namespace Tests.AzureAppConfiguration
 
             // Load all settings except the one registered for refresh - this test is to ensure that it will be loaded later
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(serviceCollection.Where(s => s.Key != "TestKey1" && s.Label != "label").ToList()));
+                .Returns(new MockAsyncPageable(keyValueCollection.Where(s => s.Key != "TestKey1" && s.Label != "label").ToList()));
             
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
@@ -206,7 +221,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllFalseDoesNotUpdateEntireConfiguration()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
 
@@ -229,7 +244,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            serviceCollection.ForEach(kv => kv.Value = "newValue");
+            keyValueCollection.ForEach(kv => kv.Value = "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -244,7 +259,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllTrueUpdatesEntireConfiguration()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
 
@@ -267,7 +282,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            serviceCollection.ForEach(kv => kv.Value = "newValue");
+            keyValueCollection.ForEach(kv => kv.Value = "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -282,18 +297,18 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllTrueRemovesDeletedConfiguration()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
+                return Response.FromValue(keyValueCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
-                var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
@@ -303,7 +318,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(() =>
                 {
                     var copy = new List<ConfigurationSetting>();
-                    foreach (var setting in serviceCollection)
+                    foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
                     };
@@ -338,8 +353,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            serviceCollection.First().Value = "newValue";
-            serviceCollection.Remove(serviceCollection.Last());
+            keyValueCollection.First().Value = "newValue";
+            keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -354,18 +369,18 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_RefreshAllForNonExistentSentinelDoesNothing()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
             {
-                return Response.FromValue(serviceCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
+                return Response.FromValue(keyValueCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
-                var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
@@ -375,7 +390,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(() =>
                 {
                     var copy = new List<ConfigurationSetting>();
-                    foreach (var setting in serviceCollection)
+                    foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
                     };
@@ -411,9 +426,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            serviceCollection.ElementAt(0).Value = "newValue1";
-            serviceCollection.ElementAt(1).Value = "newValue2";
-            serviceCollection.Remove(serviceCollection.Last());
+            keyValueCollection.ElementAt(0).Value = "newValue1";
+            keyValueCollection.ElementAt(1).Value = "newValue2";
+            keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -431,7 +446,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var requestCount = 0;
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
@@ -443,7 +458,7 @@ namespace Tests.AzureAppConfiguration
                     Thread.Sleep(6000);
 
                     var copy = new List<ConfigurationSetting>();
-                    foreach (var setting in serviceCollection)
+                    foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
                     };
@@ -456,7 +471,7 @@ namespace Tests.AzureAppConfiguration
                 requestCount++;
                 Thread.Sleep(6000);
 
-                var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
@@ -484,7 +499,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal(1, requestCount);
 
-            serviceCollection.First().Value = "newValue";
+            keyValueCollection.First().Value = "newValue";
 
             // Simulate simultaneous refresh calls with expired cache from multiple threads
             var task1 = Task.Run(() => WaitAndRefresh(refresher, 1500));
@@ -609,11 +624,11 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
+                .Returns(new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()));
 
             var innerException = new AuthenticationFailedException("Authentication failed.") { Source = "Azure.Identity" };
-            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync("TestKey1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
                 .Throws(new KeyVaultReferenceException(innerException.Message, innerException));
 
@@ -624,7 +639,7 @@ namespace Tests.AzureAppConfiguration
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
-                        refreshOptions.Register("TestKey1")
+                        refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
 
@@ -638,13 +653,13 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            // Second call to GetConfigurationSettingAsync does not throw
+            // First call to GetConfigurationSettingAsync does not throw
             Assert.True(refresher.TryRefreshAsync().Result);
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            // Third call to GetConfigurationSettingAsync throws KeyVaultReferenceException
+            // Second call to GetConfigurationSettingAsync throws KeyVaultReferenceException
             Assert.False(refresher.TryRefreshAsync().Result);
         }
 
@@ -655,13 +670,20 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            {
+                var newSetting = _kvCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(newSetting, response);
+            }
+
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection))
+                .Returns(new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()))
                 .Throws(new RequestFailedException("Request failed."));
 
-            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync("TestKey1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)))
-                .Returns(Task.FromResult(Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == "TestKey1"), mockResponse.Object)));
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -670,7 +692,7 @@ namespace Tests.AzureAppConfiguration
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
-                        refreshOptions.Register("TestKey1", refreshAll: true)
+                        refreshOptions.Register("TestKey1", "label", refreshAll: true)
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
 
@@ -786,22 +808,22 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_SentinelKeyNotUpdatedOnRefreshAllFailure()
         {
-            var serviceCollection = new List<ConfigurationSetting>(_kvCollection);
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
-                var newSetting = serviceCollection.FirstOrDefault(s => s.Key == setting.Key);
+                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
             }
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(serviceCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()))
+                .Returns(new MockAsyncPageable(keyValueCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()))
                 .Throws(new RequestFailedException(429, "Too many requests"))
-                .Returns(new MockAsyncPageable(serviceCollection.Select(setting =>
+                .Returns(new MockAsyncPageable(keyValueCollection.Select(setting =>
                 {
                     setting.Value = "newValue";
                     return TestHelpers.CloneSetting(setting);
@@ -831,7 +853,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            serviceCollection.ForEach(kv => kv.Value = "newValue");
+            keyValueCollection.ForEach(kv => kv.Value = "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -852,6 +874,219 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("newValue", config["TestKey2"]);
             Assert.Equal("newValue", config["TestKey3"]);
+        }
+
+        [Fact]
+        public void RefreshTests_RefreshAllTrueForOverwrittenSentinelUpdatesEntireConfiguration()
+        {
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKeyWithMultipleLabels", "label1", refreshAll: true)
+                                      .Register("TestKeyWithMultipleLabels", "label2")
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
+
+            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            refresher.RefreshAsync().Wait();
+
+            Assert.Equal("newValue", config["TestKey1"]);
+            Assert.Equal("newValue", config["TestKey2"]);
+            Assert.Equal("newValue", config["TestKey3"]);
+            Assert.Equal("newValue", config["TestKeyWithMultipleLabels"]);
+        }
+
+        [Fact]
+        public void RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
+        {
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            var mockClient = GetMockConfigurationClient();
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
+                                      .Register("TestKeyWithMultipleLabels", "label2")
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
+
+            refreshRegisteredSetting.Value = "UpdatedValueForLabel1";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            refresher.RefreshAsync().Wait();
+
+            // Validate that refresh registered key-value was updated
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("UpdatedValueForLabel1", config["TestKeyWithMultipleLabels"]);
+        }
+
+        [Fact]
+        public void RefreshTests_RefreshRegisteredKvOverwritesSelectedKv()
+        {
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            ConfigurationSetting refreshAllRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            var mockClient = GetMockConfigurationClient();
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Validate that the value for config["TestKeyWithMultipleLabels"] has been overwritten by refresh registered key-value
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel1", config["TestKeyWithMultipleLabels"]);
+
+            refreshAllRegisteredSetting.Value = "UpdatedValueForLabel1";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            refresher.RefreshAsync().Wait();
+
+            // Validate that only the refresh registered key-value was updated
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("UpdatedValueForLabel1", config["TestKeyWithMultipleLabels"]);
+        }
+
+        [Fact]
+        public void RefreshTests_RefreshFailureReturnsConfigFromOfflineCache()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            ConfigurationSetting refreshAllRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+
+            Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+            {
+                return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse.Object);
+            }
+
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            {
+                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key);
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(newSetting, response);
+            }
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()))
+                .Throws(new RequestFailedException("Request failed"));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(TestHelpers.CreateMockEndpointString());
+                    options.Client = mockClient.Object;
+                    options.Select("*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKeyWithMultipleLabels", "label1", refreshAll: true)
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    })
+                    .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
+                    {
+                        Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json")
+                    }));
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Validate that the value for config["TestKeyWithMultipleLabels"] has been overwritten by refresh registered key-value
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel1", config["TestKeyWithMultipleLabels"]);
+
+            refreshAllRegisteredSetting.Value = "UpdatedValueForLabel1";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            refresher.RefreshAsync().Wait();
+
+            // Validate that no exception is thrown because we have offline cache to populate the config
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel1", config["TestKeyWithMultipleLabels"]);
+        }
+
+        [Fact]
+        public void RefreshTests_MultipleRefreshRegistrationsForSameKeyAndDifferentLabel()
+        {
+            var refreshOptions = new AzureAppConfigurationRefreshOptions()
+                .Register("TestKeyWithMultipleLabels")
+                .Register("TestKeyWithMultipleLabels", "label1")
+                .Register("TestKeyWithMultipleLabels", "label2")
+                .Register("TestKeyWithMultipleLabels", "label1")     // Duplicate registration
+                .Register("TestKeyWithMultipleLabels", "label2");    // Duplicate registration
+
+            Assert.Equal(3, refreshOptions.RefreshRegistrations.Count);
         }
 
         [Fact]
@@ -909,7 +1144,7 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label), mockResponse.Object);
+                return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
