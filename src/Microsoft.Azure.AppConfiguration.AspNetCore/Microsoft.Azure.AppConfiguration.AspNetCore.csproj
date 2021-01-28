@@ -2,7 +2,7 @@
   <Import Project="..\..\build\NugetProperties.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netcoreapp3.1;net5.0</TargetFrameworks>
     <Description>Microsoft.Azure.AppConfiguration.AspNetCore allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications. This package adds additional features for ASP.NET Core applications to the existing package Microsoft.Extensions.Configuration.AzureAppConfiguration.</Description>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
