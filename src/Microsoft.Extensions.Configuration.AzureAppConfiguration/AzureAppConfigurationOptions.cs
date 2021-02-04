@@ -26,6 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
         { 
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
@@ -336,7 +337,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
-            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients, keyVaultOptions.SecretResolver)));
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients, keyVaultOptions.CertificateClients, keyVaultOptions.SecretResolver)));
 
             return this;
         }

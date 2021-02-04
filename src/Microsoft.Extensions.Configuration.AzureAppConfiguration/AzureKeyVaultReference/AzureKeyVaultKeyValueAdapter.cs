@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             try
             {
-                secret = await _secretProvider.GetSecretValue(secretUri, cancellationToken).ConfigureAwait(false);
+                secret = await _secretProvider.GetSecretValue(secretUri, setting, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
@@ -83,6 +83,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             string contentType = setting?.ContentType?.Split(';')[0].Trim();
             return string.Equals(contentType, KeyVaultConstants.ContentType);
+        }
+
+        public void InvalidateCache(ConfigurationSetting setting = null)
+        {
+            if (setting == null)
+            {
+                _secretProvider.RemoveAllSecretsFromCache();
+            }
+            else
+            {
+                _secretProvider.RemoveExpiredSecretFromCache(setting.Key, setting.Label);
+            }
+        }
+
+        public bool NeedsRefresh()
+        {
+            return _secretProvider.AnyExpiredSecrets();
         }
     }
 }

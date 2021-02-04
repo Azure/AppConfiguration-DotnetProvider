@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
+using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         internal TokenCredential Credential;
         internal List<SecretClient> SecretClients = new List<SecretClient>();
+        internal List<CertificateClient> CertificateClients = new List<CertificateClient>();
         internal Func<Uri, ValueTask<string>> SecretResolver;
 
         /// <summary>
@@ -35,6 +37,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationKeyVaultOptions Register(SecretClient secretClient)
         {
             SecretClients.Add(secretClient);
+            return this;
+        }
+
+        /// <summary>
+        /// Registers the specified <see cref="CertificateClient"/> instance to reload certificates from Key Vault based on their auto-renewal policy.
+        /// </summary>
+        /// <param name="certificateClient">Certificate client instance.</param>
+        public AzureAppConfigurationKeyVaultOptions Register(CertificateClient certificateClient)
+        {
+            CertificateClients.Add(certificateClient);
             return this;
         }
 

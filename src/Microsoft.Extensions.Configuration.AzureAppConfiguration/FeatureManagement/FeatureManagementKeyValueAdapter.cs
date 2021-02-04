@@ -89,5 +89,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
                                  setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
         }
+
+        public void InvalidateCache(ConfigurationSetting setting = null)
+        {
+            return;
+        }
+
+        public bool NeedsRefresh()
+        {
+            return false;
+        }
     }
 }
