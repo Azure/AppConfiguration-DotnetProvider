@@ -19,5 +19,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
         public TimeSpan CacheExpirationInterval { get; set; } = AzureAppConfigurationOptions.DefaultFeatureFlagsCacheExpirationInterval;
+
+        /// <summary>
+        /// Selectively load only those feature flags which begin with this prefix.
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
+        /// </summary>
+        public string Prefix { get; set; } = string.Empty;
     }
 }

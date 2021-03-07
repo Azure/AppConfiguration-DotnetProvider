@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
@@ -34,6 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
+        private SortedSet<string> _featureFlagPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -154,24 +156,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
             }
 
-            if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
+            string fullPrefix = FeatureManagementConstants.FeatureFlagMarker + options.Prefix;
+
+            if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(fullPrefix) && selector.LabelFilter.NormalizeNull() == options.Label.NormalizeNull())))
             {
-                Select(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
+                Select(fullPrefix + "*", options.Label);
             }
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
+                _adapters.Add(new FeatureManagementKeyValueAdapter(_featureFlagPrefixes));
             }
 
-            if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
+            var multiKeyWatcher = _multiKeyWatchers.FirstOrDefault(kw => kw.Key.Equals(fullPrefix) && kw.Label.NormalizeNull() == options.Label.NormalizeNull());
+            
+            if (multiKeyWatcher == null)
             {
                 _multiKeyWatchers.Add(new KeyValueWatcher
                 {
-                    Key = FeatureManagementConstants.FeatureFlagMarker,
+                    Key = fullPrefix,
                     Label = options.Label,
                     CacheExpirationInterval = options.CacheExpirationInterval
                 });
+            }
+            else
+            {
+                // If UseFeatureFlags is called multiple times for the same prefix+label, last cache expiration time wins
+                multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
             }
 
             return this;
@@ -242,6 +253,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _keyPrefixes.Add(prefix);
+            return this;
+        }
+
+        /// <summary>
+        /// Trims the provided prefix from the keys of all feature flags retrieved from Azure App Configuration.
+        /// </summary>
+        /// <param name="prefix">The prefix to be trimmed from all feature flags retrieved from Azure App Configuration.</param>
+        public AzureAppConfigurationOptions TrimFeatureFlagPrefix(string prefix)
+        {
+            if (string.IsNullOrEmpty(prefix))
+            {
+                throw new ArgumentNullException(nameof(prefix));
+            }
+
+            _featureFlagPrefixes.Add(prefix);
             return this;
         }
 
