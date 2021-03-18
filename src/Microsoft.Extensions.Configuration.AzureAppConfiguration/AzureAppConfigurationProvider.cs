@@ -14,6 +14,7 @@ using System.Linq;
 using System.Net;
 using System.Security;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -462,10 +463,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    IEnumerable<ConfigurationSetting> currentKeyValues = _applicationSettings.Values.Where(kv =>
+                    IEnumerable<ConfigurationSetting> currentKeyValues;
+
+                    // Check if the user-provided feature flag filter ends with an unescaped * character:
+                    // (?<!\\)    Matches if the preceding character is not a backslash
+                    // (?:\\\\)*  Matches any number of occurrences of two backslashes
+                    // \*$        Matches if * is the last character
+                    if (Regex.IsMatch(changeWatcher.Key, @"(?<!\\)(?:\\\\)*\*$"))
                     {
-                        return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
+                        // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                        currentKeyValues = _applicationSettings.Values.Where(kv =>
+                        {
+                            return kv.Key.StartsWith(changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1)) && kv.Label == changeWatcher.Label.NormalizeNull();
+                        });
+                    }
+                    else
+                    {
+                        currentKeyValues = _applicationSettings.Values.Where(kv =>
+                        {
+                            return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
+                        });
+                    }
 
                     IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(currentKeyValues, new GetKeyValueChangeCollectionOptions
                     {
