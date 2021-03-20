@@ -522,6 +522,23 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void UseFeatureFlagsThrowsIfFeatureFlagFilterIsInvalid()
+        {
+            void action() => new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(@"MyApp\*", "Label1");
+                        ff.Label = "Label1";
+                    });
+                })
+                .Build();
+
+            Assert.Throws<ArgumentException>(action);
+        }
+
+        [Fact]
         public void MultipleCallsToUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();

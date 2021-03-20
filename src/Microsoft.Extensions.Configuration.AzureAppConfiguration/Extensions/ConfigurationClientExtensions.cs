@@ -72,9 +72,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 keyValues = Enumerable.Empty<ConfigurationSetting>();
             }
 
-            if (options.Prefix == null)
+            if (options.KeyFilter == null)
             {
-                options.Prefix = string.Empty;
+                options.KeyFilter = string.Empty;
             }
 
             if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
@@ -95,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             var hasKeyValueCollectionChanged = false;
             var selector = new SettingSelector
             {
-                KeyFilter = options.Prefix,
+                KeyFilter = options.KeyFilter,
                 LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
                 Fields = SettingFields.ETag | SettingFields.Key
             };
@@ -132,7 +132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 selector = new SettingSelector
                 {
-                    KeyFilter = options.Prefix,
+                    KeyFilter = options.KeyFilter,
                     LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label
                 };
 

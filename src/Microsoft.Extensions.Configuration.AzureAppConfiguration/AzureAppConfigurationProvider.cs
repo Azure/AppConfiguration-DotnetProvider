@@ -465,11 +465,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     IEnumerable<ConfigurationSetting> currentKeyValues;
 
-                    // Check if the user-provided feature flag filter ends with an unescaped * character:
-                    // (?<!\\)    Matches if the preceding character is not a backslash
-                    // (?:\\\\)*  Matches any number of occurrences of two backslashes
-                    // \*$        Matches if * is the last character
-                    if (Regex.IsMatch(changeWatcher.Key, @"(?<!\\)(?:\\\\)*\*$"))
+                    if (changeWatcher.Key.EndsWith("*"))
                     {
                         // Get current application settings starting with changeWatcher.Key, excluding the last * character
                         currentKeyValues = _applicationSettings.Values.Where(kv =>
@@ -487,7 +483,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(currentKeyValues, new GetKeyValueChangeCollectionOptions
                     {
-                        Prefix = changeWatcher.Key,
+                        KeyFilter = changeWatcher.Key,
                         Label = changeWatcher.Label.NormalizeNull(),
                         RequestTracingEnabled = _requestTracingEnabled,
                         HostType = _hostType

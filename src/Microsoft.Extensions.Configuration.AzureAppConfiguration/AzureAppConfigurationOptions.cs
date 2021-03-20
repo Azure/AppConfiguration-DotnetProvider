@@ -34,8 +34,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
+        // The following sets are sorted in descending order.
+        // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
-        private List<string> _featureFlagPrefixes = new List<string>();
+        private SortedSet<string> _featureFlagPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -158,33 +160,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (options.FeatureFlagSelectors.Count() != 0 && options.Label != null)
             {
-                throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)}, not both.");
+                throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
             
-            if (options.FeatureFlagSelectors.Count() == 0 && options.Label == null)
+            if (options.FeatureFlagSelectors.Count() == 0)
             {
-                // No Select clause and the Label property is not set
+                // Select clause is not present
                 options.FeatureFlagSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = LabelFilter.Null
+                    LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
                 });  
-            }
-            else if (options.FeatureFlagSelectors.Count() == 0 && options.Label != null)
-            {
-                // No Select clause but the Label property is set
-                options.FeatureFlagSelectors.Add(new KeyValueSelector
-                {
-                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = options.Label
-                });
-            }
-
-            _featureFlagPrefixes.AddRange(options.FeatureFlagPrefixes);
-
-            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
-            {
-                _adapters.Add(new FeatureManagementKeyValueAdapter(_featureFlagPrefixes));
             }
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
@@ -213,6 +199,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
                 }
+            }
+
+            options.FeatureFlagPrefixes.ForEach(prefix => _featureFlagPrefixes.Add(prefix));
+
+            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
+            {
+                _adapters.Add(new FeatureManagementKeyValueAdapter(_featureFlagPrefixes));
             }
 
             return this;

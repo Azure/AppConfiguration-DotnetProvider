@@ -13,12 +13,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// </summary>
     public class FeatureFlagOptions
     {
-        private SortedSet<string> _featureFlagPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
-
         /// <summary>
         /// A collection of key prefixes to be trimmed.
         /// </summary>
-        internal IEnumerable<string> FeatureFlagPrefixes => _featureFlagPrefixes;
+        internal List<string> FeatureFlagPrefixes = new List<string>();
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -54,6 +52,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             if (string.IsNullOrEmpty(featureFlagFilter))
             {
                 throw new ArgumentNullException(nameof(featureFlagFilter));
+            }
+
+            if (featureFlagFilter.EndsWith(@"\*"))
+            {
+                throw new ArgumentException(@"Feature flag filter should not end with '\*'.", nameof(featureFlagFilter));
             }
 
             if (labelFilter == null)
@@ -95,7 +98,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 throw new ArgumentNullException(nameof(prefix));
             }
 
-            _featureFlagPrefixes.Add(prefix);
+            FeatureFlagPrefixes.Add(prefix);
             return this;
         }
     }
