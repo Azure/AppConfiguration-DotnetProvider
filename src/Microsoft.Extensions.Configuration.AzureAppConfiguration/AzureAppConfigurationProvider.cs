@@ -14,7 +14,6 @@ using System.Linq;
 using System.Net;
 using System.Security;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -468,9 +467,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (changeWatcher.Key.EndsWith("*"))
                     {
                         // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                        var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
                         currentKeyValues = _applicationSettings.Values.Where(kv =>
                         {
-                            return kv.Key.StartsWith(changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1)) && kv.Label == changeWatcher.Label.NormalizeNull();
+                            return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
                         });
                     }
                     else
