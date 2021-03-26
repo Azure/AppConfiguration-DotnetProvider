@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
@@ -33,7 +34,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
-        private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
+        // The following sets are sorted in descending order.
+        // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
+        private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
+        private SortedSet<string> _featureFlagPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -154,24 +158,54 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
             }
 
-            if (!(_kvSelectors.Any(selector => selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker) && selector.LabelFilter.Equals(options.Label))))
+            if (options.FeatureFlagSelectors.Count() != 0 && options.Label != null)
             {
-                Select(FeatureManagementConstants.FeatureFlagMarker + "*", options.Label);
+                throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
+            
+            if (options.FeatureFlagSelectors.Count() == 0)
+            {
+                // Select clause is not present
+                options.FeatureFlagSelectors.Add(new KeyValueSelector
+                {
+                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
+                    LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
+                });  
+            }
+
+            foreach (var featureFlagSelector in options.FeatureFlagSelectors)
+            {
+                var featureFlagFilter = featureFlagSelector.KeyFilter;
+                var labelFilter = featureFlagSelector.LabelFilter;
+
+                if (!_kvSelectors.Any(selector => selector.KeyFilter == featureFlagFilter && selector.LabelFilter == labelFilter))
+                {
+                    Select(featureFlagFilter, labelFilter);
+                }
+
+                var multiKeyWatcher = _multiKeyWatchers.FirstOrDefault(kw => kw.Key.Equals(featureFlagFilter) && kw.Label.NormalizeNull() == labelFilter.NormalizeNull());
+
+                if (multiKeyWatcher == null)
+                {
+                    _multiKeyWatchers.Add(new KeyValueWatcher
+                    {
+                        Key = featureFlagFilter,
+                        Label = labelFilter,
+                        CacheExpirationInterval = options.CacheExpirationInterval
+                    });
+                }
+                else
+                {
+                    // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
+                    multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
+                }
+            }
+
+            options.FeatureFlagPrefixes.ForEach(prefix => _featureFlagPrefixes.Add(prefix));
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
-            }
-
-            if (!_multiKeyWatchers.Any(kw => kw.Key.Equals(FeatureManagementConstants.FeatureFlagMarker)))
-            {
-                _multiKeyWatchers.Add(new KeyValueWatcher
-                {
-                    Key = FeatureManagementConstants.FeatureFlagMarker,
-                    Label = options.Label,
-                    CacheExpirationInterval = options.CacheExpirationInterval
-                });
+                _adapters.Add(new FeatureManagementKeyValueAdapter(_featureFlagPrefixes));
             }
 
             return this;

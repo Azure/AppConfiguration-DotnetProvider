@@ -72,24 +72,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 keyValues = Enumerable.Empty<ConfigurationSetting>();
             }
 
-            if (options.Prefix == null)
+            if (options.KeyFilter == null)
             {
-                options.Prefix = string.Empty;
-            }
-
-            if (options.Prefix.Contains('*'))
-            {
-                throw new ArgumentException("The prefix cannot contain '*'", $"{nameof(options)}.{nameof(options.Prefix)}");
+                options.KeyFilter = string.Empty;
             }
 
             if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
             {
                 throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Key)}");
-            }
-
-            if (!string.IsNullOrEmpty(options.Prefix) && keyValues.Any(k => !k.Key.StartsWith(options.Prefix)))
-            {
-                throw new ArgumentException("All key-values registered for refresh must start with the provided prefix.", $"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Key)}");
             }
 
             if (keyValues.Any(k => !string.Equals(k.Label.NormalizeNull(), options.Label.NormalizeNull())))
@@ -105,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             var hasKeyValueCollectionChanged = false;
             var selector = new SettingSelector
             {
-                KeyFilter = options.Prefix + "*",
+                KeyFilter = options.KeyFilter,
                 LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
                 Fields = SettingFields.ETag | SettingFields.Key
             };
@@ -142,7 +132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 selector = new SettingSelector
                 {
-                    KeyFilter = options.Prefix + "*",
+                    KeyFilter = options.KeyFilter,
                     LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label
                 };
 
