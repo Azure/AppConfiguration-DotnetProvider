@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
@@ -15,10 +14,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationKeyVaultOptions
     {
+        private static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromHours(12);
+        private static readonly TimeSpan MinimumRefreshInterval = TimeSpan.FromHours(1);
+
         internal TokenCredential Credential;
         internal List<SecretClient> SecretClients = new List<SecretClient>();
-        internal List<CertificateClient> CertificateClients = new List<CertificateClient>();
         internal Func<Uri, ValueTask<string>> SecretResolver;
+        internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
+
+        /// <summary>
+        /// If true, certificates will be reloaded from Key Vault based on their auto-renewal policy.
+        /// </summary>
+        public bool? UseCertificateRotationPolicy { get; set; } = null;
 
         /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
@@ -41,16 +48,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Registers the specified <see cref="CertificateClient"/> instance to reload certificates from Key Vault based on their auto-renewal policy.
-        /// </summary>
-        /// <param name="certificateClient">Certificate client instance.</param>
-        public AzureAppConfigurationKeyVaultOptions Register(CertificateClient certificateClient)
-        {
-            CertificateClients.Add(certificateClient);
-            return this;
-        }
-
-        /// <summary>
         /// Sets the callback used to resolve key vault references that have no registered <see cref="SecretClient"/>.
         /// </summary>
         /// <param name="secretResolver">A callback that maps the <see cref="Uri"/> of the key vault secret to its value.</param>
@@ -62,6 +59,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             SecretResolver = secretResolver;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the refresh interval for periodically reloading a secret from Key Vault. Refresh interval must be greater than 1 hour. Default refresh interval is 12 hours.
+        /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a Key Vault secret until the cached value for that secret has expired.
+        /// </summary>
+        /// <param name="key">Key of the Key Vault reference in Azure App Configuration.</param>
+        /// <param name="refreshInterval">Minimum time that must elapse before the secret is reloaded from Key Vault.</param>
+        public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(string key, TimeSpan? refreshInterval = null)
+        {
+            if (refreshInterval != null && refreshInterval < MinimumRefreshInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval?.TotalHours,
+                    string.Format(ErrorMessages.SecretRefreshIntervalTooShort, MinimumRefreshInterval.TotalHours));
+            }
+
+            SecretRefreshIntervals[key] = refreshInterval ?? DefaultRefreshInterval;
+
             return this;
         }
     }

@@ -12,11 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// </summary>
         public string Key { get; set; }
 
-        /// <summary>
-        /// Label of the Key Vault reference in App Configuration.
-        /// </summary>
-        public string Label { get; set; }
-
         ///// <summary>
         ///// The value of the Key Vault secret.
         ///// </summary>
@@ -27,17 +22,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// </summary>
         public DateTimeOffset? ExpiresOn { get; set; }
 
-        public CachedKeyVaultSecret(string key, string label)
+        public CachedKeyVaultSecret(string key)
         {
             Key = key;
-            Label = label;
         }
 
         public override bool Equals(object obj)
         {
-            if (obj is CachedKeyVaultSecret keyLabel)
+            if (obj is CachedKeyVaultSecret cachedSecret)
             {
-                return Key == keyLabel.Key && Label == keyLabel.Label;
+                return Key == cachedSecret.Key;
             }
 
             return false;
@@ -45,7 +39,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public override int GetHashCode()
         {
-            return Label != null ? Key.GetHashCode() ^ Label.GetHashCode() : Key.GetHashCode();
+            return Key.GetHashCode();
         }
     }
 }

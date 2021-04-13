@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             try
             {
-                secret = await _secretProvider.GetSecretValue(secretUri, setting, cancellationToken).ConfigureAwait(false);
+                secret = await _secretProvider.GetSecretValue(secretUri, setting.Key, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
@@ -93,7 +93,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             else
             {
-                _secretProvider.RemoveExpiredSecretFromCache(setting.Key, setting.Label);
+                _secretProvider.RemoveExpiredSecretFromCache(setting.Key);
             }
         }
 

@@ -1,10 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
 using Azure.Core;
-using Azure.Data.AppConfiguration;
-using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
@@ -16,19 +13,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
     internal class AzureKeyVaultSecretProvider
     {
-        private const string AzureIdentityAssemblyName = "Azure.Identity";
         private readonly IDictionary<string, SecretClient> _secretClients;
-        private readonly IDictionary<string, CertificateClient> _certificateClients;
         private readonly TokenCredential _credential;
         private readonly Func<Uri, ValueTask<string>> _secretResolver;
+        private readonly Dictionary<string, TimeSpan> _secretRefreshIntervals = new Dictionary<string, TimeSpan>();
         private HashSet<CachedKeyVaultSecret> _cachedKeyVaultSecrets = new HashSet<CachedKeyVaultSecret>();
 
-        public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null, IEnumerable<CertificateClient> certificateClients = null, Func<Uri, ValueTask<string>> secretResolver = null)
+        public AzureKeyVaultSecretProvider(TokenCredential credential = null, IEnumerable<SecretClient> secretClients = null, Func<Uri, ValueTask<string>> secretResolver = null, Dictionary<string, TimeSpan> secretRefreshIntervals = null)
         {
             _credential = credential;
             _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
-            _certificateClients = new Dictionary<string, CertificateClient>(StringComparer.OrdinalIgnoreCase);
             _secretResolver = secretResolver;
+            _secretRefreshIntervals = secretRefreshIntervals;
 
             if (secretClients != null)
             {
@@ -38,18 +34,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     _secretClients[keyVaultId] = client;
                 }
             }
-
-            if (certificateClients != null)
-            {
-                foreach (CertificateClient client in certificateClients)
-                {
-                    string keyVaultId = client.VaultUri.Host;
-                    _certificateClients[keyVaultId] = client;
-                }
-            }
         }
 
-        public async Task<string> GetSecretValue(Uri secretUri, ConfigurationSetting setting, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(Uri secretUri, string key, CancellationToken cancellationToken)
         {
             string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
             string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
@@ -59,40 +46,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             if (client != null)
             {
+                KeyVaultSecret secret;
+
                 // Try to load secret value from the cache first
-                secretValue = GetCachedSecretValue(setting.Key, setting.Label);
-                
+                secretValue = GetCachedSecretValue(key);
+
                 if (secretValue == null)
                 {
-                    KeyVaultSecret secret;
-
-                    try
-                    {
-                        secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (Exception e) when (
-                        e is UnauthorizedAccessException ||
-                        (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                        e is RequestFailedException ||
-                        ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
-                    {
-                        // Permission to get secrets may have been revoked.
-                        // Delete any cached secret for this key and label and rethrow exception.
-                        RemoveExpiredSecretFromCache(setting.Key, setting.Label);
-                        throw;
-                    }
-
+                    // We dont have a cached secret value for this key vault reference.
+                    // Get the secret from Key Vault and update the cache.
+                    secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
                     secretValue = secret?.Value;
 
                     if (secret != null)
                     {
-                        UpdateCachedKeyVaultSecrets(secret, setting.Key, setting.Label, cancellationToken);
+                        UpdateCachedKeyVaultSecrets(key, secretValue);
                     }
                     else
                     {
                         // Secret may have been deleted from KeyVault.
                         // Delete the secret from cache too.
-                        RemoveExpiredSecretFromCache(setting.Key, setting.Label);
+                        RemoveExpiredSecretFromCache(key);
                     }
                 }
             }
@@ -121,12 +95,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     continue;
                 }
 
-                // Remove the cached Key Vault secret for this key and label
-                secretsToBeRemovedFromCache.Add(new CachedKeyVaultSecret(cachedSecret.Key, cachedSecret.Label));
+                // Remove the cached Key Vault secret for this key
+                secretsToBeRemovedFromCache.Add(new CachedKeyVaultSecret(cachedSecret.Key));
                 shouldRefreshKeyVaultSecrets = true;
             }
 
-            secretsToBeRemovedFromCache.ForEach(secret => RemoveExpiredSecretFromCache(secret.Key, secret.Label));
+            secretsToBeRemovedFromCache.ForEach(secret => RemoveExpiredSecretFromCache(secret.Key));
             return shouldRefreshKeyVaultSecrets;
         }
 
@@ -135,9 +109,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             _cachedKeyVaultSecrets.Clear();
         }
 
-        internal void RemoveExpiredSecretFromCache(string key, string label)
+        internal void RemoveExpiredSecretFromCache(string key)
         {
-            _cachedKeyVaultSecrets.Remove(new CachedKeyVaultSecret(key, label));
+            _cachedKeyVaultSecrets.Remove(new CachedKeyVaultSecret(key));
         }
 
         private SecretClient GetSecretClient(Uri secretUri)
@@ -159,119 +133,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return client;
         }
 
-        private CertificateClient GetCertificateClient(Uri secretUri)
+        private void UpdateCachedKeyVaultSecrets(string key, string secretValue)
         {
-            string keyVaultId = secretUri.Host;
+            DateTimeOffset? secretExpirationTime = null;
 
-            if (_certificateClients.TryGetValue(keyVaultId, out CertificateClient client))
+            if(_secretRefreshIntervals != null && _secretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
             {
-                return client;
+                // Set the cache expiration time using the refresh interval specified for this key
+                secretExpirationTime = DateTimeOffset.UtcNow.Add(refreshInterval);
             }
 
-            if (_credential == null)
-            {
-                return null;
-            }
-
-            client = new CertificateClient(new Uri(secretUri.GetLeftPart(UriPartial.Authority)), _credential);
-            _certificateClients.Add(keyVaultId, client);
-            return client;
-        }
-
-        private async Task<DateTimeOffset?> GetSecretExpirationTime(KeyVaultSecret secret, CancellationToken cancellationToken)
-        {
-            DateTimeOffset? secretExpirationTime = secret.Properties.ExpiresOn;
-
-            if (secret.Properties.Managed)
-            {
-                CertificateClient certClient = GetCertificateClient(secret.Id);
-
-                if (certClient != null)
-                {
-                    KeyVaultCertificateWithPolicy latestCertificate = null;
-
-                    try
-                    {
-                        latestCertificate = await certClient.GetCertificateAsync(secret.Name, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (Exception e) when (
-                        e is UnauthorizedAccessException ||
-                        (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                        e is RequestFailedException ||
-                        ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
-                    {
-                        // User may not have the right permissions to get certificates, but have the permission to get secrets.
-                        // Use the expiry date of the secret, if available. Otherwise, treat this as a non-rotating secret.
-                    }
-
-                    // Calculate the auto-renewal time only if this is the latest version of certificate.
-                    // If the secret reference is for an older version of certificate, CertificatePolicy
-                    // does not apply to this certificate because it will never be auto-rotated.
-                    if (latestCertificate != null && latestCertificate.Properties != null && latestCertificate.Properties.Version == secret.Properties.Version)
-                    {
-                        secretExpirationTime = latestCertificate.Properties.ExpiresOn;
-                        CertificatePolicy policy = latestCertificate?.Policy;
-
-                        if (policy?.LifetimeActions != null)
-                        {
-                            // Currently, only a single LifetimeAction is allowed. It will either be "AutoRenew" or "EmailContacts".
-                            var autoRenewPolicy = policy.LifetimeActions.FirstOrDefault(act => act.Action == CertificatePolicyAction.AutoRenew);
-
-                            if (autoRenewPolicy != null)
-                            {
-                                // Either DaysBeforeExpiry or LifetimePercentage will be present
-                                if (autoRenewPolicy.DaysBeforeExpiry.HasValue)
-                                {
-                                    int daysBeforeExpiry = autoRenewPolicy.DaysBeforeExpiry.Value;
-                                    secretExpirationTime = (DateTimeOffset)(latestCertificate.Properties.ExpiresOn?.AddDays(-daysBeforeExpiry));
-                                }
-                                else if (autoRenewPolicy.LifetimePercentage.HasValue)
-                                {
-                                    int lifetimePercentage = autoRenewPolicy.LifetimePercentage.Value;
-                                    var startTime = (DateTimeOffset)latestCertificate.Properties.CreatedOn;
-                                    var endTime = (DateTimeOffset)latestCertificate.Properties.ExpiresOn;
-                                    var diff = (endTime - startTime).Ticks;
-                                    var certLifetimeTicks = diff * lifetimePercentage / 100;
-                                    secretExpirationTime = startTime.AddTicks(certLifetimeTicks);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-                
-            return secretExpirationTime;
-        }
-
-        private async void UpdateCachedKeyVaultSecrets(KeyVaultSecret secret, string key, string label, CancellationToken cancellationToken)
-        {
-            DateTimeOffset? secretExpirationTime = await GetSecretExpirationTime(secret, cancellationToken).ConfigureAwait(false);
-            
-            var cachedSecret = new CachedKeyVaultSecret(key, label);
+            var cachedSecret = new CachedKeyVaultSecret(key);
             _cachedKeyVaultSecrets.Remove(cachedSecret);
 
-            // Users may be referencing secrets that have already expired in Key Vault. Cache the secret only if it's not already expired.
-            // No need to cache expired secrets since they will be fetched from Key Vault with every RefreshAsync call.
-            if (secretExpirationTime == null || DateTime.UtcNow < secretExpirationTime)
-            {
-                cachedSecret.ExpiresOn = secretExpirationTime;
-                cachedSecret.SecretValue = secret.Value;
-                _cachedKeyVaultSecrets.Add(cachedSecret);
-            }
+            // If there is no refresh interval for this key, cache expiration time will be null,
+            // i.e., this secret will not be refreshed automatically.
+            cachedSecret.ExpiresOn = secretExpirationTime;
+            cachedSecret.SecretValue = secretValue;
+            _cachedKeyVaultSecrets.Add(cachedSecret);
         }
 
-        private string GetCachedSecretValue(string key, string label)
+        private string GetCachedSecretValue(string key)
         {
-            CachedKeyVaultSecret cachedSecret = _cachedKeyVaultSecrets.FirstOrDefault(secret => secret.Key == key && secret.Label == label);
-            string cachedSecretValue = null;
-
-            if(cachedSecret != null && (cachedSecret.ExpiresOn == null || DateTimeOffset.UtcNow < cachedSecret.ExpiresOn))
-            {
-                // Return cached secret if it has no expiration time or if it hasn't expired yet
-                cachedSecretValue = cachedSecret.SecretValue;
-            }
-
-            return cachedSecretValue;
+            CachedKeyVaultSecret cachedSecret = _cachedKeyVaultSecrets.FirstOrDefault(secret => secret.Key == key);
+            return cachedSecret?.SecretValue;
         }
     }
 }
