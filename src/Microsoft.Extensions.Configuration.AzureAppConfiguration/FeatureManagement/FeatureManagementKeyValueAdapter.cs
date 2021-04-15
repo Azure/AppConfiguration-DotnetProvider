@@ -13,6 +13,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
+        private readonly IEnumerable<string> _featureFlagPrefixes;
+
+        public FeatureManagementKeyValueAdapter(IEnumerable<string> featureFlagPrefixes)
+        {
+            _featureFlagPrefixes = featureFlagPrefixes ?? throw new ArgumentNullException(nameof(featureFlagPrefixes));
+        }
+
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag;
@@ -25,8 +32,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 throw new FormatException(setting.Key, e);
             }
 
+            foreach (string prefix in _featureFlagPrefixes)
+            {
+                if (featureFlag.Id.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    featureFlag.Id = featureFlag.Id.Substring(prefix.Length);
+                    break;
+                }
+            }
+
             var keyValues = new List<KeyValuePair<string, string>>();
-            
+
             if (featureFlag.Enabled)
             {
                 //if (featureFlag.Conditions?.ClientFilters == null)

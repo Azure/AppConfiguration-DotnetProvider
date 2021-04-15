@@ -462,14 +462,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    IEnumerable<ConfigurationSetting> currentKeyValues = _applicationSettings.Values.Where(kv =>
+                    IEnumerable<ConfigurationSetting> currentKeyValues;
+
+                    if (changeWatcher.Key.EndsWith("*"))
                     {
-                        return kv.Key.StartsWith(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
+                        // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                        var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
+                        currentKeyValues = _applicationSettings.Values.Where(kv =>
+                        {
+                            return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
+                        });
+                    }
+                    else
+                    {
+                        currentKeyValues = _applicationSettings.Values.Where(kv =>
+                        {
+                            return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
+                        });
+                    }
 
                     IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(currentKeyValues, new GetKeyValueChangeCollectionOptions
                     {
-                        Prefix = changeWatcher.Key,
+                        KeyFilter = changeWatcher.Key,
                         Label = changeWatcher.Label.NormalizeNull(),
                         RequestTracingEnabled = _requestTracingEnabled,
                         HostType = _hostType
