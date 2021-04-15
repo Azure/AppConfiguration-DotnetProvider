@@ -34,6 +34,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
+        
+        private readonly SortedSet<string> _keySeparators = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -95,6 +97,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
+
+        /// <summary>
+        /// A collection of key delimiters to be replaced with a colon (:).
+        /// </summary>
+        internal IEnumerable<string> KeySeparators => _keySeparators;
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -242,6 +249,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _keyPrefixes.Add(prefix);
+            return this;
+        }
+
+        /// <summary>
+        /// Replaces the provided separator with a colon (:) for the keys
+        /// of all key-values retrieved from Azure App Configuration.
+        /// </summary>
+        /// <param name="separator">The separator (delimiter) to be replaced</param>
+        public AzureAppConfigurationOptions ReplaceKeySeparator(string separator)
+        {
+            if (string.IsNullOrEmpty(separator))
+            {
+                throw new ArgumentNullException(nameof(separator));
+            }
+
+            _keySeparators.Add(separator);
             return this;
         }
 

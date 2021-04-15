@@ -530,6 +530,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }
 
+                    foreach (string separator in _options.KeySeparators)
+                    {
+                        key = key.Replace(separator, KeySeparator.Colon);
+                    }
+
                     applicationData[key] = kv.Value;
                 }
             }
