@@ -39,7 +39,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
         private SortedSet<string> _featureFlagPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
-        private readonly List<string> _keySeparators = new List<string>();
+        // Since multiple separators could include the same characters, we need to replace the longest separator first.
+        private readonly SortedSet<string> _keySeparators = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
