@@ -211,15 +211,15 @@ namespace Tests.AzureAppConfiguration
                          })
                          .Build();
 
-            Assert.True(config["Test:Key:1"] == "TestValue1");
-            Assert.True(config["Test:Key:2"] == "TestValue2");
-            Assert.True(config["Test:Key:3"] == "TestValue3");
-            Assert.True(config["Test:Key:4"] == "TestValue4");
-            Assert.True(config["Test:Key:5"] == "TestValue5");
-            Assert.True(config["Test:Key:6"] == "TestValue6");
-            Assert.True(config["Test:Key:7"] == "TestValue7");
-            Assert.True(config["Test:Key:8"] == "TestValue8");
-            Assert.True(config["TestKey9"] == "TestValue9");
+            Assert.Equal(config["Test:Key:1"], "TestValue1");
+            Assert.Equal(config["Test:Key:2"], "TestValue2");
+            Assert.Equal(config["Test:Key:3"], "TestValue3");
+            Assert.Equal(config["Test:Key:4"], "TestValue4");
+            Assert.Equal(config["Test:Key:5"], "TestValue5");
+            Assert.Equal(config["Test:Key:6"], "TestValue6");
+            Assert.Equal(config["Test:Key:7"], "TestValue7");
+            Assert.Equal(config["Test:Key:8"], "TestValue8");
+            Assert.Equal(config["TestKey9"], "TestValue9");
         }
 
         [Fact]
@@ -249,15 +249,15 @@ namespace Tests.AzureAppConfiguration
                          })
                          .Build();
 
-            Assert.True(config["Test:Key:1"] == "TestValue1");
-            Assert.True(config["Test:Key:2"] == "TestValue2");
-            Assert.True(config["Test:Key:3"] == "TestValue3");
-            Assert.True(config["Test:Key:4"] == "TestValue4");
-            Assert.True(config["Test:Key:5"] == "TestValue5");
-            Assert.True(config["Test:Key:6"] == "TestValue6");
-            Assert.True(config["Test:Key:7"] == "TestValue7");
-            Assert.True(config["Test:Key:8"] == "TestValue8");
-            Assert.True(config["TestKey9"] == "TestValue9");
+            Assert.Equal(config["Test:Key:1"], "TestValue1");
+            Assert.Equal(config["Test:Key:2"], "TestValue2");
+            Assert.Equal(config["Test:Key:3"], "TestValue3");
+            Assert.Equal(config["Test:Key:4"], "TestValue4");
+            Assert.Equal(config["Test:Key:5"], "TestValue5");
+            Assert.Equal(config["Test:Key:6"], "TestValue6");
+            Assert.Equal(config["Test:Key:7"], "TestValue7");
+            Assert.Equal(config["Test:Key:8"], "TestValue8");
+            Assert.Equal(config["TestKey9"], "TestValue9");
         }
 
         [Fact]
