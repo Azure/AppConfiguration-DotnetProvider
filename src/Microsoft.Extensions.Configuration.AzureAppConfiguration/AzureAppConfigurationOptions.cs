@@ -34,8 +34,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
-        
-        private readonly SortedSet<string> _keySeparators = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.InvariantCultureIgnoreCase)));
+
+        private readonly List<string> _keySeparators = new List<string>();
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
