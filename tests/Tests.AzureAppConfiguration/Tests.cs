@@ -45,6 +45,37 @@ namespace Tests.AzureAppConfiguration
                 contentType: "text")
         };
 
+        List<ConfigurationSetting> _kvDelimitedCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting("Test.Key.1", "TestValue1", "label",
+                eTag: new ETag("1c6a3612-9751-41b8-b444-d82b3a81bc2c"),
+                contentType:"text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test,Key,2", "TestValue2", "label",
+                eTag: new ETag("05449f5b-fd28-4d8a-a686-072eb704ecff"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test:Key:3", "TestValue3", "label",
+                eTag: new ETag("1f2ad89c-be57-412a-891a-53a738c6c6e0"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test;Key;4", "TestValue4", "label",
+                eTag: new ETag("6ae1ba59-00dc-4bef-9611-0e961879eb07"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test/Key/5", "TestValue5", "label",
+                eTag: new ETag("2817818f-2f3b-4b68-bb54-2ccc8cecd671"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test-Key-6", "TestValue6", "label",
+                eTag: new ETag("868336a7-83e3-47d6-a688-c97ba4a1728d"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test_Key_7", "TestValue7", "label",
+                eTag: new ETag("783dd1d3-11b8-4636-8e94-b4bf985c91fb"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("Test__Key__8", "TestValue8", "label",
+                eTag: new ETag("f0107901-3a84-48f3-b76e-5e75722709bb"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("TestKey9", "TestValue9", "label",
+                eTag: new ETag("b5cc8d9c-0860-499f-99fc-9c3a53a68eb1"),
+                contentType: "text"),
+        };
+
         [Fact]
         public void AddsConfigurationValues()
         {
@@ -151,6 +182,82 @@ namespace Tests.AzureAppConfiguration
             Assert.True(config["Key3"] == "TestValue3");
             Assert.True(config["Key4"] == "TestValue4");
             Assert.True(config["TestKey1"] == "TestValue2.1");
+        }
+
+        [Fact]
+        public void ReplaceKeySeparator_TestCase1()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                      .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
+
+            var config = new ConfigurationBuilder()
+                         .AddAzureAppConfiguration(options =>
+                         {
+                             options.Client = mockClient.Object;
+                             // Replace following separators with colon (:) from all keys in the configuration.
+                             options.ReplaceKeySeparator(KeySeparator.Period)
+                                    .ReplaceKeySeparator(KeySeparator.Comma)
+                                    .ReplaceKeySeparator(KeySeparator.Semicolon)
+                                    .ReplaceKeySeparator(KeySeparator.ForwardSlash)
+                                    .ReplaceKeySeparator(KeySeparator.Dash)
+                                    .ReplaceKeySeparator(KeySeparator.Underscore)
+                                    .ReplaceKeySeparator(KeySeparator.DoubleUnderscore);
+                         })
+                         .Build();
+
+            Assert.True(config["Test:Key:1"] == "TestValue1");
+            Assert.True(config["Test:Key:2"] == "TestValue2");
+            Assert.True(config["Test:Key:3"] == "TestValue3");
+            Assert.True(config["Test:Key:4"] == "TestValue4");
+            Assert.True(config["Test:Key:5"] == "TestValue5");
+            Assert.True(config["Test:Key:6"] == "TestValue6");
+            Assert.True(config["Test:Key:7"] == "TestValue7");
+            Assert.True(config["Test:Key:8"] == "TestValue8");
+            Assert.True(config["TestKey9"] == "TestValue9");
+        }
+
+        [Fact]
+        public void ReplaceKeySeparator_TestCase2()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                      .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
+
+            var config = new ConfigurationBuilder()
+                         .AddAzureAppConfiguration(options =>
+                         {
+                             options.Client = mockClient.Object;
+                             // Replace following separators with colon (:) from all keys in the configuration.
+                             options.ReplaceKeySeparator(KeySeparator.DoubleUnderscore)
+                                    .ReplaceKeySeparator(KeySeparator.Underscore)
+                                    .ReplaceKeySeparator(KeySeparator.Dash)
+                                    .ReplaceKeySeparator(KeySeparator.ForwardSlash)
+                                    .ReplaceKeySeparator(KeySeparator.Semicolon)
+                                    .ReplaceKeySeparator(KeySeparator.Comma)
+                                    .ReplaceKeySeparator(KeySeparator.Period);
+                         })
+                         .Build();
+
+            Assert.True(config["Test:Key:1"] == "TestValue1");
+            Assert.True(config["Test:Key:2"] == "TestValue2");
+            Assert.True(config["Test:Key:3"] == "TestValue3");
+            Assert.True(config["Test:Key:4"] == "TestValue4");
+            Assert.True(config["Test:Key:5"] == "TestValue5");
+            Assert.True(config["Test:Key:6"] == "TestValue6");
+            Assert.True(config["Test:Key:7"] == "TestValue7");
+            Assert.True(config["Test:Key:8"] == "TestValue8");
+            Assert.True(config["TestKey9"] == "TestValue9");
         }
 
         [Fact]
