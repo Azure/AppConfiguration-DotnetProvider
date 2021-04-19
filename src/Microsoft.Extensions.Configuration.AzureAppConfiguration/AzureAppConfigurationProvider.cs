@@ -73,7 +73,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
+            IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers).Union(options.KeyVaultSecretWatchers);
 
             if (watchers.Any())
             {
@@ -149,6 +149,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             await RefreshIndividualKeyValues().ConfigureAwait(false);
             await RefreshKeyValueCollections().ConfigureAwait(false);
+            await RefreshKeyVaultSecrets().ConfigureAwait(false);
         }
 
         public async Task<bool> TryRefreshAsync()
@@ -179,6 +180,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                changeWatcher.CacheExpires = cacheExpires;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.KeyVaultSecretWatchers)
             {
                 changeWatcher.CacheExpires = cacheExpires;
             }
@@ -281,6 +287,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+                {
+                    changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
+                }
+
+                foreach (KeyValueWatcher changeWatcher in _options.KeyVaultSecretWatchers)
                 {
                     changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
                 }
@@ -502,6 +513,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     changeWatcher.Semaphore.Release();
                 }
+            }
+        }
+
+        private async Task RefreshKeyVaultSecrets()
+        {
+            foreach (KeyValueWatcher changeWatcher in _options.KeyVaultSecretWatchers)
+            {
+                // Skip the refresh for this Key Vault secret if the cached value has not expired or a refresh operation is in progress
+                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires || !changeWatcher.Semaphore.Wait(0))
+                {
+                    continue;
+                }
+
+                await SetData(_applicationSettings).ConfigureAwait(false);
             }
         }
 

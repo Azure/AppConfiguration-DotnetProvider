@@ -3,6 +3,7 @@
 //
 using Azure.Core;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,9 +15,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationKeyVaultOptions
     {
+        private static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromHours(12);
+        private static readonly TimeSpan MinimumRefreshInterval = TimeSpan.FromHours(1);
+
         internal TokenCredential Credential;
         internal List<SecretClient> SecretClients = new List<SecretClient>();
         internal Func<Uri, ValueTask<string>> SecretResolver;
+        internal ISet<KeyValueWatcher> KeyVaultSecretWatchers = new HashSet<KeyValueWatcher>();
 
         /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
@@ -50,6 +55,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             SecretResolver = secretResolver;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the refresh interval for periodically reloading a secret from Key Vault. Refresh interval must be greater than 1 hour. Default refresh interval is 12 hours.
+        /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a Key Vault secret until the refresh interval has elapsed.
+        /// </summary>
+        /// <param name="key">Key of the Key Vault reference in Azure App Configuration.</param>
+        /// <param name="refreshInterval">Minimum time that must elapse before the secret is reloaded from Key Vault.</param>
+        public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(string key, TimeSpan? refreshInterval = null)
+        {
+            if (refreshInterval != null && refreshInterval < MinimumRefreshInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval?.TotalHours,
+                    string.Format(ErrorMessages.SecretRefreshIntervalTooShort, MinimumRefreshInterval.TotalHours));
+            }
+
+            KeyVaultSecretWatchers.Add(new KeyValueWatcher
+            {
+                Key = key,
+                RefreshAll = false,
+                CacheExpirationInterval = refreshInterval ?? DefaultRefreshInterval
+            });
+
             return this;
         }
     }

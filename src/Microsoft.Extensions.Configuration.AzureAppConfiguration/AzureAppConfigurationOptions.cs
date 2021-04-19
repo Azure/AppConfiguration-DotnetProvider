@@ -26,6 +26,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _keyVaultSecretWatchers = new List<KeyValueWatcher>();
+
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
         { 
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
@@ -70,6 +72,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+
+        /// <summary>
+        /// A collection of <see cref="KeyValueWatcher"/>, containing Key Vault reference keys and their corresponding refresh times.
+        /// </summary>
+        internal IEnumerable<KeyValueWatcher> KeyVaultSecretWatchers => _keyVaultSecretWatchers;
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -334,6 +341,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Cannot configure both default credentials and secret resolver for Key Vault references. Please call either {nameof(keyVaultOptions.SetCredential)} or {nameof(keyVaultOptions.SetSecretResolver)} method, not both.");
             }
+
+            _keyVaultSecretWatchers = keyVaultOptions.KeyVaultSecretWatchers.ToList();
 
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
             _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients, keyVaultOptions.SecretResolver)));
