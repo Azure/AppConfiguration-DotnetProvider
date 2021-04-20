@@ -23,11 +23,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
 
         /// <summary>
-        /// If true, certificates will be reloaded from Key Vault based on their auto-renewal policy.
-        /// </summary>
-        public bool? UseCertificateRotationPolicy { get; set; } = null;
-
-        /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
         /// </summary>
         /// <param name="credential">Default token credentials.</param>

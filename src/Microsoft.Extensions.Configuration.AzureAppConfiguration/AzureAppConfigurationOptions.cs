@@ -26,7 +26,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
         { 
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
