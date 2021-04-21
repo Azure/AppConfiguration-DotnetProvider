@@ -5,41 +5,22 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    internal class CachedKeyVaultSecret
+    internal struct CachedKeyVaultSecret
     {
-        /// <summary>
-        /// Key of the Key Vault reference in App Configuration.
-        /// </summary>
-        public string Key { get; set; }
-
         ///// <summary>
         ///// The value of the Key Vault secret.
         ///// </summary>
         public string SecretValue { get; set; }
 
         /// <summary>
-        /// The cache expiration time for the Key Vault secret.
+        /// The time when this secret should be reloaded from Key Vault.
         /// </summary>
-        public DateTimeOffset? ExpiresOn { get; set; }
+        public DateTimeOffset? RefreshAt { get; set; }
 
-        public CachedKeyVaultSecret(string key)
+        public CachedKeyVaultSecret(string secretValue, DateTimeOffset? refreshAt)
         {
-            Key = key;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is CachedKeyVaultSecret cachedSecret)
-            {
-                return Key == cachedSecret.Key;
-            }
-
-            return false;
-        }
-
-        public override int GetHashCode()
-        {
-            return Key.GetHashCode();
+            SecretValue = secretValue;
+            RefreshAt = refreshAt;
         }
     }
 }

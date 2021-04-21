@@ -14,13 +14,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationKeyVaultOptions
     {
-        private static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromHours(12);
-        private static readonly TimeSpan MinimumRefreshInterval = TimeSpan.FromHours(1);
-
         internal TokenCredential Credential;
         internal List<SecretClient> SecretClients = new List<SecretClient>();
         internal Func<Uri, ValueTask<string>> SecretResolver;
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
+        internal TimeSpan? DefaultSecretRefreshInterval = null;
 
         /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
@@ -58,21 +56,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Sets the refresh interval for periodically reloading a secret from Key Vault. Refresh interval must be greater than 1 hour. Default refresh interval is 12 hours.
+        /// Sets the refresh interval for periodically reloading a secret from Key Vault. 
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a Key Vault secret until the cached value for that secret has expired.
         /// </summary>
-        /// <param name="key">Key of the Key Vault reference in Azure App Configuration.</param>
+        /// <param name="secretReferenceKey">Key of the Key Vault reference in Azure App Configuration.</param>
         /// <param name="refreshInterval">Minimum time that must elapse before the secret is reloaded from Key Vault.</param>
-        public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(string key, TimeSpan? refreshInterval = null)
+        public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(string secretReferenceKey, TimeSpan refreshInterval)
         {
-            if (refreshInterval != null && refreshInterval < MinimumRefreshInterval)
-            {
-                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval?.TotalHours,
-                    string.Format(ErrorMessages.SecretRefreshIntervalTooShort, MinimumRefreshInterval.TotalHours));
-            }
+            SecretRefreshIntervals[secretReferenceKey] = refreshInterval;
+            return this;
+        }
 
-            SecretRefreshIntervals[key] = refreshInterval ?? DefaultRefreshInterval;
-
+        /// <summary>
+        /// Sets the refresh interval for periodically reloading all those secrets which do not have individual refresh intervals. 
+        /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a Key Vault secret until the cached value for that secret has expired.
+        /// </summary>
+        /// <param name="refreshInterval">Minimum time that must elapse before the secrets are reloaded from Key Vault.</param>
+        public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(TimeSpan refreshInterval)
+        {
+            DefaultSecretRefreshInterval = refreshInterval;
             return this;
         }
     }

@@ -466,13 +466,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshKeyVaultSecrets()
+        private async Task RefreshKeyValueAdapters()
         {
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
                 if (adapter.NeedsRefresh())
                 {
                     await SetData(_applicationSettings).ConfigureAwait(false);
+                    break;
                 }
             }
         }

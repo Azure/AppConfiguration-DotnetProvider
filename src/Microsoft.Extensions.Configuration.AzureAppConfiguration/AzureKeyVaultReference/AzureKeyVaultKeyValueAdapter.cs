@@ -89,17 +89,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             if (setting == null)
             {
-                _secretProvider.RemoveAllSecretsFromCache();
+                _secretProvider.ClearCache();
             }
             else
             {
-                _secretProvider.RemoveExpiredSecretFromCache(setting.Key);
+                _secretProvider.RemoveSecretFromCache(setting.Key);
             }
         }
 
         public bool NeedsRefresh()
         {
-            return _secretProvider.AnyExpiredSecrets();
+            return _secretProvider.ShouldRefreshKeyVaultSecrets();
         }
     }
 }
