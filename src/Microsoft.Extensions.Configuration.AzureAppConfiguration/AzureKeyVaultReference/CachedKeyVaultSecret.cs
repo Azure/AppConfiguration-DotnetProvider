@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
-    internal struct CachedKeyVaultSecret
+    internal class CachedKeyVaultSecret
     {
         ///// <summary>
         ///// The value of the Key Vault secret.

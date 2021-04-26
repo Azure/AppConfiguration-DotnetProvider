@@ -63,6 +63,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="refreshInterval">Minimum time that must elapse before the secret is reloaded from Key Vault.</param>
         public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(string secretReferenceKey, TimeSpan refreshInterval)
         {
+            if (string.IsNullOrEmpty(secretReferenceKey))
+            {
+                throw new ArgumentNullException(nameof(secretReferenceKey));
+            }
+
             SecretRefreshIntervals[secretReferenceKey] = refreshInterval;
             return this;
         }

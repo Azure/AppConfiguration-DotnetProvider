@@ -14,6 +14,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
     internal class AzureKeyVaultSecretProvider
     {
         private readonly IDictionary<string, SecretClient> _secretClients;
+        private readonly object _syncObject = new object();
+        private DateTimeOffset? _nextRefreshTime = null;
         private ConcurrentDictionary<string, CachedKeyVaultSecret> _cachedKeyVaultSecrets = new ConcurrentDictionary<string, CachedKeyVaultSecret>();
         private AzureAppConfigurationKeyVaultOptions _keyVaultOptions;
 
@@ -44,26 +46,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 KeyVaultSecret secret;
 
-                // Try to load secret value from the cache first.
-                secretValue = GetCachedSecretValue(key);
-
-                if (secretValue == null)
+                // Use the cached value of this key vault secret if RefreshAt time is null or in the future
+                if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
+                    (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
+                {
+                    secretValue = cachedSecret.SecretValue;
+                }
+                else
                 {
                     // We dont have a cached secret value or the cached value has expired.
                     // Get the secret from Key Vault and update the cache.
                     secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
                     secretValue = secret?.Value;
-
-                    if (secret != null)
-                    {
-                        UpdateCachedKeyVaultSecrets(key, secretValue);
-                    }
-                    else
-                    {
-                        // Secret may have been deleted from KeyVault.
-                        // Delete the secret from cache too.
-                        RemoveSecretFromCache(key);
-                    }
+                    SetSecretInCache(key, secretValue);
                 }
             }
             else if (_keyVaultOptions.SecretResolver != null)
@@ -80,18 +75,46 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public bool ShouldRefreshKeyVaultSecrets()
         {
-            // return true if the RefreshAt time of any cached secret has already elapsed.
-            return _cachedKeyVaultSecrets.Any(cachedSecret => cachedSecret.Value.RefreshAt.HasValue && cachedSecret.Value.RefreshAt.Value < DateTimeOffset.UtcNow);
+            lock (_syncObject)
+            {
+                // return true if the _nextRefreshTime has already elapsed.
+                return _nextRefreshTime.HasValue && _nextRefreshTime.Value < DateTimeOffset.UtcNow;
+            }
         }
 
         public void ClearCache()
         {
             _cachedKeyVaultSecrets.Clear();
+
+            lock (_syncObject)
+            {
+                _nextRefreshTime = null;
+            }
         }
 
         public void RemoveSecretFromCache(string key)
         {
-            _cachedKeyVaultSecrets.TryRemove(key, out CachedKeyVaultSecret _);
+            if (_cachedKeyVaultSecrets.TryRemove(key, out CachedKeyVaultSecret cachedSecret) && cachedSecret.RefreshAt.HasValue)
+            {
+                lock (_syncObject)
+                {
+                    if (_nextRefreshTime.HasValue && _nextRefreshTime.Value == cachedSecret.RefreshAt.Value)
+                    {
+                        // The secret that may have controlled the next refresh time has been removed from cache.
+                        // Find the next earliest refresh time from cached secrets ----> takes O(n) time.
+                        DateTimeOffset? minRefreshTime = DateTimeOffset.MaxValue;
+                        foreach (CachedKeyVaultSecret secret in _cachedKeyVaultSecrets.Values)
+                        {
+                            if (secret.RefreshAt.HasValue && secret.RefreshAt.Value < minRefreshTime)
+                            {
+                                minRefreshTime = secret.RefreshAt.Value;
+                            }
+                        }
+
+                        _nextRefreshTime = minRefreshTime != DateTimeOffset.MaxValue ? minRefreshTime : null;
+                    }
+                }
+            }
         }
 
         private SecretClient GetSecretClient(Uri secretUri)
@@ -113,7 +136,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return client;
         }
 
-        private void UpdateCachedKeyVaultSecrets(string key, string secretValue)
+        private void SetSecretInCache(string key, string secretValue)
         {
             // If refresh interval for this key or a default refresh interval for all keys has not been specified,
             // cache expiration time will be null, i.e., this secret will not be refreshed automatically.
@@ -132,20 +155,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             // Add or update the cache.
             _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt);
-        }
 
-        private string GetCachedSecretValue(string key)
-        {
-            string cachedSecretValue = null;
-
-            // Use the cached value of this key vault secret if RefreshAt time is null or in the future
-            if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) && 
-                (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
+            // Update the next earliest refresh time to keep track of the next refresh operation.
+            if(refreshSecretAt.HasValue)
             {
-                cachedSecretValue = cachedSecret.SecretValue;
+                lock (_syncObject)
+                {
+                    if (!_nextRefreshTime.HasValue || (_nextRefreshTime.HasValue && refreshSecretAt.Value < _nextRefreshTime.Value))
+                    {
+                        _nextRefreshTime = refreshSecretAt;
+                    }
+                }
             }
-
-            return cachedSecretValue;
         }
     }
 }

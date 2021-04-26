@@ -468,13 +468,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshKeyValueAdapters()
         {
-            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            if (!AdapterRefreshSemaphore.Wait(0))
             {
-                if (adapter.NeedsRefresh())
+                return;
+            }
+
+            try
+            {
+                foreach (IKeyValueAdapter adapter in _options.Adapters)
                 {
-                    await SetData(_applicationSettings).ConfigureAwait(false);
-                    break;
+                    if (adapter.NeedsRefresh())
+                    {
+                        await SetData(_applicationSettings).ConfigureAwait(false);
+                        break;
+                    }
                 }
+            }
+            finally
+            {
+                AdapterRefreshSemaphore.Release();
             }
         }
 
