@@ -167,7 +167,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await RefreshIndividualKeyValues().ConfigureAwait(false);
                     await RefreshKeyValueCollections().ConfigureAwait(false);
-                    await RefreshKeyValueCollections().ConfigureAwait(false);
+                    await RefreshKeyValueAdapters().ConfigureAwait(false);
                 }
                 finally
                 {
@@ -468,25 +468,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshKeyValueAdapters()
         {
-            if (!AdapterRefreshSemaphore.Wait(0))
+            if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
             {
-                return;
-            }
-
-            try
-            {
-                foreach (IKeyValueAdapter adapter in _options.Adapters)
-                {
-                    if (adapter.NeedsRefresh())
-                    {
-                        await SetData(_applicationSettings).ConfigureAwait(false);
-                        break;
-                    }
-                }
-            }
-            finally
-            {
-                AdapterRefreshSemaphore.Release();
+                SetData(_applicationSettings);
             }
         }
 
