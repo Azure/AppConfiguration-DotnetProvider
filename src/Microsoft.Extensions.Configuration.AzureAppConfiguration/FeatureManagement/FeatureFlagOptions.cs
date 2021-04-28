@@ -85,7 +85,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         }
 
         /// <summary>
-        /// Trims the provided prefix from the keys of all feature flags retrieved from Azure App Configuration.
+        /// Trims the provided prefix from the id of all feature flags retrieved from Azure App Configuration.
         /// </summary>
         /// <remarks>
         /// For example, you can trim the prefix "MyApp" from all feature flags by setting the prefix to "MyApp". 
