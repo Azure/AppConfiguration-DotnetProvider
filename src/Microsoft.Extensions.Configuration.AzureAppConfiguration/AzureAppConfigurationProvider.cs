@@ -7,7 +7,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -29,8 +28,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly HostType _hostType;
         private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
-        private ConcurrentDictionary<string, ConfigurationSetting> _applicationSettings;
-        private ConcurrentDictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new ConcurrentDictionary<KeyValueIdentifier, ConfigurationSetting>();
+        private Dictionary<string, ConfigurationSetting> _applicationSettings;
+        private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -39,9 +38,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
-
+       
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
-        private static int _networkOperationsInProgress = 0;
+        private int _networkOperationsInProgress = 0;
 
         public Uri AppConfigurationEndpoint
         {
@@ -157,7 +156,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Check if initial configuration load had failed
                     if (_applicationSettings == null)
                     {
-                        await RefreshInitialConfiguration().ConfigureAwait(false);
+                        if (InitializationCacheExpires < DateTimeOffset.UtcNow)
+                        {
+                            InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
+                            await LoadAll(ignoreFailures: false).ConfigureAwait(false);
+                        }
+
                         return;
                     }
 
@@ -312,15 +316,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshInitialConfiguration()
-        {
-            if (InitializationCacheExpires < DateTimeOffset.UtcNow)
-            {
-                InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
-                await LoadAll(ignoreFailures: false).ConfigureAwait(false);
-            }
-        }
-
         private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, ConfigurationSetting> data)
         {
             _watchedSettings.Clear();
@@ -396,7 +391,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
                         {
-                            _watchedSettings.TryRemove(watchedKeyLabel, out ConfigurationSetting _);
+                            _watchedSettings.Remove(watchedKeyLabel);
                         }
                         else if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
                         {
@@ -504,8 +499,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task SetData(IDictionary<string, ConfigurationSetting> data, bool ignoreFailures = false, CancellationToken cancellationToken = default)
         {
             // Update cache of settings
-            this._applicationSettings = data as ConcurrentDictionary<string, ConfigurationSetting> ??
-                new ConcurrentDictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
+            this._applicationSettings = data as Dictionary<string, ConfigurationSetting> ??
+                new Dictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
 
             // Set the application data for the configuration provider
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -580,7 +575,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (change.ChangeType == KeyValueChangeType.Deleted)
                 {
-                    _applicationSettings.TryRemove(change.Key, out ConfigurationSetting removed);
+                    _applicationSettings.Remove(change.Key);
                 }
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
