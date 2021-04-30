@@ -33,11 +33,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// </summary>
         public DateTimeOffset CacheExpires { get; set; }
 
-        /// <summary>
-        /// Semaphore that can be used to prevent simultaneous refresh of the key-value from multiple threads.
-        /// </summary>
-        public SemaphoreSlim Semaphore { get; } = new SemaphoreSlim(1);
-
         public override bool Equals(object obj)
         {
             if (obj is KeyValueWatcher kvWatcher)
