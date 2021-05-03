@@ -12,15 +12,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
     internal class AzureKeyVaultSecretProvider
     {
+        private readonly AzureAppConfigurationKeyVaultOptions _keyVaultOptions;
         private readonly IDictionary<string, SecretClient> _secretClients;
-        private Dictionary<string, CachedKeyVaultSecret> _cachedKeyVaultSecrets = new Dictionary<string, CachedKeyVaultSecret>();
+        private readonly Dictionary<string, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
         private string _nextRefreshKey;
         private DateTimeOffset? _nextRefreshTime;
-        private AzureAppConfigurationKeyVaultOptions _keyVaultOptions;
 
         public AzureKeyVaultSecretProvider(AzureAppConfigurationKeyVaultOptions keyVaultOptions = null)
         {
             _keyVaultOptions = keyVaultOptions ?? new AzureAppConfigurationKeyVaultOptions();
+            _cachedKeyVaultSecrets = new Dictionary<string, CachedKeyVaultSecret>(StringComparer.OrdinalIgnoreCase);
             _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
 
             if (_keyVaultOptions.SecretClients != null)
@@ -61,7 +62,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             else if (_keyVaultOptions.SecretResolver != null)
             {
-                secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
+                    (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
+                {
+                    secretValue = cachedSecret.SecretValue;
+                }
+                else
+                {
+                    secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                    SetSecretInCache(key, secretValue);
+                }
             }
             else
             {
@@ -153,7 +163,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 }
             }
 
-            _nextRefreshTime = _nextRefreshTime != DateTimeOffset.MaxValue ? _nextRefreshTime : null;
+            if (_nextRefreshTime == DateTimeOffset.MaxValue)
+            {
+                _nextRefreshTime = null;
+            }
         }
     }
 }
