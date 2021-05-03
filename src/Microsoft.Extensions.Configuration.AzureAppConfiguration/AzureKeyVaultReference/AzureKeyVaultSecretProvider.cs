@@ -42,36 +42,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             SecretClient client = GetSecretClient(secretUri);
 
-            if (client != null)
+            if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
+                    (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
+            {
+                secretValue = cachedSecret.SecretValue;
+            }
+            else if (client != null)
             {
                 KeyVaultSecret secret;
-
-                if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
-                    (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
-                {
-                    secretValue = cachedSecret.SecretValue;
-                }
-                else
-                {
-                    // We dont have a cached secret value or the cached value has expired.
-                    // Get the secret from Key Vault and update the cache.
-                    secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    secretValue = secret?.Value;
-                    SetSecretInCache(key, secretValue);
-                }
+                secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                secretValue = secret?.Value;
+                SetSecretInCache(key, secretValue);
             }
             else if (_keyVaultOptions.SecretResolver != null)
             {
-                if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
-                    (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
-                {
-                    secretValue = cachedSecret.SecretValue;
-                }
-                else
-                {
-                    secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
-                    SetSecretInCache(key, secretValue);
-                }
+                secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                SetSecretInCache(key, secretValue);
             }
             else
             {
