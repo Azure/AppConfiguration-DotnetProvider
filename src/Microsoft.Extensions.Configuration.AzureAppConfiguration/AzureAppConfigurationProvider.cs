@@ -167,6 +167,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await RefreshIndividualKeyValues().ConfigureAwait(false);
                     await RefreshKeyValueCollections().ConfigureAwait(false);
+                    await RefreshKeyValueAdapters().ConfigureAwait(false);
                 }
                 finally
                 {
@@ -294,6 +295,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (data != null)
             {
+                // Invalidate all the cached KeyVault secrets
+                foreach (IKeyValueAdapter adapter in _options.Adapters)
+                {
+                    adapter.InvalidateCache();
+                }
+
                 await SetData(data, ignoreFailures).ConfigureAwait(false);
 
                 // Set the cache expiration time for all refresh registered settings
@@ -429,11 +436,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         hasChanged = true;
 
-                        // Add the key-value if it is not loaded, or update it if it was loaded with a different label
-                        _applicationSettings[watchedKey] = watchedKv;
-                        _watchedSettings[watchedKeyLabel] = watchedKv;
+                            // Add the key-value if it is not loaded, or update it if it was loaded with a different label
+                            _applicationSettings[watchedKey] = watchedKv;
+                            _watchedSettings[watchedKeyLabel] = watchedKv;
+
+                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                            foreach (IKeyValueAdapter adapter in _options.Adapters)
+                            {
+                                adapter.InvalidateCache(watchedKv);
+                            }
+                        }
                     }
-                }
 
                 if (hasChanged)
                 {
@@ -445,6 +458,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (shouldRefreshAll)
             {
                 await LoadAll(ignoreFailures: false).ConfigureAwait(false);
+            }
+        }
+
+        private async Task RefreshKeyValueAdapters()
+        {
+            if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
+            {
+                SetData(_applicationSettings);
             }
         }
 
@@ -580,6 +601,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else if (change.ChangeType == KeyValueChangeType.Modified)
                 {
                     _applicationSettings[change.Key] = change.Current;
+                }
+
+                // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                foreach (IKeyValueAdapter adapter in _options.Adapters)
+                {
+                    adapter.InvalidateCache(change.Current);
                 }
             }
         }
