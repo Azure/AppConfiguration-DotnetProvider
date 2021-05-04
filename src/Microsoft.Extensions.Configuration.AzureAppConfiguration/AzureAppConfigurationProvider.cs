@@ -207,11 +207,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 changeWatcher.CacheExpires = cacheExpires;
             }
-
-            foreach (IKeyValueAdapter adapter in _options.Adapters)
-            {
-                adapter.InvalidateCache();
-            }
         }
 
         private async Task LoadAll(bool ignoreFailures)
