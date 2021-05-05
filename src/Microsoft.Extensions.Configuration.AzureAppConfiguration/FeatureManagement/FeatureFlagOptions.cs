@@ -14,11 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     public class FeatureFlagOptions
     {
         /// <summary>
-        /// A collection of key prefixes to be trimmed.
-        /// </summary>
-        internal List<string> FeatureFlagPrefixes = new List<string>();
-
-        /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
         internal List<KeyValueSelector> FeatureFlagSelectors = new List<KeyValueSelector>();
@@ -81,24 +76,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 });
             }
 
-            return this;
-        }
-
-        /// <summary>
-        /// Trims the provided prefix from the id of all feature flags retrieved from Azure App Configuration.
-        /// </summary>
-        /// <remarks>
-        /// For example, you can trim the prefix "MyApp" from all feature flags by setting the prefix to "MyApp". 
-        /// </remarks>
-        /// <param name="prefix">The prefix to be trimmed.</param>
-        public FeatureFlagOptions TrimFeatureFlagPrefix(string prefix)
-        {
-            if (string.IsNullOrEmpty(prefix))
-            {
-                throw new ArgumentNullException(nameof(prefix));
-            }
-
-            FeatureFlagPrefixes.Add(prefix);
             return this;
         }
     }
