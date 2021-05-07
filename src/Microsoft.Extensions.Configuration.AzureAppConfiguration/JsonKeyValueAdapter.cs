@@ -89,5 +89,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             return false;
         }
+
+        public void InvalidateCache(ConfigurationSetting setting = null)
+        {
+            return;
+        }
+
+        public bool NeedsRefresh()
+        {
+            return false;
+        }
     }
 }

@@ -34,10 +34,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
-        // The following sets are sorted in descending order.
+        // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
-        private SortedSet<string> _featureFlagPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
@@ -201,11 +200,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            options.FeatureFlagPrefixes.ForEach(prefix => _featureFlagPrefixes.Add(prefix));
-
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter(_featureFlagPrefixes));
+                _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
             return this;
@@ -336,7 +333,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
-            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions.Credential, keyVaultOptions.SecretClients, keyVaultOptions.SecretResolver)));
+            _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions)));
 
             return this;
         }
