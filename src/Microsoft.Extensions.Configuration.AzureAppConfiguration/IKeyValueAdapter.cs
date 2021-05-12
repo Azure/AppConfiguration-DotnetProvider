@@ -13,5 +13,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken);
 
         bool CanProcess(ConfigurationSetting setting);
+
+        void InvalidateCache(ConfigurationSetting setting = null);
+
+        bool NeedsRefresh();
     }
 }
