@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
-        private Dictionary<string, ConfigurationSetting> _mappedSettings;
+        private Dictionary<string, ConfigurationSetting> _mappedSettings = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
@@ -306,7 +306,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _applicationSettings = data as Dictionary<string, ConfigurationSetting> ??
                     new Dictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
 
-                await MapSettings(data).ConfigureAwait(false);
+                await MapSettings().ConfigureAwait(false);
 
                 await SetData(ignoreFailures).ConfigureAwait(false);
 
@@ -636,7 +636,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <returns>ConfigurationSetting after processing all user defined mappers. If there are no user defined mappers, return the original setting.</returns>
         private async Task<ConfigurationSetting> MapSetting(ConfigurationSetting originalSetting)
         {
-            ConfigurationSetting mappedSetting = originalSetting;
+            ConfigurationSetting mappedSetting = originalSetting; 
             
             foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> userDefinedMapper in _options.UserDefinedMappers)
             {
@@ -648,20 +648,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Convert all ConfigurationSettings retrieved from AppConfig to their respective mapped settings in _mappedSettings cache.
-        /// If there are no user defined mappers, _mappedSettings will be the same as _applicationSettings.
+        /// Convert all ConfigurationSettings retrieved from AppConfig to their respective mapped settings and store in _mappedSettings cache.
+        /// If there are no user defined mappers, _mappedSettings will have deep copies of the same settings as _applicationSettings.
         /// </summary>
-        private async Task MapSettings(IDictionary<string, ConfigurationSetting> data)
+        private async Task MapSettings()
         {
-            _mappedSettings = data as Dictionary<string, ConfigurationSetting> ??
-                    new Dictionary<string, ConfigurationSetting>(data, StringComparer.OrdinalIgnoreCase);
+            _mappedSettings.Clear();
 
-            if (_options.UserDefinedMappers.Any())
+            foreach (KeyValuePair<string, ConfigurationSetting> setting in _applicationSettings)
             {
-                foreach (KeyValuePair<string, ConfigurationSetting> setting in data)
-                {
-                    _mappedSettings[setting.Key] = await MapSetting(setting.Value).ConfigureAwait(false);
-                }
+
+                ConfigurationSetting clonedSetting = ConfigurationModelFactory.ConfigurationSetting(
+                                                        key: setting.Value.Key,
+                                                        label: setting.Value.Label,
+                                                        value: setting.Value.Value,
+                                                        eTag: setting.Value.ETag,
+                                                        contentType: setting.Value.ContentType,
+                                                        lastModified: setting.Value.LastModified,
+                                                        isReadOnly: setting.Value.IsReadOnly);
+
+                _mappedSettings[setting.Key] = await MapSetting(clonedSetting).ConfigureAwait(false);
+                
             }
         }
 
