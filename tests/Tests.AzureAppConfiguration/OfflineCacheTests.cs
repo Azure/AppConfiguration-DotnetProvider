@@ -2,12 +2,14 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -57,19 +59,95 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void OfflineCacheTests_Import()
+        public void OfflineCacheTests_ThrowsIfPathIsMissing()
+        {
+            var connectionString = TestHelpers.CreateMockEndpointString();
+            var builder = new ConfigurationBuilder();
+            var exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(connectionString)
+                    .Select("AppName")
+                    .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
+                    {
+                        FileCacheExpiration = TimeSpan.FromDays(1)
+                    }));
+                });
+                builder.Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentNullException>(exception);
+        }
+
+        [Fact]
+        public void OfflineCacheTests_ThrowsIfFileCacheExpirationIsMissing()
+        {
+            var connectionString = TestHelpers.CreateMockEndpointString();
+            var builder = new ConfigurationBuilder();
+            var exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(connectionString)
+                    .Select("AppName")
+                    .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
+                    {
+                        Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json")
+                    }));
+                });
+                builder.Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentException>(exception);
+        }
+
+        [Fact]
+        public void OfflineCacheTests_ThrowsIfFileCacheExpirationIsTooHigh()
+        {
+            var connectionString = TestHelpers.CreateMockEndpointString();
+            var builder = new ConfigurationBuilder();
+            var exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(connectionString)
+                    .Select("AppName")
+                    .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
+                    {
+                        Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
+                        FileCacheExpiration = TimeSpan.MaxValue
+                    }));
+                });
+                builder.Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentOutOfRangeException>(exception);
+        }
+
+        [Fact]
+        public void OfflineCacheTests_ExportAndImport()
         {
             // Arrange
             var options = new AzureAppConfigurationOptions();
-            options.Connect($"Endpoint=https://dotnetprovider-test.azconfig.io;Id=b1d9b31;Secret=c2VjcmV0");
+            options.Connect(TestHelpers.CreateMockEndpointString());
             options.Select("AppName");
 
             var offlineCache = new OfflineFileCache(new OfflineFileCacheOptions
             {
-                Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json")
+                Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
+                FileCacheExpiration = TimeSpan.FromDays(1)
             });
 
+            IDictionary<string, ConfigurationSetting> mockData = new Dictionary<string, ConfigurationSetting>();
+            mockData["AppName"] = new ConfigurationSetting(key: "AppName", value: "Azure App Configuration");
+
             // Act
+            offlineCache.Export(options, JsonSerializer.Serialize(mockData));
+
+            // Wait for file export to complete before importing from same file
+            Thread.Sleep(1000);
+
             var result = offlineCache.Import(options);
 
             // Assert

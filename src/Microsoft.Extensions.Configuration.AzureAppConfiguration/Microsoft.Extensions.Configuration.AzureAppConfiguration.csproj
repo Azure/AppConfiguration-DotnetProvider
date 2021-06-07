@@ -2,7 +2,7 @@
   <Import Project="..\..\build\NugetProperties.props" />
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;netcoreapp3.1;net5.0</TargetFrameworks>
     <LangVersion>8.0</LangVersion>
     <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications.</Description>
     <SignAssembly>true</SignAssembly>
@@ -17,8 +17,21 @@
     <PackageReference Include="Azure.Data.AppConfiguration" Version="1.0.0" />
     <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.1.1" />
     <PackageReference Include="System.Text.Json" Version="4.6.0" />
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="5.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="5.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="5.0.7" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.16" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="3.1.16" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="3.1.16" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="3.1.16" />
   </ItemGroup>
 
   <PropertyGroup>

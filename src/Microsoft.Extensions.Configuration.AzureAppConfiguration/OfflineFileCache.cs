@@ -1,14 +1,13 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -22,17 +21,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
         private const int retryMax = 20;
         private const int delayRange = 50;
-        private static int instance = 0;
 
         /// <summary>
         /// Key name for cached data
         /// </summary>
         private const string dataProp = "d";
-
-        /// <summary>
-        /// Key name for signature
-        /// </summary>
-        private const string hashProp = "h";
 
         /// <summary>
         /// Key name for cached data scope
@@ -45,63 +38,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         private string _scopeToken;
 
+        private ITimeLimitedDataProtector _timeLimitedDataProtector = null;
+
         private OfflineFileCacheOptions _options = null;
 
         /// <summary>
         /// A cache used for storing Azure App Configuration data using the file system.
-        /// Supports encryption of the stored data.
+        /// Supports encryption of the stored data using an instance of <see cref="IDataProtector"/>.
         /// </summary>
         /// <param name="options">
         /// Options dictating the behavior of the offline cache.
-        /// If the options are null or the encryption keys are omitted, they will be derived from the store's connection string.
-        /// <see cref="OfflineFileCacheOptions.Path"/> is required unless the application is running inside of an Azure App Service instance, in which case it can be populated automatically.
+        /// <see cref="OfflineFileCacheOptions.Path"/> and <see cref="OfflineFileCacheOptions.FileCacheExpiration"/> are required.  
         /// </param>
-        public OfflineFileCache(OfflineFileCacheOptions options = null)
+        public OfflineFileCache(OfflineFileCacheOptions options)
         {
-            OfflineFileCacheOptions opts = options ?? new OfflineFileCacheOptions();
+            ValidateFileCacheExpiration(options.FileCacheExpiration);
+            ValidateCachePath(options.Path);
+            _localCachePath = options.Path;
 
-            // If the user does not specify the cache path, we will try to use the default path
-            // For the moment, default path is only supported when running inside Azure App Service
-            if (opts.Path == null)
+            if (options.DataProtector == null)
             {
-                // Generate default cache file name under $home/data/azureAppConfigCache/app{instance}-{hash}.json
-                string homePath = Environment.GetEnvironmentVariable("HOME");
-                if (Directory.Exists(homePath))
-                {
-                    string dataPath = Path.Combine(homePath, "data");
-                    if (Directory.Exists(dataPath))
-                    {
-                        string cachePath = Path.Combine(dataPath, "azureAppConfigCache");
-                        if (!Directory.Exists(cachePath))
-                        {
-                            Directory.CreateDirectory(cachePath);
-                        }
-
-                        string websiteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
-                        if (websiteName != null)
-                        {
-                            byte[] hash = new byte[0];
-                            using (var sha = SHA1.Create())
-                            {
-                                hash = sha.ComputeHash(Encoding.UTF8.GetBytes(websiteName));
-                            }
-
-                            // The instance count will help prevent multiple providers from overwriting each other's cache file
-                            Interlocked.Increment(ref instance);
-                            opts.Path = Path.Combine(cachePath, $"app{instance}-{BitConverter.ToString(hash).Replace("-", String.Empty)}.json");
-                        }
-                    }
-                }
-
-                if (opts.Path == null)
-                {
-                    throw new ArgumentNullException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Path)}", "Default cache path is only supported when running inside of an Azure App Service.");
-                }
+                string appName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+                IDataProtectionProvider dataProtectionProvider = DataProtectionProvider.Create(appName);
+                options.DataProtector = dataProtectionProvider.CreateProtector("AppConfigurationOfflineFileCacheProtector");
             }
 
-            ValidateCachePath(opts.Path);
-            _localCachePath = opts.Path;
-            _options = opts;
+            _timeLimitedDataProtector = options.DataProtector.ToTimeLimitedDataProtector();
+            _options = options;
         }
 
         /// <summary>
@@ -109,14 +72,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public string Import(AzureAppConfigurationOptions options)
         {
-            EnsureOptions(options);
+            CreateScopeToken(options);
 
             int retry = 0;
             while (retry++ <= retryMax)
             {
                 try
                 {
-                    string data = null, dataHash = null, scopeHash = null;
+                    string data = null, scope = null;
                     byte[] bytes = File.ReadAllBytes(_localCachePath);
                     var reader = new Utf8JsonReader(bytes);
 
@@ -130,12 +93,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     data = reader.ReadAsString();
                                     break;
 
-                                case hashProp:
-                                    dataHash = reader.ReadAsString();
-                                    break;
-
                                 case scopeProp:
-                                    scopeHash = reader.ReadAsString();
+                                    scope = reader.ReadAsString();
                                     break;
 
                                 default:
@@ -144,22 +103,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }
 
-                    if ((data != null) && (dataHash != null) && (scopeHash != null))
+                    if ((data != null) && (scope != null) && (_scopeToken == scope))
                     {
-                        string newScopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_scopeToken), _options.SignKey);
-                        if (string.CompareOrdinal(scopeHash, newScopeHash) == 0)
-                        {
-                            string newDataHash = CryptoService.GetHash(Convert.FromBase64String(data), _options.SignKey);
-                            if (string.CompareOrdinal(dataHash, newDataHash) == 0)
-                            {
-                                return CryptoService.AESDecrypt(data, _options.Key, _options.IV);
-                            }
-                        }
+                        return _timeLimitedDataProtector.Unprotect(data);
                     }
                 }
                 catch (IOException ex) when (ex.HResult == ERROR_SHARING_VIOLATION)
                 {
                     Task.Delay(new Random().Next(delayRange)).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+                catch (CryptographicException)
+                {
+                    // TBD: This should be handled in AzureAppConfigurationProvider class.
+                    // This exception means that one of the following occured:
+                    //  - the encryption key is invalid/inaccessible;
+                    //  - encrypted data has been tampered with;
+                    //  - data has expired;
+                    //  - any other internal error during decryption.
+                    throw;
                 }
             }
 
@@ -172,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public void Export(AzureAppConfigurationOptions options, string data)
         {
-            EnsureOptions(options);
+            CreateScopeToken(options);
 
             if ((DateTime.Now - File.GetLastWriteTime(_localCachePath)) > TimeSpan.FromMilliseconds(1000))
             {
@@ -180,10 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     string tempFile = Path.Combine(Path.GetDirectoryName(_localCachePath), $"azconfigTemp-{Path.GetRandomFileName()}");
 
-                    var dataBytes = Encoding.UTF8.GetBytes(data);
-                    var encryptedBytes = CryptoService.AESEncrypt(dataBytes, _options.Key, _options.IV);
-                    var dataHash = CryptoService.GetHash(encryptedBytes, _options.SignKey);
-                    var scopeHash = CryptoService.GetHash(Encoding.UTF8.GetBytes(_scopeToken), _options.SignKey);
+                    var encryptedData = _timeLimitedDataProtector.Protect(data, DateTimeOffset.UtcNow + _options.FileCacheExpiration);
 
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
                     {
@@ -192,9 +150,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             using (var writer = new Utf8JsonWriter(memoryStream))
                             {
                                 writer.WriteStartObject();
-                                writer.WriteString(dataProp, Convert.ToBase64String(encryptedBytes));
-                                writer.WriteString(hashProp, dataHash);
-                                writer.WriteString(scopeProp, scopeHash);
+                                writer.WriteString(dataProp, encryptedData);
+                                writer.WriteString(scopeProp, _scopeToken);
                                 writer.WriteEndObject();
                             }
 
@@ -237,43 +194,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private void EnsureOptions(AzureAppConfigurationOptions azconfigOptions)
+        private void CreateScopeToken(AzureAppConfigurationOptions azconfigOptions)
         {
             if (azconfigOptions == null)
             {
                 throw new ArgumentNullException(nameof(azconfigOptions));
             }
 
-            if (azconfigOptions.ConnectionString == null)
-            {
-                throw new InvalidOperationException("An Azure App Configuration connection string is required.");
-            }
-
-            OfflineFileCacheOptions options = _options ?? new OfflineFileCacheOptions();
-
-            if ((options.Key == null) || (options.SignKey == null) || (options.IV == null))
-            {
-                byte[] secret = Convert.FromBase64String(ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Secret"));
-                using (SHA256 sha256 = SHA256.Create())
-                {
-                    byte[] hash = sha256.ComputeHash(secret);
-
-                    options.Key = options.Key ?? hash;
-                    options.SignKey = options.SignKey ?? hash;
-                    options.IV = options.IV ?? hash.Take(16).ToArray();
-                }
-            }
-
             if (string.IsNullOrEmpty(_scopeToken))
             {
-                //
                 // The default scope token is the configuration store endpoint combined with all of the key-value filters
-
-                string endpoint = ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Endpoint");
-
+                string endpoint = (azconfigOptions.Endpoint != null)
+                                  ? azconfigOptions.Endpoint.ToString() 
+                                  : ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Endpoint");
+                
                 if (string.IsNullOrWhiteSpace(endpoint))
                 {
-                    throw new InvalidOperationException("Invalid connection string format.");
+                    throw new InvalidOperationException("Invalid App Configuration endpoint.");
                 }
 
                 var sb = new StringBuilder($"{endpoint}\0");
@@ -285,12 +222,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 _scopeToken = sb.ToString();
             }
-
-            _options = options;
         }
 
         internal static void ValidateCachePath(string path)
         {
+            if (path == null)
+            {
+                throw new ArgumentNullException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Path)}", "Please provide the path for storing offline file cache.");
+            }
+
             if (!Path.IsPathRooted(path) || !string.Equals(Path.GetFullPath(path), path) || string.IsNullOrWhiteSpace(Path.GetFileName(path)))
             {
                 throw new ArgumentException($"The path {path} is not a full file path.");
@@ -306,6 +246,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (!Directory.Exists(directoryPath))
             {
                 throw new ArgumentException($"The directory with path {directoryPath} does not exist.");
+            }
+        }
+
+        internal static void ValidateFileCacheExpiration(TimeSpan expiration)
+        {
+            if (expiration <= TimeSpan.Zero)
+            {
+                throw new ArgumentException($"Please provide a valid {nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}.");
+            }
+
+            try
+            {
+                _ = DateTimeOffset.UtcNow + expiration;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}", "Please provide a shorter file cache expiration. The expiration time added to the current UTC time results in an un-representable DateTime.");
             }
         }
     }
