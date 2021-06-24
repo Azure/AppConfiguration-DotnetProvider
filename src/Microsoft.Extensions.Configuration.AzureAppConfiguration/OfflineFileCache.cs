@@ -38,6 +38,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         private string _scopeToken;
 
+        private string _appConfigEndpoint;
+
         private ITimeLimitedDataProtector _timeLimitedDataProtector = null;
 
         private OfflineFileCacheOptions _options = null;
@@ -55,24 +57,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ValidateFileCacheExpiration(options.FileCacheExpiration);
             ValidateCachePath(options.Path);
             _localCachePath = options.Path;
-
-            if (options.DataProtector == null)
-            {
-                string appName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-                IDataProtectionProvider dataProtectionProvider = DataProtectionProvider.Create(appName);
-                options.DataProtector = dataProtectionProvider.CreateProtector("AppConfigurationOfflineFileCacheProtector");
-            }
-
-            _timeLimitedDataProtector = options.DataProtector.ToTimeLimitedDataProtector();
             _options = options;
         }
 
         /// <summary>
         /// An implementation of <see cref="IOfflineCache.Import(AzureAppConfigurationOptions)"/> that retrieves the cached data from the file system.
         /// </summary>
-        public string Import(AzureAppConfigurationOptions options)
+        public string Import(AzureAppConfigurationOptions appConfigOptions)
         {
-            CreateScopeToken(options);
+            if (appConfigOptions == null)
+            {
+                throw new ArgumentNullException(nameof(AzureAppConfigurationOptions));
+            }
+
+            EnsureOptions(appConfigOptions);
 
             int retry = 0;
             while (retry++ <= retryMax)
@@ -131,9 +129,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An implementation of <see cref="IOfflineCache.Export(AzureAppConfigurationOptions, string)"/> that caches the data in the file system.
         /// </summary>
-        public void Export(AzureAppConfigurationOptions options, string data)
+        public void Export(AzureAppConfigurationOptions appConfigOptions, string data)
         {
-            CreateScopeToken(options);
+            if (appConfigOptions == null)
+            {
+                throw new ArgumentNullException(nameof(AzureAppConfigurationOptions));
+            }
+
+            EnsureOptions(appConfigOptions);
 
             if ((DateTime.Now - File.GetLastWriteTime(_localCachePath)) > TimeSpan.FromMilliseconds(1000))
             {
@@ -141,7 +144,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     string tempFile = Path.Combine(Path.GetDirectoryName(_localCachePath), $"azconfigTemp-{Path.GetRandomFileName()}");
 
-                    var encryptedData = _timeLimitedDataProtector.Protect(data, DateTimeOffset.UtcNow + _options.FileCacheExpiration);
+                    var encryptedData = _timeLimitedDataProtector.Protect(data, _options.FileCacheExpiration);
 
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
                     {
@@ -194,34 +197,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private void CreateScopeToken(AzureAppConfigurationOptions azconfigOptions)
+        private void EnsureOptions(AzureAppConfigurationOptions appConfigOptions)
         {
-            if (azconfigOptions == null)
+            if (string.IsNullOrEmpty(_appConfigEndpoint))
             {
-                throw new ArgumentNullException(nameof(azconfigOptions));
+                _appConfigEndpoint = (appConfigOptions.Endpoint != null)
+                                      ? appConfigOptions.Endpoint.ToString()
+                                      : ConnectionStringParser.Parse(appConfigOptions.ConnectionString, "Endpoint");
             }
-
+            
             if (string.IsNullOrEmpty(_scopeToken))
             {
                 // The default scope token is the configuration store endpoint combined with all of the key-value filters
-                string endpoint = (azconfigOptions.Endpoint != null)
-                                  ? azconfigOptions.Endpoint.ToString() 
-                                  : ConnectionStringParser.Parse(azconfigOptions.ConnectionString, "Endpoint");
-                
-                if (string.IsNullOrWhiteSpace(endpoint))
-                {
-                    throw new InvalidOperationException("Invalid App Configuration endpoint.");
-                }
+                var sb = new StringBuilder($"{_appConfigEndpoint}\0");
 
-                var sb = new StringBuilder($"{endpoint}\0");
-
-                foreach (var selector in azconfigOptions.KeyValueSelectors)
+                foreach (var selector in appConfigOptions.KeyValueSelectors)
                 {
                     sb.Append($"{selector.KeyFilter}\0{selector.LabelFilter}\0");
                 }
 
                 _scopeToken = sb.ToString();
             }
+
+            if (_options.DataProtector == null)
+            {
+                IDataProtectionProvider dataProtectionProvider = DataProtectionProvider.Create($"{_options.Path}-{_appConfigEndpoint}");
+                _options.DataProtector = dataProtectionProvider.CreateProtector($"AppConfigurationOfflineFileCacheProtector-{_appConfigEndpoint}");
+            }
+
+            _timeLimitedDataProtector = _timeLimitedDataProtector ?? _options.DataProtector.ToTimeLimitedDataProtector();
         }
 
         internal static void ValidateCachePath(string path)
@@ -233,19 +237,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!Path.IsPathRooted(path) || !string.Equals(Path.GetFullPath(path), path) || string.IsNullOrWhiteSpace(Path.GetFileName(path)))
             {
-                throw new ArgumentException($"The path {path} is not a full file path.");
+                throw new ArgumentException("The provided path is not a full file path.", $"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Path)}");
             }
 
             if (Directory.Exists(path))
             {
-                throw new ArgumentException($"The path {path} corresponds to an existing directory and cannot be used as file path.");
+                throw new ArgumentException("The provided path corresponds to an existing directory and cannot be used as file path.", $"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Path)}");
             }
 
             string directoryPath = Path.GetDirectoryName(path);
 
             if (!Directory.Exists(directoryPath))
             {
-                throw new ArgumentException($"The directory with path {directoryPath} does not exist.");
+                throw new ArgumentException($"The directory with path {directoryPath} does not exist.", $"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Path)}");
             }
         }
 
@@ -262,7 +266,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (ArgumentOutOfRangeException)
             {
-                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}", "Please provide a shorter file cache expiration. The expiration time added to the current UTC time results in an un-representable DateTime.");
+                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}", "Please provide a shorter file cache expiration.");
             }
         }
     }
