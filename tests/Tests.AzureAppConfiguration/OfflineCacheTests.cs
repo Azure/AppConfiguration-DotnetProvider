@@ -105,22 +105,24 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void OfflineCacheTests_ThrowsIfFileCacheExpirationIsTooHigh()
         {
-            var connectionString = TestHelpers.CreateMockEndpointString();
-            var builder = new ConfigurationBuilder();
+            var options = new AzureAppConfigurationOptions();
+            options.Connect(TestHelpers.CreateMockEndpointString());
+            options.Select("AppName");
+
+            var offlineCache = new OfflineFileCache(new OfflineFileCacheOptions
+            {
+                Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
+                FileCacheExpiration = TimeSpan.MaxValue
+            });
+
+            IDictionary<string, ConfigurationSetting> mockData = new Dictionary<string, ConfigurationSetting>();
+            mockData["AppName"] = new ConfigurationSetting(key: "AppName", value: "Azure App Configuration");
+
             var exception = Record.Exception(() =>
             {
-                builder.AddAzureAppConfiguration(options =>
-                {
-                    options.Connect(connectionString)
-                    .Select("AppName")
-                    .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
-                    {
-                        Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
-                        FileCacheExpiration = TimeSpan.MaxValue
-                    }));
-                });
-                builder.Build();
+                offlineCache.Export(options, JsonSerializer.Serialize(mockData));
             });
+
             Assert.NotNull(exception);
             Assert.IsType<ArgumentOutOfRangeException>(exception);
         }

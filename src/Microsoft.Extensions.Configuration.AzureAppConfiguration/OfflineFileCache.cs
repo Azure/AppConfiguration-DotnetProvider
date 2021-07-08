@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -31,6 +32,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Key name for cached data scope
         /// </summary>
         private const string scopeProp = "s";
+
+        /// <summary>
+        /// Key name for cached data expiration time
+        /// </summary>
+        private const string expiryProp = "e";
 
         /// <summary>
         /// An opaque token representing a query for Azure App Configuration data.
@@ -77,7 +83,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    string data = null, scope = null;
+                    string data = null, scope = null, expiryString = null;
                     byte[] bytes = File.ReadAllBytes(_localCachePath);
                     var reader = new Utf8JsonReader(bytes);
 
@@ -95,15 +101,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     scope = reader.ReadAsString();
                                     break;
 
+                                case expiryProp:
+                                    expiryString = reader.ReadAsString();
+                                    break;
+
                                 default:
                                     return null;
                             }
                         }
                     }
 
-                    if ((data != null) && (scope != null) && (_scopeToken == scope))
+                    if ((data != null) && (scope != null) && (expiryString != null) && (_scopeToken == scope))
                     {
-                        return _timeLimitedDataProtector.Unprotect(data);
+                        if (DateTimeOffset.TryParse(expiryString, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset expiryTime) 
+                            && DateTimeOffset.UtcNow < expiryTime)
+                        {
+                            return _timeLimitedDataProtector.Unprotect(data);
+                        }
                     }
                 }
                 catch (IOException ex) when (ex.HResult == ERROR_SHARING_VIOLATION)
@@ -138,13 +152,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             EnsureOptions(appConfigOptions);
 
+            DateTimeOffset expiryTime;
+            string expiryString;
+
+            try
+            {
+                expiryTime = DateTimeOffset.UtcNow + _options.FileCacheExpiration;
+                expiryString = expiryTime.ToString(CultureInfo.InvariantCulture);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}", "Please provide a shorter file cache expiration.");
+            }
+
             if ((DateTime.Now - File.GetLastWriteTime(_localCachePath)) > TimeSpan.FromMilliseconds(1000))
             {
                 Task.Run(async () =>
                 {
                     string tempFile = Path.Combine(Path.GetDirectoryName(_localCachePath), $"azconfigTemp-{Path.GetRandomFileName()}");
 
-                    var encryptedData = _timeLimitedDataProtector.Protect(data, _options.FileCacheExpiration);
+                    var encryptedData = _timeLimitedDataProtector.Protect(data, expiryTime);
 
                     using (var fileStream = new FileStream(tempFile, FileMode.Create))
                     {
@@ -155,6 +182,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 writer.WriteStartObject();
                                 writer.WriteString(dataProp, encryptedData);
                                 writer.WriteString(scopeProp, _scopeToken);
+                                writer.WriteString(expiryProp, expiryString);
                                 writer.WriteEndObject();
                             }
 
@@ -225,7 +253,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _options.DataProtector = dataProtectionProvider.CreateProtector($"AppConfigurationOfflineFileCacheProtector-{_appConfigEndpoint}");
             }
 
-            _timeLimitedDataProtector = _timeLimitedDataProtector ?? _options.DataProtector.ToTimeLimitedDataProtector();
+            if (_timeLimitedDataProtector == null)
+            {
+                _timeLimitedDataProtector = _options.DataProtector.ToTimeLimitedDataProtector();
+            }
         }
 
         internal static void ValidateCachePath(string path)
@@ -258,15 +289,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (expiration <= TimeSpan.Zero)
             {
                 throw new ArgumentException($"Please provide a valid {nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}.");
-            }
-
-            try
-            {
-                _ = DateTimeOffset.UtcNow + expiration;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}", "Please provide a shorter file cache expiration.");
             }
         }
     }
