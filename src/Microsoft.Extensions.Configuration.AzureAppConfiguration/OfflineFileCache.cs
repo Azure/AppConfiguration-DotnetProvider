@@ -247,15 +247,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _scopeToken = sb.ToString();
             }
 
-            if (_options.DataProtector == null)
-            {
-                IDataProtectionProvider dataProtectionProvider = DataProtectionProvider.Create($"{_options.Path}-{_appConfigEndpoint}");
-                _options.DataProtector = dataProtectionProvider.CreateProtector($"AppConfigurationOfflineFileCacheProtector-{_appConfigEndpoint}");
-            }
-
             if (_timeLimitedDataProtector == null)
             {
-                _timeLimitedDataProtector = _options.DataProtector.ToTimeLimitedDataProtector();
+                if (_options.DataProtector == null)
+                {
+                    IDataProtectionProvider dataProtectionProvider = DataProtectionProvider.Create($"{_options.Path}-{_appConfigEndpoint}");
+                    _timeLimitedDataProtector = dataProtectionProvider.CreateProtector($"AppConfigurationOfflineFileCacheProtector-{_appConfigEndpoint}").ToTimeLimitedDataProtector();
+                }
+                else
+                {
+                    _timeLimitedDataProtector = _options.DataProtector.ToTimeLimitedDataProtector();
+                }
             }
         }
 
