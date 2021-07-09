@@ -153,12 +153,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             EnsureOptions(appConfigOptions);
 
             DateTimeOffset expiryTime;
-            string expiryString;
 
             try
             {
                 expiryTime = DateTimeOffset.UtcNow + _options.FileCacheExpiration;
-                expiryString = expiryTime.ToString(CultureInfo.InvariantCulture);
             }
             catch (ArgumentOutOfRangeException)
             {
@@ -182,7 +180,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 writer.WriteStartObject();
                                 writer.WriteString(dataProp, encryptedData);
                                 writer.WriteString(scopeProp, _scopeToken);
-                                writer.WriteString(expiryProp, expiryString);
+                                writer.WriteString(expiryProp, expiryTime.ToString(CultureInfo.InvariantCulture));
                                 writer.WriteEndObject();
                             }
 
