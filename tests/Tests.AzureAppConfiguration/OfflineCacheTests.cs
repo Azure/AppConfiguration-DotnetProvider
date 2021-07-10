@@ -71,7 +71,7 @@ namespace Tests.AzureAppConfiguration
                     .Select("AppName")
                     .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
                     {
-                        FileCacheExpiration = TimeSpan.FromDays(1)
+                        Expiration = TimeSpan.FromDays(1)
                     }));
                 });
                 builder.Build();
@@ -81,7 +81,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void OfflineCacheTests_ThrowsIfFileCacheExpirationIsMissing()
+        public void OfflineCacheTests_ThrowsIfExpirationIsMissing()
         {
             var connectionString = TestHelpers.CreateMockEndpointString();
             var builder = new ConfigurationBuilder();
@@ -103,7 +103,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void OfflineCacheTests_ThrowsIfFileCacheExpirationIsTooHigh()
+        public void OfflineCacheTests_ThrowsIfExpirationIsTooHigh()
         {
             var options = new AzureAppConfigurationOptions();
             options.Connect(TestHelpers.CreateMockEndpointString());
@@ -112,7 +112,7 @@ namespace Tests.AzureAppConfiguration
             var offlineCache = new OfflineFileCache(new OfflineFileCacheOptions
             {
                 Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
-                FileCacheExpiration = TimeSpan.MaxValue
+                Expiration = TimeSpan.MaxValue
             });
 
             IDictionary<string, ConfigurationSetting> mockData = new Dictionary<string, ConfigurationSetting>();
@@ -138,7 +138,7 @@ namespace Tests.AzureAppConfiguration
             var offlineCache = new OfflineFileCache(new OfflineFileCacheOptions
             {
                 Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
-                FileCacheExpiration = TimeSpan.FromDays(1)
+                Expiration = TimeSpan.FromDays(1)
             });
 
             IDictionary<string, ConfigurationSetting> mockData = new Dictionary<string, ConfigurationSetting>();

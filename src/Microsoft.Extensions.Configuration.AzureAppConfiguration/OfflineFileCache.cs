@@ -56,11 +56,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="options">
         /// Options dictating the behavior of the offline cache.
-        /// <see cref="OfflineFileCacheOptions.Path"/> and <see cref="OfflineFileCacheOptions.FileCacheExpiration"/> are required.  
+        /// <see cref="OfflineFileCacheOptions.Path"/> and <see cref="OfflineFileCacheOptions.Expiration"/> are required.  
         /// </param>
         public OfflineFileCache(OfflineFileCacheOptions options)
         {
-            ValidateFileCacheExpiration(options.FileCacheExpiration);
+            ValidateExpiration(options.Expiration);
             ValidateCachePath(options.Path);
             _localCachePath = options.Path;
             _options = options;
@@ -156,11 +156,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                expiryTime = DateTimeOffset.UtcNow + _options.FileCacheExpiration;
+                expiryTime = DateTimeOffset.UtcNow + _options.Expiration;
             }
             catch (ArgumentOutOfRangeException)
             {
-                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}", "Please provide a shorter file cache expiration.");
+                throw new ArgumentOutOfRangeException($"{nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Expiration)}", "Please provide a shorter expiration time.");
             }
 
             if ((DateTime.Now - File.GetLastWriteTime(_localCachePath)) > TimeSpan.FromMilliseconds(1000))
@@ -284,11 +284,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        internal static void ValidateFileCacheExpiration(TimeSpan expiration)
+        internal static void ValidateExpiration(TimeSpan expiration)
         {
             if (expiration <= TimeSpan.Zero)
             {
-                throw new ArgumentException($"Please provide a valid {nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.FileCacheExpiration)}.");
+                throw new ArgumentException($"Please provide a valid {nameof(OfflineFileCacheOptions)}.{nameof(OfflineFileCacheOptions.Expiration)}.");
             }
         }
     }

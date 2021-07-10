@@ -1050,7 +1050,7 @@ namespace Tests.AzureAppConfiguration
                     .SetOfflineCache(new OfflineFileCache(new OfflineFileCacheOptions
                     {
                         Path = Path.Combine(Directory.GetCurrentDirectory(), "cache.json"),
-                        FileCacheExpiration = TimeSpan.FromDays(1)
+                        Expiration = TimeSpan.FromDays(1)
                     }));
 
                     refresher = options.GetRefresher();

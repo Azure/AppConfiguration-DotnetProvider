@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// For more information on lifetime of encrypted data, see 
         /// <see href="https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/consumer-apis/limited-lifetime-payloads"/>
         /// </summary>
-        /// <remarks><see cref="FileCacheExpiration"/> is mandatory.</remarks>
-        public TimeSpan FileCacheExpiration { get; set; }
+        /// <remarks><see cref="Expiration"/> is mandatory.</remarks>
+        public TimeSpan Expiration { get; set; }
     }
 }
