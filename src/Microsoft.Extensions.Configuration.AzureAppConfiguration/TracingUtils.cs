@@ -54,37 +54,48 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return hostType;
         }
 
-        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType, Action clientCall)
+        public static bool IsDevEnvironment()
         {
-            await CallWithRequestTracing(tracingEnabled, requestType, hostType, () =>
+            try
+            {
+                string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
+                                    Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
+                if (envType != null && envType.Equals(RequestTracingConstants.DevelopmentEnvironmentName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            catch (SecurityException) { }
+
+            return false;
+        }
+
+        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Action clientCall)
+        {
+            await CallWithRequestTracing(tracingEnabled, requestType, requestTracingOptions, () =>
             {
                 clientCall();
                 return Task.CompletedTask;
             }).ConfigureAwait(false);
         }
 
-        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, HostType hostType, Func<Task> clientCall)
+        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Func<Task> clientCall)
         {
-            IList<KeyValuePair<string, string>> correlationContext = new List<KeyValuePair<string, string>>();
+            string correlationContextHeader = "";
 
             if (tracingEnabled)
             {
-                AddRequestType(correlationContext, requestType);
-
-                if (hostType != HostType.Unidentified)
-                {
-                    AddHostType(correlationContext, hostType);
-                }
+                correlationContextHeader = CreateCorrelationContextHeader(requestType, requestTracingOptions);
             }
 
             var activity = new Activity(RequestTracingConstants.DiagnosticHeaderActivityName);
             activity.Start();
+
             try
             {
-
-                if (correlationContext.Count > 0)
+                if (!string.IsNullOrWhiteSpace(correlationContextHeader))
                 {
-                    activity.AddTag(RequestTracingConstants.CorrelationContextHeader, string.Join(",", correlationContext.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+                    activity.AddTag(RequestTracingConstants.CorrelationContextHeader, correlationContextHeader);
                 }
 
                 await clientCall().ConfigureAwait(false);
@@ -93,6 +104,59 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 activity.Stop();
             }
+        }
+
+        private static string CreateCorrelationContextHeader(RequestType requestType, RequestTracingOptions requestTracingOptions)
+        {
+            IList<KeyValuePair<string, string>> correlationContextKeyValues = new List<KeyValuePair<string, string>>();
+            IList<string> correlationContextTags = new List<string>();
+            
+            AddRequestType(correlationContextKeyValues, requestType);
+
+            if (requestTracingOptions.HostType != HostType.Unidentified)
+            {
+                AddHostType(correlationContextKeyValues, requestTracingOptions.HostType);
+            }
+
+            if (requestTracingOptions.IsDevEnvironment)
+            {
+                correlationContextTags.Add(RequestTracingConstants.DevEnvironmentTag);
+            }
+
+            if (requestTracingOptions.IsKeyVaultConfigured)
+            {
+                correlationContextTags.Add(RequestTracingConstants.KvrConfiguredTag);
+            }
+
+            if (requestTracingOptions.IsOfflineCacheConfigured)
+            {
+                correlationContextTags.Add(RequestTracingConstants.OfflineCacheConfiguredTag);
+            }
+
+            string headerKeyValues = "";
+            string headerTags = "";
+            string fullHeader = "";
+
+            if (correlationContextKeyValues.Count > 0)
+            {
+                headerKeyValues = string.Join(",", correlationContextKeyValues.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+            }
+                
+            if (correlationContextTags.Count > 0)
+            {
+                headerTags = string.Join(",", correlationContextTags);
+            }
+
+            if (!string.IsNullOrWhiteSpace(headerKeyValues) && !string.IsNullOrWhiteSpace(headerTags))
+            {
+                fullHeader = string.Join(",", headerKeyValues, headerTags);
+            }
+            else
+            {
+                fullHeader = !string.IsNullOrWhiteSpace(headerKeyValues) ? headerKeyValues : headerTags;
+            }
+
+            return fullHeader;
         }
 
         private static void AddRequestType(IList<KeyValuePair<string, string>> correlationContext, RequestType requestType)

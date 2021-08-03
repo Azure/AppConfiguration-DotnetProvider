@@ -25,11 +25,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
 
-        private readonly HostType _hostType;
         private readonly ConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+        private RequestTracingOptions _requestTracingOptions;
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -96,7 +96,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_requestTracingEnabled)
             {
-                _hostType = TracingUtils.GetHostType();
+                SetRequestTracingOptions();
             }
         }
 
@@ -382,7 +382,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
                     KeyValueChange keyValueChange = default;
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _hostType,
+                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                         async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, CancellationToken.None).ConfigureAwait(false)).ConfigureAwait(false);
 
                     changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
@@ -503,7 +503,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     KeyFilter = changeWatcher.Key,
                     Label = changeWatcher.Label.NormalizeNull(),
                     RequestTracingEnabled = _requestTracingEnabled,
-                    HostType = _hostType
+                    RequestTracingOptions = _requestTracingOptions
                 }).ConfigureAwait(false);
 
                 changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
@@ -614,7 +614,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task CallWithRequestTracing(Func<Task> clientCall)
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _hostType, clientCall).ConfigureAwait(false);
+            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _requestTracingOptions, clientCall).ConfigureAwait(false);
+        }
+
+        private void SetRequestTracingOptions()
+        {
+            _requestTracingOptions = new RequestTracingOptions();
+            _requestTracingOptions.HostType = TracingUtils.GetHostType();
+            _requestTracingOptions.IsDevEnvironment = TracingUtils.IsDevEnvironment();
+            _requestTracingOptions.IsKeyVaultConfigured = _options.IsKeyVaultConfigured;
+            _requestTracingOptions.IsOfflineCacheConfigured = _options.IsOfflineCacheConfigured;
         }
 
         private DateTimeOffset AddRandomDelay(DateTimeOffset dt, TimeSpan maxDelay)
