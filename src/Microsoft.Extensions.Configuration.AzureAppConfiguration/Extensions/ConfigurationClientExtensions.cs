@@ -104,7 +104,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
 
             // Fetch e-tags for prefixed key-values that can be used to detect changes
-            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
+            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                 async () =>
                 {
                     await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
@@ -137,7 +137,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 };
 
                 eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
-                await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.HostType,
+                await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                     async () =>
                     {
                         await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))

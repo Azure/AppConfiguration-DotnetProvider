@@ -100,6 +100,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
 
         /// <summary>
+        /// Flag to indicate whether Key Vault options have been configured.
+        /// </summary>
+        internal bool IsKeyVaultConfigured { get; private set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether Offline Cache has been configured.
+        /// </summary>
+        internal bool IsOfflineCacheConfigured { get; private set; } = false;
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -215,6 +225,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions SetOfflineCache(IOfflineCache offlineCache)
         {
             OfflineCache = offlineCache ?? throw new ArgumentNullException(nameof(offlineCache));
+            IsOfflineCacheConfigured = true;
 
             return this;
         }
@@ -335,6 +346,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
             _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions)));
 
+            IsKeyVaultConfigured = true;
             return this;
         }
 
