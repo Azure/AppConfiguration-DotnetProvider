@@ -83,7 +83,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             string correlationContextHeader = "";
 
-            if (tracingEnabled)
+            if (tracingEnabled && requestTracingOptions != null)
             {
                 correlationContextHeader = CreateCorrelationContextHeader(requestType, requestTracingOptions);
             }
@@ -111,11 +111,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IList<KeyValuePair<string, string>> correlationContextKeyValues = new List<KeyValuePair<string, string>>();
             IList<string> correlationContextTags = new List<string>();
             
-            AddRequestType(correlationContextKeyValues, requestType);
+            correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
 
             if (requestTracingOptions.HostType != HostType.Unidentified)
             {
-                AddHostType(correlationContextKeyValues, requestTracingOptions.HostType);
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.HostTypeKey, Enum.GetName(typeof(HostType), requestTracingOptions.HostType)));
             }
 
             if (requestTracingOptions.IsDevEnvironment)
@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.IsKeyVaultConfigured)
             {
-                correlationContextTags.Add(RequestTracingConstants.KvrConfiguredTag);
+                correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
             }
 
             if (requestTracingOptions.IsOfflineCacheConfigured)
@@ -157,18 +157,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return fullHeader;
-        }
-
-        private static void AddRequestType(IList<KeyValuePair<string, string>> correlationContext, RequestType requestType)
-        {
-            string requestTypeValue = Enum.GetName(typeof(RequestType), requestType);
-            correlationContext.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, requestTypeValue));
-        }
-
-        private static void AddHostType(IList<KeyValuePair<string, string>> correlationContext, HostType hostType)
-        {
-            string hostTypeValue = Enum.GetName(typeof(HostType), hostType);
-            correlationContext.Add(new KeyValuePair<string, string>(RequestTracingConstants.HostTypeKey, hostTypeValue));
         }
     }
 }
