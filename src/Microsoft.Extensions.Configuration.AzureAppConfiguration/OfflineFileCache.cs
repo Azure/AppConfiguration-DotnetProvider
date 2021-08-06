@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// <summary>
     /// An offline cache provider for Azure App Configuration that uses the file system to store data.
     /// </summary>
-    [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
+    [Obsolete("OfflineFileCache will be deprecated in a future release.")]
     public class OfflineFileCache : IOfflineCache
     {
         private string _localCachePath = null;
@@ -57,7 +57,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// If the options are null or the encryption keys are omitted, they will be derived from the store's connection string.
         /// <see cref="OfflineFileCacheOptions.Path"/> is required unless the application is running inside of an Azure App Service instance, in which case it can be populated automatically.
         /// </param>
-        [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
         public OfflineFileCache(OfflineFileCacheOptions options = null)
         {
             OfflineFileCacheOptions opts = options ?? new OfflineFileCacheOptions();
@@ -109,7 +108,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An implementation of <see cref="IOfflineCache.Import(AzureAppConfigurationOptions)"/> that retrieves the cached data from the file system.
         /// </summary>
-        [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
         public string Import(AzureAppConfigurationOptions options)
         {
             EnsureOptions(options);
@@ -173,7 +171,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An implementation of <see cref="IOfflineCache.Export(AzureAppConfigurationOptions, string)"/> that caches the data in the file system.
         /// </summary>
-        [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
         public void Export(AzureAppConfigurationOptions options, string data)
         {
             EnsureOptions(options);
