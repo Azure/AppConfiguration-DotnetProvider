@@ -4,8 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Security;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -120,7 +120,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.IsDevEnvironment)
             {
-                correlationContextTags.Add(RequestTracingConstants.DevEnvironmentTag);
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevelopmentEnvironmentName));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)
@@ -133,30 +133,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.OfflineCacheConfiguredTag);
             }
 
-            string headerKeyValues = "";
-            string headerTags = "";
-            string fullHeader = "";
+            var sb = new StringBuilder();
 
-            if (correlationContextKeyValues.Count > 0)
+            foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)
             {
-                headerKeyValues = string.Join(",", correlationContextKeyValues.Select(kvp => $"{kvp.Key}={kvp.Value}"));
-            }
-                
-            if (correlationContextTags.Count > 0)
-            {
-                headerTags = string.Join(",", correlationContextTags);
+                if (sb.Length > 0)
+                {
+                    sb.Append(",");
+                }
+
+                sb.Append($"{kvp.Key}={kvp.Value}");
             }
 
-            if (!string.IsNullOrWhiteSpace(headerKeyValues) && !string.IsNullOrWhiteSpace(headerTags))
+            foreach (string tag in correlationContextTags)
             {
-                fullHeader = string.Join(",", headerKeyValues, headerTags);
-            }
-            else
-            {
-                fullHeader = !string.IsNullOrWhiteSpace(headerKeyValues) ? headerKeyValues : headerTags;
+                if (sb.Length > 0)
+                {
+                    sb.Append(",");
+                }
+
+                sb.Append($"{tag}");
             }
 
-            return fullHeader;
+            return sb.ToString();
         }
     }
 }

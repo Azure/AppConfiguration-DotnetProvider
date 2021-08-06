@@ -619,11 +619,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void SetRequestTracingOptions()
         {
-            _requestTracingOptions = new RequestTracingOptions();
-            _requestTracingOptions.HostType = TracingUtils.GetHostType();
-            _requestTracingOptions.IsDevEnvironment = TracingUtils.IsDevEnvironment();
-            _requestTracingOptions.IsKeyVaultConfigured = _options.IsKeyVaultConfigured;
-            _requestTracingOptions.IsOfflineCacheConfigured = _options.IsOfflineCacheConfigured;
+            _requestTracingOptions = new RequestTracingOptions
+            {
+                HostType = TracingUtils.GetHostType(),
+                IsDevEnvironment = TracingUtils.IsDevEnvironment(),
+                IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
+                IsOfflineCacheConfigured = _options.IsOfflineCacheConfigured
+            };
         }
 
         private DateTimeOffset AddRandomDelay(DateTimeOffset dt, TimeSpan maxDelay)
