@@ -87,6 +87,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An offline cache provider which can be used to enable offline data retrieval and storage.
         /// </summary>
+        [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
         public IOfflineCache OfflineCache { get; private set; }
 
         /// <summary>
@@ -222,6 +223,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
         /// </summary>
         /// <param name="offlineCache">The offline file cache to use for storing/retrieving Azure App Configuration data.</param>
+        [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
         public AzureAppConfigurationOptions SetOfflineCache(IOfflineCache offlineCache)
         {
             OfflineCache = offlineCache ?? throw new ArgumentNullException(nameof(offlineCache));

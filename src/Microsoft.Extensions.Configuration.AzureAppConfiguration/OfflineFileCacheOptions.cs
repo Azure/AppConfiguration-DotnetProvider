@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
     /// Options for controlling the behavior of an <see cref="OfflineFileCache"/>.
     /// </summary>
+    [Obsolete("Offline caching capabilities are being deprecated to reduce security vulnerabilities.")]
     public class OfflineFileCacheOptions
     {
         /// <summary>
