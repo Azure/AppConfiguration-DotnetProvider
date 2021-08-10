@@ -120,12 +120,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.IsDevEnvironment)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevelopmentEnvironmentName));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)
             {
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
+            }
+
+            if (requestTracingOptions.IsKeyVaultRefreshConfigured)
+            {
+                correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
             if (requestTracingOptions.IsOfflineCacheConfigured)

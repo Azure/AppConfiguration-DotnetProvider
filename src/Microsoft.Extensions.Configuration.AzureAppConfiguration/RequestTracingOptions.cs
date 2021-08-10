@@ -16,6 +16,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsKeyVaultConfigured { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
+        /// </summary>
+        public bool IsKeyVaultRefreshConfigured { get; set; } = false;
+
+        /// <summary>
         /// Flag to indicate whether Offline Cache has been configured.
         /// </summary>
         public bool IsOfflineCacheConfigured { get; set; } = false;
