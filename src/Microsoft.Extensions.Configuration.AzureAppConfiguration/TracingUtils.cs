@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.IsKeyVaultConfigured)
             {
-                correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
+                correlationContextTags.Add(requestTracingOptions.IsKeyVaultRefreshConfigured ? RequestTracingConstants.KeyVaultRefreshConfiguredTag : RequestTracingConstants.KeyVaultConfiguredTag);
             }
 
             if (requestTracingOptions.IsOfflineCacheConfigured)

@@ -106,6 +106,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultConfigured { get; private set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
+        /// </summary>
+        internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
+
+        /// <summary>
         /// Flag to indicate whether Offline Cache has been configured.
         /// </summary>
         internal bool IsOfflineCacheConfigured { get; private set; } = false;
@@ -348,6 +353,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters.RemoveAll(a => a is AzureKeyVaultKeyValueAdapter);
             _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions)));
 
+            IsKeyVaultRefreshConfigured = keyVaultOptions.IsKeyVaultRefreshConfigured;
             IsKeyVaultConfigured = true;
             return this;
         }

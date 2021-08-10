@@ -23,6 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string HostTypeKey = "Host";
         public const string EnvironmentKey = "Environment";
         public const string KeyVaultConfiguredTag = "KeyVaultConfigured";
+        public const string KeyVaultRefreshConfiguredTag = "KeyVaultRefreshConfigured";
         public const string OfflineCacheConfiguredTag = "OfflineCacheConfigured";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
