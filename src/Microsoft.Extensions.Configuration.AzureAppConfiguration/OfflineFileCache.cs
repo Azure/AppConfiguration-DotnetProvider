@@ -16,6 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// <summary>
     /// An offline cache provider for Azure App Configuration that uses the file system to store data.
     /// </summary>
+    [Obsolete("OfflineFileCache will be deprecated in a future release.")]
     public class OfflineFileCache : IOfflineCache
     {
         private string _localCachePath = null;

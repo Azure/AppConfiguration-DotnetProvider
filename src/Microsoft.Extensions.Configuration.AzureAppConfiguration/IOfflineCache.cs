@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
     /// Defines the necessary interface to perform offline caching of Azure App Configuration data.
     /// </summary>
+    [Obsolete("IOfflineCache will be deprecated in a future release.")]
     public interface IOfflineCache
     {
         /// <summary>

@@ -9,6 +9,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string AzureFunctionEnvironmentVariable = "FUNCTIONS_EXTENSION_VERSION";
         public const string AzureWebAppEnvironmentVariable = "WEBSITE_SITE_NAME";
         public const string KubernetesEnvironmentVariable = "KUBERNETES_PORT";
+        
+        public const string AspNetCoreEnvironmentVariable = "ASPNETCORE_ENVIRONMENT";
+        public const string DotNetCoreEnvironmentVariable = "DOTNET_ENVIRONMENT";
+        public const string DevelopmentEnvironmentName = "Development";
 
         // Documentation : https://docs.microsoft.com/en-us/azure/service-fabric/service-fabric-environment-variables-reference
         public const string ServiceFabricEnvironmentVariable = "Fabric_NodeName";
@@ -17,6 +21,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string RequestTypeKey = "RequestType";
         public const string HostTypeKey = "Host";
+        public const string EnvironmentKey = "Env";
+        public const string DevEnvironmentValue = "Dev";
+        public const string KeyVaultConfiguredTag = "UsesKeyVault";
+        public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
+        public const string OfflineCacheConfiguredTag = "UsesOfflineCache";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

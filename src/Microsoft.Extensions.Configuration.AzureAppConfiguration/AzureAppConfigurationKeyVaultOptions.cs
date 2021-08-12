@@ -19,6 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal Func<Uri, ValueTask<string>> SecretResolver;
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
         internal TimeSpan? DefaultSecretRefreshInterval = null;
+        internal bool IsKeyVaultRefreshConfigured = false;
 
         /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
@@ -69,6 +70,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             SecretRefreshIntervals[secretReferenceKey] = refreshInterval;
+            IsKeyVaultRefreshConfigured = true;
             return this;
         }
 
@@ -80,6 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(TimeSpan refreshInterval)
         {
             DefaultSecretRefreshInterval = refreshInterval;
+            IsKeyVaultRefreshConfigured = true;
             return this;
         }
     }
