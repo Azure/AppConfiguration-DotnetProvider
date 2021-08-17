@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -24,14 +25,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             await _provider.RefreshAsync().ConfigureAwait(false);
         }
 
-        public async Task<bool> TryRefreshAsync()
+        public async Task<bool> TryRefreshAsync(ILogger logger)
         {
             if (_provider == null)
             {
                 return false;
             }
 
-            return await _provider.TryRefreshAsync().ConfigureAwait(false);
+            return await _provider.TryRefreshAsync(logger).ConfigureAwait(false);
         }
 
         public void SetDirty(TimeSpan? maxDelay)

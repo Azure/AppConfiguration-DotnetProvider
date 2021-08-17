@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -31,7 +32,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Refreshes the data from App Configuration asynchronously. A return value indicates whether the operation succeeded.
         /// </summary>
-        Task<bool> TryRefreshAsync();
+        /// <param name="logger">A logger for errors that might occur during refresh operation.</param>
+        Task<bool> TryRefreshAsync(ILogger logger = default);
 
         /// <summary>
         /// Sets the cached value for key-values registered for refresh as dirty.

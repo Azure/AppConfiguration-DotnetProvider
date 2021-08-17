@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -176,17 +177,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public async Task<bool> TryRefreshAsync()
+        public async Task<bool> TryRefreshAsync(ILogger logger)
         {
             try
             {
                 await RefreshAsync().ConfigureAwait(false);
             }
-            catch (Exception e) when (
-                e is KeyVaultReferenceException ||
-                e is RequestFailedException ||
-                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                e is OperationCanceledException)
+            catch (RequestFailedException e)
+            {
+                if (e.Status == (int)HttpStatusCode.Unauthorized || e.Status == (int)HttpStatusCode.Forbidden)
+                {
+                    logger?.LogError(e, "Refresh operation failed due to an authentication error");
+                }
+
+                return false;
+            }
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            {
+                if (e.InnerExceptions.Any(exception => (exception is RequestFailedException ex) 
+                                                        && (ex.Status == (int)HttpStatusCode.Unauthorized || ex.Status == (int)HttpStatusCode.Forbidden)))
+                {
+                    logger?.LogError(e, "Refresh operation failed due to an authentication error.");
+                }
+
+                return false;
+            }
+            catch (KeyVaultReferenceException e)
+            {
+                logger?.LogError(e, "Refresh operation failed while resolving a Key Vault reference.");
+                return false;
+            }
+            catch (OperationCanceledException)
             {
                 return false;
             }
