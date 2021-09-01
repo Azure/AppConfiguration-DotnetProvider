@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -114,6 +115,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Offline Cache has been configured.
         /// </summary>
         internal bool IsOfflineCacheConfigured { get; private set; } = false;
+
+        /// <summary>
+        /// The <see cref="ILoggerFactory"/> for creating a logger to log errors during refresh operation.
+        /// </summary>
+        internal ILoggerFactory LoggerFactory { get; set; }
+
+        /// <summary>
+        /// Register a logger factory to log errors during refresh operations.
+        /// </summary>
+        /// <param name="loggerFactory">The <see cref="ILoggerFactory"/> for creating a logger.</param>
+        /// <returns></returns>
+        public AzureAppConfigurationOptions RegisterLoggerFactory(ILoggerFactory loggerFactory)
+        {
+            LoggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            return this;
+        }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.

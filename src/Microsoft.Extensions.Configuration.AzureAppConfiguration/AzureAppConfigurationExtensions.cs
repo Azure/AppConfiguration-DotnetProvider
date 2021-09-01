@@ -54,6 +54,7 @@ namespace Microsoft.Extensions.Configuration
                 throw new ArgumentNullException(nameof(services));
             }
 
+            services.AddLogging();
             services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
             return services;
         }

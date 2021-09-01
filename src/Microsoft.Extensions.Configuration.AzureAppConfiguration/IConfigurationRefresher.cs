@@ -19,6 +19,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         Uri AppConfigurationEndpoint { get; }
 
         /// <summary>
+        /// An <see cref="ILoggerFactory"/> for creating logger to log errors during refresh operations.
+        /// </summary>
+        ILoggerFactory LoggerFactory { get; set; }
+
+        /// <summary>
         /// Refreshes the data from App Configuration asynchronously.
         /// </summary>
         /// <exception cref="KeyVaultReferenceException">An error occurred when resolving a reference to an Azure Key Vault resource.</exception>
@@ -32,8 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Refreshes the data from App Configuration asynchronously. A return value indicates whether the operation succeeded.
         /// </summary>
-        /// <param name="logger">A logger for errors that might occur during refresh operation.</param>
-        Task<bool> TryRefreshAsync(ILogger logger = default);
+        Task<bool> TryRefreshAsync();
 
         /// <summary>
         /// Sets the cached value for key-values registered for refresh as dirty.

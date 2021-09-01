@@ -19,7 +19,6 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
     {
         private bool _optional;
@@ -42,6 +41,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
        
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
         private int _networkOperationsInProgress = 0;
+        private ILogger _logger;
+        private ILoggerFactory _loggerFactory;
 
         public Uri AppConfigurationEndpoint
         {
@@ -69,11 +70,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
+        public ILoggerFactory LoggerFactory
+        {
+            get
+            {
+                return _loggerFactory;
+            }
+            set
+            {
+                _loggerFactory = value;
+                _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigLogCategory);
+            }
+        }
+
         public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+            _loggerFactory = options.LoggerFactory;
+            _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigLogCategory);
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
@@ -177,7 +193,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public async Task<bool> TryRefreshAsync(ILogger logger)
+        public async Task<bool> TryRefreshAsync()
         {
             try
             {
@@ -187,7 +203,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (e.Status == (int)HttpStatusCode.Unauthorized || e.Status == (int)HttpStatusCode.Forbidden)
                 {
-                    logger?.LogError(e, "Refresh operation failed due to an authentication error");
+                    _logger?.LogError(e, "Refresh operation failed due to an authentication error.");
                 }
 
                 return false;
@@ -197,14 +213,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (e.InnerExceptions.Any(exception => (exception is RequestFailedException ex) 
                                                         && (ex.Status == (int)HttpStatusCode.Unauthorized || ex.Status == (int)HttpStatusCode.Forbidden)))
                 {
-                    logger?.LogError(e, "Refresh operation failed due to an authentication error.");
+                    _logger?.LogError(e, "Refresh operation failed due to an authentication error.");
                 }
 
                 return false;
             }
             catch (KeyVaultReferenceException e)
             {
-                logger?.LogError(e, "Refresh operation failed while resolving a Key Vault reference.");
+                _logger?.LogError(e, "Refresh operation failed while resolving a Key Vault reference.");
                 return false;
             }
             catch (OperationCanceledException)
