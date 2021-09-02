@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         Uri AppConfigurationEndpoint { get; }
 
         /// <summary>
-        /// An <see cref="ILoggerFactory"/> for creating logger to log errors during refresh operations.
+        /// An <see cref="ILoggerFactory"/> for creating a logger to log errors.
         /// </summary>
         ILoggerFactory LoggerFactory { get; set; }
 

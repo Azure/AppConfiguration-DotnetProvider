@@ -82,7 +82,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigLogCategory)).Returns(mockLogger.Object);
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -93,7 +93,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(CacheExpirationTime);
                     })
-                    .RegisterLoggerFactory(mockLoggerFactory.Object);
+                    .SetLoggerFactory(mockLoggerFactory.Object);
 
                     refresher = options.GetRefresher();
                 })
@@ -143,7 +143,7 @@ namespace Tests.AzureAppConfiguration
             // Mock ILogger and ILoggerFactory
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigLogCategory)).Returns(mockLogger.Object);
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -154,7 +154,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("SentinelKey", refreshAll: true)
                                       .SetCacheExpiration(CacheExpirationTime);
                     })
-                    .RegisterLoggerFactory(mockLoggerFactory.Object);
+                    .SetLoggerFactory(mockLoggerFactory.Object);
                     refresher = options.GetRefresher();
                 })
                 .Build();
@@ -179,11 +179,11 @@ namespace Tests.AzureAppConfiguration
 
             var mockLogger1 = new Mock<ILogger>();
             var mockLoggerFactory1 = new Mock<ILoggerFactory>();
-            mockLoggerFactory1.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigLogCategory)).Returns(mockLogger1.Object);
+            mockLoggerFactory1.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger1.Object);
 
             var mockLogger2 = new Mock<ILogger>();
             var mockLoggerFactory2 = new Mock<ILoggerFactory>();
-            mockLoggerFactory2.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigLogCategory)).Returns(mockLogger2.Object);
+            mockLoggerFactory2.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger2.Object);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -194,7 +194,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(CacheExpirationTime);
                     })
-                    .RegisterLoggerFactory(mockLoggerFactory1.Object);
+                    .SetLoggerFactory(mockLoggerFactory1.Object);
 
                     refresher = options.GetRefresher();
                 })

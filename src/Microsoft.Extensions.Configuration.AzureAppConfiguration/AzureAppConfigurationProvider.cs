@@ -79,7 +79,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             set
             {
                 _loggerFactory = value;
-                _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigLogCategory);
+                _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
             }
         }
 
@@ -89,7 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
             _loggerFactory = options.LoggerFactory;
-            _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigLogCategory);
+            _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
