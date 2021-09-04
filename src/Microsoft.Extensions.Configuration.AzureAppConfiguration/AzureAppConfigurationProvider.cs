@@ -88,8 +88,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
-            _loggerFactory = options.LoggerFactory;
-            _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 

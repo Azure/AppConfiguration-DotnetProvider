@@ -117,22 +117,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsOfflineCacheConfigured { get; private set; } = false;
 
         /// <summary>
-        /// The <see cref="ILoggerFactory"/> for creating a logger to log errors.
-        /// </summary>
-        internal ILoggerFactory LoggerFactory { get; set; }
-
-        /// <summary>
-        /// Set a logger factory to log errors.
-        /// </summary>
-        /// <param name="loggerFactory">The <see cref="ILoggerFactory"/> for creating a logger.</param>
-        /// <returns></returns>
-        public AzureAppConfigurationOptions SetLoggerFactory(ILoggerFactory loggerFactory)
-        {
-            LoggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            return this;
-        }
-
-        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>

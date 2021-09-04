@@ -10,20 +10,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class AzureAppConfigurationRefresher : IConfigurationRefresher
     {
         private AzureAppConfigurationProvider _provider = null;
-        private ILoggerFactory _loggerFactory;
 
         public Uri AppConfigurationEndpoint { get; private set; } = null;
    
         public ILoggerFactory LoggerFactory { 
-            get => _loggerFactory; 
+            get 
+            {
+                ThrowIfNullProvider(nameof(LoggerFactory));
+                return _provider.LoggerFactory;
+            }
             set 
             { 
                 ThrowIfNullProvider(nameof(LoggerFactory)); 
-                _loggerFactory = value;
-
-                // If IConfigurationRefresher.LoggerFactory is explicitly set, it should 
-                // overwrite the LoggerFactory set in AzureAppConfigurationProvider
-                _provider.LoggerFactory = _loggerFactory;
+                _provider.LoggerFactory = value;
             } 
         }
 
@@ -31,10 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             AppConfigurationEndpoint = _provider.AppConfigurationEndpoint;
-
-            // Save a copy of AzureAppConfigurationProvider.LoggerFactory if it 
-            // was created during startup, so that it can be accessed later if needed
-            _loggerFactory = _provider.LoggerFactory;
         }
 
         public async Task RefreshAsync()

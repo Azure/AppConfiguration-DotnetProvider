@@ -92,8 +92,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(CacheExpirationTime);
-                    })
-                    .SetLoggerFactory(mockLoggerFactory.Object);
+                    });
 
                     refresher = options.GetRefresher();
                 })
@@ -103,6 +102,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
             
             Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
@@ -153,8 +153,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("SentinelKey", refreshAll: true)
                                       .SetCacheExpiration(CacheExpirationTime);
-                    })
-                    .SetLoggerFactory(mockLoggerFactory.Object);
+                    });
                     refresher = options.GetRefresher();
                 })
                 .Build();
@@ -164,13 +163,14 @@ namespace Tests.AzureAppConfiguration
             // Update sentinel key-value to trigger refreshAll operation
             sentinelKv.Value = "UpdatedSentinelValue";
             Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
             Assert.True(ValidateLoggedError(mockLogger, "Refresh operation failed while resolving a Key Vault reference."));
         }
 
         [Fact]
-        public void OverwriteLoggerFactoryWithIConfigurationRefresherInstance()
+        public void OverwriteLoggerFactory()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -193,8 +193,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(CacheExpirationTime);
-                    })
-                    .SetLoggerFactory(mockLoggerFactory1.Object);
+                    });
 
                     refresher = options.GetRefresher();
                 })
@@ -202,8 +201,11 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
+            
+            // Set LoggerFactory
+            refresher.LoggerFactory = mockLoggerFactory1.Object;
 
-            // Overwrite logger factory
+            // Overwrite LoggerFactory
             refresher.LoggerFactory = mockLoggerFactory2.Object;
 
             Thread.Sleep(CacheExpirationTime);
