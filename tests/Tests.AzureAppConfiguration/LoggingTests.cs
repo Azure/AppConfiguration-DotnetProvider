@@ -106,7 +106,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger, "Refresh operation failed due to an error."));
+            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedError));
         }
 
         [Fact]
@@ -143,7 +143,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger, "Refresh operation failed due to an authentication error."));
+            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedDueToAuthenticationError));
         }
 
         [Fact]
@@ -203,7 +203,7 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
-            Assert.True(ValidateLoggedError(mockLogger, "Refresh operation failed while resolving a Key Vault reference."));
+            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedDueToKeyVaultError));
         }
 
         [Fact]
@@ -249,7 +249,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger2, "Refresh operation failed due to an authentication error."));
+            Assert.True(ValidateLoggedError(mockLogger2, LoggingConstants.RefreshFailedDueToAuthenticationError));
         }
 
         private bool ValidateLoggedError(Mock<ILogger> logger, string expectedMessage)

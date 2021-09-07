@@ -199,39 +199,38 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (RequestFailedException e)
             {
-                if (e.Status == (int)HttpStatusCode.Unauthorized || e.Status == (int)HttpStatusCode.Forbidden)
+                if (IsAuthenticationError(e))
                 {
-                    _logger?.LogWarning(e, "Refresh operation failed due to an authentication error.");
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
                 }
                 else
                 {
-                    _logger?.LogWarning(e, "Refresh operation failed due to an error.");
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
                 }
 
                 return false;
             }
             catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
             {
-                if (e.InnerExceptions.Any(exception => (exception is RequestFailedException ex) 
-                                                        && (ex.Status == (int)HttpStatusCode.Unauthorized || ex.Status == (int)HttpStatusCode.Forbidden)))
+                if (e.InnerExceptions.Any(exception => (exception is RequestFailedException ex) && IsAuthenticationError(ex)))
                 {
-                    _logger?.LogWarning(e, "Refresh operation failed due to an authentication error.");
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
                 }
                 else
                 {
-                    _logger?.LogWarning(e, "Refresh operation failed due to an error.");
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
                 }
 
                 return false;
             }
             catch (KeyVaultReferenceException e)
             {
-                _logger?.LogWarning(e, "Refresh operation failed while resolving a Key Vault reference.");
+                _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToKeyVaultError);
                 return false;
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogWarning("Refresh operation was canceled.");
+                _logger?.LogWarning(LoggingConstants.RefreshCanceledError);
                 return false;
             }
 
@@ -677,6 +676,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             long randomTicks = (long)(maxDelay.Ticks * RandomGenerator.NextDouble());
             return dt.AddTicks(randomTicks);
+        }
+
+        private bool IsAuthenticationError(RequestFailedException ex)
+        {
+            return ex.Status == (int)HttpStatusCode.Unauthorized || ex.Status == (int)HttpStatusCode.Forbidden;
         }
     }
 }
