@@ -231,6 +231,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (OperationCanceledException)
             {
+                _logger?.LogWarning("Refresh operation was canceled.");
                 return false;
             }
 
