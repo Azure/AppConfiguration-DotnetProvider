@@ -197,28 +197,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync().ConfigureAwait(false);
             }
-            catch (RequestFailedException e)
+            catch (Exception ex) when (ex is RequestFailedException ||
+                                              ((ex as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
-                if (IsAuthenticationError(e))
+                if (IsAuthenticationError(ex))
                 {
-                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
+                    _logger?.LogWarning(ex, LoggingConstants.RefreshFailedDueToAuthenticationError);
                 }
                 else
                 {
-                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
-                }
-
-                return false;
-            }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
-            {
-                if (e.InnerExceptions.Any(exception => (exception is RequestFailedException ex) && IsAuthenticationError(ex)))
-                {
-                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
-                }
-                else
-                {
-                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
+                    _logger?.LogWarning(ex, LoggingConstants.RefreshFailedError);
                 }
 
                 return false;
@@ -678,9 +666,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return dt.AddTicks(randomTicks);
         }
 
-        private bool IsAuthenticationError(RequestFailedException ex)
+        private bool IsAuthenticationError(Exception ex)
         {
-            return ex.Status == (int)HttpStatusCode.Unauthorized || ex.Status == (int)HttpStatusCode.Forbidden;
+            if (ex is RequestFailedException rfe)
+            {
+                return rfe.Status == (int)HttpStatusCode.Unauthorized || rfe.Status == (int)HttpStatusCode.Forbidden;
+            }
+
+            if (ex is AggregateException ae)
+            {
+                return ae.InnerExceptions?.Any(inner => IsAuthenticationError(inner)) ?? false;
+            }
+
+            return false;
         }
     }
 }

@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Error messages
         public const string RefreshFailedDueToAuthenticationError = "A refresh operation failed due to an authentication error.";
         public const string RefreshFailedDueToKeyVaultError = "A refresh operation failed while resolving a Key Vault reference.";
-        public const string RefreshFailedError = "A refresh operation failed due to an error.";
+        public const string RefreshFailedError = "A refresh operation failed.";
         public const string RefreshCanceledError = "A refresh operation was canceled.";
     }
 }
