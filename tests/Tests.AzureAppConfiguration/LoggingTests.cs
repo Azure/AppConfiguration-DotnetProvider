@@ -73,6 +73,43 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ValidateExceptionLoggedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+               .Throws(new RequestFailedException("Request failed."));
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.NotEqual("newValue1", config["TestKey1"]);
+            Assert.True(ValidateLoggedError(mockLogger, "Refresh operation failed due to an error."));
+        }
+
+        [Fact]
         public void ValidateUnauthorizedExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
@@ -221,7 +258,7 @@ namespace Tests.AzureAppConfiguration
 
             logger.Verify(
                 x => x.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Error),
+                    It.Is<LogLevel>(l => l == LogLevel.Warning),
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => state(v, t)),
                     It.IsAny<Exception>(),

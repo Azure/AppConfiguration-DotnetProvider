@@ -201,7 +201,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (e.Status == (int)HttpStatusCode.Unauthorized || e.Status == (int)HttpStatusCode.Forbidden)
                 {
-                    _logger?.LogError(e, "Refresh operation failed due to an authentication error.");
+                    _logger?.LogWarning(e, "Refresh operation failed due to an authentication error.");
+                }
+                else
+                {
+                    _logger?.LogWarning(e, "Refresh operation failed due to an error.");
                 }
 
                 return false;
@@ -211,14 +215,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (e.InnerExceptions.Any(exception => (exception is RequestFailedException ex) 
                                                         && (ex.Status == (int)HttpStatusCode.Unauthorized || ex.Status == (int)HttpStatusCode.Forbidden)))
                 {
-                    _logger?.LogError(e, "Refresh operation failed due to an authentication error.");
+                    _logger?.LogWarning(e, "Refresh operation failed due to an authentication error.");
+                }
+                else
+                {
+                    _logger?.LogWarning(e, "Refresh operation failed due to an error.");
                 }
 
                 return false;
             }
             catch (KeyVaultReferenceException e)
             {
-                _logger?.LogError(e, "Refresh operation failed while resolving a Key Vault reference.");
+                _logger?.LogWarning(e, "Refresh operation failed while resolving a Key Vault reference.");
                 return false;
             }
             catch (OperationCanceledException)
