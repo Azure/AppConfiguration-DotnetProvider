@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -11,6 +12,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationProvider _provider = null;
 
         public Uri AppConfigurationEndpoint { get; private set; } = null;
+   
+        public ILoggerFactory LoggerFactory { 
+            get 
+            {
+                ThrowIfNullProvider(nameof(LoggerFactory));
+                return _provider.LoggerFactory;
+            }
+            set 
+            { 
+                ThrowIfNullProvider(nameof(LoggerFactory)); 
+                _provider.LoggerFactory = value;
+            } 
+        }
 
         public void SetProvider(AzureAppConfigurationProvider provider)
         {
@@ -20,7 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task RefreshAsync()
         {
-            ThrowIfNullProvider();
+            ThrowIfNullProvider(nameof(RefreshAsync));
             await _provider.RefreshAsync().ConfigureAwait(false);
         }
 
@@ -36,15 +50,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void SetDirty(TimeSpan? maxDelay)
         {
-            ThrowIfNullProvider();
+            ThrowIfNullProvider(nameof(SetDirty));
             _provider.SetDirty(maxDelay);
         }
 
-        private void ThrowIfNullProvider()
+        private void ThrowIfNullProvider(string operation)
         {
             if (_provider == null)
             {
-                throw new InvalidOperationException("ConfigurationBuilder.Build() must be called before this operation can be performed.");
+                throw new InvalidOperationException($"ConfigurationBuilder.Build() must be called before {operation} can be accessed.");
             }
         }
     }

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -16,6 +17,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The App Configuration endpoint.
         /// </summary>
         Uri AppConfigurationEndpoint { get; }
+
+        /// <summary>
+        /// An <see cref="ILoggerFactory"/> for creating a logger to log errors.
+        /// </summary>
+        ILoggerFactory LoggerFactory { get; set; }
 
         /// <summary>
         /// Refreshes the data from App Configuration asynchronously.

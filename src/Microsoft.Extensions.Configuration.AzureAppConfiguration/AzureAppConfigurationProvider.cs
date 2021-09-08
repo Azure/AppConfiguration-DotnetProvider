@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,7 +19,6 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
     {
         private bool _optional;
@@ -41,6 +41,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
        
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
         private int _networkOperationsInProgress = 0;
+        private ILogger _logger;
+        private ILoggerFactory _loggerFactory;
 
         public Uri AppConfigurationEndpoint
         {
@@ -65,6 +67,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 return null;
+            }
+        }
+
+        public ILoggerFactory LoggerFactory
+        {
+            get
+            {
+                return _loggerFactory;
+            }
+            set
+            {
+                _loggerFactory = value;
+                _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
             }
         }
 
@@ -182,12 +197,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync().ConfigureAwait(false);
             }
-            catch (Exception e) when (
-                e is KeyVaultReferenceException ||
-                e is RequestFailedException ||
-                ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                e is OperationCanceledException)
+            catch (RequestFailedException e)
             {
+                if (IsAuthenticationError(e))
+                {
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
+                }
+                else
+                {
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
+                }
+
+                return false;
+            }
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            {
+                if (IsAuthenticationError(e))
+                {
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
+                }
+                else
+                {
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
+                }
+
+                return false;
+            }
+            catch (KeyVaultReferenceException e)
+            {
+                _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToKeyVaultError);
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogWarning(LoggingConstants.RefreshCanceledError);
                 return false;
             }
 
@@ -633,6 +676,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             long randomTicks = (long)(maxDelay.Ticks * RandomGenerator.NextDouble());
             return dt.AddTicks(randomTicks);
+        }
+
+        private bool IsAuthenticationError(Exception ex)
+        {
+            if (ex is RequestFailedException rfe)
+            {
+                return rfe.Status == (int)HttpStatusCode.Unauthorized || rfe.Status == (int)HttpStatusCode.Forbidden;
+            }
+
+            if (ex is AggregateException ae)
+            {
+                return ae.InnerExceptions?.Any(inner => IsAuthenticationError(inner)) ?? false;
+            }
+
+            return false;
         }
     }
 }

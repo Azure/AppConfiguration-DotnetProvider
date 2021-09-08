@@ -7,6 +7,7 @@ using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -1103,7 +1104,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
                 .Build();
 
-            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration);
+            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration, NullLoggerFactory.Instance);
             Assert.Equal(2, refresherProvider.Refreshers.Count());
         }
 
@@ -1111,7 +1112,7 @@ namespace Tests.AzureAppConfiguration
         public void RefreshTests_AzureAppConfigurationRefresherProviderThrowsIfNoRefresher()
         {
             IConfiguration configuration = new ConfigurationBuilder().Build();
-            void action() => new AzureAppConfigurationRefresherProvider(configuration);
+            void action() => new AzureAppConfigurationRefresherProvider(configuration, NullLoggerFactory.Instance);
             Assert.Throws<InvalidOperationException>(action);
         }
 
