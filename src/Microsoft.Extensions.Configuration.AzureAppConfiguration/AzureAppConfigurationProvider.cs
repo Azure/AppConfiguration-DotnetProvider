@@ -197,17 +197,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync().ConfigureAwait(false);
             }
-            catch (Exception ex) when (
-                ex is RequestFailedException ||
-                ((ex as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+            catch (RequestFailedException e)
             {
-                if (IsAuthenticationError(ex))
+                if (IsAuthenticationError(e))
                 {
-                    _logger?.LogWarning(ex, LoggingConstants.RefreshFailedDueToAuthenticationError);
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
                 }
                 else
                 {
-                    _logger?.LogWarning(ex, LoggingConstants.RefreshFailedError);
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
+                }
+
+                return false;
+            }
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            {
+                if (IsAuthenticationError(e))
+                {
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedDueToAuthenticationError);
+                }
+                else
+                {
+                    _logger?.LogWarning(e, LoggingConstants.RefreshFailedError);
                 }
 
                 return false;
