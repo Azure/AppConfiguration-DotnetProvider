@@ -197,8 +197,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync().ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is RequestFailedException ||
-                                              ((ex as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+            catch (Exception ex) when (
+                ex is RequestFailedException ||
+                ((ex as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
                 if (IsAuthenticationError(ex))
                 {
