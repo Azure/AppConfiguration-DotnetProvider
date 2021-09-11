@@ -362,6 +362,31 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ServerRequestIsMadeWhenClientOptionsIsSet()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
+            {
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureKeyVault(kv => 
+                    {
+                        kv.SetCredential(new DefaultAzureCredential());
+                        kv.SetClientOptions(new SecretClientOptions());
+                    });
+                })
+                .Build();
+            });
+
+            Assert.NotNull(ex.InnerException);
+        }
+
+        [Fact]
         public void ThrowsWhenNoMatchingSecretClientIsFound()
         {
             var mockResponse = new Mock<Response>();
