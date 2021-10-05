@@ -48,14 +48,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return await _provider.TryRefreshAsync().ConfigureAwait(false);
         }
 
-       
+       /// <summary>
+       /// calls processPushNotification in the provider to update Sync Token and call setDirty()
+       /// </summary>
+       /// <param name="pushNotification"></param>
+       /// <param name="maxDelay"></param>
+       /// <returns></returns>
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
-            string syncToken = pushNotification.SyncToken;
+            ThrowIfNullProvider();
 
-            
-
-            SetDirty(maxDelay);
+            _provider.ProcessPushNotification(pushNotification, maxDelay);
         }
 
         public void SetDirty(TimeSpan? maxDelay)
