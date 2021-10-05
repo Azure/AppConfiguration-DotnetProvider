@@ -1,6 +1,3 @@
-using System.Text.Json.Serialization;
-using System;
-
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>

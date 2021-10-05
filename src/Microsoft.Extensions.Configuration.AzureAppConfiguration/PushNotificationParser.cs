@@ -1,6 +1,6 @@
-
 using System.Text.Json;
-using System.Text;
+using System.Reflection;
+using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -10,40 +10,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 	public static class PushNotificationParser
 	{
 		/// <summary>
-		///  Tries to parse the push notification
+		///  Attempts to parse the message and populate pushNotification
 		/// </summary>
 		/// <param name="message"> Message Data returned from the provider</param>
 		/// <param name="pushNotification"> out parameter which will try to be populated</param>
 		/// <returns></returns>
 		public static bool TryParsePushNotification(string message, out PushNotification pushNotification)
 		{
-			PushNotification testing = new PushNotification();
+			pushNotification = new PushNotification();
 
 			if (message == null)
 			{
-				pushNotification = testing;
 				return false;
 			}
 
 			try
 			{
-
 				JsonElement jsonMessage = JsonDocument.Parse(message).RootElement;
 
-				testing.SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString();
-				testing.EventType = jsonMessage.GetProperty("eventType").GetString();
-				testing.Uri = jsonMessage.GetProperty("topic").GetString(); ;
+				pushNotification.SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString();
+				pushNotification.EventType = jsonMessage.GetProperty("eventType").GetString();
+				pushNotification.Uri = jsonMessage.GetProperty("topic").GetString();
 
-				pushNotification = testing;
+				return true;
 			}
-			catch
-			{
-				pushNotification = testing;
-				return false;
-			}
+			catch (JsonException) { }
+			catch (AmbiguousMatchException) { }
+			catch (ArgumentException) { }
+			catch (InvalidOperationException) { }
 
-
-			return true;
+			return false;
 		}
 	}
 }

@@ -209,9 +209,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? timeDelay)
+        public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
+            if (pushNotification.SyncToken == null)
+            {
+                throw new ArgumentNullException(pushNotification.SyncToken);
+            }
+            _client.UpdateSyncToken(pushNotification.SyncToken);
 
+            SetDirty(maxDelay);
         }
 
         private async Task LoadAll(bool ignoreFailures)
