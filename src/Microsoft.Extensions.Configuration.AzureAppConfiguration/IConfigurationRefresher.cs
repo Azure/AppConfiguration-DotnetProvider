@@ -45,5 +45,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
         void SetDirty(TimeSpan? maxDelay = null);
+
+        /// <summary>
+        /// Uses SyncToken from Push Notification and invokes setDirty() at the end
+        /// </summary>
+        /// <param name="pushNotification">Push Notification received from Event Grid</param>
+        /// /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
+        void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay = null);
     }
 }

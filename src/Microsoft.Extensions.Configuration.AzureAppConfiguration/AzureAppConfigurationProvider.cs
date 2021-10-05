@@ -252,6 +252,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
+        public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? timeDelay)
+        {
+
+        }
+
         private async Task LoadAll(bool ignoreFailures)
         {
             IDictionary<string, ConfigurationSetting> data = null;

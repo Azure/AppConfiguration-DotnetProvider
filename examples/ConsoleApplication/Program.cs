@@ -175,11 +175,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
                     string messageText = Encoding.UTF8.GetString(message.Body);
                     JsonElement messageData = JsonDocument.Parse(messageText).RootElement.GetProperty("data");
                     string key = messageData.GetProperty("key").GetString();
-                    object synctoken = messageData.GetProperty("syncToken");
                     
                     Console.WriteLine($"Event received for Key = {key}");
 
-                    _refresher.SetDirty();
+                    PushNotification pushNotification = new PushNotification();
+
+                    PushNotificationParser.TryParsePushNotification(Encoding.UTF8.GetString(message.Body), out pushNotification);
+
+                    _refresher.ProcessPushNotification(pushNotification);
+                    //_refresher.SetDirty();
                     return Task.CompletedTask;
                 },
                 exceptionReceivedHandler: (exceptionargs) =>
