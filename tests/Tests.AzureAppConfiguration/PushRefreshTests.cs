@@ -140,6 +140,59 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
+		public void PushNotification_ProcessPushNotification_InsertName()
+        {
+			PushNotification validPushNotification = new PushNotification();
+			validPushNotification.SyncToken = "SyncToken;sn=001";
+			validPushNotification.EventType = "eventType.KeyValueModified";
+			validPushNotification.Uri = "/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2";
+
+			AzureAppConfigurationProvider provider;
+
+			//_provider = provider ?? throw new ArgumentNullException(nameof(provider));
+		}
+
+		[Fact]
+		public void PushNotification_TryParse_ParsesInvalidEventGridMessage()
+		{
+			//Extract all components of the sample messages into individual messages
+			// something like this: Assert.Throws<AggregateException>(action);
+			string emptyMessage = "";
+			string nullMessage = null;
+
+			string badSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;error\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string noSyncTokenMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+
+			string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string noUriMsg   = "{\"id\":\"id-value1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+
+			string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string noEventTypeMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+
+			PushNotification pushNotification = new PushNotification();
+
+			//Should returnFalse as empty or null string
+			Assert.False(PushNotification.TryParse(emptyMessage, out pushNotification));
+			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.False(PushNotification.TryParse(nullMessage, out pushNotification));
+			Assert.False(IsPushNotificationNull(pushNotification));
+
+			//Should return true since the parameter is put into PushNotification
+			//SDK will handle incorrect data/formatting in each parameter
+			Assert.True(PushNotification.TryParse(badSyncTokenMsg, out pushNotification));
+			Assert.True(PushNotification.TryParse(badUriMsg, out pushNotification));
+			Assert.True(PushNotification.TryParse(badEventType, out pushNotification));
+			
+			//These should return false as parameter was not found and put into pushNotification
+			Assert.False(PushNotification.TryParse(noSyncTokenMsg, out pushNotification));
+			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.False(PushNotification.TryParse(noUriMsg, out pushNotification));
+			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.False(PushNotification.TryParse(noEventTypeMsg, out pushNotification));
+			Assert.False(IsPushNotificationNull(pushNotification));
+		}
+
+		[Fact]
 		public void SyncTokenUpdatesCorrectNumberOfTimes()
 		{
 			// Arrange
@@ -173,6 +226,11 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(8));
 			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(8));
 		}
+
+		private bool IsPushNotificationNull(PushNotification pn)
+        {
+			return (pn.SyncToken != null || pn.EventType != null || pn.Uri != null) ? false : true;
+        }
 
 		private Mock<ConfigurationClient> GetMockConfigurationClient()
 		{

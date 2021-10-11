@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Reflection;
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -49,10 +50,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 				return true;
 			}
 			catch (JsonException) { }
+			catch (KeyNotFoundException) { }
 			catch (AmbiguousMatchException) { }
 			catch (ArgumentException) { }
 			catch (InvalidOperationException) { }
 
+			pushNotification.SyncToken = null;
+			pushNotification.EventType= null;
+			pushNotification.Uri = null;
 			return false;
 		}
 	}
