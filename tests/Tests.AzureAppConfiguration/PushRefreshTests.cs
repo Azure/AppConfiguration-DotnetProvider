@@ -142,14 +142,37 @@ namespace Tests.AzureAppConfiguration
 		[Fact]
 		public void PushNotification_ProcessPushNotification_InsertName()
         {
-			PushNotification validPushNotification = new PushNotification();
-			validPushNotification.SyncToken = "SyncToken;sn=001";
-			validPushNotification.EventType = "eventType.KeyValueModified";
-			validPushNotification.Uri = "/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2";
 
-			AzureAppConfigurationProvider provider;
+			List<PushNotification> pushNotifications = CreatePushNotificationList();
 
-			//_provider = provider ?? throw new ArgumentNullException(nameof(provider));
+			var mockResponse = new Mock<Response>();
+			var mockClient = GetMockConfigurationClient();
+
+			IConfigurationRefresher refresher = null;
+
+			/*var config = new ConfigurationBuilder()
+				.AddAzureAppConfiguration(options =>
+				{
+					options.Client = mockClient.Object;
+					options.Select("*");
+					options.ConfigureRefresh(refreshOptions =>
+					{
+						refreshOptions.Register("TestKey", "label")
+							.SetCacheExpiration(TimeSpan.FromDays(30));
+					});
+					refresher = options.GetRefresher();
+				})
+				.Build();*/ //TODO: Error in this block
+
+			try
+            {
+				refresher.ProcessPushNotification(pushNotifications.First());
+
+			}
+			catch (ArgumentNullException) { Assert.True(true); }
+			finally { Assert.True(false); }
+
+
 		}
 
 		[Fact]
@@ -208,7 +231,7 @@ namespace Tests.AzureAppConfiguration
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
-						refreshOptions.Register("TestKey2", "label")
+						refreshOptions.Register("TestKey", "label")
 							.SetCacheExpiration(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
