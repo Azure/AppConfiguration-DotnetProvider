@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 		/// <param name="message"> Message Data returned from the provider</param>
 		/// <param name="pushNotification"> out parameter which will try to be populated</param>
 		/// <returns></returns>
-		public static bool TryParsePushNotification(string message, out PushNotification pushNotification)
+		public static bool TryParse(string message, out PushNotification pushNotification)
 		{
 			pushNotification = new PushNotification();
 

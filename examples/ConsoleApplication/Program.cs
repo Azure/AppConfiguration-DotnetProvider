@@ -100,18 +100,8 @@
 //    }
 //}
 
-
-/*TODO: set up eventgrid
-breakpoints before refreshSync,configProvider logic
-reset environment variables (through tutorial steps)
-run/check output as expected
-
-*/
 using Microsoft.Azure.ServiceBus;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -175,15 +165,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
                     string messageText = Encoding.UTF8.GetString(message.Body);
                     JsonElement messageData = JsonDocument.Parse(messageText).RootElement.GetProperty("data");
                     string key = messageData.GetProperty("key").GetString();
-                    
                     Console.WriteLine($"Event received for Key = {key}");
 
                     PushNotification pushNotification = new PushNotification();
 
-                    PushNotificationParser.TryParsePushNotification(Encoding.UTF8.GetString(message.Body), out pushNotification);
+                    PushNotification.TryParse(messageText, out pushNotification);
 
                     _refresher.ProcessPushNotification(pushNotification);
-                    //_refresher.SetDirty();
+
                     return Task.CompletedTask;
                 },
                 exceptionReceivedHandler: (exceptionargs) =>
