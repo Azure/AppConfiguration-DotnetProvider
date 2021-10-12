@@ -254,9 +254,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
-            if (pushNotification.SyncToken == null) { throw new ArgumentNullException(pushNotification.SyncToken); }
-            if (pushNotification.EventType == null) { throw new ArgumentNullException(pushNotification.EventType); }
-            if (pushNotification.Uri == null) { throw new ArgumentNullException(pushNotification.Uri); }
+            try
+            {
+                if (pushNotification.SyncToken == null) { throw new ArgumentNullException(pushNotification.SyncToken); }
+                if (pushNotification.EventType == null) { throw new ArgumentNullException(pushNotification.EventType); }
+                if (pushNotification.Uri == null) { throw new ArgumentNullException(pushNotification.Uri); }
+            } 
+            //Checks if the pushNotification is null
+            catch (NullReferenceException)
+            {
+                throw new NullReferenceException();
+            }
             
             _client.UpdateSyncToken(pushNotification.SyncToken);
 
