@@ -105,6 +105,40 @@ namespace Tests.AzureAppConfiguration
 			return pushNotificationList;
 		}
 
+		public List<PushNotification> CreateInvalidPushNotificationList()
+		{
+			List<PushNotification> pushNotificationList = new List<PushNotification>
+			{
+			  new PushNotification  {
+									Uri = null,
+									EventType = "eventType.KeyValueModified",
+									SyncToken = "SyncToken1;sn=001"
+									},
+			  new PushNotification  {
+									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
+									EventType = null,
+									SyncToken = "SyncToken2"
+									},
+			  new PushNotification  {
+									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
+									EventType = "eventType.KeyValueDeleted",
+									SyncToken = null
+									},
+			  new PushNotification  {
+									Uri = null,
+									EventType = "eventType.KeyValueDeleted",
+									SyncToken = null
+									},
+			  new PushNotification  {
+									Uri = null,
+									EventType = null,
+									SyncToken = null
+									}
+			};
+
+			return pushNotificationList;
+		}
+
 
 		[Fact]
 		public void PushNotification_TryParse_LoadsValues()
@@ -140,39 +174,45 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void PushNotification_ProcessPushNotification_InsertName()
+		public void PushNotification_ProcessPushNotification_NullArgumentTest()
         {
-
-			List<PushNotification> pushNotifications = CreatePushNotificationList();
-
 			var mockResponse = new Mock<Response>();
 			var mockClient = GetMockConfigurationClient();
 
 			IConfigurationRefresher refresher = null;
 
-			/*var config = new ConfigurationBuilder()
+			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
 					options.Client = mockClient.Object;
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
-						refreshOptions.Register("TestKey", "label")
+						refreshOptions.Register("TestKey1", "label")
 							.SetCacheExpiration(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
-				.Build();*/ //TODO: Error in this block
+				.Build();
 
-			try
+			//Create list of PushNotifications with null Parameters
+			List<PushNotification> invalidPushNotifications = CreateInvalidPushNotificationList();
+
+			foreach (PushNotification invalidPushNotification in invalidPushNotifications)
             {
-				refresher.ProcessPushNotification(pushNotifications.First());
+                try
+                {
+                    refresher.ProcessPushNotification(invalidPushNotification);
+                    refresher.RefreshAsync().Wait();
 
-			}
-			catch (ArgumentNullException) { Assert.True(true); }
-			finally { Assert.True(false); }
+                }
+				//Should be caught in this block and continue to the next invalidNotification
+                catch (ArgumentNullException) { Assert.True(true); continue; }
 
+				//ProcessPushNotification did not throw any errors
+				Assert.True(false);
 
+            }
 		}
 
 		[Fact]
@@ -196,9 +236,9 @@ namespace Tests.AzureAppConfiguration
 
 			//Should returnFalse as empty or null string
 			Assert.False(PushNotification.TryParse(emptyMessage, out pushNotification));
-			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.True(IsPushNotificationNull(pushNotification));
 			Assert.False(PushNotification.TryParse(nullMessage, out pushNotification));
-			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.True(IsPushNotificationNull(pushNotification));
 
 			//Should return true since the parameter is put into PushNotification
 			//SDK will handle incorrect data/formatting in each parameter
@@ -208,11 +248,11 @@ namespace Tests.AzureAppConfiguration
 			
 			//These should return false as parameter was not found and put into pushNotification
 			Assert.False(PushNotification.TryParse(noSyncTokenMsg, out pushNotification));
-			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.True(IsPushNotificationNull(pushNotification));
 			Assert.False(PushNotification.TryParse(noUriMsg, out pushNotification));
-			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.True(IsPushNotificationNull(pushNotification));
 			Assert.False(PushNotification.TryParse(noEventTypeMsg, out pushNotification));
-			Assert.False(IsPushNotificationNull(pushNotification));
+			Assert.True(IsPushNotificationNull(pushNotification));
 		}
 
 		[Fact]
@@ -231,7 +271,7 @@ namespace Tests.AzureAppConfiguration
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
-						refreshOptions.Register("TestKey", "label")
+						refreshOptions.Register("TestKey1", "label")
 							.SetCacheExpiration(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
@@ -252,7 +292,7 @@ namespace Tests.AzureAppConfiguration
 
 		private bool IsPushNotificationNull(PushNotification pn)
         {
-			return (pn.SyncToken != null || pn.EventType != null || pn.Uri != null) ? false : true;
+			return ((pn == null) || (pn.SyncToken == null || pn.EventType == null || pn.Uri == null)) ? true : false;
         }
 
 		private Mock<ConfigurationClient> GetMockConfigurationClient()

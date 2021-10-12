@@ -211,10 +211,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
-            if (pushNotification.SyncToken == null)
-            {
-                throw new ArgumentNullException(pushNotification.SyncToken);
-            }
+            if (pushNotification.SyncToken == null) { throw new ArgumentNullException(pushNotification.SyncToken); }
+            if (pushNotification.EventType == null) { throw new ArgumentNullException(pushNotification.EventType); }
+            if (pushNotification.Uri == null) { throw new ArgumentNullException(pushNotification.Uri); }
+            
             _client.UpdateSyncToken(pushNotification.SyncToken);
 
             SetDirty(maxDelay);
