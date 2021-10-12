@@ -55,9 +55,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 			catch (ArgumentException) { }
 			catch (InvalidOperationException) { }
 
-			pushNotification.SyncToken = null;
-			pushNotification.EventType= null;
-			pushNotification.Uri = null;
+			pushNotification = null;
 			return false;
 		}
 	}
