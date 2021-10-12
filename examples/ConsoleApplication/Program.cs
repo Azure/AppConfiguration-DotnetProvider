@@ -169,7 +169,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
                     PushNotification pushNotification = new PushNotification();
 
-                    PushNotification.TryParse(messageText, out pushNotification);
+                    EventGridEventParser.TryParseJson(messageText, out pushNotification);
 
                     _refresher.ProcessPushNotification(pushNotification);
 

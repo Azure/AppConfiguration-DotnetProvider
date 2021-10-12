@@ -141,7 +141,7 @@ namespace Tests.AzureAppConfiguration
 
 
 		[Fact]
-		public void PushNotification_TryParse_LoadsValues()
+		public void PushNotification_TryParseJson_LoadsValues()
 		{
 			//TODO: edge cases for parsing, passing null and check that a null exception is thrown
 			//Extract all components of the sample messages into individual messages
@@ -161,8 +161,8 @@ namespace Tests.AzureAppConfiguration
 			PushNotification pushNotification2 = new PushNotification();
 
 			//Parse the sampleMessages into the pushNotification
-			PushNotification.TryParse(sampleMessage1, out pushNotification1);
-			PushNotification.TryParse(sampleMessage2, out pushNotification2);
+			EventGridEventParser.TryParseJson(sampleMessage1, out pushNotification1);
+			EventGridEventParser.TryParseJson(sampleMessage2, out pushNotification2);
 
 			Assert.Equal(pushNotification1.SyncToken, syncToken1);
 			Assert.Equal(pushNotification1.Uri, uri1);
@@ -174,7 +174,7 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void PushNotification_ProcessPushNotification_NullArgumentTest()
+		public void PushNotification_TestNullPushNotificationProcessPushNotification()
         {
 			var mockResponse = new Mock<Response>();
 			var mockClient = GetMockConfigurationClient();
@@ -216,7 +216,7 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void PushNotification_TryParse_ParsesInvalidEventGridMessage()
+		public void PushNotification_TryParseJson_ParsesInvalidEventGridMessage()
 		{
 			//Extract all components of the sample messages into individual messages
 			// something like this: Assert.Throws<AggregateException>(action);
@@ -235,23 +235,23 @@ namespace Tests.AzureAppConfiguration
 			PushNotification pushNotification = new PushNotification();
 
 			//Should returnFalse as empty or null string
-			Assert.False(PushNotification.TryParse(emptyMessage, out pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out pushNotification));
 			Assert.True(IsPushNotificationNull(pushNotification));
-			Assert.False(PushNotification.TryParse(nullMessage, out pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
 			Assert.True(IsPushNotificationNull(pushNotification));
 
 			//Should return true since the parameter is put into PushNotification
 			//SDK will handle incorrect data/formatting in each parameter
-			Assert.True(PushNotification.TryParse(badSyncTokenMsg, out pushNotification));
-			Assert.True(PushNotification.TryParse(badUriMsg, out pushNotification));
-			Assert.True(PushNotification.TryParse(badEventType, out pushNotification));
+			Assert.True(EventGridEventParser.TryParseJson(badSyncTokenMsg, out pushNotification));
+			Assert.True(EventGridEventParser.TryParseJson(badUriMsg, out pushNotification));
+			Assert.True(EventGridEventParser.TryParseJson(badEventType, out pushNotification));
 			
 			//These should return false as parameter was not found and put into pushNotification
-			Assert.False(PushNotification.TryParse(noSyncTokenMsg, out pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
 			Assert.True(IsPushNotificationNull(pushNotification));
-			Assert.False(PushNotification.TryParse(noUriMsg, out pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
 			Assert.True(IsPushNotificationNull(pushNotification));
-			Assert.False(PushNotification.TryParse(noEventTypeMsg, out pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
 			Assert.True(IsPushNotificationNull(pushNotification));
 		}
 
