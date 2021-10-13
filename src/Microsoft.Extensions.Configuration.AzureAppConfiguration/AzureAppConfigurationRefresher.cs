@@ -56,7 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
        /// <returns></returns>
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
-            ThrowIfNullProvider();
+            ThrowIfNullProvider(nameof(ProcessPushNotification));
 
             _provider.ProcessPushNotification(pushNotification, maxDelay);
         }
