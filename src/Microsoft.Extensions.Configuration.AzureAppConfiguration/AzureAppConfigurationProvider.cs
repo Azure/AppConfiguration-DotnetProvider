@@ -13,7 +13,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Security;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -255,7 +254,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken)
         {
             IDictionary<string, ConfigurationSetting> data = null;
-            string cachedData = null;
             bool success = false;
 
             try
@@ -320,18 +318,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                             ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
                                             exception is OperationCanceledException)
             {
-                if (_options.OfflineCache != null)
-                {
-                    // During startup or refreshAll scenario, we'll try to populate config from offline cache, if available
-                    cachedData = _options.OfflineCache.Import(_options);
-                    
-                    if (cachedData != null)
-                    {
-                        data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(cachedData);
-                    }
-                }
-
-                // If we're unable to load data from offline cache, check if we need to ignore or rethrow the exception 
                 if (data == null && !ignoreFailures)
                 {
                     throw;
@@ -355,11 +341,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 await SetData(data, ignoreFailures, cancellationToken).ConfigureAwait(false);
-                
-                if (_options.OfflineCache != null && cachedData == null)
-                {
-                    _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
-                }
             }
         }
 
@@ -685,8 +666,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 HostType = TracingUtils.GetHostType(),
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
-                IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
-                IsOfflineCacheConfigured = _options.IsOfflineCacheConfigured
+                IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured
             };
         }
 
