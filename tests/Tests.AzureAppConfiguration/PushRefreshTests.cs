@@ -55,42 +55,44 @@ namespace Tests.AzureAppConfiguration
         List<PushNotification> pushNotificationList = new List<PushNotification>
             {
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
-                                    EventType = "eventType.KeyValueModified",
+                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+
+									EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken1;sn=001"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
-                                    EventType = "eventType.KeyValueModified",
+                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+
+									EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken2"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken1;sn=001"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken2"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
                                     EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken1"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
                                     EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken2"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken1"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken2"
                                     }
@@ -104,13 +106,15 @@ namespace Tests.AzureAppConfiguration
                                     SyncToken = "SyncToken1;sn=001"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
-                                    EventType = null,
+                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
+
+									EventType = null,
                                     SyncToken = "SyncToken2"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
-                                    EventType = "eventType.KeyValueDeleted",
+                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+
+									EventType = "eventType.KeyValueDeleted",
                                     SyncToken = null
                                     },
               new PushNotification  {
@@ -131,26 +135,21 @@ namespace Tests.AzureAppConfiguration
 		{
 			string sampleMessage1 = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string syncToken1 = "syncToken1;sn=001";
-			Uri uri1 = new Uri("/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1");
+			Uri uri1 = new Uri("https://store1.resource.io/kv/searchQuery1");
 			string eventType1 = "eventType.KeyValueModified";
 
 			string sampleMessage2 = "{\"id\":\"id-value2\",\"topic\":\"/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2\",\"subject\":\"https://store2.resource.io/kv/searchQuery2\",\"data\":{\"key\":\"searchQuery2\",\"etag\":\"etagValue2\",\"syncToken\":\"syncToken2;sn=002\"},\"eventType\":\"eventType.KeyValueDeleted\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string syncToken2 = "syncToken2;sn=002";
-			Uri uri2 = new Uri("/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2");
+			Uri uri2 = new Uri("https://store2.resource.io/kv/searchQuery2");
 			string eventType2 = "eventType.KeyValueDeleted";
 
-			//Create the two Push Notifications to parse sample messages into
-			PushNotification pushNotification1 = new PushNotification();
-			PushNotification pushNotification2 = new PushNotification();
-
 			//Parse the sampleMessages into the pushNotification
-			EventGridEventParser.TryParseJson(sampleMessage1, out pushNotification1);
-			EventGridEventParser.TryParseJson(sampleMessage2, out pushNotification2);
-
+			EventGridEventParser.TryParseJson(sampleMessage1, out PushNotification pushNotification1);
 			Assert.Equal(pushNotification1.SyncToken, syncToken1);
 			Assert.Equal(pushNotification1.ResourceUri, uri1);
 			Assert.Equal(pushNotification1.EventType, eventType1);
 
+			EventGridEventParser.TryParseJson(sampleMessage2, out PushNotification pushNotification2);
 			Assert.Equal(pushNotification2.SyncToken, syncToken2);
 			Assert.Equal(pushNotification2.ResourceUri, uri2);
 			Assert.Equal(pushNotification2.EventType, eventType2);
@@ -211,7 +210,7 @@ namespace Tests.AzureAppConfiguration
 			string noSyncTokenMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 
 			string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string noUriMsg   = "{\"id\":\"id-value1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string noUriMsg  = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 
 			string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string noEventTypeMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";

@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 				pushNotification = new PushNotification {
 						SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString(),
 						EventType = jsonMessage.GetProperty("eventType").GetString(),
-						ResourceUri =  new Uri(jsonMessage.GetProperty("topic").GetString())};
+						ResourceUri =  new Uri(jsonMessage.GetProperty("subject").GetString())};
 
 				return true;
 			}

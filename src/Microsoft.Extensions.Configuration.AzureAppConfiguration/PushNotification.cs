@@ -3,13 +3,14 @@ using System;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// Object containing three parameters: A string Uri, string SyncToken, and string EventType 
+    /// Object containing three parameters: A Uri subject, string SyncToken, and string EventType
+    /// for an App Configuration store.
     /// </summary>
     public class PushNotification
     {			
 
 		/// <summary>
-		/// Subject
+		/// Uri Subject
 		/// </summary>
 		public Uri ResourceUri { get; set; }
 
@@ -19,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public string SyncToken { get; set; }
 
         /// <summary>
-        /// Event Type
+        /// Event Type of Event Grid Message
         /// </summary>
         public string EventType { get; set; }
 
