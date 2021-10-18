@@ -1,21 +1,27 @@
+using System;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// Push Notification class
+    /// Object containing three parameters: A string Uri, string SyncToken, and string EventType 
     /// </summary>
     public class PushNotification
     {			
+
 		/// <summary>
-		/// Resource URI/Topic
+		/// Subject
 		/// </summary>
-		public string Uri { get; set; }
+		public Uri ResourceUri { get; set; }
+
         /// <summary>
-        /// Sync Token from the provider
+        /// The Synchronization Token to be added to the next request to the App Configuration Service.
         /// </summary>
         public string SyncToken { get; set; }
+
         /// <summary>
         /// Event Type
         /// </summary>
         public string EventType { get; set; }
+
 	}
 }

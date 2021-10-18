@@ -47,9 +47,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         void SetDirty(TimeSpan? maxDelay = null);
 
         /// <summary>
-        /// Uses SyncToken from Push Notification and invokes setDirty() at the end
+        /// Process the details of a <see cref="PushNotification"/> object to ensure the latest key-values are provided in 
+        /// the next request to App Configuration. The next request will be made after the cached values have been marked as dirty.
         /// </summary>
-        /// <param name="pushNotification">Push Notification received from Event Grid</param>
+        /// <param name="pushNotification">Fully populated <see cref="PushNotification"/> object.</param>
         /// /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
         void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay = null);
     }

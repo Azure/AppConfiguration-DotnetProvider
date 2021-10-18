@@ -1,36 +1,41 @@
-using System.Text.Json;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
 	/// <summary>
-	/// Summary for PushNotificationParser
+	/// EventGridEventParser contains the method to parse a Json EventGrid Message Notification
 	/// </summary>
 	public static class EventGridEventParser
 	{
 		/// <summary>
-		///  Attempts to parse the message and populate pushNotification
+		///  Tries to parse the provided <paramref name="eventGridMessage"/> event message from Event Grid and 
+		///  create a <see cref="PushNotification"/> object. Return value indicates whether the parsing succeeded
+		///  or failed.
 		/// </summary>
-		/// <param name="eventGridEvent"> Message Data from Event Grid</param>
-		/// <param name="pushNotification"> out parameter which will try to be populated</param>
+		/// <param name="eventGridMessage"> Message Data from Event Grid</param>
+		/// <param name="pushNotification"> If this method returns true the <paramref name="pushNotification"/>object
+		/// contains details parsed from <paramref name="eventGridMessage"/>. if this method returns false the 
+		/// <paramref name="pushNotification"/> object is null.</param>
 		/// <returns></returns>
-		public static bool TryParseJson(string eventGridEvent, out PushNotification pushNotification)
+		public static bool TryParseJson(string eventGridMessage, out PushNotification pushNotification)
 		{
-			pushNotification = new PushNotification();
+			pushNotification = null;
 
-			if (eventGridEvent == null)
+			if (eventGridMessage == null)
 			{
 				return false;
 			}
 
 			try
 			{
-				JsonElement jsonMessage = JsonDocument.Parse(eventGridEvent).RootElement;
+				JsonElement jsonMessage = JsonDocument.Parse(eventGridMessage).RootElement;
 
-				pushNotification.SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString();
-				pushNotification.EventType = jsonMessage.GetProperty("eventType").GetString();
-				pushNotification.Uri = jsonMessage.GetProperty("topic").GetString();
+				pushNotification = new PushNotification {
+						SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString(),
+						EventType = jsonMessage.GetProperty("eventType").GetString(),
+						ResourceUri =  new Uri(jsonMessage.GetProperty("topic").GetString())};
 
 				return true;
 			}

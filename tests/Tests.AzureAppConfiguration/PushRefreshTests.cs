@@ -1,18 +1,14 @@
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
-using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
-//Microsoft.Extensions.Configuration.AzureAppConfiguration
 
 namespace Tests.AzureAppConfiguration
 {
@@ -56,104 +52,91 @@ namespace Tests.AzureAppConfiguration
 				contentType: "text")
 		};
 
-		public List<PushNotification> CreatePushNotificationList()
-		{
-			List<PushNotification> pushNotificationList = new List<PushNotification>
-			{
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
-									EventType = "eventType.KeyValueModified",
-									SyncToken = "SyncToken1;sn=001"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
-									EventType = "eventType.KeyValueModified",
-									SyncToken = "SyncToken2"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
-									EventType = "eventType.KeyValueDeleted",
-									SyncToken = "SyncToken1;sn=001"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
-									EventType = "eventType.KeyValueDeleted",
-									SyncToken = "SyncToken2"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2",
-									EventType = "eventType.KeyValueModified",
-									SyncToken = "SyncToken1"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2",
-									EventType = "eventType.KeyValueModified",
-									SyncToken = "SyncToken2"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2",
-									EventType = "eventType.KeyValueDeleted",
-									SyncToken = "SyncToken1"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2",
-									EventType = "eventType.KeyValueDeleted",
-									SyncToken = "SyncToken2"
-									}
-			};
+        List<PushNotification> pushNotificationList = new List<PushNotification>
+            {
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    EventType = "eventType.KeyValueModified",
+                                    SyncToken = "SyncToken1;sn=001"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    EventType = "eventType.KeyValueModified",
+                                    SyncToken = "SyncToken2"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    EventType = "eventType.KeyValueDeleted",
+                                    SyncToken = "SyncToken1;sn=001"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    EventType = "eventType.KeyValueDeleted",
+                                    SyncToken = "SyncToken2"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    EventType = "eventType.KeyValueModified",
+                                    SyncToken = "SyncToken1"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    EventType = "eventType.KeyValueModified",
+                                    SyncToken = "SyncToken2"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    EventType = "eventType.KeyValueDeleted",
+                                    SyncToken = "SyncToken1"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s2"),
+                                    EventType = "eventType.KeyValueDeleted",
+                                    SyncToken = "SyncToken2"
+                                    }
+            };
 
-			return pushNotificationList;
-		}
-
-		public List<PushNotification> CreateInvalidPushNotificationList()
-		{
-			List<PushNotification> pushNotificationList = new List<PushNotification>
-			{
-			  new PushNotification  {
-									Uri = null,
-									EventType = "eventType.KeyValueModified",
-									SyncToken = "SyncToken1;sn=001"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
-									EventType = null,
-									SyncToken = "SyncToken2"
-									},
-			  new PushNotification  {
-									Uri = "/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1",
-									EventType = "eventType.KeyValueDeleted",
-									SyncToken = null
-									},
-			  new PushNotification  {
-									Uri = null,
-									EventType = "eventType.KeyValueDeleted",
-									SyncToken = null
-									},
-			  new PushNotification  {
-									Uri = null,
-									EventType = null,
-									SyncToken = null
-									}
-			};
-
-			return pushNotificationList;
-		}
+        List<PushNotification> invalidPushNotificationList = new List<PushNotification>
+            {
+              new PushNotification  {
+                                    ResourceUri = null,
+                                    EventType = "eventType.KeyValueModified",
+                                    SyncToken = "SyncToken1;sn=001"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    EventType = null,
+                                    SyncToken = "SyncToken2"
+                                    },
+              new PushNotification  {
+                                    ResourceUri = new Uri("/subscriptions/s/resourceGroups/rg/providers/p/configurationstores/s1"),
+                                    EventType = "eventType.KeyValueDeleted",
+                                    SyncToken = null
+                                    },
+              new PushNotification  {
+                                    ResourceUri = null,
+                                    EventType = "eventType.KeyValueDeleted",
+                                    SyncToken = null
+                                    },
+              new PushNotification  {
+                                    ResourceUri = null,
+                                    EventType = null,
+                                    SyncToken = null
+                                    }
+            };
 
 
-		[Fact]
+        [Fact]
 		public void PushNotification_TryParseJson_LoadsValues()
 		{
-			//TODO: edge cases for parsing, passing null and check that a null exception is thrown
-			//Extract all components of the sample messages into individual messages
-			// something like this: Assert.Throws<AggregateException>(action);
 			string sampleMessage1 = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string syncToken1 = "syncToken1;sn=001";
-			string uri1 = "/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1";
+			Uri uri1 = new Uri("/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1");
 			string eventType1 = "eventType.KeyValueModified";
 
 			string sampleMessage2 = "{\"id\":\"id-value2\",\"topic\":\"/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2\",\"subject\":\"https://store2.resource.io/kv/searchQuery2\",\"data\":{\"key\":\"searchQuery2\",\"etag\":\"etagValue2\",\"syncToken\":\"syncToken2;sn=002\"},\"eventType\":\"eventType.KeyValueDeleted\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string syncToken2 = "syncToken2;sn=002";
-			string uri2 = "/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2";
+			Uri uri2 = new Uri("/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2");
 			string eventType2 = "eventType.KeyValueDeleted";
 
 			//Create the two Push Notifications to parse sample messages into
@@ -165,11 +148,11 @@ namespace Tests.AzureAppConfiguration
 			EventGridEventParser.TryParseJson(sampleMessage2, out pushNotification2);
 
 			Assert.Equal(pushNotification1.SyncToken, syncToken1);
-			Assert.Equal(pushNotification1.Uri, uri1);
+			Assert.Equal(pushNotification1.ResourceUri, uri1);
 			Assert.Equal(pushNotification1.EventType, eventType1);
 
 			Assert.Equal(pushNotification2.SyncToken, syncToken2);
-			Assert.Equal(pushNotification2.Uri, uri2);
+			Assert.Equal(pushNotification2.ResourceUri, uri2);
 			Assert.Equal(pushNotification2.EventType, eventType2);
 		}
 
@@ -196,7 +179,7 @@ namespace Tests.AzureAppConfiguration
 				.Build();
 
 			//Create list of PushNotifications with null Parameters
-			List<PushNotification> invalidPushNotifications = CreateInvalidPushNotificationList();
+			List<PushNotification> invalidPushNotifications = invalidPushNotificationList;
 
 			foreach (PushNotification invalidPushNotification in invalidPushNotifications)
             {
@@ -208,6 +191,7 @@ namespace Tests.AzureAppConfiguration
                 }
 				//Should be caught in this block and continue to the next invalidNotification
                 catch (ArgumentNullException) { Assert.True(true); continue; }
+                catch (ArgumentException) { Assert.True(true); continue; }
 
 				//ProcessPushNotification did not throw any errors
 				Assert.True(false);
@@ -232,13 +216,11 @@ namespace Tests.AzureAppConfiguration
 			string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string noEventTypeMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 
-			PushNotification pushNotification = new PushNotification();
-
-			//Should returnFalse as empty or null string
-			Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out pushNotification));
-			Assert.True(IsPushNotificationNull(pushNotification));
+			//Should return false as empty or null string
+			Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out PushNotification pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
 			Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
-			Assert.True(IsPushNotificationNull(pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
 
 			//Should return true since the parameter is put into PushNotification
 			//SDK will handle incorrect data/formatting in each parameter
@@ -248,11 +230,11 @@ namespace Tests.AzureAppConfiguration
 			
 			//These should return false as parameter was not found and put into pushNotification
 			Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
-			Assert.True(IsPushNotificationNull(pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
 			Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
-			Assert.True(IsPushNotificationNull(pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
 			Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
-			Assert.True(IsPushNotificationNull(pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
 		}
 
 		[Fact]
@@ -278,7 +260,7 @@ namespace Tests.AzureAppConfiguration
 				})
 				.Build();
 
-			List<PushNotification> pushNotifications = CreatePushNotificationList();
+			List<PushNotification> pushNotifications = pushNotificationList;
 
 			foreach (PushNotification pushNotification in pushNotifications)
 			{
@@ -290,9 +272,9 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(8));
 		}
 
-		private bool IsPushNotificationNull(PushNotification pn)
+		private bool IsPushNotificationValid(PushNotification pn)
         {
-			return ((pn == null) || (pn.SyncToken == null || pn.EventType == null || pn.Uri == null)) ? true : false;
+			return ((pn == null) || (pn.SyncToken == null || pn.EventType == null || pn.ResourceUri == null)) ? false : true;
         }
 
 		private Mock<ConfigurationClient> GetMockConfigurationClient()
