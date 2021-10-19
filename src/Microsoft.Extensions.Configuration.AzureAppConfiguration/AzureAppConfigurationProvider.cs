@@ -504,12 +504,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshKeyValueAdapters(CancellationToken cancellationToken)
+        private Task RefreshKeyValueAdapters(CancellationToken cancellationToken)
         {
             if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
             {
-                SetData(_applicationSettings, false, cancellationToken);
+                return SetData(_applicationSettings, false, cancellationToken);
             }
+
+            return Task.CompletedTask;
         }
 
         private async Task RefreshKeyValueCollections(CancellationToken cancellationToken)
@@ -657,10 +659,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task CallWithRequestTracing(Func<Task> clientCall)
+        private Task CallWithRequestTracing(Func<Task> clientCall)
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _requestTracingOptions, clientCall);
+            return TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _requestTracingOptions, clientCall);
         }
 
         private void SetRequestTracingOptions()
