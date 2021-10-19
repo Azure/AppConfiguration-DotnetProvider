@@ -26,7 +26,7 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
         {
             foreach (var refresher in Refreshers)
             {
-                _ = refresher.TryRefreshAsync();
+                _ = refresher.TryRefreshAsync(context.RequestAborted);
             }
 
             // Call the next delegate/middleware in the pipeline
