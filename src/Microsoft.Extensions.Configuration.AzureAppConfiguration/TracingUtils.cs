@@ -70,15 +70,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Action clientCall)
-        {
-            await CallWithRequestTracing(tracingEnabled, requestType, requestTracingOptions, () =>
-            {
-                clientCall();
-                return Task.CompletedTask;
-            }).ConfigureAwait(false);
-        }
-
         public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Func<Task> clientCall)
         {
             string correlationContextHeader = "";

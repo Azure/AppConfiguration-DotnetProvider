@@ -1132,6 +1132,40 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<ArgumentException>(action);
         }
 
+        [Fact]
+        public void RefreshTests_RefreshIsCancelled()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            using var cancellationSource = new CancellationTokenSource();
+            cancellationSource.CancelAfter(TimeSpan.Zero);  
+            Action action = () => refresher.RefreshAsync(cancellationSource.Token).Wait();
+            var exception =  Assert.Throws<AggregateException>(action);
+            Assert.IsType<TaskCanceledException>(exception.InnerException);
+            Assert.Equal("TestValue1", config["TestKey1"]);
+        }
+
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();
@@ -1145,11 +1179,21 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);

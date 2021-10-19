@@ -207,6 +207,44 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ValidateOperationCanceledExceptionLoggedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+
+            using var cancellationSource = new CancellationTokenSource();
+            cancellationSource.CancelAfter(TimeSpan.Zero);
+            refresher.TryRefreshAsync(cancellationSource.Token).Wait();
+
+            Assert.NotEqual("newValue1", config["TestKey1"]);
+            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshCanceledError));
+        }
+
+        [Fact]
         public void OverwriteLoggerFactory()
         {
             IConfigurationRefresher refresher = null;
@@ -274,11 +312,21 @@ namespace Tests.AzureAppConfiguration
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse.Object);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
