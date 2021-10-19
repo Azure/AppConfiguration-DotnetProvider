@@ -366,7 +366,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default)
+        private async Task LoadKeyValuesRegisteredForRefresh(IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken)
         {
             _watchedSettings.Clear();
 
