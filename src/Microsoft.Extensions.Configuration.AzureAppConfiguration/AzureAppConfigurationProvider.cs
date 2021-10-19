@@ -126,7 +126,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                LoadAll(_optional).ConfigureAwait(false).GetAwaiter().GetResult();
+                LoadAll(_optional, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -252,7 +252,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken = default)
+        private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken)
         {
             IDictionary<string, ConfigurationSetting> data = null;
             string cachedData = null;
@@ -404,7 +404,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshIndividualKeyValues(CancellationToken cancellationToken = default)
+        private async Task RefreshIndividualKeyValues(CancellationToken cancellationToken)
         {
             bool shouldRefreshAll = false;
 
@@ -504,7 +504,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshKeyValueAdapters(CancellationToken cancellationToken = default)
+        private async Task RefreshKeyValueAdapters(CancellationToken cancellationToken)
         {
             if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
             {
@@ -512,7 +512,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshKeyValueCollections(CancellationToken cancellationToken = default)
+        private async Task RefreshKeyValueCollections(CancellationToken cancellationToken)
         {
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
@@ -563,7 +563,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task SetData(IDictionary<string, ConfigurationSetting> data, bool ignoreFailures = false, CancellationToken cancellationToken = default)
+        private async Task SetData(IDictionary<string, ConfigurationSetting> data, bool ignoreFailures, CancellationToken cancellationToken)
         {
             // Update cache of settings
             this._applicationSettings = data as Dictionary<string, ConfigurationSetting> ??
@@ -660,7 +660,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task CallWithRequestTracing(Func<Task> clientCall)
         {
             var requestType = _isInitialLoadComplete ? RequestType.Watch : RequestType.Startup;
-            await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _requestTracingOptions, clientCall).ConfigureAwait(false);
+            TracingUtils.CallWithRequestTracing(_requestTracingEnabled, requestType, _requestTracingOptions, clientCall);
         }
 
         private void SetRequestTracingOptions()
