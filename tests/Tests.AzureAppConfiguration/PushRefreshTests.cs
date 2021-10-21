@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -222,42 +221,6 @@ namespace Tests.AzureAppConfiguration
 			Action nullAction = () => refresher.ProcessPushNotification(nullPushNotification);
 			Assert.Throws<ArgumentNullException>(nullAction);
 		}
-
-		//[Fact]
-		//public void TryParseJsonParsesBadMessages()
-		//{
-		//	string emptyMessage = "";
-		//	string nullMessage = null;
-
-		//	string badSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;error\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-		//	string noSyncTokenMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-
-		//	string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-		//	string noUriMsg  = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-
-		//	string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-		//	string noEventTypeMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-
-		//	//Should return false as empty or null string
-		//	Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out PushNotification pushNotification));
-		//	Assert.False(IsPushNotificationValid(pushNotification));
-		//	Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
-		//	Assert.False(IsPushNotificationValid(pushNotification));
-
-		//	//Should return true since the parameter is put into PushNotification
-		//	//SDK will handle incorrect data/formatting in each parameter
-		//	Assert.True(EventGridEventParser.TryParseJson(badSyncTokenMsg, out pushNotification));
-		//	Assert.True(EventGridEventParser.TryParseJson(badUriMsg, out pushNotification));
-		//	Assert.True(EventGridEventParser.TryParseJson(badEventType, out pushNotification));
-			
-		//	//These should return false as parameter was not found and put into pushNotification
-		//	Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
-		//	Assert.False(IsPushNotificationValid(pushNotification));
-		//	Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
-		//	Assert.False(IsPushNotificationValid(pushNotification));
-		//	Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
-		//	Assert.False(IsPushNotificationValid(pushNotification));
-		//}
 
 		[Fact]
 		public void SyncTokenUpdatesCorrectNumberOfTimes()
