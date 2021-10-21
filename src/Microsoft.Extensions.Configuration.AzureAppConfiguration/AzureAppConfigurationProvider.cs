@@ -184,6 +184,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     await RefreshKeyValueCollections(cancellationToken).ConfigureAwait(false);
                     await RefreshKeyValueAdapters(cancellationToken).ConfigureAwait(false);
                 }
+                catch (Exception exception) when (exception is RequestFailedException ||
+                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
+                                              exception is OperationCanceledException)
+                {
+
+                    // Update the cache expiration time for all refresh registered settings before rethrowing the exception
+                    var initialLoadTime = DateTimeOffset.UtcNow;
+
+                    foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+                    {
+                        changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
+                    }
+
+                    foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+                    {
+                        changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
+                    }
+
+                    throw;
+                }
                 finally
                 {
                     Interlocked.Exchange(ref _networkOperationsInProgress, 0);
