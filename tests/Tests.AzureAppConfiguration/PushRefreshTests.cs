@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -131,7 +132,7 @@ namespace Tests.AzureAppConfiguration
 
 
         [Fact]
-		public void PushNotification_TryParseJson_LoadsValues()
+		public void TryParseJsonParsesMessage()
 		{
 			string sampleMessage1 = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 			string syncToken1 = "syncToken1;sn=001";
@@ -144,19 +145,52 @@ namespace Tests.AzureAppConfiguration
 			string eventType2 = "eventType.KeyValueDeleted";
 
 			//Parse the sampleMessages into the pushNotification
-			EventGridEventParser.TryParseJson(sampleMessage1, out PushNotification pushNotification1);
-			Assert.Equal(pushNotification1.SyncToken, syncToken1);
-			Assert.Equal(pushNotification1.ResourceUri, uri1);
-			Assert.Equal(pushNotification1.EventType, eventType1);
+			EventGridEventParser.TryParseJson(sampleMessage1, out PushNotification pushNotification);
+			Assert.Equal(pushNotification.SyncToken, syncToken1);
+			Assert.Equal(pushNotification.ResourceUri, uri1);
+			Assert.Equal(pushNotification.EventType, eventType1);
 
-			EventGridEventParser.TryParseJson(sampleMessage2, out PushNotification pushNotification2);
-			Assert.Equal(pushNotification2.SyncToken, syncToken2);
-			Assert.Equal(pushNotification2.ResourceUri, uri2);
-			Assert.Equal(pushNotification2.EventType, eventType2);
+			EventGridEventParser.TryParseJson(sampleMessage2, out pushNotification);
+			Assert.Equal(pushNotification.SyncToken, syncToken2);
+			Assert.Equal(pushNotification.ResourceUri, uri2);
+			Assert.Equal(pushNotification.EventType, eventType2);
+
+
+			//TryParseJson should be able to parse these messages with incorrectly formatted parameters
+			string badSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;error\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+
+			//Should return true since the parameter is put into PushNotification
+			//SDK will handle incorrect data/formatting in each parameter
+			Assert.True(EventGridEventParser.TryParseJson(badSyncTokenMsg, out pushNotification));
+			Assert.True(EventGridEventParser.TryParseJson(badUriMsg, out pushNotification));
+			Assert.True(EventGridEventParser.TryParseJson(badEventType, out pushNotification));
+			
+			//TryParseJson should fail to parse the following messages
+			string emptyMessage = "";
+			string nullMessage = null;
+			string noSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string noUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+			string noEventTypeMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+
+			//These Assertions should return false as the message is an empty string or null
+			Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
+
+			//These Assertions should return false since a parameter is missing from the message
+			Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
+			Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
+			Assert.False(IsPushNotificationValid(pushNotification));
 		}
 
 		[Fact]
-		public void PushNotification_TestNullPushNotificationProcessPushNotification()
+		public void ProcessPushNotificationThrowsArgumentExceptions()
         {
 			var mockResponse = new Mock<Response>();
 			var mockClient = GetMockConfigurationClient();
@@ -177,64 +211,53 @@ namespace Tests.AzureAppConfiguration
 				})
 				.Build();
 
-			//Create list of PushNotifications with null Parameters
-			List<PushNotification> invalidPushNotifications = invalidPushNotificationList;
-
-			foreach (PushNotification invalidPushNotification in invalidPushNotifications)
+			foreach (PushNotification invalidPushNotification in invalidPushNotificationList)
             {
-                try
-                {
-                    refresher.ProcessPushNotification(invalidPushNotification);
-                    refresher.RefreshAsync().Wait();
+				Action action = () => refresher.ProcessPushNotification(invalidPushNotification);
+				Assert.Throws<ArgumentException>(action); 
+			}
 
-                }
-				//Should be caught in this block and continue to the next invalidNotification
-                catch (ArgumentNullException) { Assert.True(true); continue; }
-                catch (ArgumentException) { Assert.True(true); continue; }
+			PushNotification nullPushNotification = null;
 
-				//ProcessPushNotification did not throw any errors
-				Assert.True(false);
-
-            }
+			Action nullAction = () => refresher.ProcessPushNotification(nullPushNotification);
+			Assert.Throws<ArgumentNullException>(nullAction);
 		}
 
-		[Fact]
-		public void PushNotification_TryParseJson_ParsesInvalidEventGridMessage()
-		{
-			//Extract all components of the sample messages into individual messages
-			// something like this: Assert.Throws<AggregateException>(action);
-			string emptyMessage = "";
-			string nullMessage = null;
+		//[Fact]
+		//public void TryParseJsonParsesBadMessages()
+		//{
+		//	string emptyMessage = "";
+		//	string nullMessage = null;
 
-			string badSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;error\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string noSyncTokenMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+		//	string badSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;error\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+		//	string noSyncTokenMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 
-			string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string noUriMsg  = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+		//	string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+		//	string noUriMsg  = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 
-			string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string noEventTypeMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+		//	string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
+		//	string noEventTypeMsg   = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
 
-			//Should return false as empty or null string
-			Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out PushNotification pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-			Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
+		//	//Should return false as empty or null string
+		//	Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out PushNotification pushNotification));
+		//	Assert.False(IsPushNotificationValid(pushNotification));
+		//	Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
+		//	Assert.False(IsPushNotificationValid(pushNotification));
 
-			//Should return true since the parameter is put into PushNotification
-			//SDK will handle incorrect data/formatting in each parameter
-			Assert.True(EventGridEventParser.TryParseJson(badSyncTokenMsg, out pushNotification));
-			Assert.True(EventGridEventParser.TryParseJson(badUriMsg, out pushNotification));
-			Assert.True(EventGridEventParser.TryParseJson(badEventType, out pushNotification));
+		//	//Should return true since the parameter is put into PushNotification
+		//	//SDK will handle incorrect data/formatting in each parameter
+		//	Assert.True(EventGridEventParser.TryParseJson(badSyncTokenMsg, out pushNotification));
+		//	Assert.True(EventGridEventParser.TryParseJson(badUriMsg, out pushNotification));
+		//	Assert.True(EventGridEventParser.TryParseJson(badEventType, out pushNotification));
 			
-			//These should return false as parameter was not found and put into pushNotification
-			Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-			Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-			Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-		}
+		//	//These should return false as parameter was not found and put into pushNotification
+		//	Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
+		//	Assert.False(IsPushNotificationValid(pushNotification));
+		//	Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
+		//	Assert.False(IsPushNotificationValid(pushNotification));
+		//	Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
+		//	Assert.False(IsPushNotificationValid(pushNotification));
+		//}
 
 		[Fact]
 		public void SyncTokenUpdatesCorrectNumberOfTimes()
@@ -273,7 +296,7 @@ namespace Tests.AzureAppConfiguration
 
 		private bool IsPushNotificationValid(PushNotification pn)
         {
-			return ((pn == null) || (pn.SyncToken == null || pn.EventType == null || pn.ResourceUri == null)) ? false : true;
+			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null;
         }
 
 		private Mock<ConfigurationClient> GetMockConfigurationClient()

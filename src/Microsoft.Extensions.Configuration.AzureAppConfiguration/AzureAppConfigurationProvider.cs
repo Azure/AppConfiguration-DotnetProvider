@@ -255,8 +255,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public void ProcessPushNotification(PushNotification notification, TimeSpan? maxDelay)
         {
             
-            if (notification == null) { throw new NullReferenceException(); }
-            if (notification.SyncToken == null || notification.EventType == null || notification.ResourceUri == null) { throw new ArgumentException();  }
+            if (notification == null) 
+            { 
+                throw new ArgumentNullException(nameof(notification)); 
+            }
+            if (notification.SyncToken == null || notification.EventType == null || notification.ResourceUri == null)
+            {
+                throw new ArgumentException($"One or more properties of {nameof(notification)} are null. Please make sure that " +
+                    $"{nameof(notification)} is fully populated before invoking {nameof(ProcessPushNotification)}.");  
+            }
             
             _client.UpdateSyncToken(notification.SyncToken);
 

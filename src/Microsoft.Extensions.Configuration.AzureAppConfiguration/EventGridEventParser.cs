@@ -32,10 +32,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 			{
 				JsonElement jsonMessage = JsonDocument.Parse(eventGridMessage).RootElement;
 
-				pushNotification = new PushNotification {
-						SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString(),
-						EventType = jsonMessage.GetProperty("eventType").GetString(),
-						ResourceUri =  new Uri(jsonMessage.GetProperty("subject").GetString())};
+				pushNotification = new PushNotification
+				{
+					SyncToken = jsonMessage.GetProperty("data").GetProperty("syncToken").GetString(),
+					EventType = jsonMessage.GetProperty("eventType").GetString(),
+					ResourceUri = new Uri(jsonMessage.GetProperty("subject").GetString())
+				};
 
 				return true;
 			}
@@ -43,8 +45,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 			catch (KeyNotFoundException) { }
 			catch (ArgumentException) { }
 			catch (InvalidOperationException) { }
+			catch (UriFormatException) { }
 
-			pushNotification = null;
 			return false;
 		}
 	}
