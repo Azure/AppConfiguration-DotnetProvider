@@ -419,9 +419,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
+                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
                 bool hasChanged = false;
                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
@@ -520,6 +520,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
+                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
                 IEnumerable<ConfigurationSetting> currentKeyValues;
 
                 if (changeWatcher.Key.EndsWith("*"))
@@ -539,7 +540,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     });
                 }
 
-                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
                 IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(
                     currentKeyValues, 
                     new GetKeyValueChangeCollectionOptions
