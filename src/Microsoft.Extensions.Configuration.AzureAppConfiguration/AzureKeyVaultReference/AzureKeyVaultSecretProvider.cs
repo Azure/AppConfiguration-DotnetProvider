@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         private readonly Dictionary<string, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
         private string _nextRefreshKey;
         private DateTimeOffset? _nextRefreshTime;
+        private const string AzureIdentityAssemblyName = "Azure.Identity";
+        private static readonly TimeSpan DefaultBackoffDuringRefreshErrors = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan MaxBackoffDuringRefreshErrors = TimeSpan.FromMinutes(10);
+        private const int MaxRefreshAttempts = 20;
 
         public AzureKeyVaultSecretProvider(AzureAppConfigurationKeyVaultOptions keyVaultOptions = null)
         {
@@ -50,7 +55,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             else if (client != null)
             {
                 KeyVaultSecret secret;
-                secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+
+                try
+                {
+                    secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                          e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+                {
+                    // If this is not already a cached secret, we don't have any refresh time to update,
+                    // i.e. there's no way to track next refresh time of new secrets that fail to resolve.
+                    if (cachedSecret != null)
+                    {
+                        UpdateNextRefreshTimeForFailedSecret(key, cachedSecret);
+                    }
+
+                    throw;
+                }
+
                 secretValue = secret?.Value;
                 SetSecretInCache(key, secretValue);
             }
@@ -121,7 +143,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value);
             }
 
-            _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt);
+            _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt, refreshAttempt: 0);
             
             if (key == _nextRefreshKey)
             {
@@ -153,6 +175,48 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 _nextRefreshTime = null;
             }
+        }
+
+        private void UpdateNextRefreshTimeForFailedSecret(string key, CachedKeyVaultSecret cachedSecret)
+        {
+            DateTimeOffset? refreshSecretAt = null;
+
+            if (cachedSecret.RefreshAttempt < MaxRefreshAttempts)
+            {
+                cachedSecret.RefreshAttempt++;
+            }
+
+            if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
+            {
+                refreshSecretAt = DateTimeOffset.UtcNow.Add(CalculateBackoffTime(refreshInterval, cachedSecret.RefreshAttempt));
+            }
+            else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
+            {
+                refreshSecretAt = DateTimeOffset.UtcNow.Add(CalculateBackoffTime(_keyVaultOptions.DefaultSecretRefreshInterval.Value, cachedSecret.RefreshAttempt));
+            }
+
+            cachedSecret.RefreshAt = refreshSecretAt;
+
+            if (key == _nextRefreshKey)
+            {
+                UpdateNextRefreshableSecretFromCache();
+            }
+            else if ((refreshSecretAt.HasValue && _nextRefreshTime.HasValue && refreshSecretAt.Value < _nextRefreshTime.Value)
+                    || (refreshSecretAt.HasValue && !_nextRefreshTime.HasValue))
+            {
+                _nextRefreshKey = key;
+                _nextRefreshTime = refreshSecretAt.Value;
+            }
+        }
+
+        private TimeSpan CalculateBackoffTime(TimeSpan cacheExpirationTime, int attempts)
+        {
+            TimeSpan maxBackoff = cacheExpirationTime < MaxBackoffDuringRefreshErrors ? cacheExpirationTime : MaxBackoffDuringRefreshErrors;
+
+            long ticks = DefaultBackoffDuringRefreshErrors.Ticks * new Random().Next(0, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue));
+            TimeSpan calculatedBackoff = TimeSpan.FromTicks(Math.Max(DefaultBackoffDuringRefreshErrors.Ticks, ticks));
+
+            return maxBackoff < calculatedBackoff ? maxBackoff : calculatedBackoff;
         }
     }
 }
