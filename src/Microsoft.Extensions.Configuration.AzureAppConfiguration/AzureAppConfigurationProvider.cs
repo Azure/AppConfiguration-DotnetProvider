@@ -184,26 +184,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     await RefreshKeyValueCollections(cancellationToken).ConfigureAwait(false);
                     await RefreshKeyValueAdapters(cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception exception) when (exception is RequestFailedException ||
-                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                                              exception is OperationCanceledException)
-                {
-
-                    // Update the cache expiration time for all refresh registered settings before rethrowing the exception
-                    var initialLoadTime = DateTimeOffset.UtcNow;
-
-                    foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
-                    {
-                        changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
-                    }
-
-                    foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
-                    {
-                        changeWatcher.CacheExpires = initialLoadTime.Add(changeWatcher.CacheExpirationInterval);
-                    }
-
-                    throw;
-                }
                 finally
                 {
                     Interlocked.Exchange(ref _networkOperationsInProgress, 0);
@@ -441,14 +421,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 bool hasChanged = false;
                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
                     KeyValueChange keyValueChange = default;
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                         async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-
-                    changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                     // Check if a change has been detected in the key-value registered for refresh
                     if (keyValueChange.ChangeType != KeyValueChangeType.None)
@@ -486,11 +465,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         watchedKv = null;
                     }
 
-                    changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
-
                     if (watchedKv != null)
                     {
-
                         if (changeWatcher.RefreshAll)
                         {
                             shouldRefreshAll = true;
@@ -563,6 +539,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     });
                 }
 
+                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
                 IEnumerable<KeyValueChange> keyValueChanges = await _client.GetKeyValueChangeCollection(
                     currentKeyValues, 
                     new GetKeyValueChangeCollectionOptions
@@ -574,7 +551,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }, 
                     cancellationToken).ConfigureAwait(false);
 
-                changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.CacheExpirationInterval);
 
                 if (keyValueChanges?.Any() == true)
                 {
