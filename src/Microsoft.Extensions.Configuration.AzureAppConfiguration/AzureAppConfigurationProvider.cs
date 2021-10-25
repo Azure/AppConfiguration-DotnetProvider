@@ -728,7 +728,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher, DateTimeOffset initialLoadTime, bool operationFailed = false)
         {
-            var cacheExpirationTime = changeWatcher.CacheExpirationInterval;
+            TimeSpan cacheExpirationTime;
 
             if (operationFailed)
             {
@@ -738,6 +738,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 cacheExpirationTime = CalculateBackoffTime(cacheExpirationTime, changeWatcher.RefreshAttempt);
+            }
+            else
+            {
+                changeWatcher.RefreshAttempt = 0;
+                cacheExpirationTime = changeWatcher.CacheExpirationInterval;
             }
 
             changeWatcher.CacheExpires = initialLoadTime.Add(cacheExpirationTime);
