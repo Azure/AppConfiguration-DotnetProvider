@@ -56,13 +56,11 @@ namespace Tests.AzureAppConfiguration
             {
               new PushNotification  {
                                     ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
-
 									EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken1;sn=001"
                                     },
               new PushNotification  {
                                     ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
-
 									EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken2"
                                     },
@@ -129,8 +127,9 @@ namespace Tests.AzureAppConfiguration
                                     }
             };
 
+		ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
-        [Fact]
+		[Fact]
 		public void TryParseJsonParsesMessage()
 		{
 			string sampleMessage1 = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
@@ -245,9 +244,7 @@ namespace Tests.AzureAppConfiguration
 				})
 				.Build();
 
-			List<PushNotification> pushNotifications = pushNotificationList;
-
-			foreach (PushNotification pushNotification in pushNotifications)
+			foreach (PushNotification pushNotification in pushNotificationList)
 			{
 				refresher.ProcessPushNotification(pushNotification, TimeSpan.FromSeconds(0));
 				refresher.RefreshAsync().Wait();
@@ -255,6 +252,39 @@ namespace Tests.AzureAppConfiguration
 
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(8));
 			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(8));
+		}
+
+		[Fact]
+		public void RefreshAsyncUpdatesConfig()
+		{
+			// Arrange
+			var mockResponse = new Mock<Response>();
+			var mockClient = GetMockConfigurationClient();
+
+			IConfigurationRefresher refresher = null;
+
+			var config = new ConfigurationBuilder()
+				.AddAzureAppConfiguration(options =>
+				{
+					options.Client = mockClient.Object;
+					options.Select("*");
+					options.ConfigureRefresh(refreshOptions =>
+					{
+						refreshOptions.Register("TestKey1", "label")
+							.SetCacheExpiration(TimeSpan.FromDays(30));
+					});
+					refresher = options.GetRefresher();
+				})
+				.Build();
+
+
+			Assert.Equal("TestValue1", config["TestKey1"]);
+			FirstKeyValue.Value = "newValue1";
+
+			refresher.ProcessPushNotification(pushNotificationList.First(), TimeSpan.FromSeconds(0));
+			refresher.RefreshAsync().Wait();
+
+			Assert.Equal("newValue1", config["TestKey1"]);
 		}
 
 		private bool IsPushNotificationValid(PushNotification pn)

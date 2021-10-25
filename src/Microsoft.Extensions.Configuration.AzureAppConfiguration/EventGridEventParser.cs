@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
 	/// <summary>
-	/// EventGridEventParser contains the method to parse a Json EventGrid Message Notification
+	/// This class provides a helper method to parse an Event Grid event
 	/// </summary>
 	public static class EventGridEventParser
 	{
