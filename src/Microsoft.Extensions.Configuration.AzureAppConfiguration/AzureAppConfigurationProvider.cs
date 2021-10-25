@@ -737,7 +737,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     changeWatcher.RefreshAttempt++;
                 }
 
-                cacheExpirationTime = CalculateBackoffTime(cacheExpirationTime, changeWatcher.RefreshAttempt);
+                cacheExpirationTime = CalculateBackoffTime(changeWatcher.CacheExpirationInterval, changeWatcher.RefreshAttempt);
             }
             else
             {
