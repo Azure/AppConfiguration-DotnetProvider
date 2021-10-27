@@ -22,11 +22,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// </summary>
         public int RefreshAttempts { get; set; }
 
-        public CachedKeyVaultSecret(string secretValue, DateTimeOffset? refreshAt, int refreshAttempt = 0)
+        public CachedKeyVaultSecret(string secretValue, DateTimeOffset? refreshAt, int refreshAttempts = 0)
         {
             SecretValue = secretValue;
             RefreshAt = refreshAt;
-            RefreshAttempts = refreshAttempt;
+            RefreshAttempts = refreshAttempts;
         }
     }
 }
