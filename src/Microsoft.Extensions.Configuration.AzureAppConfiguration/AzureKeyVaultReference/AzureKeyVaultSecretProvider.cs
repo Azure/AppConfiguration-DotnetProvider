@@ -54,22 +54,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             else if (client != null)
             {
                 KeyVaultSecret secret;
+                bool success = false;
 
                 try
                 {
                     secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                    success = true;
                 }
-                catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                          e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+                finally
                 {
                     // If this is not already a cached secret, we don't have any refresh time to update,
                     // i.e. there's no way to track next refresh time of new secrets that fail to resolve.
-                    if (cachedSecret != null)
+                    if (!success && cachedSecret != null)
                     {
                         UpdateNextRefreshTimeForFailedSecret(key, cachedSecret);
                     }
-
-                    throw;
                 }
 
                 secretValue = secret?.Value;
@@ -142,7 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value);
             }
 
-            _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt, refreshAttempt: 0);
+            _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt, refreshAttempts: 0);
             
             if (key == _nextRefreshKey)
             {
