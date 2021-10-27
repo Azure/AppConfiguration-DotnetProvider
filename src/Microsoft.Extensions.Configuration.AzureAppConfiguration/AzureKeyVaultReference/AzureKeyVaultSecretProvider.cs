@@ -20,8 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         private string _nextRefreshKey;
         private DateTimeOffset? _nextRefreshTime;
         private const string AzureIdentityAssemblyName = "Azure.Identity";
-        private static readonly TimeSpan DefaultBackoffDuringRefreshErrors = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan MaxBackoffDuringRefreshErrors = TimeSpan.FromMinutes(10);
         private const int MaxRefreshAttempts = 20;
 
         public AzureKeyVaultSecretProvider(AzureAppConfigurationKeyVaultOptions keyVaultOptions = null)
