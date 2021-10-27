@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// The number of times we tried to reload this key-value with exponential backoff strategy.
         /// </summary>
-        public int RefreshAttempt { get; set; } = 0;
+        public int RefreshAttempts { get; set; } = 0;
 
         public override bool Equals(object obj)
         {

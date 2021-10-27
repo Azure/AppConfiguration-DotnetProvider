@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -181,18 +182,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             DateTimeOffset? refreshSecretAt = null;
 
-            if (cachedSecret.RefreshAttempt < MaxRefreshAttempts)
+            if (cachedSecret.RefreshAttempts < MaxRefreshAttempts)
             {
-                cachedSecret.RefreshAttempt++;
+                cachedSecret.RefreshAttempts++;
             }
 
             if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
             {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(CalculateBackoffTime(refreshInterval, cachedSecret.RefreshAttempt));
+                refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval.CalculateBackoffTime(cachedSecret.RefreshAttempts));
             }
             else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
             {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(CalculateBackoffTime(_keyVaultOptions.DefaultSecretRefreshInterval.Value, cachedSecret.RefreshAttempt));
+                refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value.CalculateBackoffTime(cachedSecret.RefreshAttempts));
             }
 
             cachedSecret.RefreshAt = refreshSecretAt;
@@ -207,16 +208,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 _nextRefreshKey = key;
                 _nextRefreshTime = refreshSecretAt.Value;
             }
-        }
-
-        private TimeSpan CalculateBackoffTime(TimeSpan cacheExpirationTime, int attempts)
-        {
-            TimeSpan maxBackoff = cacheExpirationTime < MaxBackoffDuringRefreshErrors ? cacheExpirationTime : MaxBackoffDuringRefreshErrors;
-
-            long ticks = DefaultBackoffDuringRefreshErrors.Ticks * new Random().Next(0, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue));
-            TimeSpan calculatedBackoff = TimeSpan.FromTicks(Math.Max(DefaultBackoffDuringRefreshErrors.Ticks, ticks));
-
-            return maxBackoff < calculatedBackoff ? maxBackoff : calculatedBackoff;
         }
     }
 }

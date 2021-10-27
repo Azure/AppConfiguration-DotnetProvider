@@ -38,9 +38,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
-        
-        private static readonly TimeSpan DefaultBackoffDuringRefreshErrors = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan MaxBackoffDuringRefreshErrors = TimeSpan.FromMinutes(10);
         private const int MaxRefreshAttempts = 20;
 
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
@@ -260,6 +257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             IDictionary<string, ConfigurationSetting> data = null;
             string cachedData = null;
+            bool success = false;
 
             try
             {
@@ -317,8 +315,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Block current thread for the initial load of key-values registered for refresh that are not already loaded
                 await Task.Run(() => LoadKeyValuesRegisteredForRefresh(serverData, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
                 data = serverData;
+                success = true;
             }
-            catch (Exception exception) when (CanHandleException(exception))
+            catch (Exception exception) when (exception is RequestFailedException ||
+                                            ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
+                                            exception is OperationCanceledException)
             {
                 if (_options.OfflineCache != null)
                 {
@@ -334,8 +335,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If we're unable to load data from offline cache, check if we need to ignore or rethrow the exception 
                 if (data == null && !ignoreFailures)
                 {
-                    UpdateCacheExpirationTimeForAllChangeWatchers(DateTimeOffset.UtcNow, operationFailed: true);
                     throw;
+                }
+            }
+            finally
+            {
+                // Update the cache expiration time for all refresh registered settings and feature flags
+                foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
+                {
+                    UpdateCacheExpirationTime(changeWatcher, success);
                 }
             }
 
@@ -346,8 +354,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     adapter.InvalidateCache();
                 }
-
-                UpdateCacheExpirationTimeForAllChangeWatchers(DateTimeOffset.UtcNow, operationFailed: false);
 
                 await SetData(data, ignoreFailures, cancellationToken).ConfigureAwait(false);
                 
@@ -399,6 +405,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task RefreshIndividualKeyValues(CancellationToken cancellationToken)
         {
             bool shouldRefreshAll = false;
+            bool success = false;
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -422,11 +429,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                             async () => keyValueChange = await _client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+
+                        success = true;
                     }
-                    catch (Exception exception) when (CanHandleException(exception))
+                    finally
                     {
-                        UpdateCacheExpirationTime(changeWatcher, DateTime.UtcNow, operationFailed: true);
-                        throw;
+                        UpdateCacheExpirationTime(changeWatcher, success);
                     }
 
                     // Check if a change has been detected in the key-value registered for refresh
@@ -459,15 +467,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     try
                     {
                         await CallWithRequestTracing(async () => watchedKv = await _client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        success = true;
                     }
                     catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                     {
                         watchedKv = null;
+                        success = true;
                     }
-                    catch (Exception exception) when (CanHandleException(exception))
+                    finally
                     {
-                        UpdateCacheExpirationTime(changeWatcher, DateTime.UtcNow, operationFailed: true);
-                        throw;
+                        UpdateCacheExpirationTime(changeWatcher, success);
                     }
 
                     if (watchedKv != null)
@@ -492,8 +501,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }
                 
-                UpdateCacheExpirationTime(changeWatcher, DateTime.UtcNow, operationFailed: false);
-
                 if (hasChanged)
                 {
                     await SetData(_applicationSettings, false, cancellationToken).ConfigureAwait(false);
@@ -519,6 +526,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshKeyValueCollections(CancellationToken cancellationToken)
         {
+            bool success = false;
+
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
                 // Skip the refresh for this key-prefix if the cached value has not expired
@@ -559,16 +568,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             RequestTracingOptions = _requestTracingOptions
                         },
                         cancellationToken).ConfigureAwait(false);
+
+                    success = true;
                 }
-                catch (Exception exception) when (CanHandleException(exception))
+                finally
                 {
-                    UpdateCacheExpirationTime(changeWatcher, DateTime.UtcNow, operationFailed: true);
-                    throw;
+                    UpdateCacheExpirationTime(changeWatcher, success);
                 }
 
-                UpdateCacheExpirationTime(changeWatcher, DateTime.UtcNow, operationFailed: false);
-
-                if (keyValueChanges?.Any() == true)
+                if (keyValueChanges.Any())
                 {
                     ProcessChanges(keyValueChanges);
 
@@ -710,52 +718,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        private bool CanHandleException(Exception exception)
-        {
-            return exception is RequestFailedException ||
-                    ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                    exception is OperationCanceledException;
-        }
-
-        private void UpdateCacheExpirationTimeForAllChangeWatchers(DateTimeOffset initialLoadTime, bool operationFailed = false)
-        {
-            // Update the cache expiration time for all refresh registered settings and feature flags
-            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
-            {
-                UpdateCacheExpirationTime(changeWatcher, initialLoadTime, operationFailed);
-            }
-        }
-
-        private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher, DateTimeOffset initialLoadTime, bool operationFailed = false)
+        private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher, bool success)
         {
             TimeSpan cacheExpirationTime;
 
-            if (operationFailed)
+            if (success)
             {
-                if (changeWatcher.RefreshAttempt < MaxRefreshAttempts)
-                {
-                    changeWatcher.RefreshAttempt++;
-                }
-
-                cacheExpirationTime = CalculateBackoffTime(changeWatcher.CacheExpirationInterval, changeWatcher.RefreshAttempt);
+                changeWatcher.RefreshAttempts = 0;
+                cacheExpirationTime = changeWatcher.CacheExpirationInterval;
             }
             else
             {
-                changeWatcher.RefreshAttempt = 0;
-                cacheExpirationTime = changeWatcher.CacheExpirationInterval;
+                if (changeWatcher.RefreshAttempts < MaxRefreshAttempts)
+                {
+                    changeWatcher.RefreshAttempts++;
+                }
+
+                cacheExpirationTime = changeWatcher.CacheExpirationInterval.CalculateBackoffTime(changeWatcher.RefreshAttempts);
             }
 
-            changeWatcher.CacheExpires = initialLoadTime.Add(cacheExpirationTime);
-        }
-
-        private TimeSpan CalculateBackoffTime(TimeSpan cacheExpirationTime, int attempts)
-        {
-            TimeSpan maxBackoff = cacheExpirationTime < MaxBackoffDuringRefreshErrors ? cacheExpirationTime : MaxBackoffDuringRefreshErrors;
-
-            long ticks = DefaultBackoffDuringRefreshErrors.Ticks * new Random().Next(0, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue));
-            TimeSpan calculatedBackoff = TimeSpan.FromTicks(Math.Max(DefaultBackoffDuringRefreshErrors.Ticks, ticks));
-            
-            return maxBackoff < calculatedBackoff ? maxBackoff : calculatedBackoff;
+            changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
     }
 }

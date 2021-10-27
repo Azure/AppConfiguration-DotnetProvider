@@ -20,13 +20,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// <summary>
         /// The number of times we tried to reload this secret with exponential backoff strategy.
         /// </summary>
-        public int RefreshAttempt { get; set; }
+        public int RefreshAttempts { get; set; }
 
         public CachedKeyVaultSecret(string secretValue, DateTimeOffset? refreshAt, int refreshAttempt = 0)
         {
             SecretValue = secretValue;
             RefreshAt = refreshAt;
-            RefreshAttempt = refreshAttempt;
+            RefreshAttempts = refreshAttempt;
         }
     }
 }
