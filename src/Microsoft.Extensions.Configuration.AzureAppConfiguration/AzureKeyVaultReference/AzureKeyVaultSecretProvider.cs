@@ -19,8 +19,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         private readonly Dictionary<string, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
         private string _nextRefreshKey;
         private DateTimeOffset? _nextRefreshTime;
-        private const string AzureIdentityAssemblyName = "Azure.Identity";
-        private const int MaxRefreshAttempts = 20;
 
         public AzureKeyVaultSecretProvider(AzureAppConfigurationKeyVaultOptions keyVaultOptions = null)
         {
@@ -179,7 +177,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             DateTimeOffset? refreshSecretAt = null;
 
-            if (cachedSecret.RefreshAttempts < MaxRefreshAttempts)
+            if (cachedSecret.RefreshAttempts < int.MaxValue)
             {
                 cachedSecret.RefreshAttempts++;
             }

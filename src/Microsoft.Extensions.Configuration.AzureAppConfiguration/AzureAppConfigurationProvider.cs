@@ -38,7 +38,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static readonly TimeSpan MinDelayForUnhandledFailure = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan DefaultMaxSetDirtyDelay = TimeSpan.FromSeconds(30);
-        private const int MaxRefreshAttempts = 20;
 
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
         private int _networkOperationsInProgress = 0;
@@ -405,7 +404,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task RefreshIndividualKeyValues(CancellationToken cancellationToken)
         {
             bool shouldRefreshAll = false;
-            bool success = false;
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -424,6 +422,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
                     KeyValueChange keyValueChange = default;
+                    bool success = false;
 
                     try
                     {
@@ -463,6 +462,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     // Load the key-value in case the previous load attempts had failed
                     var options = new SettingSelector { LabelFilter = watchedLabel };
+                    bool success = false;
 
                     try
                     {
@@ -729,7 +729,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                if (changeWatcher.RefreshAttempts < MaxRefreshAttempts)
+                if (changeWatcher.RefreshAttempts < int.MaxValue)
                 {
                     changeWatcher.RefreshAttempts++;
                 }
