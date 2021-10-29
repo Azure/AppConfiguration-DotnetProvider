@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     // i.e. there's no way to track next refresh time of new secrets that fail to resolve.
                     if (!success && cachedSecret != null)
                     {
-                        UpdateNextRefreshTimeForFailedSecret(key, cachedSecret);
+                        SetSecretInCache(key, secretValue: null, cachedSecret: cachedSecret, success: false);
                     }
                 }
 
@@ -126,30 +126,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return client;
         }
 
-        private void SetSecretInCache(string key, string secretValue)
+        private void SetSecretInCache(string key, string secretValue, CachedKeyVaultSecret cachedSecret = null, bool success = true)
         {
-            DateTimeOffset? refreshSecretAt = null;
-
-            if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
+            if (success)
             {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval);
-            }
-            else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
-            {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value);
+                cachedSecret = new CachedKeyVaultSecret(secretValue);
+                _cachedKeyVaultSecrets[key] = cachedSecret;
             }
 
-            _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt, refreshAttempts: 0);
-            
+            cachedSecret.RefreshAt = GetCacheExpirationTimeForSecret(key, cachedSecret, success);
+
             if (key == _nextRefreshKey)
             {
                 UpdateNextRefreshableSecretFromCache();
             }
-            else if ((refreshSecretAt.HasValue && _nextRefreshTime.HasValue && refreshSecretAt.Value < _nextRefreshTime.Value)
-                    || (refreshSecretAt.HasValue && !_nextRefreshTime.HasValue))
+            else if ((cachedSecret.RefreshAt.HasValue && _nextRefreshTime.HasValue && cachedSecret.RefreshAt.Value < _nextRefreshTime.Value)
+                    || (cachedSecret.RefreshAt.HasValue && !_nextRefreshTime.HasValue))
             {
                 _nextRefreshKey = key;
-                _nextRefreshTime = refreshSecretAt.Value;
+                _nextRefreshTime = cachedSecret.RefreshAt.Value;
             }
         }
 
@@ -173,36 +168,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        private void UpdateNextRefreshTimeForFailedSecret(string key, CachedKeyVaultSecret cachedSecret)
+        private DateTimeOffset? GetCacheExpirationTimeForSecret(string key, CachedKeyVaultSecret cachedSecret, bool success)
         {
             DateTimeOffset? refreshSecretAt = null;
 
-            if (cachedSecret.RefreshAttempts < int.MaxValue)
+            if (success)
             {
-                cachedSecret.RefreshAttempts++;
+                cachedSecret.RefreshAttempts = 0;
+
+                if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
+                {
+                    refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval);
+                }
+                else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
+                {
+                    refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value);
+                }
+            }
+            else
+            {
+                if (cachedSecret.RefreshAttempts < int.MaxValue)
+                {
+                    cachedSecret.RefreshAttempts++;
+                }
+
+                if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
+                {
+                    refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval.CalculateBackoffTime(cachedSecret.RefreshAttempts));
+                }
+                else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
+                {
+                    refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value.CalculateBackoffTime(cachedSecret.RefreshAttempts));
+                }
             }
 
-            if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
-            {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval.CalculateBackoffTime(cachedSecret.RefreshAttempts));
-            }
-            else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
-            {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value.CalculateBackoffTime(cachedSecret.RefreshAttempts));
-            }
-
-            cachedSecret.RefreshAt = refreshSecretAt;
-
-            if (key == _nextRefreshKey)
-            {
-                UpdateNextRefreshableSecretFromCache();
-            }
-            else if ((refreshSecretAt.HasValue && _nextRefreshTime.HasValue && refreshSecretAt.Value < _nextRefreshTime.Value)
-                    || (refreshSecretAt.HasValue && !_nextRefreshTime.HasValue))
-            {
-                _nextRefreshKey = key;
-                _nextRefreshTime = refreshSecretAt.Value;
-            }
+            return refreshSecretAt;
         }
     }
 }
