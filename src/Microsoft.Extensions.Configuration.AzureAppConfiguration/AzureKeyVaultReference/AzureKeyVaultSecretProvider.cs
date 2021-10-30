@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
@@ -134,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 _cachedKeyVaultSecrets[key] = cachedSecret;
             }
 
-            cachedSecret.RefreshAt = GetCacheExpirationTimeForSecret(key, cachedSecret, success);
+            UpdateCacheExpirationTimeForSecret(key, cachedSecret, success);
 
             if (key == _nextRefreshKey)
             {
@@ -168,41 +167,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        private DateTimeOffset? GetCacheExpirationTimeForSecret(string key, CachedKeyVaultSecret cachedSecret, bool success)
+        private void UpdateCacheExpirationTimeForSecret(string key, CachedKeyVaultSecret cachedSecret, bool success)
         {
-            DateTimeOffset? refreshSecretAt = null;
-
-            if (success)
+            if (!_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan cacheExpirationTime))
             {
-                cachedSecret.RefreshAttempts = 0;
-
-                if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
+                if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
                 {
-                    refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval);
-                }
-                else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
-                {
-                    refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value);
-                }
-            }
-            else
-            {
-                if (cachedSecret.RefreshAttempts < int.MaxValue)
-                {
-                    cachedSecret.RefreshAttempts++;
-                }
-
-                if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
-                {
-                    refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval.CalculateBackoffTime(cachedSecret.RefreshAttempts));
-                }
-                else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
-                {
-                    refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value.CalculateBackoffTime(cachedSecret.RefreshAttempts));
+                    cacheExpirationTime = _keyVaultOptions.DefaultSecretRefreshInterval.Value;
                 }
             }
 
-            return refreshSecretAt;
+            if (cacheExpirationTime > TimeSpan.Zero)
+            {
+                if (success)
+                {
+                    cachedSecret.RefreshAttempts = 0;
+                    cachedSecret.RefreshAt = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
+                }
+                else
+                {
+                    if (cachedSecret.RefreshAttempts < int.MaxValue)
+                    {
+                        cachedSecret.RefreshAttempts++;
+                    }
+
+                    cachedSecret.RefreshAt = DateTimeOffset.UtcNow.Add(cacheExpirationTime.CalculateBackoffTime(cachedSecret.RefreshAttempts));
+                }
+            }
         }
     }
 }
