@@ -56,25 +56,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 try
                 {
                     secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                    secretValue = secret?.Value;
+                    cachedSecret = new CachedKeyVaultSecret(secretValue);
                     success = true;
                 }
                 finally
                 {
-                    // If this is not already a cached secret, we don't have any refresh time to update,
-                    // i.e. there's no way to track next refresh time of new secrets that fail to resolve.
-                    if (!success && cachedSecret != null)
-                    {
-                        SetSecretInCache(key, secretValue: null, cachedSecret: cachedSecret, success: false);
-                    }
+                    SetSecretInCache(key, cachedSecret, success);
                 }
-
-                secretValue = secret?.Value;
-                SetSecretInCache(key, secretValue);
             }
             else if (_keyVaultOptions.SecretResolver != null)
             {
                 secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
-                SetSecretInCache(key, secretValue);
+                cachedSecret = new CachedKeyVaultSecret(secretValue);
+                SetSecretInCache(key, cachedSecret, success: true);
             }
             else
             {
@@ -125,15 +120,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return client;
         }
 
-        private void SetSecretInCache(string key, string secretValue, CachedKeyVaultSecret cachedSecret = null, bool success = true)
+        private void SetSecretInCache(string key, CachedKeyVaultSecret cachedSecret, bool success = true)
         {
-            if (success)
+            if (cachedSecret == null)
             {
-                cachedSecret = new CachedKeyVaultSecret(secretValue);
-                _cachedKeyVaultSecrets[key] = cachedSecret;
+                cachedSecret = new CachedKeyVaultSecret();
             }
 
             UpdateCacheExpirationTimeForSecret(key, cachedSecret, success);
+            _cachedKeyVaultSecrets[key] = cachedSecret;
 
             if (key == _nextRefreshKey)
             {

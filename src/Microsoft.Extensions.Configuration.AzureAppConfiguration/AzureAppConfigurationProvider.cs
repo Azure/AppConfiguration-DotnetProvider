@@ -97,7 +97,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                MinCacheExpirationInterval = AzureAppConfigurationRefreshOptions.DefaultCacheExpirationInterval;
+                MinCacheExpirationInterval = RefreshConstants.DefaultCacheExpirationInterval;
             }
 
             // Enable request tracing if not opt-out
@@ -520,8 +520,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshKeyValueCollections(CancellationToken cancellationToken)
         {
-            bool success = false;
-
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
                 // Skip the refresh for this key-prefix if the cached value has not expired
@@ -532,26 +530,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 IEnumerable<ConfigurationSetting> currentKeyValues;
                 IEnumerable<KeyValueChange> keyValueChanges;
-
-                if (changeWatcher.Key.EndsWith("*"))
-                {
-                    // Get current application settings starting with changeWatcher.Key, excluding the last * character
-                    var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
-                    currentKeyValues = _applicationSettings.Values.Where(kv =>
-                    {
-                        return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
-                }
-                else
-                {
-                    currentKeyValues = _applicationSettings.Values.Where(kv =>
-                    {
-                        return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
-                }
+                bool success = false;
 
                 try
-                {
+                { 
+                    if (changeWatcher.Key.EndsWith("*"))
+                    {
+                        // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                        var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
+                        currentKeyValues = _applicationSettings.Values.Where(kv =>
+                        {
+                            return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
+                        });
+                    }
+                    else
+                    {
+                        currentKeyValues = _applicationSettings.Values.Where(kv =>
+                        {
+                            return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
+                        });
+                    }
+
                     keyValueChanges = await _client.GetKeyValueChangeCollection(
                         currentKeyValues,
                         new GetKeyValueChangeCollectionOptions
