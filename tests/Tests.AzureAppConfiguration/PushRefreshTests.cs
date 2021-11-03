@@ -8,10 +8,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.EventGrid.Models;
 using Xunit;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+
 
 namespace Tests.AzureAppConfiguration
 {
+	//class EventGridEvent
+	//{
+	//	public string data { get; set; }
+	//	public string dataVersion { get; set; }
+	//	public System.DateTimeOffset eventTime { get; set; }
+	//	public string eventType { get; set; }
+	//	public string id { get; set; }
+	//	public Uri subject { get; set; }
+	//	public string topic { get; set; }
+	//}
 	public class PushRefreshTests
 	{
 		List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
@@ -129,65 +142,43 @@ namespace Tests.AzureAppConfiguration
 
 		ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
-		[Fact]
-		public void TryParseJsonParsesMessage()
-		{
-			string sampleMessage1 = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string syncToken1 = "syncToken1;sn=001";
-			Uri uri1 = new Uri("https://store1.resource.io/kv/searchQuery1");
-			string eventType1 = "eventType.KeyValueModified";
+        [Fact]
+        public void TryTryCreatePushNotification()
+        {
+            EventGridEvent eventGridEvent = new EventGridEvent()
+            {
+                Data = "{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"}",
+                DataVersion = "2",
+                EventTime = new DateTime(2021, 10, 6, 20, 08, 7),
+                EventType = "eventType.KeyValueModified",
+                Id = "some id",
+                Subject = "https://store1.resource.io/kv/searchQuery1",
+                Topic = "/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\\"
+            };
 
-			string sampleMessage2 = "{\"id\":\"id-value2\",\"topic\":\"/subscriptions/subscription-value2/resourceGroups/resourceGroup2/providers/provider2/configurationstores/store2\",\"subject\":\"https://store2.resource.io/kv/searchQuery2\",\"data\":{\"key\":\"searchQuery2\",\"etag\":\"etagValue2\",\"syncToken\":\"syncToken2;sn=002\"},\"eventType\":\"eventType.KeyValueDeleted\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string syncToken2 = "syncToken2;sn=002";
-			Uri uri2 = new Uri("https://store2.resource.io/kv/searchQuery2");
-			string eventType2 = "eventType.KeyValueDeleted";
+			EventGridEvent badEventGridEventDataCapitalization = new EventGridEvent()
+			{
+				Data = "{\"Key\":\"searchQuery1\",\"Etag\":\"etagValue1\",\"SyncToken\":\"syncToken1;sn=001\"}",
+				DataVersion = "2",
+				EventTime = new DateTime(2021, 10, 6, 20, 08, 7),
+				EventType = "eventType.KeyValueModified",
+				Id = "some id",
+				Subject = "https://store1.resource.io/kv/searchQuery1",
+				Topic = "/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\\"
+			};
 
-			//Parse the sampleMessages into the pushNotification
-			EventGridEventParser.TryParseJson(sampleMessage1, out PushNotification pushNotification);
-			Assert.Equal(pushNotification.SyncToken, syncToken1);
-			Assert.Equal(pushNotification.ResourceUri, uri1);
-			Assert.Equal(pushNotification.EventType, eventType1);
+			eventGridEvent.TryCreatePushNotification(out PushNotification pushNotification);
 
-			EventGridEventParser.TryParseJson(sampleMessage2, out pushNotification);
-			Assert.Equal(pushNotification.SyncToken, syncToken2);
-			Assert.Equal(pushNotification.ResourceUri, uri2);
-			Assert.Equal(pushNotification.EventType, eventType2);
+			Assert.Equal(eventGridEvent.EventType, pushNotification.EventType);
+			Assert.Equal(new Uri(eventGridEvent.Subject), pushNotification.ResourceUri);
+			Assert.Equal("syncToken1;sn=001", pushNotification.SyncToken);
 
-
-			//TryParseJson should be able to parse these messages with incorrectly formatted parameters
-			string badSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;error\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string badUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string badEventType = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValue\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-
-			//Should return true since the parameter is put into PushNotification
-			//SDK will handle incorrect data/formatting in each parameter
-			Assert.True(EventGridEventParser.TryParseJson(badSyncTokenMsg, out pushNotification));
-			Assert.True(EventGridEventParser.TryParseJson(badUriMsg, out pushNotification));
-			Assert.True(EventGridEventParser.TryParseJson(badEventType, out pushNotification));
-			
-			//TryParseJson should fail to parse the following messages
-			string emptyMessage = "";
-			string nullMessage = null;
-			string noSyncTokenMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string noUriMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"eventType\":\"eventType.KeyValueModified\",\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-			string noEventTypeMsg = "{\"id\":\"id-value1\",\"topic\":\"/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\",\"subject\":\"https://store1.resource.io/kv/searchQuery1\",\"data\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"},\"dataVersion\":\"2\",\"metadataVersion\":\"1\",\"eventTime\":\"2021-10-06T20:08:07.2536025Z\"}";
-
-			//These Assertions should return false as the message is an empty string or null
-			Assert.False(EventGridEventParser.TryParseJson(emptyMessage, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-			Assert.False(EventGridEventParser.TryParseJson(nullMessage, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-
-			//These Assertions should return false since a parameter is missing from the message
-			Assert.False(EventGridEventParser.TryParseJson(noSyncTokenMsg, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-			Assert.False(EventGridEventParser.TryParseJson(noUriMsg, out pushNotification));
-			Assert.False(IsPushNotificationValid(pushNotification));
-			Assert.False(EventGridEventParser.TryParseJson(noEventTypeMsg, out pushNotification));
+			//Should Fail assertions since bad EventGridEvent
+			badEventGridEventDataCapitalization.TryCreatePushNotification(out pushNotification);
 			Assert.False(IsPushNotificationValid(pushNotification));
 		}
 
-		[Fact]
+        [Fact]
 		public void ProcessPushNotificationThrowsArgumentExceptions()
         {
 			var mockResponse = new Mock<Response>();
