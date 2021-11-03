@@ -1,3 +1,7 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+
 using Microsoft.Azure.EventGrid.Models;
 using System;
 using System.Collections.Generic;
@@ -12,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 	/// </summary>
 	public static class EventGridEventExtensions
     {
-		private static string dataSyncToken = "syncToken";
+		private const string SyncTokenPropertyName = "syncToken";
 
 		/// <summary>
 		/// This method uses an EventGridEvent from EventGrid and tries to create a <see cref="PushNotification"/>
@@ -31,9 +35,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
 			try
 			{
-				string eventGridData = eventGridEvent.Data.ToString();
-				JsonElement jsonMessage = JsonDocument.Parse(eventGridData).RootElement;
-				string syncToken = jsonMessage.GetProperty(dataSyncToken).GetString();
+				string syncToken = (JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement)
+					.GetProperty(SyncTokenPropertyName).GetString();
 
 				pushNotification = new PushNotification()
 				{
