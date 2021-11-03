@@ -15,16 +15,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 
 namespace Tests.AzureAppConfiguration
 {
-	//class EventGridEvent
-	//{
-	//	public string data { get; set; }
-	//	public string dataVersion { get; set; }
-	//	public System.DateTimeOffset eventTime { get; set; }
-	//	public string eventType { get; set; }
-	//	public string id { get; set; }
-	//	public Uri subject { get; set; }
-	//	public string topic { get; set; }
-	//}
 	public class PushRefreshTests
 	{
 		List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
