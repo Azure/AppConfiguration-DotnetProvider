@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.3.0" />
+    <PackageReference Include="Azure.Messaging.EventGrid" Version="4.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.1" />
