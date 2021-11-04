@@ -9,14 +9,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         // Key-values
         public static readonly TimeSpan DefaultCacheExpirationInterval = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan MinimumCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
+        public static readonly TimeSpan MinimumCacheExpirationInterval = TimeSpan.FromSeconds(1);
 
         // Feature flags
         public static readonly TimeSpan DefaultFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan MinimumFeatureFlagsCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
+        public static readonly TimeSpan MinimumFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(1);
 
         // Key Vault secrets
-        public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromMilliseconds(1000);
+        public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromSeconds(1);
 
         // Backoff during refresh failures
         public static readonly TimeSpan DefaultMinBackoff = TimeSpan.FromSeconds(30);

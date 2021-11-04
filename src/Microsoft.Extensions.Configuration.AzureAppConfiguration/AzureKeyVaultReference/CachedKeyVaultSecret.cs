@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public DateTimeOffset? RefreshAt { get; set; }
 
         /// <summary>
-        /// The number of times we tried to reload this secret with exponential backoff strategy.
+        /// The number of times we tried to reload this secret.
         /// </summary>
         public int RefreshAttempts { get; set; }
 
