@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
             }
 
-            if (interval < RefreshConstants.DefaultMinBackoff)
+            if (interval <= RefreshConstants.DefaultMinBackoff)
             {
                 return interval;
             }
