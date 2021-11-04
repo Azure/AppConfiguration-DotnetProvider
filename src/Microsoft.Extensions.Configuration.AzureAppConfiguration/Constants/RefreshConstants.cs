@@ -19,6 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromMilliseconds(1000);
 
         // Backoff during refresh failures
+        public static readonly TimeSpan DefaultMinBackoff = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan DefaultMaxBackoff = TimeSpan.FromMinutes(10);
     }
 }

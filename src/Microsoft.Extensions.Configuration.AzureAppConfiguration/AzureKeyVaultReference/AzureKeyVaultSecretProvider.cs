@@ -39,41 +39,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
             string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
-            string secretValue;
-
-            SecretClient client = GetSecretClient(secretUri);
+            string secretValue = null;
 
             if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
                     (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
             {
-                secretValue = cachedSecret.SecretValue;
+                return cachedSecret.SecretValue;
             }
-            else if (client != null)
-            {
-                KeyVaultSecret secret;
-                bool success = false;
 
-                try
-                {
-                    secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    secretValue = secret?.Value;
-                    cachedSecret = new CachedKeyVaultSecret(secretValue);
-                    success = true;
-                }
-                finally
-                {
-                    SetSecretInCache(key, cachedSecret, success);
-                }
-            }
-            else if (_keyVaultOptions.SecretResolver != null)
-            {
-                secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
-                cachedSecret = new CachedKeyVaultSecret(secretValue);
-                SetSecretInCache(key, cachedSecret, success: true);
-            }
-            else
+            SecretClient client = GetSecretClient(secretUri);
+
+            if (client == null && _keyVaultOptions.SecretResolver == null)
             {
                 throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
+            }
+
+            bool success = false;
+
+            try
+            {
+                if (client != null)
+                {
+                    KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                    secretValue = secret?.Value;
+                }
+                else if (_keyVaultOptions.SecretResolver != null)
+                {
+                    secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                }
+
+                cachedSecret = new CachedKeyVaultSecret(secretValue);
+                success = true;
+            }
+            finally
+            {
+                SetSecretInCache(key, cachedSecret, success);
             }
 
             return secretValue;
