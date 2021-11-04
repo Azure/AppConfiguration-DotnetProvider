@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-
 using Azure.Messaging.EventGrid;
 using System;
 using System.Reflection;

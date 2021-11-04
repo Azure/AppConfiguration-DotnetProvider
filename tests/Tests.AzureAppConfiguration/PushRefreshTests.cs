@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
@@ -8,10 +11,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Microsoft.Azure.EventGrid.Models;
+using Azure.Messaging.EventGrid;
 using Xunit;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-
 
 namespace Tests.AzureAppConfiguration
 {
@@ -135,37 +137,18 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TryTryCreatePushNotification()
         {
-            EventGridEvent eventGridEvent = new EventGridEvent()
-            {
-                Data = "{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"}",
-                DataVersion = "2",
-                EventTime = new DateTime(2021, 10, 6, 20, 08, 7),
-                EventType = "eventType.KeyValueModified",
-                Id = "some id",
-                Subject = "https://store1.resource.io/kv/searchQuery1",
-                Topic = "/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\\"
-            };
 
-			EventGridEvent badEventGridEventDataCapitalization = new EventGridEvent()
-			{
-				Data = "{\"Key\":\"searchQuery1\",\"Etag\":\"etagValue1\",\"SyncToken\":\"syncToken1;sn=001\"}",
-				DataVersion = "2",
-				EventTime = new DateTime(2021, 10, 6, 20, 08, 7),
-				EventType = "eventType.KeyValueModified",
-				Id = "some id",
-				Subject = "https://store1.resource.io/kv/searchQuery1",
-				Topic = "/subscriptions/subscription-value1/resourceGroups/resourceGroup1/providers/provider1/configurationstores/store1\\"
-			};
+            string subject = "https://store1.resource.io/kv/searchQuery1";
+			string eventType = "eventType.KeyValueModified";
+			string dataVersion = "2";
+			BinaryData Data = BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"}");
+			EventGridEvent eventGridEvent1 = new EventGridEvent(subject, eventType, dataVersion, Data);
 
-			eventGridEvent.TryCreatePushNotification(out PushNotification pushNotification);
+			eventGridEvent1.TryCreatePushNotification(out PushNotification pushNotification);
 
-			Assert.Equal(eventGridEvent.EventType, pushNotification.EventType);
-			Assert.Equal(new Uri(eventGridEvent.Subject), pushNotification.ResourceUri);
+			Assert.Equal(eventGridEvent1.EventType, pushNotification.EventType);
+			Assert.Equal(new Uri(eventGridEvent1.Subject), pushNotification.ResourceUri);
 			Assert.Equal("syncToken1;sn=001", pushNotification.SyncToken);
-
-			//Should Fail assertions since bad EventGridEvent
-			badEventGridEventDataCapitalization.TryCreatePushNotification(out pushNotification);
-			Assert.False(IsPushNotificationValid(pushNotification));
 		}
 
         [Fact]

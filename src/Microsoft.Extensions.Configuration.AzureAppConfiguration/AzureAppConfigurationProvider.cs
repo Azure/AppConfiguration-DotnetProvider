@@ -259,6 +259,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             { 
                 throw new ArgumentNullException(nameof(notification)); 
             }
+
             if (notification.SyncToken == null || notification.EventType == null || notification.ResourceUri == null)
             {
                 throw new ArgumentException($"One or more properties of {nameof(notification)} are null. Please make sure that " +
