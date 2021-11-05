@@ -18,9 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationOptions
     {
-        internal static readonly TimeSpan DefaultFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(30);
-        internal static readonly TimeSpan MinimumFeatureFlagsCacheExpirationInterval = TimeSpan.FromMilliseconds(1000);
-
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
@@ -167,10 +164,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
 
-            if (options.CacheExpirationInterval < MinimumFeatureFlagsCacheExpirationInterval)
+            if (options.CacheExpirationInterval < RefreshConstants.MinimumFeatureFlagsCacheExpirationInterval)
             {
                 throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationInterval), options.CacheExpirationInterval.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
+                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
             }
 
             if (options.FeatureFlagSelectors.Count() != 0 && options.Label != null)
