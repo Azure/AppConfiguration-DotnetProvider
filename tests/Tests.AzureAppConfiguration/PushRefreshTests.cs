@@ -4,16 +4,16 @@
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
+using Azure.Messaging.EventGrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Azure.Messaging.EventGrid;
 using Xunit;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -110,13 +110,11 @@ namespace Tests.AzureAppConfiguration
                                     },
               new PushNotification  {
                                     ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
-
 									EventType = null,
                                     SyncToken = "SyncToken2"
                                     },
               new PushNotification  {
                                     ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
-
 									EventType = "eventType.KeyValueDeleted",
                                     SyncToken = null
                                     },
@@ -137,13 +135,13 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TryTryCreatePushNotification()
         {
-
             string subject = "https://store1.resource.io/kv/searchQuery1";
 			string eventType = "eventType.KeyValueModified";
 			string dataVersion = "2";
 			BinaryData Data = BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"}");
-			EventGridEvent eventGridEvent1 = new EventGridEvent(subject, eventType, dataVersion, Data);
 
+			EventGridEvent eventGridEvent1 = new EventGridEvent(subject, eventType, dataVersion, Data);
+			
 			eventGridEvent1.TryCreatePushNotification(out PushNotification pushNotification);
 
 			Assert.Equal(eventGridEvent1.EventType, pushNotification.EventType);
@@ -215,7 +213,7 @@ namespace Tests.AzureAppConfiguration
 			}
 
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(8));
-			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(8));
+			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(pushNotificationList.Count));
 		}
 
 		[Fact]
