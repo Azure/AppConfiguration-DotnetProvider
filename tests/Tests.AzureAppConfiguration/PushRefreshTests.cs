@@ -12,6 +12,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using Xunit;
 
@@ -130,23 +131,62 @@ namespace Tests.AzureAppConfiguration
                                     }
             };
 
+		Dictionary<string, EventGridEvent> eventGridEventList = new Dictionary<string, EventGridEvent>
+		{
+            {
+                "sn;Vxujfidne",
+            new EventGridEvent(
+                "https://store1.resource.io/kv/searchQuery1",
+                "eventType.KeyValueModified", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
+                )
+            },
+
+            {
+                "sn;AxRty78B",
+            new EventGridEvent(
+                "https://store2.resource.io/kv/searchQuery1",
+                "eventType.KeyValueDeleted", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;AxRty78B\"}")
+                )
+            },
+
+            {
+                "sn;Ttylmable",
+            new EventGridEvent(
+                "https://store1.resource.io/kv/searchQuery2",
+                "eventType.KeyValueDeleted", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Ttylmable\"}")
+                )
+            },
+
+            {
+                "sn;CRAle3342",
+            new EventGridEvent(
+                "https://store2.resource.io/kv/searchQuery2",
+                "eventType.KeyValueModified", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
+                )
+            }
+        };
+
 		ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
         [Fact]
-        public void TryTryCreatePushNotification()
+        public void CheckTryCreatePushNotification()
         {
-            string subject = "https://store1.resource.io/kv/searchQuery1";
-			string eventType = "eventType.KeyValueModified";
-			string dataVersion = "2";
-			BinaryData Data = BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"syncToken1;sn=001\"}");
+			foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in eventGridEventList)
+            {
+				string syncToken = eventGridAndSync.Key;
+				EventGridEvent eventGridEvent = eventGridAndSync.Value; 
 
-			EventGridEvent eventGridEvent1 = new EventGridEvent(subject, eventType, dataVersion, Data);
-			
-			eventGridEvent1.TryCreatePushNotification(out PushNotification pushNotification);
+				eventGridEvent.TryCreatePushNotification(out PushNotification pushNotification);
 
-			Assert.Equal(eventGridEvent1.EventType, pushNotification.EventType);
-			Assert.Equal(new Uri(eventGridEvent1.Subject), pushNotification.ResourceUri);
-			Assert.Equal("syncToken1;sn=001", pushNotification.SyncToken);
+                Assert.NotNull(pushNotification);
+                Assert.Equal(eventGridEvent.EventType, pushNotification.EventType);
+                Assert.Equal(new Uri(eventGridEvent.Subject), pushNotification.ResourceUri);
+				Assert.Equal(syncToken, pushNotification.SyncToken);
+            }
 		}
 
         [Fact]
