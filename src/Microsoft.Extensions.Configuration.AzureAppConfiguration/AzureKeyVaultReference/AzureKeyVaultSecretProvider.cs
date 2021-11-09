@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,30 +39,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
             string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
-            string secretValue;
-
-            SecretClient client = GetSecretClient(secretUri);
+            string secretValue = null;
 
             if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
                     (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
             {
-                secretValue = cachedSecret.SecretValue;
+                return cachedSecret.SecretValue;
             }
-            else if (client != null)
-            {
-                KeyVaultSecret secret;
-                secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                secretValue = secret?.Value;
-                SetSecretInCache(key, secretValue);
-            }
-            else if (_keyVaultOptions.SecretResolver != null)
-            {
-                secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
-                SetSecretInCache(key, secretValue);
-            }
-            else
+
+            SecretClient client = GetSecretClient(secretUri);
+
+            if (client == null && _keyVaultOptions.SecretResolver == null)
             {
                 throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
+            }
+
+            bool success = false;
+
+            try
+            {
+                if (client != null)
+                {
+                    KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                    secretValue = secret?.Value;
+                }
+                else if (_keyVaultOptions.SecretResolver != null)
+                {
+                    secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                }
+
+                cachedSecret = new CachedKeyVaultSecret(secretValue);
+                success = true;
+            }
+            finally
+            {
+                SetSecretInCache(key, cachedSecret, success);
             }
 
             return secretValue;
@@ -108,30 +120,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return client;
         }
 
-        private void SetSecretInCache(string key, string secretValue)
+        private void SetSecretInCache(string key, CachedKeyVaultSecret cachedSecret, bool success = true)
         {
-            DateTimeOffset? refreshSecretAt = null;
-
-            if (_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan refreshInterval))
+            if (cachedSecret == null)
             {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(refreshInterval);
-            }
-            else if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
-            {
-                refreshSecretAt = DateTimeOffset.UtcNow.Add(_keyVaultOptions.DefaultSecretRefreshInterval.Value);
+                cachedSecret = new CachedKeyVaultSecret();
             }
 
-            _cachedKeyVaultSecrets[key] = new CachedKeyVaultSecret(secretValue, refreshSecretAt);
-            
+            UpdateCacheExpirationTimeForSecret(key, cachedSecret, success);
+            _cachedKeyVaultSecrets[key] = cachedSecret;
+
             if (key == _nextRefreshKey)
             {
                 UpdateNextRefreshableSecretFromCache();
             }
-            else if ((refreshSecretAt.HasValue && _nextRefreshTime.HasValue && refreshSecretAt.Value < _nextRefreshTime.Value)
-                    || (refreshSecretAt.HasValue && !_nextRefreshTime.HasValue))
+            else if ((cachedSecret.RefreshAt.HasValue && _nextRefreshTime.HasValue && cachedSecret.RefreshAt.Value < _nextRefreshTime.Value)
+                    || (cachedSecret.RefreshAt.HasValue && !_nextRefreshTime.HasValue))
             {
                 _nextRefreshKey = key;
-                _nextRefreshTime = refreshSecretAt.Value;
+                _nextRefreshTime = cachedSecret.RefreshAt.Value;
             }
         }
 
@@ -152,6 +159,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             if (_nextRefreshTime == DateTimeOffset.MaxValue)
             {
                 _nextRefreshTime = null;
+            }
+        }
+
+        private void UpdateCacheExpirationTimeForSecret(string key, CachedKeyVaultSecret cachedSecret, bool success)
+        {
+            if (!_keyVaultOptions.SecretRefreshIntervals.TryGetValue(key, out TimeSpan cacheExpirationTime))
+            {
+                if (_keyVaultOptions.DefaultSecretRefreshInterval.HasValue)
+                {
+                    cacheExpirationTime = _keyVaultOptions.DefaultSecretRefreshInterval.Value;
+                }
+            }
+
+            if (cacheExpirationTime > TimeSpan.Zero)
+            {
+                if (success)
+                {
+                    cachedSecret.RefreshAttempts = 0;
+                    cachedSecret.RefreshAt = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
+                }
+                else
+                {
+                    if (cachedSecret.RefreshAttempts < int.MaxValue)
+                    {
+                        cachedSecret.RefreshAttempts++;
+                    }
+
+                    cachedSecret.RefreshAt = DateTimeOffset.UtcNow.Add(cacheExpirationTime.CalculateBackoffTime(cachedSecret.RefreshAttempts));
+                }
             }
         }
     }

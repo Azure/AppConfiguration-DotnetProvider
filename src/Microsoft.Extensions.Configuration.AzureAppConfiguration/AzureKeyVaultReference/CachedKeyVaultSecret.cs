@@ -17,10 +17,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// </summary>
         public DateTimeOffset? RefreshAt { get; set; }
 
-        public CachedKeyVaultSecret(string secretValue, DateTimeOffset? refreshAt)
+        /// <summary>
+        /// The number of times we tried to reload this secret.
+        /// </summary>
+        public int RefreshAttempts { get; set; }
+
+        public CachedKeyVaultSecret(string secretValue = null, DateTimeOffset? refreshAt = null, int refreshAttempts = 0)
         {
             SecretValue = secretValue;
             RefreshAt = refreshAt;
+            RefreshAttempts = refreshAttempts;
         }
     }
 }

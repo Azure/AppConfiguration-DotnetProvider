@@ -3,6 +3,7 @@
 //
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -32,20 +33,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             AppConfigurationEndpoint = _provider.AppConfigurationEndpoint;
         }
 
-        public async Task RefreshAsync()
+        public async Task RefreshAsync(CancellationToken cancellationToken)
         {
             ThrowIfNullProvider(nameof(RefreshAsync));
-            await _provider.RefreshAsync().ConfigureAwait(false);
+            await _provider.RefreshAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<bool> TryRefreshAsync()
+        public async Task<bool> TryRefreshAsync(CancellationToken cancellationToken)
         {
             if (_provider == null)
             {
                 return false;
             }
 
-            return await _provider.TryRefreshAsync().ConfigureAwait(false);
+            return await _provider.TryRefreshAsync(cancellationToken).ConfigureAwait(false);
         }
 
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
