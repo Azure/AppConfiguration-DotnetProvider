@@ -12,7 +12,6 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using Xunit;
 
@@ -131,7 +130,7 @@ namespace Tests.AzureAppConfiguration
                                     }
             };
 
-		Dictionary<string, EventGridEvent> eventGridEventList = new Dictionary<string, EventGridEvent>
+		Dictionary<string, EventGridEvent> eventGridEvents = new Dictionary<string, EventGridEvent>
 		{
             {
                 "sn;Vxujfidne",
@@ -173,9 +172,9 @@ namespace Tests.AzureAppConfiguration
 		ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
         [Fact]
-        public void CheckTryCreatePushNotification()
+        public void ValidatePushNotificationCreation()
         {
-			foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in eventGridEventList)
+			foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in eventGridEvents)
             {
 				string syncToken = eventGridAndSync.Key;
 				EventGridEvent eventGridEvent = eventGridAndSync.Value; 
@@ -252,7 +251,7 @@ namespace Tests.AzureAppConfiguration
 				refresher.RefreshAsync().Wait();
 			}
 
-			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(8));
+			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(pushNotificationList.Count));
 			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(pushNotificationList.Count));
 		}
 

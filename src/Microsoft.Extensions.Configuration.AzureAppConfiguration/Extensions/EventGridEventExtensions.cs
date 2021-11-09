@@ -3,6 +3,7 @@
 //
 using Azure.Messaging.EventGrid;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 
@@ -45,10 +46,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 				return true;
 			}
 			catch (JsonException) { }
-			catch (ArgumentNullException) { }
 			catch (ArgumentException) { }
-			catch (AmbiguousMatchException) { }
 			catch (InvalidOperationException) { }
+			catch (KeyNotFoundException) { }
 			catch (UriFormatException) { }
 
 			return false;
