@@ -12,11 +12,6 @@
     <PackageReleaseNotes>https://aka.ms/MicrosoftAzureAppConfigurationAspNetCoreReleaseNotes</PackageReleaseNotes>
     <PackageTags>Microsoft Azure Configuration AppConfig AppConfiguration AzureAppConfiguration aspnetcore</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Azure.Messaging.EventGrid" Version="4.7.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.5.0" />
-  </ItemGroup>
   
    <ItemGroup>
     <ProjectReference Include="..\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj" />
