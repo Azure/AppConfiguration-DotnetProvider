@@ -136,7 +136,7 @@ namespace Tests.AzureAppConfiguration
                 "sn;Vxujfidne",
             new EventGridEvent(
                 "https://store1.resource.io/kv/searchQuery1",
-                "eventType.KeyValueModified", "2",
+				"Microsoft.AppConfiguration.KeyValueModified", "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
                 )
             },
@@ -145,7 +145,7 @@ namespace Tests.AzureAppConfiguration
                 "sn;AxRty78B",
             new EventGridEvent(
                 "https://store2.resource.io/kv/searchQuery1",
-                "eventType.KeyValueDeleted", "2",
+                "Microsoft.AppConfiguration.KeyValueDeleted", "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;AxRty78B\"}")
                 )
             },
@@ -154,7 +154,7 @@ namespace Tests.AzureAppConfiguration
                 "sn;Ttylmable",
             new EventGridEvent(
                 "https://store1.resource.io/kv/searchQuery2",
-                "eventType.KeyValueDeleted", "2",
+				"Microsoft.AppConfiguration.KeyValueDeleted", "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Ttylmable\"}")
                 )
             },
@@ -163,7 +163,7 @@ namespace Tests.AzureAppConfiguration
                 "sn;CRAle3342",
             new EventGridEvent(
                 "https://store2.resource.io/kv/searchQuery2",
-                "eventType.KeyValueModified", "2",
+				"Microsoft.AppConfiguration.KeyValueModified", "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
                 )
             }
