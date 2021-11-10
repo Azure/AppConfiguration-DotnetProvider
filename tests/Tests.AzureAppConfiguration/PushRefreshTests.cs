@@ -213,7 +213,7 @@ namespace Tests.AzureAppConfiguration
 			foreach (PushNotification invalidPushNotification in invalidPushNotificationList)
             {
 				Action action = () => refresher.ProcessPushNotification(invalidPushNotification);
-				Assert.Throws<ArgumentNullException>(action); 
+				Assert.Throws<ArgumentException>(action); 
 			}
 
 			PushNotification nullPushNotification = null;
