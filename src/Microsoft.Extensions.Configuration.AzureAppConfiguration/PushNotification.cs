@@ -6,13 +6,12 @@ using System;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// An Object containing the details of a PushNotification received from the Azure App Configuration service.
+    /// An Object containing the details of a <see cref="PushNotification"/> received from the Azure App Configuration service.
     /// </summary>
     public class PushNotification
     {
-
         /// <summary>
-        /// The URI of the key-value which triggered the PushNotification.
+        /// The URI of the resource which triggered the PushNotification.
         /// </summary>
         public Uri ResourceUri { get; set; }
 

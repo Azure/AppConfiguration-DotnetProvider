@@ -3,14 +3,12 @@
 //
 using Azure.Messaging.EventGrid;
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
 	/// <summary>
-	/// Extension of the EventGridEvent class for creating <see cref="PushNotification"/> object from an <see cref="EventGridEvent "/> object.
+	/// This class offers extensions for EventGridEvents.
 	/// </summary>
 	public static class EventGridEventExtensions
     {
@@ -26,30 +24,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 		{
 			pushNotification = null;
 
-			if (eventGridEvent == null || eventGridEvent.Data == null || eventGridEvent.EventType == null || eventGridEvent.Subject == null)
+			if (eventGridEvent.Data == null || eventGridEvent.EventType == null || eventGridEvent.Subject == null)
 			{
 				return false;
 			}
 
+			Uri resourceUri;
+
+			if (!Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out resourceUri))
+            {
+				return false;
+            }
+
 			try
 			{
-				string syncToken = (JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement)
-					.GetProperty(SyncTokenPropertyName).GetString();
+				JsonElement eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
 
-				pushNotification = new PushNotification()
-				{
-					SyncToken = syncToken,
-					EventType = eventGridEvent.EventType,
-					ResourceUri = new Uri(eventGridEvent.Subject)
-				};
+				if (eventGridEventData.ValueKind == JsonValueKind.Object &&
+					eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson))
+                {
+					pushNotification = new PushNotification()
+					{
+						SyncToken = syncTokenJson.GetString(),
+						EventType = eventGridEvent.EventType,
+						ResourceUri = resourceUri
+					};
 
-				return true;
-			}
-			catch (JsonException) { }
-			catch (ArgumentException) { }
-			catch (InvalidOperationException) { }
-			catch (KeyNotFoundException) { }
-			catch (UriFormatException) { }
+					return true;
+				}
+            }
+            catch (JsonException) { }
 
 			return false;
 		}
