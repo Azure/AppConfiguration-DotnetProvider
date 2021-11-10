@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class PushNotification
     {
         /// <summary>
-        /// The URI of the resource which triggered the PushNotification.
+        /// The URI of the resource which triggered the <see cref="PushNotification"/>.
         /// </summary>
         public Uri ResourceUri { get; set; }
 
@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public string SyncToken { get; set; }
 
         /// <summary>
-        /// The Type of Event which triggered the PushNotification.
+        /// The Type of Event which triggered the <see cref="PushNotification"/>.
         /// </summary>
         public string EventType { get; set; }
 
