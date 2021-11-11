@@ -252,35 +252,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public void ProcessPushNotification(PushNotification notification, TimeSpan? maxDelay)
+        public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
-            if (notification == null) 
+            if (pushNotification == null) 
             { 
-                throw new ArgumentNullException(nameof(notification)); 
+                throw new ArgumentNullException(nameof(pushNotification)); 
             }
 
-            if (string.IsNullOrEmpty(notification.SyncToken))
+            if (string.IsNullOrEmpty(pushNotification.SyncToken))
             {
                 throw new ArgumentException(
                     "Sync token is required.",
-                    $"{nameof(notification)}.{nameof(notification.SyncToken)}");
+                    $"{nameof(pushNotification)}.{nameof(pushNotification.SyncToken)}");
             }
 
-            if (string.IsNullOrEmpty(notification.EventType))
+            if (string.IsNullOrEmpty(pushNotification.EventType))
             {
                 throw new ArgumentException(
                     "Event Type is required.",
-                    $"{nameof(notification)}.{nameof(notification.EventType)}");
+                    $"{nameof(pushNotification)}.{nameof(pushNotification.EventType)}");
             }
 
-            if (notification.ResourceUri == null)
+            if (pushNotification.ResourceUri == null)
             {
                 throw new ArgumentException(
                     "Resource Uri is required.",
-                    $"{nameof(notification)}.{nameof(notification.ResourceUri)}");
+                    $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
             
-            _client.UpdateSyncToken(notification.SyncToken);
+            _client.UpdateSyncToken(pushNotification.SyncToken);
 
             SetDirty(maxDelay);
         }
