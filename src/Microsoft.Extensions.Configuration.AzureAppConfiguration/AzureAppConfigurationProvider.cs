@@ -254,9 +254,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
-            if (pushNotification == null) 
-            { 
-                throw new ArgumentNullException(nameof(pushNotification)); 
+            if (pushNotification == null)
+            {
+                throw new ArgumentNullException(nameof(pushNotification));
             }
 
             if (string.IsNullOrEmpty(pushNotification.SyncToken))
@@ -279,7 +279,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     "Resource Uri is required.",
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
-            
+
             _client.UpdateSyncToken(pushNotification.SyncToken);
 
             SetDirty(maxDelay);
@@ -357,7 +357,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     // During startup or refreshAll scenario, we'll try to populate config from offline cache, if available
                     cachedData = _options.OfflineCache.Import(_options);
-                    
+
                     if (cachedData != null)
                     {
                         data = JsonSerializer.Deserialize<IDictionary<string, ConfigurationSetting>>(cachedData);
@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 await SetData(data, ignoreFailures, cancellationToken).ConfigureAwait(false);
-                
+
                 if (_options.OfflineCache != null && cachedData == null)
                 {
                     _options.OfflineCache.Export(_options, JsonSerializer.Serialize(data));
@@ -527,7 +527,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     UpdateCacheExpirationTime(changeWatcher, success);
                 }
-                
+
                 if (hasChanged)
                 {
                     await SetData(_applicationSettings, false, cancellationToken).ConfigureAwait(false);
@@ -566,7 +566,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 bool success = false;
 
                 try
-                { 
+                {
                     if (changeWatcher.Key.EndsWith("*"))
                     {
                         // Get current application settings starting with changeWatcher.Key, excluding the last * character
