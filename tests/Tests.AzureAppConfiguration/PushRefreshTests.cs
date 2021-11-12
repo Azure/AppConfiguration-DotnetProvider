@@ -57,7 +57,7 @@ namespace Tests.AzureAppConfiguration
 				contentType: "text")
 		};
 
-        List<PushNotification> pushNotificationList = new List<PushNotification>
+        List<PushNotification> _pushNotificationList = new List<PushNotification>
             {
               new PushNotification  {
                                     ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
@@ -101,7 +101,7 @@ namespace Tests.AzureAppConfiguration
                                     }
             };
 
-        List<PushNotification> invalidPushNotificationList = new List<PushNotification>
+        List<PushNotification> _invalidPushNotificationList = new List<PushNotification>
             {
               new PushNotification  {
                                     ResourceUri = null,
@@ -130,7 +130,7 @@ namespace Tests.AzureAppConfiguration
                                     }
             };
 
-		Dictionary<string, EventGridEvent> eventGridEvents = new Dictionary<string, EventGridEvent>
+		Dictionary<string, EventGridEvent> _eventGridEvents = new Dictionary<string, EventGridEvent>
 		{
             {
                 "sn;Vxujfidne",
@@ -174,17 +174,16 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ValidatePushNotificationCreation()
         {
-			foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in eventGridEvents)
+			foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in _eventGridEvents)
             {
 				string syncToken = eventGridAndSync.Key;
 				EventGridEvent eventGridEvent = eventGridAndSync.Value; 
 
-				eventGridEvent.TryCreatePushNotification(out PushNotification pushNotification);
-
+				Assert.True(eventGridEvent.TryCreatePushNotification(out PushNotification pushNotification));
                 Assert.NotNull(pushNotification);
                 Assert.Equal(eventGridEvent.EventType, pushNotification.EventType);
-                Assert.Equal(new Uri(eventGridEvent.Subject), pushNotification.ResourceUri);
-				Assert.Equal(syncToken, pushNotification.SyncToken);
+                Assert.Equal(eventGridEvent.Subject, pushNotification.ResourceUri.OriginalString);
+                Assert.Equal(syncToken, pushNotification.SyncToken);
             }
 		}
 
@@ -210,7 +209,7 @@ namespace Tests.AzureAppConfiguration
 				})
 				.Build();
 
-			foreach (PushNotification invalidPushNotification in invalidPushNotificationList)
+			foreach (PushNotification invalidPushNotification in _invalidPushNotificationList)
             {
 				Action action = () => refresher.ProcessPushNotification(invalidPushNotification);
 				Assert.Throws<ArgumentException>(action); 
@@ -245,14 +244,14 @@ namespace Tests.AzureAppConfiguration
 				})
 				.Build();
 
-			foreach (PushNotification pushNotification in pushNotificationList)
+			foreach (PushNotification pushNotification in _pushNotificationList)
 			{
 				refresher.ProcessPushNotification(pushNotification, TimeSpan.FromSeconds(0));
 				refresher.RefreshAsync().Wait();
 			}
 
-			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(pushNotificationList.Count));
-			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(pushNotificationList.Count));
+			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(_pushNotificationList.Count));
+			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(_pushNotificationList.Count));
 		}
 
 		[Fact]
@@ -282,7 +281,7 @@ namespace Tests.AzureAppConfiguration
 			Assert.Equal("TestValue1", config["TestKey1"]);
 			FirstKeyValue.Value = "newValue1";
 
-			refresher.ProcessPushNotification(pushNotificationList.First(), TimeSpan.FromSeconds(0));
+			refresher.ProcessPushNotification(_pushNotificationList.First(), TimeSpan.FromSeconds(0));
 			refresher.RefreshAsync().Wait();
 
 			Assert.Equal("newValue1", config["TestKey1"]);
