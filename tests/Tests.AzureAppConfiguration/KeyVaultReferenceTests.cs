@@ -572,6 +572,28 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ThrowsWhenSecretRefreshIntervalIsTooShort()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetSecretRefreshInterval(_kv.Key, TimeSpan.FromMilliseconds(10));
+                    });
+                })
+                .Build();
+            });
+        }
+
+        [Fact]
         public void SecretIsReturnedFromCacheIfSecretCacheHasNotExpired()
         {
             IConfigurationRefresher refresher = null;
