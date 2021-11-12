@@ -15,10 +15,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         private const string SyncTokenPropertyName = "syncToken";
 
         /// <summary>
-        /// This method uses an EventGridEvent from EventGrid and tries to create a <see cref="PushNotification"/>
+        /// Tries to create the object from the details in object. Return value indicates whether the operation succeeded or failed.
         /// </summary>
         /// <param name="eventGridEvent"> EventGridEvent from EventGrid</param>
-        /// <param name="pushNotification"> out parameter set up in this method</param>
+        /// <param name="pushNotification"> If this method returns true, the push notification object contains details populated from eventGridEvent. If this method returns false, the pushNotification object is null. </param>
         /// <returns></returns>
         public static bool TryCreatePushNotification(this EventGridEvent eventGridEvent, out PushNotification pushNotification)
         {
@@ -29,9 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return false;
             }
 
-            Uri resourceUri;
-
-            if (!Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out resourceUri))
+            if (!Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
             {
                 return false;
             }
@@ -41,7 +39,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 JsonElement eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
 
                 if (eventGridEventData.ValueKind == JsonValueKind.Object &&
-                    eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson))
+                    eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
+                    syncTokenJson.ValueKind == JsonValueKind.String)
                 {
                     pushNotification = new PushNotification()
                     {
