@@ -269,14 +269,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (string.IsNullOrEmpty(pushNotification.EventType))
             {
                 throw new ArgumentException(
-                    "Event Type is required.",
+                    "Event type is required.",
                     $"{nameof(pushNotification)}.{nameof(pushNotification.EventType)}");
             }
 
             if (pushNotification.ResourceUri == null)
             {
                 throw new ArgumentException(
-                    "Resource Uri is required.",
+                    "Resource URI is required.",
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
