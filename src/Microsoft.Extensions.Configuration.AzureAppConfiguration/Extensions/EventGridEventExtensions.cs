@@ -29,14 +29,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return false;
             }
 
-            if (!Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
+            if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
             {
-                return false;
-            }
+                JsonElement eventGridEventData;
 
-            try
-            {
-                JsonElement eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
+                try
+                {
+                    eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
+                }
+                catch (JsonException)
+                {
+                    return false;
+                }
 
                 if (eventGridEventData.ValueKind == JsonValueKind.Object &&
                     eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
@@ -48,11 +52,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         EventType = eventGridEvent.EventType,
                         ResourceUri = resourceUri
                     };
-
                     return true;
                 }
             }
-            catch (JsonException) { }
 
             return false;
         }
