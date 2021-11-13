@@ -12,7 +12,8 @@
     <PackageReleaseNotes>https://aka.ms/MicrosoftAzureAppConfigurationAspNetCoreReleaseNotes</PackageReleaseNotes>
     <PackageTags>Microsoft Azure Configuration AppConfig AppConfiguration AzureAppConfiguration aspnetcore</PackageTags>
   </PropertyGroup>
-   <ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj" />
   </ItemGroup>
   
