@@ -69,6 +69,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(secretReferenceKey));
             }
 
+            if (refreshInterval < RefreshConstants.MinimumSecretRefreshInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.SecretRefreshIntervalTooShort, RefreshConstants.MinimumSecretRefreshInterval.TotalMilliseconds));
+            }
+
             SecretRefreshIntervals[secretReferenceKey] = refreshInterval;
             IsKeyVaultRefreshConfigured = true;
             return this;
@@ -81,6 +87,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="refreshInterval">Minimum time that must elapse before the secrets are reloaded from Key Vault.</param>
         public AzureAppConfigurationKeyVaultOptions SetSecretRefreshInterval(TimeSpan refreshInterval)
         {
+            if (refreshInterval < RefreshConstants.MinimumSecretRefreshInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.SecretRefreshIntervalTooShort, RefreshConstants.MinimumSecretRefreshInterval.TotalMilliseconds));
+            }
+
             DefaultSecretRefreshInterval = refreshInterval;
             IsKeyVaultRefreshConfigured = true;
             return this;
