@@ -23,9 +23,9 @@ namespace Tests.AzureAppConfiguration
             var endpointString = CreateMockEndpointString(PrimaryConfigStoreEndpoint.ToString());
             var secondaryEndpointString = CreateMockEndpointString(SecondaryConfigStoreEndpoint.ToString());
             var failOverSupportedClient = new FailOverSupportedConfigurationClient(
-                                                new List<ConfigurationClient>() {
-                                                    new ConfigurationClient(endpointString, clientOptions),
-                                                    new ConfigurationClient(secondaryEndpointString, clientOptions) });
+                                                new List<LocalConfigurationClient>() {
+                                                    new LocalConfigurationClient(PrimaryConfigStoreEndpoint, new ConfigurationClient(endpointString, clientOptions)),
+                                                    new LocalConfigurationClient(SecondaryConfigStoreEndpoint, new ConfigurationClient(secondaryEndpointString, clientOptions)) });
             return failOverSupportedClient;
         }
 

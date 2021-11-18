@@ -251,7 +251,7 @@ namespace Tests.AzureAppConfiguration
 			}
 
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(_pushNotificationList.Count));
-			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(_pushNotificationList.Count));
+			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<Uri>(), It.IsAny<string>()), Times.Exactly(_pushNotificationList.Count));
 		}
 
 		[Fact]
@@ -292,10 +292,10 @@ namespace Tests.AzureAppConfiguration
 			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null;
         }
 
-		private Mock<ConfigurationClient> GetMockConfigurationClient()
+		private Mock<IConfigurationClient> GetMockConfigurationClient()
 		{
 			var mockResponse = new Mock<Response>();
-			var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+			var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
 			Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
 			{
@@ -323,7 +323,7 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-			mockClient.Setup(c => c.UpdateSyncToken(It.IsAny<string>()));
+			mockClient.Setup(c => c.UpdateSyncToken(It.IsAny<Uri>(), It.IsAny<string>()));
 
 			return mockClient;
 		}

@@ -280,8 +280,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
-            //_client.UpdateSyncToken(pushNotification.SyncToken);
-
+            _client.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken);
             SetDirty(maxDelay);
         }
 

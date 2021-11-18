@@ -14,13 +14,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public IConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
         {
             var configurationClient = new ConfigurationClient(connectionString, clientOptions);
-            return new FailOverSupportedConfigurationClient(new List<ConfigurationClient>() { configurationClient });
+            var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, "Endpoint"));
+            return new FailOverSupportedConfigurationClient(new List<LocalConfigurationClient>() { new LocalConfigurationClient(endpoint, configurationClient) });
         }
 
         public IConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
             var configurationClient = new ConfigurationClient(endpoint, credential, clientOptions);
-            return new FailOverSupportedConfigurationClient(new List<ConfigurationClient>() { configurationClient });
+            return new FailOverSupportedConfigurationClient(new List<LocalConfigurationClient>() { new LocalConfigurationClient(endpoint, configurationClient) });
         }
 
         public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
@@ -30,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            var configurationClients = endpoints.Select(endpoint => new ConfigurationClient(endpoint, credential, clientOptions));
+            var configurationClients = endpoints.Select(endpoint => new LocalConfigurationClient(endpoint, new ConfigurationClient(endpoint, credential, clientOptions)));
 
             return new FailOverSupportedConfigurationClient(configurationClients);
         }
