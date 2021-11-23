@@ -49,6 +49,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return await _provider.TryRefreshAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
+        {
+            ThrowIfNullProvider(nameof(ProcessPushNotification));
+
+            _provider.ProcessPushNotification(pushNotification, maxDelay);
+        }
+
         public void SetDirty(TimeSpan? maxDelay)
         {
             ThrowIfNullProvider(nameof(SetDirty));

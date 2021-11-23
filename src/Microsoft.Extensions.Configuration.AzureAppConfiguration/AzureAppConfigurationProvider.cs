@@ -251,6 +251,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
+        public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
+        {
+            if (pushNotification == null)
+            {
+                throw new ArgumentNullException(nameof(pushNotification));
+            }
+
+            if (string.IsNullOrEmpty(pushNotification.SyncToken))
+            {
+                throw new ArgumentException(
+                    "Sync token is required.",
+                    $"{nameof(pushNotification)}.{nameof(pushNotification.SyncToken)}");
+            }
+
+            if (string.IsNullOrEmpty(pushNotification.EventType))
+            {
+                throw new ArgumentException(
+                    "Event type is required.",
+                    $"{nameof(pushNotification)}.{nameof(pushNotification.EventType)}");
+            }
+
+            if (pushNotification.ResourceUri == null)
+            {
+                throw new ArgumentException(
+                    "Resource URI is required.",
+                    $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
+            }
+
+            _client.UpdateSyncToken(pushNotification.SyncToken);
+
+            SetDirty(maxDelay);
+        }
+
         private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken)
         {
             IDictionary<string, ConfigurationSetting> data = null;
