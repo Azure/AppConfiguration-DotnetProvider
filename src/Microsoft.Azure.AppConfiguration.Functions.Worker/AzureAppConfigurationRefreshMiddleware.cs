@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions
+namespace Microsoft.Azure.AppConfiguration.Functions.Worker
 {
     /// <summary>
     /// Middleware for Azure App Configuration to use activity-based refresh for key-values registered in the provider.

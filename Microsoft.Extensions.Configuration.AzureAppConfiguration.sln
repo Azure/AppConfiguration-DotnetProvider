@@ -15,11 +15,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApplication", "examp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration.AspNetCore", "tests\Tests.AzureAppConfiguration.AspNetCore\Tests.AzureAppConfiguration.AspNetCore.csproj", "{7A809655-5D64-40AF-9CB8-03BD39BE1A79}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions", "src\Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions\Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions.csproj", "{A0AE7CDA-BA5B-47AC-82AA-95693928CD6B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FunctionAppIsolatedMode", "examples\FunctionAppIsolatedMode\FunctionAppIsolatedMode.csproj", "{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration.IsolatedAzureFunctions", "tests\Tests.AzureAppConfiguration.IsolatedAzureFunctions\Tests.AzureAppConfiguration.IsolatedAzureFunctions.csproj", "{788E7E48-9AE1-4172-ABC6-AC781BB6BDD7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.AppConfiguration.Functions.Worker", "src\Microsoft.Azure.AppConfiguration.Functions.Worker\Microsoft.Azure.AppConfiguration.Functions.Worker.csproj", "{C062A08A-CE0E-4099-AAF7-8967F883883E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionAppIsolatedMode", "examples\FunctionAppIsolatedMode\FunctionAppIsolatedMode.csproj", "{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration.Functions.Worker", "tests\Tests.AzureAppConfiguration.Functions.Worker\Tests.AzureAppConfiguration.Functions.Worker.csproj", "{A9287214-6689-479F-A9F8-D0C02DE433F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,18 +51,18 @@ Global
 		{7A809655-5D64-40AF-9CB8-03BD39BE1A79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7A809655-5D64-40AF-9CB8-03BD39BE1A79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7A809655-5D64-40AF-9CB8-03BD39BE1A79}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A0AE7CDA-BA5B-47AC-82AA-95693928CD6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A0AE7CDA-BA5B-47AC-82AA-95693928CD6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A0AE7CDA-BA5B-47AC-82AA-95693928CD6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A0AE7CDA-BA5B-47AC-82AA-95693928CD6B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{788E7E48-9AE1-4172-ABC6-AC781BB6BDD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{788E7E48-9AE1-4172-ABC6-AC781BB6BDD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{788E7E48-9AE1-4172-ABC6-AC781BB6BDD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{788E7E48-9AE1-4172-ABC6-AC781BB6BDD7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9287214-6689-479F-A9F8-D0C02DE433F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9287214-6689-479F-A9F8-D0C02DE433F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9287214-6689-479F-A9F8-D0C02DE433F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9287214-6689-479F-A9F8-D0C02DE433F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

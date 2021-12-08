@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions;
+using Microsoft.Azure.AppConfiguration.Functions.Worker;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
 using Xunit;
 
-namespace Tests.AzureAppConfiguration.IsolatedAzureFunctions
+namespace Tests.AzureAppConfiguration.Functions.Worker
 {
     public class AzureAppConfigurationExtensionsTests
     {

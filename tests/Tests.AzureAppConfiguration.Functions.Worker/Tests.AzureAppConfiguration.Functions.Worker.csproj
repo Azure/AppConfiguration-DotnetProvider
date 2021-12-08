@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions\Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.Functions.Worker\Microsoft.Azure.AppConfiguration.Functions.Worker.csproj" />
   </ItemGroup>
 
 </Project>

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Linq;
 
-namespace Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions
+namespace Microsoft.Azure.AppConfiguration.Functions.Worker
 {
     /// <summary>
     /// Extension methods for Azure App Configuration.

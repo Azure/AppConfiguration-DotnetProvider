@@ -18,7 +18,7 @@ using System.Runtime.CompilerServices;
 "800714a134f2a81e405f35752b55220021923429cb61776cd2fa66d25c335f8dc27bb92292905a" +
 "3798d896")]
 
-[assembly: InternalsVisibleTo("Tests.AzureAppConfiguration.IsolatedAzureFunctions," +
+[assembly: InternalsVisibleTo("Tests.AzureAppConfiguration.Functions.Worker," +
 "PublicKey=0024000004800000940000000602000000240000525341310004000001000100895524" +
 "f60b44ff3ae70fbea5662f61dd9d640de2205b7bd5359a43dda006e51d83d1f5f7a7d3f849267a0a" +
 "28676dcf49727a32487d4c75c4aacd5febb0069e1adc66ec63bbd18ec2276091a0e3c1326aa626c" +

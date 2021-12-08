@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions;
+using Microsoft.Azure.AppConfiguration.Functions.Worker;
 using Microsoft.Extensions.Hosting;
 using Microsoft.FeatureManagement;
 using System;

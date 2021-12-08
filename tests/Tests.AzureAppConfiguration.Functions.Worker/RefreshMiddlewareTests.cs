@@ -1,13 +1,13 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions;
+using Microsoft.Azure.AppConfiguration.Functions.Worker;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System.Linq;
 using Xunit;
 
-namespace Tests.AzureAppConfiguration.IsolatedAzureFunctions
+namespace Tests.AzureAppConfiguration.Functions.Worker
 {
     public class RefreshMiddlewareTests
     {

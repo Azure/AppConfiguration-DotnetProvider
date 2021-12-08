@@ -11,7 +11,7 @@
     <PackageReference Include="Microsoft.FeatureManagement" Version="2.4.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions\Microsoft.Azure.AppConfiguration.IsolatedAzureFunctions.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.Functions.Worker\Microsoft.Azure.AppConfiguration.Functions.Worker.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
