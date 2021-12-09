@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.1.31904.369
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29920.165
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Extensions.Configuration.AzureAppConfiguration", "src\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj", "{7B793D44-EC46-4C12-B71F-3A5005290C75}"
 EndProject
@@ -14,8 +14,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApplication", "examples\ConsoleApplication\ConsoleApplication.csproj", "{6725B058-185F-4393-9A0A-9D8B568B99C9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration.AspNetCore", "tests\Tests.AzureAppConfiguration.AspNetCore\Tests.AzureAppConfiguration.AspNetCore.csproj", "{7A809655-5D64-40AF-9CB8-03BD39BE1A79}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FunctionAppIsolatedMode", "examples\FunctionAppIsolatedMode\FunctionAppIsolatedMode.csproj", "{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.AppConfiguration.Functions.Worker", "src\Microsoft.Azure.AppConfiguration.Functions.Worker\Microsoft.Azure.AppConfiguration.Functions.Worker.csproj", "{C062A08A-CE0E-4099-AAF7-8967F883883E}"
 EndProject
@@ -51,10 +49,6 @@ Global
 		{7A809655-5D64-40AF-9CB8-03BD39BE1A79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7A809655-5D64-40AF-9CB8-03BD39BE1A79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7A809655-5D64-40AF-9CB8-03BD39BE1A79}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2BCAB5AD-AC68-4FB5-AF9A-28D74D5312E2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C062A08A-CE0E-4099-AAF7-8967F883883E}.Release|Any CPU.ActiveCfg = Release|Any CPU
