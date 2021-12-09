@@ -24,7 +24,7 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
 
         public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
         {
-            foreach (var refresher in Refreshers)
+            foreach (IConfigurationRefresher refresher in Refreshers)
             {
                 _ = refresher.TryRefreshAsync();
             }
