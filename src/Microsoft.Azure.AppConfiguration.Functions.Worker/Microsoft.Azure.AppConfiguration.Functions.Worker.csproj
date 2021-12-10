@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\build\NugetProperties.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <Description>Microsoft.Azure.AppConfiguration.Functions.Worker allows developers to use the Microsoft Azure App Configuration service as a configuration source in their applications. This package adds additional features to the existing package Microsoft.Extensions.Configuration.AzureAppConfiguration for .NET Azure Functions running in an isolated process.</Description>
+    <SignAssembly>true</SignAssembly>
+    <DelaySign>false</DelaySign>
+    <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AssemblyName>Microsoft.Azure.AppConfiguration.Functions.Worker</AssemblyName>
+    <PackageReleaseNotes>https://aka.ms/MicrosoftAzureAppConfigurationFunctionsWorkerReleaseNotes</PackageReleaseNotes>
+    <PackageTags>Microsoft Azure Configuration AppConfig AppConfiguration AzureAppConfiguration FunctionsWorker AzureFunctions IsolatedProcess OutOfProcess</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj" />
+  </ItemGroup>
+
+  <!-- Nuget Package Version Settings -->
+
+  <PropertyGroup>
+    <OfficialVersion>1.0.0-preview</OfficialVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
+    <Version>$(OfficialVersion)</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'!='Official'">
+    <Version>$(OfficialVersion)-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
+  </PropertyGroup>
+
+</Project>
