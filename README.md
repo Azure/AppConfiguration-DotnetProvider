@@ -15,7 +15,6 @@ Official documentation on how to use the Azure App Configuration provider is ava
 
 * [.NET Core Console App](./examples/ConsoleApplication)
 * [ASP.NET Core Web App](./examples/ConfigStoreDemo)
-* [Azure Functions App in isolated process](./examples/FunctionAppIsolatedMode)
 
 
 # Contributing

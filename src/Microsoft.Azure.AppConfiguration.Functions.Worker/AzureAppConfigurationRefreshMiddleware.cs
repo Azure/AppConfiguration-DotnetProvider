@@ -15,7 +15,7 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
     /// </summary>
     internal class AzureAppConfigurationRefreshMiddleware : IFunctionsWorkerMiddleware
     {
-        public IEnumerable<IConfigurationRefresher> Refreshers { get; }
+        private IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
         public AzureAppConfigurationRefreshMiddleware(IConfigurationRefresherProvider refresherProvider)
         {
