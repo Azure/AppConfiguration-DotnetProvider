@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Azure Functions localsettings file
+local.settings.json
+
 # User-specific files
 *.suo
 *.user
@@ -47,6 +50,8 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 **/Properties/launchSettings.json
+**/Properties/ServiceDependencies/
+**/Properties/serviceDependencies*.json
 
 *_i.c
 *_p.c

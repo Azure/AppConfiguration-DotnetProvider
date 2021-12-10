@@ -19,7 +19,8 @@ $LogDirectory = "$PSScriptRoot\buildlogs"
 
 $targetProjects = @(
     "Microsoft.Extensions.Configuration.AzureAppConfiguration",
-    "Microsoft.Azure.AppConfiguration.AspNetCore"
+    "Microsoft.Azure.AppConfiguration.AspNetCore",
+    "Microsoft.Azure.AppConfiguration.Functions.Worker"
 )
 
 # Create the log directory.
