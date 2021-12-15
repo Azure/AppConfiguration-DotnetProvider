@@ -124,11 +124,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
-            if (requestTracingOptions.IsOfflineCacheConfigured)
-            {
-                correlationContextTags.Add(RequestTracingConstants.OfflineCacheConfiguredTag);
-            }
-
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)

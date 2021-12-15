@@ -82,12 +82,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An offline cache provider which can be used to enable offline data retrieval and storage.
-        /// </summary>
-        [Obsolete("OfflineCache will be deprecated in a future release.")]
-        public IOfflineCache OfflineCache { get; private set; }
-
-        /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
         internal ConfigurationClient Client { get; set; }
@@ -106,11 +100,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
         /// </summary>
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
-
-        /// <summary>
-        /// Flag to indicate whether Offline Cache has been configured.
-        /// </summary>
-        internal bool IsOfflineCacheConfigured { get; private set; } = false;
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -217,19 +206,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
-
-            return this;
-        }
-
-        /// <summary>
-        /// Use an offline file cache to store Azure App Configuration data or retrieve previously stored data during offline periods.
-        /// </summary>
-        /// <param name="offlineCache">The offline file cache to use for storing/retrieving Azure App Configuration data.</param>
-        [Obsolete("SetOfflineCache will be deprecated in a future release.")]
-        public AzureAppConfigurationOptions SetOfflineCache(IOfflineCache offlineCache)
-        {
-            OfflineCache = offlineCache ?? throw new ArgumentNullException(nameof(offlineCache));
-            IsOfflineCacheConfigured = true;
 
             return this;
         }

@@ -25,7 +25,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
-        public const string OfflineCacheConfiguredTag = "UsesOfflineCache";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
