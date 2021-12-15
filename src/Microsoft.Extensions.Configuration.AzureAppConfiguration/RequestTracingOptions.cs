@@ -21,11 +21,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsKeyVaultRefreshConfigured { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether Offline Cache has been configured.
-        /// </summary>
-        public bool IsOfflineCacheConfigured { get; set; } = false;
-
-        /// <summary>
         /// Flag to indicate whether the request is from a development environment.
         /// </summary>
         public bool IsDevEnvironment { get; set; } = false;
