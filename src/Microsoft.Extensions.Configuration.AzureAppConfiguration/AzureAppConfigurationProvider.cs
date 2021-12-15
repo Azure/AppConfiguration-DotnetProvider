@@ -347,15 +347,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 data = serverData;
                 success = true;
             }
-            catch (Exception exception) when (exception is RequestFailedException ||
+            catch (Exception exception) when (ignoreFailures &&
+                                             (exception is RequestFailedException ||
                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                                             exception is OperationCanceledException)
-            {
-                if (!ignoreFailures)
-                {
-                    throw;
-                }
-            }
+                                             exception is OperationCanceledException))
+            { }
             finally
             {
                 // Update the cache expiration time for all refresh registered settings and feature flags
