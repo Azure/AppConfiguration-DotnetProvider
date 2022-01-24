@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
 
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(endpoints.ToArray(), new DefaultAzureCredential())
+                        options.Connect(endpoints, new DefaultAzureCredential())
                                .ConfigureRefresh(refresh =>
                                {
                                    refresh.Register("Settings:BackgroundColor")

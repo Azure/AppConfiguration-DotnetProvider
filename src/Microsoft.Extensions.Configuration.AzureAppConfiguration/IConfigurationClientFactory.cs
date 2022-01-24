@@ -12,8 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         IConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions);
 
-        IConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions);
-
         /// <summary>
         /// Creates the configuration client from the given list of endpoints, token credential and configuration client options.
         /// </summary>

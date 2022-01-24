@@ -72,7 +72,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var result = await delegates.ElementAt(i)();
+                    var result = await delegates.ElementAt(i)().ConfigureAwait(false);
                     success = true;
 
                     return result;

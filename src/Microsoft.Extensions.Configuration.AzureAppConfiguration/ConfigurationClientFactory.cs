@@ -18,12 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return new FailOverSupportedConfigurationClient(new List<LocalConfigurationClient>() { new LocalConfigurationClient(endpoint, configurationClient) });
         }
 
-        public IConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
-        {
-            var configurationClient = new ConfigurationClient(endpoint, credential, clientOptions);
-            return new FailOverSupportedConfigurationClient(new List<LocalConfigurationClient>() { new LocalConfigurationClient(endpoint, configurationClient) });
-        }
-
         public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
             if (endpoints == null)

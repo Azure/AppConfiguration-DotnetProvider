@@ -30,13 +30,6 @@ namespace Tests.AzureAppConfiguration
             return _mockClient.Object;
         }
 
-        public IConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
-        {
-            ClientOptions = clientOptions;
-            TokenCredentialCallCount++;
-            return _mockClient.Object;
-        }
-
         public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
             ClientOptions = clientOptions;

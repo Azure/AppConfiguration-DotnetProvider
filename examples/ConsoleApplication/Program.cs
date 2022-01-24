@@ -54,9 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
-                var defaultAzureCredential = new DefaultAzureCredential();
-
-                options.Connect(endpoints.ToArray(), defaultAzureCredential)
+                options.Connect(endpoints, new DefaultAzureCredential())
                        .Select("AppName")
                        .Select("Settings:BackgroundColor")
                        .ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 5)
