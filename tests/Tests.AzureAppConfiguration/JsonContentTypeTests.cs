@@ -278,10 +278,10 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
-        private Mock<ConfigurationClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
+        private Mock<IConfigurationClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {

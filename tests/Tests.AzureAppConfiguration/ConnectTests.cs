@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace Tests.AzureAppConfiguration
         public void ConnectTests_UsesClientInstanceIfSpecified()
         {
             // Arrange
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
 
@@ -44,7 +45,7 @@ namespace Tests.AzureAppConfiguration
             mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
                 .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
 
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                     .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
 

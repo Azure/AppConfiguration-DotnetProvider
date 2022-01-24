@@ -21,5 +21,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Backoff during refresh failures
         public static readonly TimeSpan DefaultMinBackoff = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan DefaultMaxBackoff = TimeSpan.FromMinutes(10);
+
+        // Timeouts to retry requests to primary config stores after HTTP status codes 503 or 429.
+        public static readonly TimeSpan DefaultMinRetryAfter = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan DefaultMaxRetryAfter = TimeSpan.FromMinutes(10);
     }
 }

@@ -1,9 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Identity;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using System;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConfigStoreDemo
 {
@@ -24,9 +26,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                     // 3. Set up the provider to listen for changes to the background color key-value in Azure App Configuration
 
                     var settings = config.AddJsonFile("appsettings.json").Build();
+
+                    IConfigurationSection endpointsSection = settings.GetSection("endpoints");
+                    var endpoints = endpointsSection.GetChildren().AsEnumerable().Select(endpoint => new Uri(endpoint.Value));
+
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(settings["connection_string"])
+                        options.Connect(endpoints.ToArray(), new DefaultAzureCredential())
                                .ConfigureRefresh(refresh =>
                                {
                                    refresh.Register("Settings:BackgroundColor")

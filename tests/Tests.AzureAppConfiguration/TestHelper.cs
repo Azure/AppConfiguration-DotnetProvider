@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -14,11 +15,25 @@ namespace Tests.AzureAppConfiguration
 {
     class TestHelpers
     {
-        static public string CreateMockEndpointString()
+        public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
+        public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
+
+        static public IConfigurationClient CreateMockConfigurationClient(ConfigurationClientOptions clientOptions = null)
+        {
+            var endpointString = CreateMockEndpointString(PrimaryConfigStoreEndpoint.ToString());
+            var secondaryEndpointString = CreateMockEndpointString(SecondaryConfigStoreEndpoint.ToString());
+            var failOverSupportedClient = new FailOverSupportedConfigurationClient(
+                                                new List<ConfigurationClient>() {
+                                                    new ConfigurationClient(endpointString, clientOptions),
+                                                    new ConfigurationClient(secondaryEndpointString, clientOptions) });
+            return failOverSupportedClient;
+        }
+
+        static public string CreateMockEndpointString(string endpoint = "https://xxxxx.azconfig.io")
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
-            return $"Endpoint=https://xxxxx;Id=b1d9b31;Secret={returnValue}";
+            return $"Endpoint={endpoint};Id=b1d9b31;Secret={returnValue}";
         }
 
         static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)

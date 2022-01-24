@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                ConfigurationClient client;
+                IConfigurationClient client;
 
                 if (options.Client != null)
                 {
@@ -41,9 +41,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString, options.ClientOptions);
                 }
-                else if (options.Endpoint != null && options.Credential != null)
+                else if (options.Endpoints != null && options.Credential != null)
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoint, options.Credential, options.ClientOptions);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else
                 {

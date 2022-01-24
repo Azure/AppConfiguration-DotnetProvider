@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this IConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -60,7 +60,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this IConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options, CancellationToken cancellationToken)
         {
             if (options == null)
             {

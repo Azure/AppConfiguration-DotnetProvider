@@ -4,19 +4,35 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class ConfigurationClientFactory : IConfigurationClientFactory
     {
-        public ConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
+        public IConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
         {
-            return new ConfigurationClient(connectionString, clientOptions); 
+            var configurationClient = new ConfigurationClient(connectionString, clientOptions);
+            return new FailOverSupportedConfigurationClient(new List<ConfigurationClient>() { configurationClient });
         }
 
-        public ConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
+        public IConfigurationClient CreateConfigurationClient(Uri endpoint, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
-            return new ConfigurationClient(endpoint, credential, clientOptions);
+            var configurationClient = new ConfigurationClient(endpoint, credential, clientOptions);
+            return new FailOverSupportedConfigurationClient(new List<ConfigurationClient>() { configurationClient });
+        }
+
+        public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
+        {
+            if (endpoints == null)
+            {
+                throw new ArgumentNullException(nameof(endpoints));
+            }
+
+            var configurationClients = endpoints.Select(endpoint => new ConfigurationClient(endpoint, credential, clientOptions));
+
+            return new FailOverSupportedConfigurationClient(configurationClients);
         }
     }
 }

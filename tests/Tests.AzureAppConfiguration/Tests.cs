@@ -19,8 +19,6 @@ namespace Tests.AzureAppConfiguration
 {
     public class Tests
     {
-        string _connectionString = TestHelpers.CreateMockEndpointString();
-
         ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "newTestValue1", "test",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c6"),
             contentType: "text");
@@ -49,7 +47,7 @@ namespace Tests.AzureAppConfiguration
         public void AddsConfigurationValues()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -93,7 +91,7 @@ namespace Tests.AzureAppConfiguration
         public void TrimKeyPrefix_TestCase1()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -125,7 +123,7 @@ namespace Tests.AzureAppConfiguration
         public void TrimKeyPrefix_TestCase2()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -169,7 +167,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Client = TestHelpers.CreateMockConfigurationClient(clientOptions);
                     options.Select("*", null);
                 })
                 .Build();
@@ -203,7 +201,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Client = TestHelpers.CreateMockConfigurationClient(clientOptions);
                 }).Build();
 
             MockRequest request = mockTransport.SingleRequest;
@@ -230,7 +228,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Client = TestHelpers.CreateMockConfigurationClient(clientOptions);
                     options.Select("*", null);
                 })
                 .Build();
@@ -256,7 +254,7 @@ namespace Tests.AzureAppConfiguration
             config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Client = TestHelpers.CreateMockConfigurationClient(clientOptions);
                     options.Select("*", null);
                 })
                 .Build();

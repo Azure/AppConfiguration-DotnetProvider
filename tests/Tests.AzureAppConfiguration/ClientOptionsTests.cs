@@ -1,5 +1,6 @@
 ﻿using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace Tests.AzureAppConfiguration
         public void ClientOptionsTests_OverridesDefaultClientOptions()
         {
             // Arrange
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                     .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
 

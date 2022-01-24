@@ -7,6 +7,9 @@
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="2.0.2" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.5.0" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.AspNetCore\Microsoft.Azure.AppConfiguration.AspNetCore.csproj" />
   </ItemGroup>
   <ItemGroup>

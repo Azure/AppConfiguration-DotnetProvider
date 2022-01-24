@@ -50,5 +50,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             return TimeSpan.FromMilliseconds(min.TotalMilliseconds + new Random().NextDouble() * (maxMilliseconds - min.TotalMilliseconds));
         }
+
+        /// <summary>
+        /// This method calculates a random exponential time to retry the primary store after a failure
+        /// which lies between <paramref name="interval"/> and <see cref="RefreshConstants.DefaultMaxRetryAfter"/>.
+        /// </summary>
+        /// <param name="interval">The minimum interval to retry after.</param>
+        /// <param name="attempts">The number of attempts made to the primary config store.</param>
+        /// <returns>The calculated exponential time to retry the primary config store after a failure.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// An exception is thrown when <paramref name="attempts"/> is less than 1.
+        /// </exception>
+        public static TimeSpan CalculateRetryAfterTime(this TimeSpan interval, int attempts)
+        {
+            if (attempts < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
+            }
+
+            TimeSpan calculatedRetryAfter = TimeSpan.FromTicks(interval.Ticks * new Random().Next(1, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue)));
+
+            return TimeSpan.FromTicks(Math.Min(RefreshConstants.DefaultMaxRetryAfter.Ticks, calculatedRetryAfter.Ticks));
+        }
     }
 }

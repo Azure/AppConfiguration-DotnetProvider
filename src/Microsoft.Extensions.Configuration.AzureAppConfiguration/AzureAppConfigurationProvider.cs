@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
 
-        private readonly ConfigurationClient _client;
+        private readonly IConfigurationClient _client;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -47,9 +47,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             get
             {
-                if (_options.Endpoint != null)
+                if (_options.Endpoints != null)
                 {
-                    return _options.Endpoint;
+                    // Split each endpoint with a '.' to get the config store name, and return the endpoint which doesn't have '---' (that would be the primary endpoint).
+                    return _options.Endpoints.First(c => !c.Host.Split('.')[0].Contains(ConfigurationStoreConstants.ConfigStoreNameReplicaSeparator));
                 }
 
                 if (_options.ConnectionString != null)
@@ -82,7 +83,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(IConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -279,7 +280,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
-            _client.UpdateSyncToken(pushNotification.SyncToken);
+            //_client.UpdateSyncToken(pushNotification.SyncToken);
 
             SetDirty(maxDelay);
         }

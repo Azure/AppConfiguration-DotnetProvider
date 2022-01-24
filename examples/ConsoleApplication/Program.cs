@@ -1,15 +1,17 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+
+using Azure.Identity;
+using System;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
-
     class Program
     {
         static IConfiguration Configuration { get; set; }
@@ -38,10 +40,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
             IConfiguration configuration = builder.Build();
 
-            if (string.IsNullOrEmpty(configuration["connection_string"]))
+            IConfigurationSection endpointsSection = configuration.GetSection("endpoints");
+            var endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
+
+            if (endpoints == null || !endpoints.Any())
             {
-                Console.WriteLine("Connection string not found.");
-                Console.WriteLine("Please set the 'connection_string' environment variable to a valid Azure App Configuration connection string and re-run this example.");
+                Console.WriteLine("Endpoints not found.");
+                Console.WriteLine("Please set the array 'endpoints' in appsettings.json with valid Azure App Configuration endpoints and re-run this example.");
                 return;
             }
 
@@ -49,7 +54,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(configuration["connection_string"])
+                var defaultAzureCredential = new DefaultAzureCredential();
+
+                options.Connect(endpoints.ToArray(), defaultAzureCredential)
                        .Select("AppName")
                        .Select("Settings:BackgroundColor")
                        .ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 5)

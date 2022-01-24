@@ -20,6 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        private readonly string[] configStoreNameSplitSeparator = { ConfigurationStoreConstants.ConfigStoreNameReplicaSeparator };
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
@@ -41,14 +42,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The endpoint of the Azure App Configuration.
+        /// The list of endpoints of the Azure App Configuration and it's replicas.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal Uri Endpoint { get; private set; }
+        internal IEnumerable<Uri> Endpoints { get; private set; }
 
         /// <summary>
         /// The connection string to use to connect to Azure App Configuration.
-        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
         internal TokenCredential Credential { get; private set; }
 
@@ -84,7 +85,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
-        internal ConfigurationClient Client { get; set; }
+        internal IConfigurationClient Client { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -226,7 +227,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            Endpoint = null;
+            Endpoints = null;
             Credential = null;
             ConnectionString = connectionString;
             return this;
@@ -250,8 +251,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             ConnectionString = null;
-            Endpoint = endpoint;
+            Endpoints = new List<Uri>() { endpoint };
             Credential = credential;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to Azure App Configuration and their replicas using list of endpoints and token credential.
+        /// </summary>
+        /// <param name="endpoints">The list of endpoints of the Azure App Configuration and it's replicas to connect to.</param>
+        /// <param name="credential">Token credential to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
+        {
+            if (endpoints == null || endpoints.Count() == 0)
+            {
+                throw new ArgumentNullException(nameof(endpoints));
+            }
+
+            IEnumerable<string> configStoreNames = endpoints.Select(endpoint => endpoint.Host.Split('.')[0]);
+            var primaryStores = configStoreNames.Where(storeName => !storeName.Contains(ConfigurationStoreConstants.ConfigStoreNameReplicaSeparator));
+
+            if (primaryStores.Count() > 1)
+            {
+                throw new ArgumentException($"{nameof(endpoints)} can have only one primary configuration store endpoint.");
+            }
+
+            if (!configStoreNames.All(storeName => storeName.Split(configStoreNameSplitSeparator, StringSplitOptions.None)[0].Equals(primaryStores.Single(), StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException($"{nameof(endpoints)} can only contain endpoints for the primary configuration store and it's replicas.");
+            }
+
+            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
+
+            ConnectionString = null;
+            Endpoints = endpoints;
             return this;
         }
 

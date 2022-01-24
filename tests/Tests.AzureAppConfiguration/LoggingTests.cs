@@ -152,9 +152,9 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
-            // Mock ConfigurationClient
+            // Mock IConfigurationClient
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -305,10 +305,10 @@ namespace Tests.AzureAppConfiguration
             return true;
         }
 
-        private Mock<ConfigurationClient> GetMockConfigurationClient()
+        private Mock<IConfigurationClient> GetMockConfigurationClient()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
