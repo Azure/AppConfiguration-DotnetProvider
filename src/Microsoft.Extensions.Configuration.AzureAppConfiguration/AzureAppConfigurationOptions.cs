@@ -20,7 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
-        private readonly string[] configStoreNameSplitSeparator = { ConfigurationStoreConstants.ConfigStoreNameReplicaSeparator };
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
@@ -266,19 +265,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (endpoints == null || endpoints.Count() == 0)
             {
                 throw new ArgumentNullException(nameof(endpoints));
-            }
-
-            IEnumerable<string> configStoreNames = endpoints.Select(endpoint => endpoint.Host.Split('.')[0]);
-            var primaryStores = configStoreNames.Where(storeName => !storeName.Contains(ConfigurationStoreConstants.ConfigStoreNameReplicaSeparator));
-
-            if (primaryStores.Count() > 1)
-            {
-                throw new ArgumentException($"{nameof(endpoints)} can have only one primary configuration store endpoint.");
-            }
-
-            if (!configStoreNames.All(storeName => storeName.Split(configStoreNameSplitSeparator, StringSplitOptions.None)[0].Equals(primaryStores.Single(), StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new ArgumentException($"{nameof(endpoints)} can only contain endpoints for the primary configuration store and it's replicas.");
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));

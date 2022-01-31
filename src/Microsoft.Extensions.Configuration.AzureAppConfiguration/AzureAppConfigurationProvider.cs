@@ -49,8 +49,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.Endpoints != null)
                 {
-                    // Split each endpoint with a '.' to get the config store name, and return the endpoint which doesn't have '---' (that would be the primary endpoint).
-                    return _options.Endpoints.First(c => !c.Host.Split('.')[0].Contains(ConfigurationStoreConstants.ConfigStoreNameReplicaSeparator));
+                    // return the default `null` if there are no Endpoints in the list to avoid throwing exceptions.
+                    return _options.Endpoints.FirstOrDefault();
                 }
 
                 if (_options.ConnectionString != null)

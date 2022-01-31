@@ -26,14 +26,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public FailOverSupportedConfigurationClient(IEnumerable<LocalConfigurationClient> clients)
         {
-            if (clients == null)
+            if (clients == null || clients.Count() < 1)
             {
                 throw new ArgumentNullException(nameof(clients));
-            }
-
-            if (clients.Count() < 1)
-            {
-                throw new ArgumentException($"{nameof(clients)} needs at least one ClientConfiguration.");
             }
 
             this.retryPrimaryConfigClientAfter = DateTimeOffset.UtcNow;
@@ -48,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public Task<Response<ConfigurationSetting>> GetConfigurationSettingAsync(ConfigurationSetting setting, bool onlyIfChanged = false, CancellationToken cancellationToken = default)
         {
-            return ExecuteWithFailOverPolicyAsync(clients.Select((client) => new Func<Task<Response<ConfigurationSetting>>>(() => client.Client.GetConfigurationSettingAsync(setting,  onlyIfChanged, cancellationToken))), cancellationToken);
+            return ExecuteWithFailOverPolicyAsync(clients.Select((client) => new Func<Task<Response<ConfigurationSetting>>>(() => client.Client.GetConfigurationSettingAsync(setting, onlyIfChanged, cancellationToken))), cancellationToken);
         }
 
         public AsyncPageable<ConfigurationSetting> GetConfigurationSettingsAsync(SettingSelector selector, CancellationToken cancellationToken = default)
