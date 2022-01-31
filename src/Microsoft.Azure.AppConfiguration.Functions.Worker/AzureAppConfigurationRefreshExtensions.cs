@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 //
 
-using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.AppConfiguration.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Linq;
 
-namespace Microsoft.Azure.AppConfiguration.Functions.Worker
+namespace Microsoft.Azure.Functions.Worker
 {
     /// <summary>
     /// Extension methods for Azure App Configuration.
