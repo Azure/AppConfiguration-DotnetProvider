@@ -236,7 +236,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        [Obsolete("SetDirty will be deprecated in a future release. Please use 'ProcessPushNotification' method instead.")]
         public void SetDirty(TimeSpan? maxDelay)
         {
             DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);

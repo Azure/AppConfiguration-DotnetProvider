@@ -56,7 +56,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _provider.ProcessPushNotification(pushNotification, maxDelay);
         }
 
-        [Obsolete("SetDirty will be deprecated in a future release. Please use 'ProcessPushNotification' method instead.")]
         public void SetDirty(TimeSpan? maxDelay)
         {
             ThrowIfNullProvider(nameof(SetDirty));
