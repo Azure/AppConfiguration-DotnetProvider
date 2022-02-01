@@ -5,6 +5,7 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -63,6 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < clients.Count(); i++)
             {
                 var success = false;
+                var operationCanceled = false;
 
                 try
                 {
@@ -77,6 +79,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     exceptions.Add(e);
                     continue;
                 }
+                catch (OperationCanceledException)
+                {
+                    operationCanceled = true;
+                    throw;
+                }
                 catch (Exception e)
                 {
                     exceptions.Add(e);
@@ -84,11 +91,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 finally
                 {
-                    if (i == 0)
+                    if (i == 0 && !operationCanceled)
                     {
                         UpdatePrimaryConfigStoreStatus(success);
                     }
                 }
+            }
+
+            if (exceptions.All(e => e is RequestFailedException))
+            {
+                // If all exceptions are request failed exceptions, throw the latest exception.
+                throw exceptions.Last();
             }
 
             throw new AggregateException(exceptions);
@@ -101,6 +114,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < clients.Count(); i++)
             {
                 var success = false;
+                var operationCanceled = false;
 
                 try
                 {
@@ -115,6 +129,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     exceptions.Append(e);
                     continue;
                 }
+                catch (OperationCanceledException)
+                {
+                    operationCanceled = true;
+                    throw;
+                }
                 catch (Exception e)
                 {
                     exceptions.Append(e);
@@ -122,11 +141,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 finally
                 {
-                    if (i == 0)
+                    if (i == 0 && !operationCanceled)
                     {
                         UpdatePrimaryConfigStoreStatus(success);
                     }
                 }
+            }
+
+            if (exceptions.All(e => e is RequestFailedException))
+            {
+                // If all exceptions are request failed exceptions, throw the latest exception.
+                throw exceptions.Last();
             }
 
             throw new AggregateException(exceptions);

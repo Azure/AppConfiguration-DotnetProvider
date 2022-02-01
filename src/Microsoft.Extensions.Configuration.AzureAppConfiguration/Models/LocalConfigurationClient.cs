@@ -5,7 +5,7 @@
 using Azure.Data.AppConfiguration;
 using System;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     internal class LocalConfigurationClient
     {
