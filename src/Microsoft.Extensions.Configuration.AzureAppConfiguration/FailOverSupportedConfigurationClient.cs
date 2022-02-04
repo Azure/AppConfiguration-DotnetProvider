@@ -59,7 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<Response<T>> ExecuteWithFailOverPolicyAsync<T>(IEnumerable<Func<Task<Response<T>>>> delegates, CancellationToken cancellationToken = default)
         {
-            IList<Exception> exceptions = new List<Exception>();
+            Exception latestException = null;
 
             for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < clients.Count(); i++)
             {
@@ -76,18 +76,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.ServiceUnavailable || e.Status == HttpStatusRequestThrottled)
                 {
-                    exceptions.Add(e);
+                    latestException = e;
                     continue;
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
+                    {
+                        var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
+
+                        if (lastException?.Status == (int)HttpStatusCode.ServiceUnavailable ||
+                            lastException?.Status == HttpStatusRequestThrottled)
+                        {
+                            latestException = lastException;
+                            continue;
+                        }
+                    }
+
+                    throw;
                 }
                 catch (OperationCanceledException)
                 {
                     operationCanceled = true;
                     throw;
-                }
-                catch (Exception e)
-                {
-                    exceptions.Add(e);
-                    break;
                 }
                 finally
                 {
@@ -98,18 +109,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            if (exceptions.All(e => e is RequestFailedException))
-            {
-                // If all exceptions are request failed exceptions, throw the latest exception.
-                throw exceptions.Last();
-            }
-
-            throw new AggregateException(exceptions);
+            throw latestException;
         }
 
         private T ExecuteWithFailOverPolicy<T>(IEnumerable<Func<T>> delegates, CancellationToken cancellationToken = default)
         {
-            IEnumerable<Exception> exceptions = new List<Exception>();
+            Exception latestException = null;
 
             for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < clients.Count(); i++)
             {
@@ -126,18 +131,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.ServiceUnavailable || e.Status == HttpStatusRequestThrottled)
                 {
-                    exceptions.Append(e);
+                    latestException = e;
                     continue;
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
+                    {
+                        var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
+
+                        if (lastException?.Status == (int)HttpStatusCode.ServiceUnavailable ||
+                            lastException?.Status == HttpStatusRequestThrottled)
+                        {
+                            latestException = lastException;
+                            continue;
+                        }
+                    }
+
+                    throw;
                 }
                 catch (OperationCanceledException)
                 {
                     operationCanceled = true;
                     throw;
-                }
-                catch (Exception e)
-                {
-                    exceptions.Append(e);
-                    break;
                 }
                 finally
                 {
@@ -148,13 +164,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            if (exceptions.All(e => e is RequestFailedException))
-            {
-                // If all exceptions are request failed exceptions, throw the latest exception.
-                throw exceptions.Last();
-            }
-
-            throw new AggregateException(exceptions);
+            throw latestException;
         }
 
         private void UpdatePrimaryConfigStoreStatus(bool success)
