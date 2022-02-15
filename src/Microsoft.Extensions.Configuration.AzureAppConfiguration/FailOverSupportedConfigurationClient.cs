@@ -79,18 +79,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     latestException = e;
                     continue;
                 }
-                catch (AggregateException ex)
+                catch (AggregateException ex) when (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
                 {
-                    if (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
-                    {
-                        var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
+                    var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
 
-                        if (lastException?.Status == (int)HttpStatusCode.ServiceUnavailable ||
-                            lastException?.Status == HttpStatusRequestThrottled)
-                        {
-                            latestException = lastException;
-                            continue;
-                        }
+                    if (lastException?.Status == (int)HttpStatusCode.ServiceUnavailable || lastException?.Status == HttpStatusRequestThrottled)
+                    {
+                        latestException = lastException;
+                        continue;
                     }
 
                     throw;
@@ -134,18 +130,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     latestException = e;
                     continue;
                 }
-                catch (AggregateException ex)
+                catch (AggregateException ex) when (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
                 {
-                    if (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
-                    {
-                        var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
+                    var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
 
-                        if (lastException?.Status == (int)HttpStatusCode.ServiceUnavailable ||
-                            lastException?.Status == HttpStatusRequestThrottled)
-                        {
-                            latestException = lastException;
-                            continue;
-                        }
+                    if (lastException?.Status == (int)HttpStatusCode.ServiceUnavailable ||
+                        lastException?.Status == HttpStatusRequestThrottled)
+                    {
+                        latestException = lastException;
+                        continue;
                     }
 
                     throw;
