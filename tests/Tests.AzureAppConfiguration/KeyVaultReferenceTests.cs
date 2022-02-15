@@ -12,7 +12,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -161,7 +160,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void UseNullSecretValueWhenSecretNotFound()
+        public void ThrowsWhenSecretNotFound()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
@@ -171,18 +170,18 @@ namespace Tests.AzureAppConfiguration
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
             mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns((string name, string version, CancellationToken cancellationToken) =>
-                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(null)));
+                .Throws(new RequestFailedException(404, "Secret Not Found.", "SecretNotFound", null));
 
-            var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
+            KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
+            {
+                new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
-                })
-                .Build();
+                }).Build();
+            });
 
-            Assert.Null(configuration[_kv.Key]);
+            Assert.Equal("SecretNotFound", ex.ErrorCode);
         }
 
         [Fact]
