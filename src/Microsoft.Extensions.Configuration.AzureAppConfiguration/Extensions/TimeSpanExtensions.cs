@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
@@ -53,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
         /// <summary>
         /// This method calculates a random exponential time to retry the primary store after a failure
-        /// which lies between <paramref name="interval"/> and <see cref="RefreshConstants.DefaultMaxRetryAfter"/>.
+        /// which lies between <paramref name="interval"/> and <see cref="RetryConstants.DefaultMaxRetryAfter"/>.
         /// </summary>
         /// <param name="interval">The minimum interval to retry after.</param>
         /// <param name="attempts">The number of attempts made to the primary config store.</param>
@@ -70,7 +71,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             TimeSpan calculatedRetryAfter = TimeSpan.FromTicks(interval.Ticks * new Random().Next(1, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue)));
 
-            return TimeSpan.FromTicks(Math.Min(RefreshConstants.DefaultMaxRetryAfter.Ticks, calculatedRetryAfter.Ticks));
+            return TimeSpan.FromTicks(Math.Min(RetryConstants.DefaultMaxRetryAfter.Ticks, calculatedRetryAfter.Ticks));
         }
     }
 }

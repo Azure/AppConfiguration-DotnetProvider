@@ -3,7 +3,7 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            var configurationClients = endpoints.Select(endpoint => new LocalConfigurationClient(endpoint, new ConfigurationClient(endpoint, credential, clientOptions)));
+            IEnumerable<LocalConfigurationClient> configurationClients = endpoints.Select(endpoint => new LocalConfigurationClient(endpoint, new ConfigurationClient(endpoint, credential, clientOptions)));
 
             return new FailOverSupportedConfigurationClient(configurationClients);
         }

@@ -5,13 +5,13 @@
 using Azure.Data.AppConfiguration;
 using System;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients
 {
     internal class LocalConfigurationClient
     {
-        public LocalConfigurationClient(Uri Endpoint, ConfigurationClient client)
+        public LocalConfigurationClient(Uri endpoint, ConfigurationClient client)
         {
-            this.Endpoint = Endpoint;
+            this.Endpoint = endpoint;
             this.Client = client;
         }
 

@@ -5,6 +5,7 @@ using Azure.Identity;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConfigStoreDemo
@@ -25,10 +26,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                     // 2. Retrieve the Azure App Configuration connection string from an environment variable
                     // 3. Set up the provider to listen for changes to the background color key-value in Azure App Configuration
 
-                    var settings = config.AddJsonFile("appsettings.json").Build();
+                    IConfigurationRoot settings = config.AddJsonFile("appsettings.json").Build();
 
                     IConfigurationSection endpointsSection = settings.GetSection("endpoints");
-                    var endpoints = endpointsSection.GetChildren().AsEnumerable().Select(endpoint => new Uri(endpoint.Value));
+                    IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
 
                     config.AddAzureAppConfiguration(options =>
                     {

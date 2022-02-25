@@ -4,6 +4,8 @@
 
 using Azure.Identity;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -41,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             IConfiguration configuration = builder.Build();
 
             IConfigurationSection endpointsSection = configuration.GetSection("endpoints");
-            var endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
+            IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
 
             if (endpoints == null || !endpoints.Any())
             {

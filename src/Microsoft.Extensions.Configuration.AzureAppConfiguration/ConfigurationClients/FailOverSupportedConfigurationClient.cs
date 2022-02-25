@@ -4,8 +4,8 @@
 
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +13,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients
 {
     internal class FailOverSupportedConfigurationClient : IConfigurationClient
     {
@@ -79,7 +79,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     latestException = e;
                     continue;
                 }
-                catch (AggregateException ex) when (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
+                catch (AggregateException ex) when (ex.InnerExceptions?.All(e => e is RequestFailedException) == true)
                 {
                     var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
 
@@ -130,7 +130,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     latestException = e;
                     continue;
                 }
-                catch (AggregateException ex) when (ex?.InnerExceptions?.All(e => e is RequestFailedException) == true)
+                catch (AggregateException ex) when (ex.InnerExceptions?.All(e => e is RequestFailedException) == true)
                 {
                     var lastException = ex.InnerExceptions.LastOrDefault() as RequestFailedException;
 
@@ -170,7 +170,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 this.failedRequestsToPrimaryConfigClient++;
-                var retryAfterTimeout = RefreshConstants.DefaultMinRetryAfter.CalculateRetryAfterTime(this.failedRequestsToPrimaryConfigClient);
+                var retryAfterTimeout = RetryConstants.DefaultMinRetryAfter.CalculateRetryAfterTime(this.failedRequestsToPrimaryConfigClient);
                 this.retryPrimaryConfigClientAfter = DateTimeOffset.UtcNow.Add(retryAfterTimeout);
             }
         }
