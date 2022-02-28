@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
             IConfiguration configuration = builder.Build();
 
-            IConfigurationSection endpointsSection = configuration.GetSection("endpoints");
+            IConfigurationSection endpointsSection = configuration.GetSection("AppConfig:Endpoints");
             IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
 
             if (endpoints == null || !endpoints.Any())

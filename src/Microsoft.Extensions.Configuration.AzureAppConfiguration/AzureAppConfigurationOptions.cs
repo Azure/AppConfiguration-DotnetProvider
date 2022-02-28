@@ -41,13 +41,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The list of endpoints of the Azure App Configuration and it's replicas.
+        /// The list of endpoints of an Azure App Configuration store and it's replicas.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
         internal IEnumerable<Uri> Endpoints { get; private set; }
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
+        /// The credential used to connect to the Azure App Configuration.
         /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
         internal TokenCredential Credential { get; private set; }
