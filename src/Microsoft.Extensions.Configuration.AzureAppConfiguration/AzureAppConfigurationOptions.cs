@@ -267,21 +267,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            var set = new HashSet<String>();
-
-            // Best effort to find the primary endpoint (the shortest one in length)
-            var shortestEndpoint = endpoints.OrderBy(e => e.Host.Length).First().Host;
-
-            // If the shortest endpoint is a replica or the store name has a '-', the common prefix would be string before first '-'
-            // else if there is no '-' in it, then it is not a replica and the common prefix would be a substring before first '.'
-            var commonPrefix = shortestEndpoint.Substring(0, shortestEndpoint.IndexOf('-') > 0 ? shortestEndpoint.IndexOf('-') : shortestEndpoint.IndexOf('.'));
-
-            if (!endpoints.Select(e => e.Host).All(set.Add) || // All endpoints must be unique.
-                !endpoints.All(e => e.Host.Substring(e.Host.IndexOf('.')).Equals( // All endpoints must have the same domain.
-                                    shortestEndpoint.Substring(shortestEndpoint.IndexOf('.')))) ||
-                !endpoints.All(e => e.Host.StartsWith(commonPrefix))) // All endpoints must start with the same common prefix.
+            if (endpoints.Count() > 1)
             {
-                throw new ArgumentException("All endpoints must be unique and must belong to the same configuration store.");
+                string firstEndpoint = endpoints.First().Host;
+
+                // If the first endpoint is a replica or the store name has a '-', the common prefix would be string before first '-'
+                // else if there is no '-' in it, then it is not a replica and the common prefix would be a substring before first '.'
+                string commonPrefix = firstEndpoint.Substring(0, firstEndpoint.IndexOf('-') > 0 ? firstEndpoint.IndexOf('-') : firstEndpoint.IndexOf('.'));
+                string commonDomain = firstEndpoint.Substring(firstEndpoint.IndexOf('.'));
+
+                if (endpoints.Count() != endpoints.Distinct().Count() || // All endpoints must be unique.
+                    !endpoints.All(e => e.Host.Substring(e.Host.IndexOf('.')).Equals(commonDomain, StringComparison.InvariantCultureIgnoreCase)) || // All endpoints must have the same domain.
+                    !endpoints.All(e => e.Host.StartsWith(commonPrefix, StringComparison.InvariantCultureIgnoreCase))) // All endpoints must start with the same common prefix.
+                {
+                    throw new ArgumentException("All endpoints must be unique and must belong to the same configuration store.");
+                }
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));

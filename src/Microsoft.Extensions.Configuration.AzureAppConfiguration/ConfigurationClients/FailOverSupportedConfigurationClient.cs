@@ -19,11 +19,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
     {
         private const int HttpStatusRequestThrottled = 429;
 
-        private readonly IEnumerable<LocalConfigurationClient> clients;
+        private readonly IEnumerable<LocalConfigurationClient> _clients;
 
-        private DateTimeOffset retryPrimaryConfigClientAfter;
+        private DateTimeOffset _retryFirstConfigClientAfter;
 
-        private int failedRequestsToPrimaryConfigClient = 0;
+        private int _failedRequestsToFirstConfigClient = 0;
 
         public FailOverSupportedConfigurationClient(IEnumerable<LocalConfigurationClient> clients)
         {
@@ -32,36 +32,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                 throw new ArgumentNullException(nameof(clients));
             }
 
-            this.retryPrimaryConfigClientAfter = DateTimeOffset.UtcNow;
-            this.failedRequestsToPrimaryConfigClient = 0;
-            this.clients = clients;
+            this._retryFirstConfigClientAfter = DateTimeOffset.UtcNow;
+            this._failedRequestsToFirstConfigClient = 0;
+            this._clients = clients;
         }
 
         public Task<Response<ConfigurationSetting>> GetConfigurationSettingAsync(string key, string label = null, CancellationToken cancellationToken = default)
         {
-            return ExecuteWithFailOverPolicyAsync(clients.Select((client) => new Func<Task<Response<ConfigurationSetting>>>(() => client.Client.GetConfigurationSettingAsync(key, label, cancellationToken))), cancellationToken);
+            return ExecuteWithFailOverPolicyAsync(_clients.Select((client) => new Func<Task<Response<ConfigurationSetting>>>(() => client.Client.GetConfigurationSettingAsync(key, label, cancellationToken))), cancellationToken);
         }
 
         public Task<Response<ConfigurationSetting>> GetConfigurationSettingAsync(ConfigurationSetting setting, bool onlyIfChanged = false, CancellationToken cancellationToken = default)
         {
-            return ExecuteWithFailOverPolicyAsync(clients.Select((client) => new Func<Task<Response<ConfigurationSetting>>>(() => client.Client.GetConfigurationSettingAsync(setting, onlyIfChanged, cancellationToken))), cancellationToken);
+            return ExecuteWithFailOverPolicyAsync(_clients.Select((client) => new Func<Task<Response<ConfigurationSetting>>>(() => client.Client.GetConfigurationSettingAsync(setting, onlyIfChanged, cancellationToken))), cancellationToken);
         }
 
         public AsyncPageable<ConfigurationSetting> GetConfigurationSettingsAsync(SettingSelector selector, CancellationToken cancellationToken = default)
         {
-            return ExecuteWithFailOverPolicy(clients.Select((client) => new Func<AsyncPageable<ConfigurationSetting>>(() => client.Client.GetConfigurationSettingsAsync(selector, cancellationToken))), cancellationToken);
+            return ExecuteWithFailOverPolicy(_clients.Select((client) => new Func<AsyncPageable<ConfigurationSetting>>(() => client.Client.GetConfigurationSettingsAsync(selector, cancellationToken))), cancellationToken);
         }
 
         public void UpdateSyncToken(Uri endpoint, string syncToken)
         {
-            this.clients.Single(client => client.Endpoint.Host.Equals(endpoint.Host)).Client.UpdateSyncToken(syncToken);
+            this._clients.Single(client => client.Endpoint.Host.Equals(endpoint.Host)).Client.UpdateSyncToken(syncToken);
         }
 
         private async Task<Response<T>> ExecuteWithFailOverPolicyAsync<T>(IEnumerable<Func<Task<Response<T>>>> delegates, CancellationToken cancellationToken = default)
         {
             Exception latestException = null;
 
-            for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < clients.Count(); i++)
+            for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < _clients.Count(); i++)
             {
                 var success = false;
                 var operationCanceled = false;
@@ -112,7 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
         {
             Exception latestException = null;
 
-            for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < clients.Count(); i++)
+            for (var i = ShouldTryPrimaryConfigStore() ? 0 : 1; i < _clients.Count(); i++)
             {
                 var success = false;
                 var operationCanceled = false;
@@ -164,14 +164,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
         {
             if (success)
             {
-                this.failedRequestsToPrimaryConfigClient = 0;
-                this.retryPrimaryConfigClientAfter = DateTimeOffset.UtcNow;
+                this._failedRequestsToFirstConfigClient = 0;
+                this._retryFirstConfigClientAfter = DateTimeOffset.UtcNow;
             }
             else
             {
-                this.failedRequestsToPrimaryConfigClient++;
-                var retryAfterTimeout = RetryConstants.DefaultMinRetryAfter.CalculateRetryAfterTime(this.failedRequestsToPrimaryConfigClient);
-                this.retryPrimaryConfigClientAfter = DateTimeOffset.UtcNow.Add(retryAfterTimeout);
+                this._failedRequestsToFirstConfigClient++;
+                var retryAfterTimeout = RetryConstants.DefaultMinRetryAfter.CalculateRetryAfterTime(this._failedRequestsToFirstConfigClient);
+                this._retryFirstConfigClientAfter = DateTimeOffset.UtcNow.Add(retryAfterTimeout);
             }
         }
 
@@ -180,7 +180,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
             // We should try primary config store only if
             //     primary store is the only store available
             //  or retry timeout for primary config store has passed.
-            return clients.Count() == 1 || DateTimeOffset.UtcNow >= this.retryPrimaryConfigClientAfter;
+            return _clients.Count() == 1 || DateTimeOffset.UtcNow >= this._retryFirstConfigClientAfter;
         }
     }
 }
