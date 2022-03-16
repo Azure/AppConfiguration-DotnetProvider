@@ -110,7 +110,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// An asterisk (*) can be added to the end to return all key-values whose key begins with the key filter.
         /// e.g. key filter `abc*` returns all key-values whose key starts with `abc`.
         /// For all other cases the characters: asterisk (*), comma (,), and backslash (\) are reserved. Reserved characters must be escaped using a backslash (\).
-        /// e.g. key filter `a\\b\,\*c* returns all key-values whose key starts with `a\b,*c`.
+        /// e.g. key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
         /// Built-in key filter options: <see cref="KeyFilter"/>.
         /// </param>
         /// <param name="labelFilter">
