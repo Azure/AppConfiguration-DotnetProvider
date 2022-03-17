@@ -6,12 +6,14 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -289,7 +291,7 @@ namespace Tests.AzureAppConfiguration
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection));
+                .Returns(Task.FromResult(_kvCollection.AsEnumerable()));
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 

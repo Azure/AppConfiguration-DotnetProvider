@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var startIndex = connectionString.IndexOf(parseToken);
             if (startIndex < 0)
             {
-                throw new ArgumentException("Invalid connection string format.");
+                throw new FormatException("Invalid connection string format.");
             }
 
             var endIndex = connectionString.IndexOf(";", startIndex + parseToken.Length);

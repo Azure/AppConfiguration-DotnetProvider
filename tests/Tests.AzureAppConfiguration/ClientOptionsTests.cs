@@ -1,10 +1,13 @@
 ﻿using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -17,7 +20,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                    .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
+                    .Returns(Task.FromResult(Enumerable.Empty<ConfigurationSetting>()));
 
             var configurationClientFactory = new MockedConfigurationClientFactory(mockClient);
             var configBuilder = new ConfigurationBuilder()
@@ -34,7 +37,7 @@ namespace Tests.AzureAppConfiguration
 
             // Arrange
             int maxRetries = defaultMaxRetries + 1;
-            mockClient.ResetCalls();
+            mockClient.Invocations.Clear();
             configurationClientFactory = new MockedConfigurationClientFactory(mockClient);
 
             configBuilder = new ConfigurationBuilder()

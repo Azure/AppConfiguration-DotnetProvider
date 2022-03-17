@@ -2,7 +2,9 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
@@ -11,6 +13,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -19,15 +23,15 @@ namespace Tests.AzureAppConfiguration
         public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
         public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
 
-        static public IConfigurationClient CreateMockConfigurationClient(ConfigurationClientOptions clientOptions = null)
+        static public IConfigurationClient CreateMockConfigurationClient(AzureAppConfigurationOptions options = null)
         {
-            var endpointString = CreateMockEndpointString(PrimaryConfigStoreEndpoint.ToString());
-            var secondaryEndpointString = CreateMockEndpointString(SecondaryConfigStoreEndpoint.ToString());
-            var failOverSupportedClient = new FailOverSupportedConfigurationClient(
-                                                new List<LocalConfigurationClient>() {
-                                                    new LocalConfigurationClient(PrimaryConfigStoreEndpoint, new ConfigurationClient(endpointString, clientOptions)),
-                                                    new LocalConfigurationClient(SecondaryConfigStoreEndpoint, new ConfigurationClient(secondaryEndpointString, clientOptions)) });
-            return failOverSupportedClient;
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            var localConfigurationClient = new LocalConfigurationClient(
+                                                new List<Uri>() { PrimaryConfigStoreEndpoint, SecondaryConfigStoreEndpoint }, mockTokenCredential.Object, options);
+            return localConfigurationClient;
         }
 
         static public string CreateMockEndpointString(string endpoint = "https://xxxxx.azconfig.io")

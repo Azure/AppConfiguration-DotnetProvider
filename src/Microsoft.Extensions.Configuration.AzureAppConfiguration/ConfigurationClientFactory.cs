@@ -12,23 +12,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class ConfigurationClientFactory : IConfigurationClientFactory
     {
-        public IConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
+        public IConfigurationClient CreateConfigurationClient(string connectionString, AzureAppConfigurationOptions options)
         {
-            var configurationClient = new ConfigurationClient(connectionString, clientOptions);
-            var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, "Endpoint"));
-            return new FailOverSupportedConfigurationClient(new List<LocalConfigurationClient>() { new LocalConfigurationClient(endpoint, configurationClient) });
+            return new LocalConfigurationClient(connectionString, options);
         }
 
-        public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
+        public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, AzureAppConfigurationOptions options)
         {
-            if (endpoints == null)
+            if (endpoints == null || endpoints.Count() < 1)
             {
                 throw new ArgumentNullException(nameof(endpoints));
             }
+            if (credential == null)
+            {
+                throw new ArgumentNullException(nameof(credential));
+            }
 
-            IEnumerable<LocalConfigurationClient> configurationClients = endpoints.Select(endpoint => new LocalConfigurationClient(endpoint, new ConfigurationClient(endpoint, credential, clientOptions)));
-
-            return new FailOverSupportedConfigurationClient(configurationClients);
+            return new LocalConfigurationClient(endpoints, credential, options);
         }
     }
 }

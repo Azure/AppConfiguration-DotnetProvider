@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -180,10 +181,10 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
-            var featureFlags = new List<ConfigurationSetting> { _kv };
+            IEnumerable<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(Task.FromResult(featureFlags));
 
             var testClient = mockClient.Object;
 
@@ -216,7 +217,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(Task.FromResult(featureFlags.AsEnumerable()));
 
             IConfigurationRefresher refresher = null;
             var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
@@ -287,7 +288,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(Task.FromResult(featureFlags.AsEnumerable()));
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
@@ -352,15 +353,14 @@ namespace Tests.AzureAppConfiguration
             response.SetContent(SerializationHelpers.Serialize(new[] { _kv }, TestHelpers.SerializeBatch));
 
             var mockTransport = new MockTransport(response);
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
 
             var builder = new ConfigurationBuilder();
+            var client = TestHelpers.CreateMockConfigurationClient(options);
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Client = TestHelpers.CreateMockConfigurationClient(clientOptions);
+                options.Client = client;
                 options.UseFeatureFlags();
             }).Build();
 
@@ -380,15 +380,13 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
-
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
+            var client = TestHelpers.CreateMockConfigurationClient(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = TestHelpers.CreateMockConfigurationClient(clientOptions);
+                    options.Client = client;
                     options.UseFeatureFlags(o => o.Label = "myLabel");
                 })
                 .Build();
@@ -405,7 +403,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             IConfigurationRefresher refresher = null;
             var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
@@ -436,7 +434,7 @@ namespace Tests.AzureAppConfiguration
             var cacheExpiration = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_featureFlagCollection.Where(s => s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + featureFlagPrefix) && s.Label == labelFilter).ToList()));
+                .Returns(Task.FromResult(_featureFlagCollection.Where(s => s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + featureFlagPrefix) && s.Label == labelFilter)));
 
             var testClient = mockClient.Object;
 
@@ -476,9 +474,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                    return Task.FromResult(_featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)));
                 });
 
             var testClient = mockClient.Object;
@@ -551,9 +549,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s => 
+                    return Task.FromResult(_featureFlagCollection.Where(s => 
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) || 
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)));
                 });
 
             var testClient = mockClient.Object;
@@ -594,9 +592,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                    return Task.FromResult(_featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Label == label2)).ToList());
+                        (s.Label == label2)));
                 });
 
             var testClient = mockClient.Object;
@@ -643,9 +641,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(featureFlagCollection.Where(s =>
+                    return Task.FromResult(featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")).ToList());
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")));
                 });
 
             var config = new ConfigurationBuilder()
@@ -737,7 +735,7 @@ namespace Tests.AzureAppConfiguration
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlagCollection));
+                .Returns(Task.FromResult(featureFlagCollection.AsEnumerable()));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -815,8 +813,8 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(featureFlagCollection.Where(s =>
-                        s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1).ToList());
+                    return Task.FromResult(featureFlagCollection.Where(s =>
+                        s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1));
                 });
 
             var config = new ConfigurationBuilder()

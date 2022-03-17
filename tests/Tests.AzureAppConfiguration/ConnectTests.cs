@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -22,7 +23,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
+                .Returns(Task.FromResult(Enumerable.Empty<ConfigurationSetting>()));
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -47,7 +48,7 @@ namespace Tests.AzureAppConfiguration
 
             var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                    .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
+                    .Returns(Task.FromResult(Enumerable.Empty<ConfigurationSetting>()));
 
             var configurationClientFactory = new MockedConfigurationClientFactory(mockClient);
             var configBuilder = new ConfigurationBuilder()
@@ -66,7 +67,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(0, configurationClientFactory.TokenCredentialCallCount);
 
             // Arrange
-            mockClient.ResetCalls();
+            mockClient.Invocations.Clear();
             configurationClientFactory = new MockedConfigurationClientFactory(mockClient);
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>

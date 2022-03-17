@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -170,8 +171,8 @@ namespace Tests.AzureAppConfiguration
 
             // No KVR during startup; return KVR during refresh operation to see error because ConfigureKeyVault is missing
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvr }));
+                .Returns(Task.FromResult(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting))))
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kvr }.AsEnumerable()));
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -337,7 +338,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
+                    return Task.FromResult(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)));
                 });
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))

@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -100,6 +101,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
         /// </summary>
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
+
+        /// <summary>
+        /// A timeout to wait before trying next replica of the App Configuration.
+        /// </summary>
+        internal TimeSpan RetryTimeoutBetweenReplicas { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -313,6 +319,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
         {
             configure?.Invoke(ClientOptions);
+            return this;
+        }
+
+        /// <summary>
+        /// Configure the time to wait for a response from one replica before trying the next available replica.
+        /// </summary>
+        /// <param name="retryTimeoutBetweenReplicas">The time to wait for a response from one replica before trying the next available replica.</param>
+        public AzureAppConfigurationOptions ConfigureRetryTimeoutBetweenReplicas(TimeSpan retryTimeoutBetweenReplicas)
+        {
+            this.RetryTimeoutBetweenReplicas = retryTimeoutBetweenReplicas;
             return this;
         }
 

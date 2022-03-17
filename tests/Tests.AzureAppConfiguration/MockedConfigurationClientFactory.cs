@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -23,16 +24,16 @@ namespace Tests.AzureAppConfiguration
             _mockClient = mockClient;
         }
 
-        public IConfigurationClient CreateConfigurationClient(string connectionString, ConfigurationClientOptions clientOptions)
+        public IConfigurationClient CreateConfigurationClient(string connectionString, AzureAppConfigurationOptions options)
         {
-            ClientOptions = clientOptions;
+            ClientOptions = options.ClientOptions;
             ConnectionStringCallCount++;
             return _mockClient.Object;
         }
 
-        public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
+        public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, AzureAppConfigurationOptions options)
         {
-            ClientOptions = clientOptions;
+            ClientOptions = options.ClientOptions;
             TokenCredentialCallCount += endpoints.Count();
             return _mockClient.Object;
         }

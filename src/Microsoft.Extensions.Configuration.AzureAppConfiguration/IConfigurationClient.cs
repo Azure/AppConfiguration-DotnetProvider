@@ -5,6 +5,7 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -46,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="selector">Options used to select a set of <see cref="ConfigurationSetting"/> entities from the configuration store.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> controlling the request lifetime.</param>
         /// <returns>An enumerable collection containing the retrieved <see cref="ConfigurationSetting"/> entities.</returns>
-        AsyncPageable<ConfigurationSetting> GetConfigurationSettingsAsync(SettingSelector selector, CancellationToken cancellationToken = default);
+        Task<IEnumerable<ConfigurationSetting>> GetConfigurationSettingsAsync(SettingSelector selector, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds an external synchronization token to ensure service requests receive up-to-date values

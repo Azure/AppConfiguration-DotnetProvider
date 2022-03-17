@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -62,8 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, "Endpoint"));
                     }
-                    catch (ArgumentException) { }
-                    catch (UriFormatException) { }
+                    catch (FormatException) { }
                 }
 
                 return null;
@@ -307,7 +307,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                        foreach (ConfigurationSetting setting in await _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                         {
                             serverData[setting.Key] = setting;
                         }
@@ -335,7 +335,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                        foreach (ConfigurationSetting setting in await _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                         {
                             serverData[setting.Key] = setting;
                         }

@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -39,11 +39,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else if (!string.IsNullOrWhiteSpace(options.ConnectionString))
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString, options.ClientOptions);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString, options);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoints, options.Credential, options.ClientOptions);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoints, options.Credential, options);
                 }
                 else
                 {
@@ -52,11 +52,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
-            catch (InvalidOperationException e)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is FormatException)
             {
                 if (!_optional)
                 {
-                    throw new ArgumentException(e.Message, e);
+                    throw new ArgumentException(ex.Message, ex);
                 }
             }
 

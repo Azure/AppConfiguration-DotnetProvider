@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -107,7 +108,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                 async () =>
                 {
-                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    foreach(ConfigurationSetting setting in await client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                     {
                         if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                         {
@@ -140,7 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                     async () =>
                     {
-                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                        foreach (ConfigurationSetting setting in await client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                         {
                             if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                             {
