@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
             else
             {
                 this._failedAttempts++;
-                TimeSpan backoffInterval = RetryConstants.DefaultMinBackoffInterval.CalculateBackoffInterval(this._failedAttempts);
+                TimeSpan backoffInterval = BackoffIntervalConstants.MinBackoffInterval.CalculateBackoffInterval(this._failedAttempts);
                 this._backoffEndTime = DateTimeOffset.UtcNow.Add(backoffInterval);
             }
         }

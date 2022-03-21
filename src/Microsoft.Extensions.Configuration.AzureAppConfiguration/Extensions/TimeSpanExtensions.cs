@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
         /// <summary>
         /// This method calculates the backoff interval the configuration store after a failure
-        /// which lies between <paramref name="interval"/> and <see cref="RetryConstants.DefaultMaxBackoffInterval"/>.
+        /// which lies between <paramref name="interval"/> and <see cref="BackoffIntervalConstants.MaxBackoffInterval"/>.
         /// </summary>
         /// <param name="interval">The minimum interval to retry after.</param>
         /// <param name="attempts">The number of attempts made to the configuration store.</param>
@@ -71,7 +71,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             TimeSpan calculatedBackoffInterval = TimeSpan.FromTicks(interval.Ticks * (int)Math.Pow(2, attempts - 1));
 
-            return TimeSpan.FromTicks(Math.Min(RetryConstants.DefaultMaxBackoffInterval.Ticks, calculatedBackoffInterval.Ticks));
+            return TimeSpan.FromTicks(Math.Min(BackoffIntervalConstants.MaxBackoffInterval.Ticks, calculatedBackoffInterval.Ticks));
         }
     }
 }

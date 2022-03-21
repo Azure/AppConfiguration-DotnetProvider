@@ -6,10 +6,10 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
 {
-    internal class RetryConstants
+    internal class BackoffIntervalConstants
     {
         // Timeouts to retry requests to config stores and their replicas after failure.
-        public static readonly TimeSpan DefaultMinBackoffInterval = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan DefaultMaxBackoffInterval = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan MinBackoffInterval = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MaxBackoffInterval = TimeSpan.FromMinutes(10);
     }
 }
