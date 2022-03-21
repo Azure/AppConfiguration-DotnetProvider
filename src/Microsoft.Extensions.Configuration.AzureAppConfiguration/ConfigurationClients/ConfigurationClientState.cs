@@ -10,13 +10,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
 {
     internal class ConfigurationClientState
     {
-        private DateTimeOffset _retryAfterTimeout;
+        private DateTimeOffset _backoffEndTime;
         private int _failedAttempts;
 
         public ConfigurationClientState(Uri endpoint)
         {
             this.Endpoint = endpoint;
-            this._retryAfterTimeout = DateTimeOffset.UtcNow;
+            this._backoffEndTime = DateTimeOffset.UtcNow;
             this._failedAttempts = 0;
         }
 
@@ -24,21 +24,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
 
         public bool IsAvailable()
         {
-            return DateTimeOffset.UtcNow >= this._retryAfterTimeout;
+            return DateTimeOffset.UtcNow >= this._backoffEndTime;
         }
 
         public void UpdateConfigurationStoreStatus(bool requestSuccessful)
         {
             if (requestSuccessful)
             {
-                this._retryAfterTimeout = DateTimeOffset.UtcNow;
+                this._backoffEndTime = DateTimeOffset.UtcNow;
                 this._failedAttempts = 0;
             }
             else
             {
                 this._failedAttempts++;
-                var retryAfterTimeout = RetryConstants.DefaultMinRetryAfter.CalculateRetryAfterTime(this._failedAttempts);
-                this._retryAfterTimeout = DateTimeOffset.UtcNow.Add(retryAfterTimeout);
+                TimeSpan backoffInterval = RetryConstants.DefaultMinBackoffInterval.CalculateBackoffInterval(this._failedAttempts);
+                this._backoffEndTime = DateTimeOffset.UtcNow.Add(backoffInterval);
             }
         }
     }

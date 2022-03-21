@@ -7,6 +7,7 @@ using Azure.Data.AppConfiguration;
 using Azure.Messaging.EventGrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Moq;
 using System;
@@ -18,7 +19,7 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-	public class PushRefreshTests
+    public class PushRefreshTests
 	{
 		List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
 		{

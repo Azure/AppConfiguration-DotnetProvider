@@ -8,6 +8,7 @@ using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -205,7 +206,6 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             MockRequest request = mockTransport.SingleRequest;
-            //string appUserAgent = UserAgentHeaderPolicy.GenerateUserAgent();
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
             Assert.Matches(userAgentRegex, userAgentHeader);
         }

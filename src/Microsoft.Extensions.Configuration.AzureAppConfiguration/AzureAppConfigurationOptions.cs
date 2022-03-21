@@ -103,9 +103,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
-        /// A timeout to wait before trying next replica of the App Configuration.
+        /// A timeout to wait before initiating a request to the next App Configuration replica in parallel.
         /// </summary>
-        internal TimeSpan RetryTimeoutBetweenReplicas { get; set; } = TimeSpan.FromSeconds(30);
+        internal TimeSpan ParallelRetryInterval { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -239,29 +239,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Connect the provider to Azure App Configuration using endpoint and token credentials.
-        /// </summary>
-        /// <param name="endpoint">The endpoint of the Azure App Configuration to connect to.</param>
-        /// <param name="credential">Token credentials to use to connect.</param>
-        public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
-        {
-            if (endpoint == null)
-            {
-                throw new ArgumentNullException(nameof(endpoint));
-            }
-
-            if (credential == null)
-            {
-                throw new ArgumentNullException(nameof(credential));
-            }
-
-            ConnectionString = null;
-            Endpoints = new List<Uri>() { endpoint };
-            Credential = credential;
-            return this;
-        }
-
-        /// <summary>
         /// Connect the provider to Azure App Configuration and their replicas using list of endpoints and token credential.
         /// </summary>
         /// <param name="endpoints">The list of endpoints of the Azure App Configuration and it's replicas to connect to.</param>
@@ -291,9 +268,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
-
-            ConnectionString = null;
             Endpoints = endpoints;
+            ConnectionString = null;
             return this;
         }
 
@@ -323,12 +299,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the time to wait for a response from one replica before trying the next available replica.
+        /// Configure the time to wait for a response from one replica before initiating a request to the next available replica.
         /// </summary>
-        /// <param name="retryTimeoutBetweenReplicas">The time to wait for a response from one replica before trying the next available replica.</param>
-        public AzureAppConfigurationOptions ConfigureRetryTimeoutBetweenReplicas(TimeSpan retryTimeoutBetweenReplicas)
+        /// <param name="parallelRetryInterval">The time to wait for a response from one replica before trying the next available replica.</param>
+        public AzureAppConfigurationOptions ConfigureParallelRetryTimeout(TimeSpan parallelRetryInterval)
         {
-            this.RetryTimeoutBetweenReplicas = retryTimeoutBetweenReplicas;
+            this.ParallelRetryInterval = parallelRetryInterval;
             return this;
         }
 

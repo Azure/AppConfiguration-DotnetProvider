@@ -29,7 +29,7 @@ namespace Tests.AzureAppConfiguration
             mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
                 .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
 
-            var localConfigurationClient = new LocalConfigurationClient(
+            var localConfigurationClient = new FailOverSupportedConfigurationClient(
                                                 new List<Uri>() { PrimaryConfigStoreEndpoint, SecondaryConfigStoreEndpoint }, mockTokenCredential.Object, options);
             return localConfigurationClient;
         }

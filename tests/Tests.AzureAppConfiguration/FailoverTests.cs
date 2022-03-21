@@ -12,14 +12,14 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    public class GeoReplicationTests
+    public class FailoverTests
     {
         ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "newTestValue1", "test",
                                     eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c6"),
                                     contentType: "text");
 
         [Fact]
-        public async Task VerifyFallbackClientUsedWhenPrimaryDown()
+        public async Task VerifyFallbackClientUsedWhenFirstFails()
         {
             var mockTransport = new MockTransport(req =>
             {

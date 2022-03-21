@@ -58,11 +58,6 @@ namespace Azure.Core.Testing
             await ProcessCore(message);
         }
 
-        public void ResetRequests()
-        {
-            Requests.Clear();
-        }
-
         private async Task ProcessCore(HttpMessage message)
         {
             if (!(message.Request is MockRequest request))

@@ -53,25 +53,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         /// <summary>
-        /// This method calculates a random exponential time to retry the primary store after a failure
-        /// which lies between <paramref name="interval"/> and <see cref="RetryConstants.DefaultMaxRetryAfter"/>.
+        /// This method calculates the backoff interval the configuration store after a failure
+        /// which lies between <paramref name="interval"/> and <see cref="RetryConstants.DefaultMaxBackoffInterval"/>.
         /// </summary>
         /// <param name="interval">The minimum interval to retry after.</param>
-        /// <param name="attempts">The number of attempts made to the primary config store.</param>
-        /// <returns>The calculated exponential time to retry the primary config store after a failure.</returns>
+        /// <param name="attempts">The number of attempts made to the configuration store.</param>
+        /// <returns>The backoff interval before retrying a request to the configuration store or replica again.</returns>
         /// <exception cref="ArgumentOutOfRangeException">
         /// An exception is thrown when <paramref name="attempts"/> is less than 1.
         /// </exception>
-        public static TimeSpan CalculateRetryAfterTime(this TimeSpan interval, int attempts)
+        public static TimeSpan CalculateBackoffInterval(this TimeSpan interval, int attempts)
         {
             if (attempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
             }
 
-            TimeSpan calculatedRetryAfter = TimeSpan.FromTicks(interval.Ticks * new Random().Next(1, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue)));
+            TimeSpan calculatedBackoffInterval = TimeSpan.FromTicks(interval.Ticks * (int)Math.Pow(2, attempts - 1));
 
-            return TimeSpan.FromTicks(Math.Min(RetryConstants.DefaultMaxRetryAfter.Ticks, calculatedRetryAfter.Ticks));
+            return TimeSpan.FromTicks(Math.Min(RetryConstants.DefaultMaxBackoffInterval.Ticks, calculatedBackoffInterval.Ticks));
         }
     }
 }

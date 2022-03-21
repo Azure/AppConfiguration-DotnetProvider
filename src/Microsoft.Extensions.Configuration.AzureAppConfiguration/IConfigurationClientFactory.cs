@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="endpoints">The list of endpoints from where to get the configuration settings.</param>
         /// <param name="credential">The token credential used to access the configuration client.</param>
         /// <param name="options">The options used to create the configuration client.</param>
-        /// <returns>The <see cref="LocalConfigurationClient"/> used to interact with the configuration store and it's replicas.</returns>
+        /// <returns>The <see cref="FailOverSupportedConfigurationClient"/> used to interact with the configuration store and it's replicas.</returns>
         IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, AzureAppConfigurationOptions options);
     }
 }

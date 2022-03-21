@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using System;
 using System.Collections.Generic;
@@ -14,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         public IConfigurationClient CreateConfigurationClient(string connectionString, AzureAppConfigurationOptions options)
         {
-            return new LocalConfigurationClient(connectionString, options);
+            return new FailOverSupportedConfigurationClient(connectionString, options);
         }
 
         public IConfigurationClient CreateConfigurationClient(IEnumerable<Uri> endpoints, TokenCredential credential, AzureAppConfigurationOptions options)
@@ -28,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            return new LocalConfigurationClient(endpoints, credential, options);
+            return new FailOverSupportedConfigurationClient(endpoints, credential, options);
         }
     }
 }

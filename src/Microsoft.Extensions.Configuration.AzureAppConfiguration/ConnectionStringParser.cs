@@ -7,6 +7,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class ConnectionStringParser
     {
+        public const string EndpointSection = "Endpoint";
+
         public static string Parse(string connectionString, string token)
         {
             if (connectionString == null)

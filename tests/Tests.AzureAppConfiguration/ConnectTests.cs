@@ -4,7 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -54,7 +54,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(new Uri("https://test"), mockTokenCredential.Object);
+                    options.Connect(new List<Uri>() { new Uri("https://test") }, mockTokenCredential.Object);
                     options.Connect("invalid_connection_string");
                 }, configurationClientFactory);
 
@@ -73,7 +73,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect("invalid_connection_string");
-                    options.Connect(new Uri("https://test"), mockTokenCredential.Object);
+                    options.Connect(new List<Uri>() { new Uri("https://test") }, mockTokenCredential.Object);
                 }, configurationClientFactory);
 
             // Act
