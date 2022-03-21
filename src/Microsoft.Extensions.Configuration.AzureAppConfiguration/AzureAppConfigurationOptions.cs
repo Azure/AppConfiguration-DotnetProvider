@@ -238,6 +238,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
+        /// <summary>
+        /// Connect the provider to Azure App Configuration using endpoint and token credentials.
+        /// </summary>
         /// <param name="endpoint">The endpoint of the Azure App Configuration to connect to.</param>
         /// <param name="credential">Token credentials to use to connect.</param>
         public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
@@ -246,6 +249,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new ArgumentNullException(nameof(endpoint));
             }
+
             if (credential == null)
             {
                 throw new ArgumentNullException(nameof(credential));
