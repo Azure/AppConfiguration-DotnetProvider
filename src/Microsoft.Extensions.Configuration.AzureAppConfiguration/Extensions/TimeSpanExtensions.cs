@@ -7,8 +7,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class TimeSpanExtensions
     {
+        private const int MaxAttempts = 63;
+
         /// <summary>
-        /// This method calculates a random exponential backoff which lies between <see cref="RefreshConstants.DefaultMinBackoff"/> and <see cref="RefreshConstants.DefaultMaxBackoff"/>.
+        /// This method calculates randomized exponential backoff which lies between <see cref="RefreshConstants.DefaultMinBackoff"/> and <see cref="RefreshConstants.DefaultMaxBackoff"/>.
         /// </summary>
         /// <param name="interval">The maximum backoff to be used if <paramref name="interval"/> is less than <see cref="RefreshConstants.DefaultMaxBackoff"/>.
         /// If <paramref name="interval"/> is less than <see cref="RefreshConstants.DefaultMinBackoff"/>, <paramref name="interval"/> is returned.
@@ -27,10 +29,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return interval;
             }
 
-            TimeSpan maxBackoff = TimeSpan.FromTicks(Math.Min(interval.Ticks, RefreshConstants.DefaultMaxBackoff.Ticks));
-            TimeSpan calculatedBackoff = TimeSpan.FromTicks(RefreshConstants.DefaultMinBackoff.Ticks * new Random().Next(1, (int)Math.Min(Math.Pow(2, attempts - 1), int.MaxValue)));
+            TimeSpan min = RefreshConstants.DefaultMinBackoff;
+            TimeSpan max = TimeSpan.FromTicks(Math.Min(interval.Ticks, RefreshConstants.DefaultMaxBackoff.Ticks));
 
-            return TimeSpan.FromTicks(Math.Min(maxBackoff.Ticks, calculatedBackoff.Ticks));
+            if (attempts == 1)
+            {
+                return min;
+            }
+
+            //
+            // IMPORTANT: This can overflow
+            double maxMilliseconds = Math.Max(1, min.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
+
+            if (maxMilliseconds > max.TotalMilliseconds ||
+                    maxMilliseconds <= 0 /*overflow*/)
+            {
+                maxMilliseconds = max.TotalMilliseconds;
+            }
+
+            return TimeSpan.FromMilliseconds(min.TotalMilliseconds + new Random().NextDouble() * (maxMilliseconds - min.TotalMilliseconds));
         }
     }
 }
