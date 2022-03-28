@@ -10,9 +10,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         private const int MaxAttempts = 63;
 
         /// <summary>
-        /// This method calculates randomized exponential backoff which lies between <paramref name="min"/> and <paramref name="max"/>.
+        /// This method calculates randomized exponential backoff times for operations that occur periodically on a given <paramref name="interval"/>.
         /// </summary>
-        /// <param name="interval">The maximum backoff to be used if <paramref name="interval"/> is less than <paramref name="max"/>.
+        /// <param name="interval">The periodic interval at which the operation occurs. If <paramref name="interval"/> is less than <paramref name="max"/>, <paramref name="interval"/> will be the maximum backoff time..
         /// If <paramref name="interval"/> is less than <paramref name="min"/>, <paramref name="interval"/> is returned.
         /// </param>
         /// <param name="min">The minimum backoff time if <paramref name="interval"/> is greater than <paramref name="min"/>.</param>
