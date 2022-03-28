@@ -186,7 +186,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                         cachedSecret.RefreshAttempts++;
                     }
 
-                    cachedSecret.RefreshAt = DateTimeOffset.UtcNow.Add(cacheExpirationTime.CalculateBackoffTime(cachedSecret.RefreshAttempts));
+                    cachedSecret.RefreshAt = DateTimeOffset.UtcNow.Add(cacheExpirationTime.CalculateBackoffTime(RefreshConstants.DefaultMinBackoff, RefreshConstants.DefaultMaxBackoff, cachedSecret.RefreshAttempts));
                 }
             }
         }
