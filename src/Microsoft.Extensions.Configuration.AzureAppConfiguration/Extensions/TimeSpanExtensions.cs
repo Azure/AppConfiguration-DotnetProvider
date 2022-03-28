@@ -10,32 +10,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         private const int MaxAttempts = 63;
 
         /// <summary>
-        /// This method calculates randomized exponential backoff which lies between <see cref="RefreshConstants.DefaultMinBackoff"/> and <see cref="RefreshConstants.DefaultMaxBackoff"/>.
+        /// This method calculates randomized exponential backoff which lies between <paramref name="min"/> and <paramref name="max"/>.
         /// </summary>
-        /// <param name="interval">The maximum backoff to be used if <paramref name="interval"/> is less than <see cref="RefreshConstants.DefaultMaxBackoff"/>.
-        /// If <paramref name="interval"/> is less than <see cref="RefreshConstants.DefaultMinBackoff"/>, <paramref name="interval"/> is returned.
+        /// <param name="interval">The maximum backoff to be used if <paramref name="interval"/> is less than <paramref name="max"/>.
+        /// If <paramref name="interval"/> is less than <paramref name="min"/>, <paramref name="interval"/> is returned.
         /// </param>
+        /// <param name="min">The minimum backoff time if <paramref name="interval"/> is greater than <paramref name="min"/>.</param>
+        /// <param name="max">The maximum backoff time if <paramref name="interval"/> is greater than <paramref name="max"/>.</param>
         /// <param name="attempts">The number of attempts made to backoff.</param>
-        /// <returns>The calculated exponential backoff time, or <paramref name="interval"/> if it is less than <see cref="RefreshConstants.DefaultMinBackoff"/>.</returns>
-        public static TimeSpan CalculateBackoffTime(this TimeSpan interval, int attempts)
+        /// <returns>The calculated exponential backoff time, or <paramref name="interval"/> if it is less than <paramref name="min"/>.</returns>
+        public static TimeSpan CalculateBackoffTime(this TimeSpan interval, TimeSpan min, TimeSpan max, int attempts)
         {
             if (attempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
             }
 
-            if (interval <= RefreshConstants.DefaultMinBackoff)
+            if (interval <= min)
             {
                 return interval;
             }
-
-            TimeSpan min = RefreshConstants.DefaultMinBackoff;
-            TimeSpan max = TimeSpan.FromTicks(Math.Min(interval.Ticks, RefreshConstants.DefaultMaxBackoff.Ticks));
 
             if (attempts == 1)
             {
                 return min;
             }
+
+            max = TimeSpan.FromTicks(Math.Min(interval.Ticks, max.Ticks));
 
             //
             // IMPORTANT: This can overflow
