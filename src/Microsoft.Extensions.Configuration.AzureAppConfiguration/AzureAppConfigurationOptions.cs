@@ -5,6 +5,7 @@ using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -105,7 +106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A timeout to wait before initiating a request to the next App Configuration replica in parallel.
         /// </summary>
-        internal TimeSpan ParallelRetryInterval { get; set; } = TimeSpan.FromSeconds(30);
+        internal TimeSpan ParallelRetryInterval { get; set; } = BackoffIntervalConstants.DefaultParallelRetryInterval;
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -270,6 +271,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
+            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
+
             if (endpoints.Count() > 1)
             {
                 string firstEndpoint = endpoints.First().Host;
@@ -287,7 +290,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
             Endpoints = endpoints;
             ConnectionString = null;
             return this;
@@ -322,8 +324,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Configure the time to wait for a response from one replica before initiating a request to the next available replica.
         /// </summary>
         /// <param name="parallelRetryInterval">The time to wait for a response from one replica before trying the next available replica.</param>
+        /// <remarks>Minimum value for <paramref name="parallelRetryInterval"/> is 1 second.</remarks>
         public AzureAppConfigurationOptions ConfigureParallelRetryTimeout(TimeSpan parallelRetryInterval)
         {
+            if (parallelRetryInterval < BackoffIntervalConstants.MinParallelRetryInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(parallelRetryInterval), parallelRetryInterval, "Parallel retry interval can not be less than one second.");
+            }
+
             this.ParallelRetryInterval = parallelRetryInterval;
             return this;
         }

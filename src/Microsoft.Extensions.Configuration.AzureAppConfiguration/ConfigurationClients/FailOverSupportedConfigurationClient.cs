@@ -5,6 +5,8 @@
 using Azure;
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,9 +20,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
     {
         private const int HttpStatusCodeRequestThrottled = 429;
 
-        private readonly IEnumerable<(ConfigurationClient, ConfigurationClientState)> _configurationClientAndStates;
+        private readonly IEnumerable<ConfigurationClientState> _clients;
 
         private readonly TimeSpan _parallelRetryInterval;
+
+        private class ConfigurationClientState
+        {
+            public ConfigurationClientState(Uri endpoint, ConfigurationClient configurationClient)
+            {
+                Endpoint = endpoint;
+                BackoffEndTime = DateTimeOffset.UtcNow;
+                FailedAttempts = 0;
+                Client = configurationClient;
+            }
+
+            public ConfigurationClient Client { get; private set; }
+            public Uri Endpoint { get; private set; }
+            public DateTimeOffset BackoffEndTime { get; set; }
+            public int FailedAttempts { get; set; }
+        }
 
         public FailOverSupportedConfigurationClient(string connectionString, AzureAppConfigurationOptions options)
         {
@@ -30,7 +48,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
             }
 
             var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
-            this._configurationClientAndStates = new List<(ConfigurationClient, ConfigurationClientState)>{ (new ConfigurationClient(connectionString, options.ClientOptions), new ConfigurationClientState(endpoint)) };
+            this._clients = new List<ConfigurationClientState>{ new ConfigurationClientState(endpoint, new ConfigurationClient(connectionString, options.ClientOptions)) };
             this._parallelRetryInterval = options.ParallelRetryInterval;
         }
 
@@ -46,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                 throw new NullReferenceException(nameof(credential));
             }
 
-            this._configurationClientAndStates = endpoints.Select(endpoint => (new ConfigurationClient(endpoint, credential, options.ClientOptions), new ConfigurationClientState(endpoint)));
+            this._clients = endpoints.Select(endpoint => new ConfigurationClientState(endpoint, new ConfigurationClient(endpoint, credential, options.ClientOptions))).ToList();
             this._parallelRetryInterval = options.ParallelRetryInterval;
         }
 
@@ -57,7 +75,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                 return client.GetConfigurationSettingAsync(key, label, cancellationToken);
             }
 
-            return ExecuteWithFailOverPolicyAsync(func, forceTryFailedReplicas: false, cancellationToken);
+            return ExecuteWithFailOverPolicyAsync(func, cancellationToken);
         }
 
         public Task<Response<ConfigurationSetting>> GetConfigurationSettingAsync(ConfigurationSetting setting, bool onlyIfChanged = false, CancellationToken cancellationToken = default)
@@ -67,28 +85,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                 return client.GetConfigurationSettingAsync(setting, onlyIfChanged, cancellationToken);
             }
 
-            return ExecuteWithFailOverPolicyAsync(func, forceTryFailedReplicas: false, cancellationToken);
+            return ExecuteWithFailOverPolicyAsync(func, cancellationToken);
         }
 
         public async Task<IEnumerable<ConfigurationSetting>> GetConfigurationSettingsAsync(SettingSelector selector, CancellationToken cancellationToken = default)
         {
             Page<ConfigurationSetting> settingsPage = null;
             string continuationToken = null;
-            IAsyncEnumerator<Page<ConfigurationSetting>> enumerator;
             var result = new List<ConfigurationSetting>();
 
-            IAsyncEnumerator<Page<ConfigurationSetting>> func(ConfigurationClient client)
+            async Task<Page<ConfigurationSetting>> func(ConfigurationClient client)
             {
-                return client.GetConfigurationSettingsAsync(selector, cancellationToken)
-                             .AsPages(continuationToken: continuationToken)
-                             .GetAsyncEnumerator();
+                IAsyncEnumerator<Page<ConfigurationSetting>> enumerator = client.GetConfigurationSettingsAsync(selector, cancellationToken)
+                                                                                .AsPages(continuationToken: continuationToken)
+                                                                                .GetAsyncEnumerator();
+
+                Page<ConfigurationSetting> page = enumerator != null && await enumerator.MoveNextAsync() ? enumerator.Current : null;
+                return page;
             }
 
             do
             {
-                enumerator = await ExecuteWithFailOverPolicyAsync(func, forceTryFailedReplicas: false, cancellationToken);
-                settingsPage = enumerator != null && await enumerator.MoveNextAsync() ? enumerator.Current : null;
-
+                settingsPage = await ExecuteWithFailOverPolicyAsync(func, cancellationToken);
                 if (settingsPage != null)
                 {
                     result.AddRange(settingsPage.Values);
@@ -102,52 +120,60 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
 
         public void UpdateSyncToken(Uri endpoint, string syncToken)
         {
-            this._configurationClientAndStates.Single(clientAndState => clientAndState.Item2.Endpoint.Host.Equals(endpoint.Host)).Item1.UpdateSyncToken(syncToken);
+            this._clients.Single(clientAndState => clientAndState.Endpoint.Host.Equals(endpoint.Host)).Client.UpdateSyncToken(syncToken);
         }
 
-        private async Task<Response<T>> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<Response<T>>> funcToExecute, bool forceTryFailedReplicas = false, CancellationToken cancellationToken = default)
+        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
             var tasks = new List<Task>();
-            var attemptsCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            int replicasTried = 0;
             Exception lastException = null;
+            IEnumerable<ConfigurationClientState> clients = GetPrioritizedConfigurationClientList();
 
-            for(int i = 0; i < _configurationClientAndStates.Count(); i++)
+            using (var attemptsCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
-                ConfigurationClient client = _configurationClientAndStates.ElementAt(i).Item1;
-                ConfigurationClientState clientState = _configurationClientAndStates.ElementAt(i).Item2;
-
-                if (forceTryFailedReplicas || clientState.IsAvailable())
+                foreach (ConfigurationClientState client in clients)
                 {
                     var parallelAwait = Task.Delay(this._parallelRetryInterval, attemptsCancellation.Token);
-                    Task<Response<T>> funcTask = funcToExecute(client);
+                    Task<T> funcTask = funcToExecute(client.Client);
                     tasks.Add(funcTask);
                     tasks.Add(parallelAwait);
-                    replicasTried++;
 
                     var completedTask = await Task.WhenAny(tasks);
                     if (!completedTask.Equals(parallelAwait))
                     {
                         if (completedTask.Status == TaskStatus.RanToCompletion)
                         {
-                            clientState.UpdateConfigurationStoreStatus(requestSuccessful: true);
+                            client.BackoffEndTime = DateTimeOffset.UtcNow;
+                            client.FailedAttempts = 0;
 
                             // Safe because the task is completed.
                             return funcTask.Result;
                         }
                         else if (completedTask.Status == TaskStatus.Faulted)
                         {
-                            tasks.Clear();
+                            tasks.Remove(completedTask);
+                            tasks.Remove(parallelAwait);
 
                             if (IsRetryableException(completedTask.Exception))
                             {
                                 lastException = completedTask.Exception;
-                                clientState.UpdateConfigurationStoreStatus(requestSuccessful: false);
+                                client.FailedAttempts++;
+                                TimeSpan backoffInterval = BackoffIntervalConstants.MinBackoffInterval.CalculateBackoffInterval(BackoffIntervalConstants.MaxBackoffInterval, client.FailedAttempts);
+                                client.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffInterval);
                             }
                             else
                             {
-                                throw completedTask.Exception;
+                                completedTask.Exception.Handle(e =>
+                                {
+                                    // propagate the original exception.
+                                    throw e;
+                                });
                             }
+                        }
+                        else if (completedTask.Status == TaskStatus.Canceled)
+                        {
+                            // Throw expected OperationCanceledException
+                            completedTask.GetAwaiter().GetResult();
                         }
                     }
                     else
@@ -155,71 +181,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                         tasks.Remove(parallelAwait);
                     }
                 }
-            }
-
-            if (replicasTried == 0)
-            {
-                return await ExecuteWithFailOverPolicyAsync(funcToExecute, forceTryFailedReplicas: true, cancellationToken);
-            }
-
-            throw lastException;
-        }
-
-        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, T> funcToExecute, bool forceTryFailedReplicas = false, CancellationToken cancellationToken = default)
-        {
-            var tasks = new List<Task>();
-            var attemptsCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            int replicasTried = 0;
-            Exception lastException = null;
-
-            for (int i = 0; i < _configurationClientAndStates.Count(); i++)
-            {
-                ConfigurationClient client = _configurationClientAndStates.ElementAt(i).Item1;
-                ConfigurationClientState clientState = _configurationClientAndStates.ElementAt(i).Item2;
-
-                if (forceTryFailedReplicas || clientState.IsAvailable())
-                {
-                    var parallelAwait = Task.Delay(this._parallelRetryInterval, attemptsCancellation.Token);
-                    Task<T> funcTask = Task.Run(() => funcToExecute(client), cancellationToken);
-                    tasks.Add(funcTask);
-                    tasks.Add(parallelAwait);
-                    replicasTried++;
-
-                    var completedTask = await Task.WhenAny(tasks);
-                    if (!completedTask.Equals(parallelAwait))
-                    {
-                        if (completedTask.Status == TaskStatus.RanToCompletion)
-                        {
-                            clientState.UpdateConfigurationStoreStatus(requestSuccessful: true);
-
-                            // Safe because the task is completed.
-                            return funcTask.Result;
-                        }
-                        else if (completedTask.Status == TaskStatus.Faulted)
-                        {
-                            tasks.Clear();
-
-                            if (IsRetryableException(completedTask.Exception))
-                            {
-                                lastException = completedTask.Exception;
-                                clientState.UpdateConfigurationStoreStatus(requestSuccessful: false);
-                            }
-                            else
-                            {
-                                throw completedTask.Exception;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        tasks.Remove(parallelAwait);
-                    }
-                }
-            }
-
-            if (replicasTried == 0)
-            {
-                return await ExecuteWithFailOverPolicyAsync<T>(funcToExecute, forceTryFailedReplicas: true, cancellationToken);
             }
 
             throw lastException;
@@ -248,6 +209,48 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                 default:
                     return false;
             }
+        }
+
+        private IEnumerable<ConfigurationClientState> GetPrioritizedConfigurationClientList()
+        {
+            var startIndex = -1;
+            var clients = new List<ConfigurationClientState>();
+            var i = 0;
+
+            foreach (ConfigurationClientState client in _clients)
+            {
+                if (DateTimeOffset.UtcNow >= client.BackoffEndTime)
+                {
+                    clients.Add(client);
+                    if (startIndex == -1)
+                    {
+                        startIndex = i;
+                    }
+                }
+                ++i;
+            }
+
+            // All configuration clients are in the failed state, so we try all clients regardless.
+            if (startIndex == -1)
+            {
+                clients.AddRange(_clients);
+            }
+            // We have put the available configuration clients in the list first, and populating the rest of the clients even though they might be in the failed state.
+            else if (clients.Count() != _clients.Count())
+            {
+                i = 0;
+                foreach (ConfigurationClientState client in _clients)
+                {
+                    clients.Add(client);
+
+                    if (++i == startIndex)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return clients;
         }
     }
 }
