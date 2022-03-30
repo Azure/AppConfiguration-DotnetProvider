@@ -26,18 +26,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
 
         private class ConfigurationClientState
         {
+            public int FailedAttempts;
+
             public ConfigurationClientState(Uri endpoint, ConfigurationClient configurationClient)
             {
                 Endpoint = endpoint;
+                Client = configurationClient;
                 BackoffEndTime = DateTimeOffset.UtcNow;
                 FailedAttempts = 0;
-                Client = configurationClient;
             }
 
             public ConfigurationClient Client { get; private set; }
             public Uri Endpoint { get; private set; }
             public DateTimeOffset BackoffEndTime { get; set; }
-            public int FailedAttempts { get; set; }
         }
 
         public FailOverSupportedConfigurationClient(string connectionString, AzureAppConfigurationOptions options)
@@ -157,7 +158,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Configuration
                             if (IsRetryableException(completedTask.Exception))
                             {
                                 lastException = completedTask.Exception;
-                                client.FailedAttempts++;
+                                Interlocked.Increment(ref client.FailedAttempts);
                                 TimeSpan backoffInterval = BackoffIntervalConstants.MinBackoffInterval.CalculateBackoffInterval(BackoffIntervalConstants.MaxBackoffInterval, client.FailedAttempts);
                                 client.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffInterval);
                             }
