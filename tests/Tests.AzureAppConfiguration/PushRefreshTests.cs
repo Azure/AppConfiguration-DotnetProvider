@@ -7,7 +7,6 @@ using Azure.Data.AppConfiguration;
 using Azure.Messaging.EventGrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Moq;
 using System;
@@ -228,7 +227,7 @@ namespace Tests.AzureAppConfiguration
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
-			var mockClient = GetMockConfigurationClient();
+			var mockClient = GetMockConfigurationClient(isStrict: false);
 
 			IConfigurationRefresher refresher = null;
 
@@ -261,7 +260,7 @@ namespace Tests.AzureAppConfiguration
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
-			var mockClient = GetMockConfigurationClient();
+			var mockClient = GetMockConfigurationClient(isStrict: false);
 
 			IConfigurationRefresher refresher = null;
 
@@ -294,10 +293,10 @@ namespace Tests.AzureAppConfiguration
 			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null;
         }
 
-		private Mock<IConfigurationClient> GetMockConfigurationClient()
+		private Mock<FailOverClient> GetMockConfigurationClient(bool isStrict = true)
 		{
 			var mockResponse = new Mock<Response>();
-			var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+			var mockClient = isStrict ? new Mock<FailOverClient>(MockBehavior.Strict) : new Mock<FailOverClient>() { CallBase = true };
 
 			Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
 			{

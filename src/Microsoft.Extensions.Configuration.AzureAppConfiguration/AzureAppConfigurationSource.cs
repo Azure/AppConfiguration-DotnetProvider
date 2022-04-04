@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -10,9 +9,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private readonly bool _optional;
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
-        private readonly IConfigurationClientFactory _configurationClientFactory;
 
-        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false, IConfigurationClientFactory configurationClientFactory = null)
+        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
             _optionsProvider = () => {
                 var options = new AzureAppConfigurationOptions();
@@ -21,7 +19,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             };
 
             _optional = optional;
-            _configurationClientFactory = configurationClientFactory ?? new ConfigurationClientFactory();
         }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
@@ -31,7 +28,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                IConfigurationClient client;
+                FailOverClient client;
 
                 if (options.Client != null)
                 {
@@ -39,11 +36,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else if (!string.IsNullOrWhiteSpace(options.ConnectionString))
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString, options);
+                    client = new FailOverClient(options.ConnectionString, options);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoints, options.Credential, options);
+                    client = new FailOverClient(options.Endpoints, options.Credential, options);
                 }
                 else
                 {

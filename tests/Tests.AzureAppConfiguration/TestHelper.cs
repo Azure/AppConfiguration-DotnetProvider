@@ -6,7 +6,6 @@ using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -23,13 +22,13 @@ namespace Tests.AzureAppConfiguration
         public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
         public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
 
-        static public IConfigurationClient CreateMockConfigurationClient(AzureAppConfigurationOptions options = null)
+        static public FailOverClient CreateMockConfigurationClient(AzureAppConfigurationOptions options = null)
         {
             var mockTokenCredential = new Mock<TokenCredential>();
             mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
                 .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
 
-            var localConfigurationClient = new FailOverSupportedConfigurationClient(
+            var localConfigurationClient = new FailOverClient(
                                                 new List<Uri>() { PrimaryConfigStoreEndpoint, SecondaryConfigStoreEndpoint }, mockTokenCredential.Object, options);
             return localConfigurationClient;
         }

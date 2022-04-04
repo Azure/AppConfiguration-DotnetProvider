@@ -4,7 +4,6 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -43,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The list of endpoints of an Azure App Configuration store and it's replicas.
+        /// The list of endpoints of an Azure App Configuration store and its replicas.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
         internal IEnumerable<Uri> Endpoints { get; private set; }
@@ -86,7 +85,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
-        internal IConfigurationClient Client { get; set; }
+        internal FailOverClient Client { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -106,7 +105,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A timeout to wait before initiating a request to the next App Configuration replica in parallel.
         /// </summary>
-        internal TimeSpan ParallelRetryInterval { get; set; } = BackoffIntervalConstants.DefaultParallelRetryInterval;
+        internal TimeSpan ParallelFailOverInterval { get; private set; } = FailOverConstants.DefaultParallelFailOverInterval;
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -262,7 +261,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Connect the provider to Azure App Configuration and their replicas using list of endpoints and token credential.
         /// </summary>
-        /// <param name="endpoints">The list of endpoints of the Azure App Configuration and it's replicas to connect to.</param>
+        /// <param name="endpoints">The list of endpoints of the Azure App Configuration and its replicas to connect to.</param>
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
@@ -321,18 +320,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the time to wait for a response from one replica before initiating a request to the next available replica.
+        /// Configure the parallel failover interval.
         /// </summary>
-        /// <param name="parallelRetryInterval">The time to wait for a response from one replica before trying the next available replica.</param>
-        /// <remarks>Minimum value for <paramref name="parallelRetryInterval"/> is 1 second.</remarks>
-        public AzureAppConfigurationOptions ConfigureParallelRetryTimeout(TimeSpan parallelRetryInterval)
+        /// <param name="parallelFailOverInterval">Time to wait for a response from one replica before initiating a request to the next available replica.</param>
+        public AzureAppConfigurationOptions ConfigureParallelFailOverInterval(TimeSpan parallelFailOverInterval)
         {
-            if (parallelRetryInterval < BackoffIntervalConstants.MinParallelRetryInterval)
+            if (parallelFailOverInterval < FailOverConstants.MinParallelFailOverInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(parallelRetryInterval), parallelRetryInterval, "Parallel retry interval can not be less than one second.");
+                throw new ArgumentOutOfRangeException(nameof(parallelFailOverInterval), $"{nameof(parallelFailOverInterval)} can not be less than 1 second.");
             }
+            this.ParallelFailOverInterval = parallelFailOverInterval;
 
-            this.ParallelRetryInterval = parallelRetryInterval;
             return this;
         }
 
@@ -399,6 +397,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
-        }
+        }        
     }
 }

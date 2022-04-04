@@ -7,7 +7,6 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -78,7 +77,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(isStrict: false);
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                .Throws(new RequestFailedException("Request failed."));
 
@@ -115,7 +114,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateUnauthorizedExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(isStrict: false);
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                .Throws(new RequestFailedException(401, "Unauthorized"));
 
@@ -154,9 +153,9 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
-            // Mock IConfigurationClient
+            // Mock FailOverClient
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -212,7 +211,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateOperationCanceledExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(isStrict: false);
 
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -250,7 +249,7 @@ namespace Tests.AzureAppConfiguration
         public void OverwriteLoggerFactory()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
+            var mockClient = GetMockConfigurationClient(isStrict: false);
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                .Throws(new RequestFailedException(403, "Forbidden"));
 
@@ -307,10 +306,10 @@ namespace Tests.AzureAppConfiguration
             return true;
         }
 
-        private Mock<IConfigurationClient> GetMockConfigurationClient()
+        private Mock<FailOverClient> GetMockConfigurationClient(bool isStrict = true)
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = isStrict ? new Mock<FailOverClient>(MockBehavior.Strict) : new Mock<FailOverClient>() { CallBase  = true };
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {

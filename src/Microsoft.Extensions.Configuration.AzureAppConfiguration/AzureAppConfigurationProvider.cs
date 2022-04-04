@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -25,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
 
-        private readonly IConfigurationClient _client;
+        private readonly FailOverClient _client;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -50,8 +49,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_options.Endpoints != null)
                 {
-                    // return the default `null` if there are no Endpoints in the list to avoid throwing exceptions.
-                    return _options.Endpoints.FirstOrDefault();
+                    return _options.Endpoints.First();
                 }
 
                 if (_options.ConnectionString != null)
@@ -83,7 +81,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(IConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(FailOverClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));

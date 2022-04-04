@@ -6,7 +6,6 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
 using System;
@@ -280,10 +279,10 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
-        private Mock<IConfigurationClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
+        private Mock<FailOverClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {

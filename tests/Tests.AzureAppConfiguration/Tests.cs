@@ -8,7 +8,6 @@ using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -49,7 +48,7 @@ namespace Tests.AzureAppConfiguration
         public void AddsConfigurationValues()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));
@@ -93,7 +92,7 @@ namespace Tests.AzureAppConfiguration
         public void TrimKeyPrefix_TestCase1()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));
@@ -125,7 +124,7 @@ namespace Tests.AzureAppConfiguration
         public void TrimKeyPrefix_TestCase2()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));

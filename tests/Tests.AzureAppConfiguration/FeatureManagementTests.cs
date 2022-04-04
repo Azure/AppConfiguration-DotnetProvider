@@ -7,7 +7,6 @@ using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.ConfigurationClients;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
 using System;
@@ -180,7 +179,7 @@ namespace Tests.AzureAppConfiguration
         public void UsesFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             IEnumerable<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -215,7 +214,7 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>() {  CallBase = true };
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(featureFlags.AsEnumerable()));
@@ -286,7 +285,7 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(featureFlags.AsEnumerable()));
@@ -402,7 +401,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UsesEtagForFeatureFlagRefresh()
         {
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
@@ -429,7 +428,7 @@ namespace Tests.AzureAppConfiguration
         public void SelectFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var featureFlagPrefix = "App1";
             var labelFilter = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);
@@ -466,7 +465,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleSelectsInSameUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -541,7 +540,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleCallsToUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -585,7 +584,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleCallsToUseFeatureFlagsWithSelectAndLabel()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var label1 = "App1_Label";
             var label2 = "App2_Label";
@@ -629,7 +628,7 @@ namespace Tests.AzureAppConfiguration
         public void DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -729,7 +728,7 @@ namespace Tests.AzureAppConfiguration
         public void OverwrittenCacheExpirationForSameFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var cacheExpiration1 = TimeSpan.FromSeconds(1);
             var cacheExpiration2 = TimeSpan.FromSeconds(60);
             IConfigurationRefresher refresher = null;
@@ -804,7 +803,7 @@ namespace Tests.AzureAppConfiguration
         public void SelectAndRefreshSingleFeatureFlag()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<IConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
             var prefix1 = "Feature1";
             var label1 = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);

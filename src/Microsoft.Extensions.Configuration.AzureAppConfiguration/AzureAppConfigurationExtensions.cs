@@ -61,10 +61,9 @@ namespace Microsoft.Extensions.Configuration
 
         internal static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            Action<AzureAppConfigurationOptions> action,
-            IConfigurationClientFactory configurationClientFactory)
+            Action<AzureAppConfigurationOptions> action)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false));
         }
     }
 }

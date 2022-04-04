@@ -48,7 +48,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             if (endpoints == null || !endpoints.Any())
             {
                 Console.WriteLine("Endpoints not found.");
-                Console.WriteLine("Please set the array 'endpoints' in appsettings.json with valid Azure App Configuration endpoints and re-run this example.");
+                Console.WriteLine("Please set the array 'Appconfig:Endpoints' in appsettings.json with valid Azure App Configuration replica endpoints and re-run this example.");
                 return;
             }
 
