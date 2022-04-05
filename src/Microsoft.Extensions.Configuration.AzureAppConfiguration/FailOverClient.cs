@@ -16,6 +16,13 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
+    /// <summary>
+    /// A configuration client with fail-over capabilities.
+    /// </summary>
+    /// <remarks>
+    /// This class is not thread-safe. Since config provider does not allow multiple network requests at the same time,
+    /// there won't be multiple threads calling this client at the same time.
+    /// </remarks>
     internal class FailOverClient
     {
         // This constant is necessary because HttpStatusCode.TooManyRequests is only available in netstandard2.1 and higher.
@@ -43,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             public Uri Endpoint { get; private set; }
         }
 
-        // internal constructor for allowing mocking.
+        // internal constructor to allow mocking.
         internal FailOverClient() { }
 
         public FailOverClient(string connectionString, AzureAppConfigurationOptions options)
@@ -335,8 +342,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 lastException = completedTask.Exception;
                                 if (completedTaskClient != null)
                                 {
-                                    Interlocked.Increment(ref completedTaskClient.FailedAttempts);
-                                    //Interlocked.CompareExchange(ref completedTaskClient.BackoffEndTime, DateTimeOffset.UtcNow);
+                                    completedTaskClient.FailedAttempts++;
                                     TimeSpan backoffInterval = FailOverConstants.MinBackoffInterval.CalculateBackoffInterval(FailOverConstants.MaxBackoffInterval, completedTaskClient.FailedAttempts);
                                     completedTaskClient.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffInterval);
                                 }
@@ -382,41 +388,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private IEnumerable<ConfigurationClientWrapper> GetPrioritizedConfigurationClientList()
         {
-            var startIndex = -1;
             var clients = new List<ConfigurationClientWrapper>();
-            var i = 0;
 
             foreach (ConfigurationClientWrapper client in _clients)
             {
                 if (DateTimeOffset.UtcNow >= client.BackoffEndTime)
                 {
                     clients.Add(client);
-                    if (startIndex == -1)
-                    {
-                        startIndex = i;
-                    }
                 }
-                ++i;
             }
 
-            // All configuration clients are in the failed state, so we try all clients regardless.
-            if (startIndex == -1)
+            if (!clients.Any())
             {
+                // All configuration clients are in the 'backed-off' state, so we try all clients regardless.
                 clients.AddRange(_clients);
-            }
-            // We have put the available configuration clients in the list first, and populating the rest of the clients even though they might be in the failed state.
-            else if (clients.Count() != _clients.Count())
-            {
-                i = 0;
-                foreach (ConfigurationClientWrapper client in _clients)
-                {
-                    clients.Add(client);
-
-                    if (++i == startIndex)
-                    {
-                        break;
-                    }
-                }
             }
 
             return clients;
