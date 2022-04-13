@@ -695,7 +695,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 HostType = TracingUtils.GetHostType(),
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
-                IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured
+                IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
+                IsFeatureManagementV2SchemaEnabled = _options.IsFeatureManagementV2SchemaEnabled
             };
         }
 

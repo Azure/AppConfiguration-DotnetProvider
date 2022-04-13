@@ -102,6 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether feature management v2.0 schema is being used.
+        /// </summary>
+        internal bool IsFeatureManagementV2SchemaEnabled { get; private set; } = false;
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -166,7 +171,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
+            IsFeatureManagementV2SchemaEnabled = options.EnableFeatureManagementV2SchemaPreview;
+
+            if (IsFeatureManagementV2SchemaEnabled)
+            {
+                if (_adapters.Any(a => a is FeatureFlagV1KeyValueAdapter))
+                {
+                    throw new InvalidOperationException($"Please select either Feature Management V1 schema or V2 schema, not both.");
+                }
+
+                if (!_adapters.Any(a => a is FeatureFlagV2KeyValueAdapter))
+                {
+                    _adapters.Add(new FeatureFlagV2KeyValueAdapter());
+                    _adapters.Add(new DynamicFeatureKeyValueAdapter());
+                }
+            }
+            else
+            {
+                if (_adapters.Any(a => a is FeatureFlagV2KeyValueAdapter))
+                {
+                    throw new InvalidOperationException($"Please select either Feature Management V1 schema or V2 schema, not both.");
+                }
+
+                if (!_adapters.Any(a => a is FeatureFlagV1KeyValueAdapter))
+                {
+                    _adapters.Add(new FeatureFlagV1KeyValueAdapter());
+                }
+            }
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -203,11 +236,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
                 }
-            }
-
-            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
-            {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
             return this;

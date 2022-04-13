@@ -24,5 +24,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether the request is from a development environment.
         /// </summary>
         public bool IsDevEnvironment { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether Feature Management V2 schema is enabled.
+        /// </summary>
+        public bool IsFeatureManagementV2SchemaEnabled { get; set; } = false;
     }
 }

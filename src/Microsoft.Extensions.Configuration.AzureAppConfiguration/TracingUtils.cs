@@ -124,6 +124,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
+            if (requestTracingOptions.IsFeatureManagementV2SchemaEnabled)
+            {
+                correlationContextTags.Add(RequestTracingConstants.FeatureManagementV2SchemaEnabledTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)
