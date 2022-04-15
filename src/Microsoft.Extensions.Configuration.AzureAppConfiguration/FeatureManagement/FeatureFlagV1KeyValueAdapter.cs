@@ -34,7 +34,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 {
                     //
                     // Always on
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}", true.ToString()));
+                    keyValues.Add(
+                        new KeyValuePair<string, string>(
+                            $"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}", 
+                            true.ToString()));
                 }
                 else
                 {
@@ -43,19 +46,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+                        string enabledForSectionPrefix = 
+                            $"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}";
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
+                        keyValues.Add(
+                            new KeyValuePair<string, string>(
+                                $"{enabledForSectionPrefix}:{FeatureManagementConstants.Name}", 
+                                clientFilter.Name));
 
                         foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
+                            keyValues.Add(
+                                new KeyValuePair<string, string>(
+                                    $"{enabledForSectionPrefix}:{FeatureManagementConstants.Parameters}:{kvp.Key}", 
+                                    kvp.Value));
                         }
                     }
                 }
             }
             else
             {
-                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}", false.ToString()));
+                keyValues.Add(
+                    new KeyValuePair<string, string>(
+                        $"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}", 
+                        false.ToString()));
             }
 
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
@@ -63,10 +77,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            if (setting != null && setting.Key != null && setting.ContentType != null)
+            {
+                var endIndex = setting.ContentType.IndexOf(";");
+                if (endIndex > 0)
+                {
+                    return string.Equals(setting.ContentType.Substring(0, endIndex), FeatureManagementConstants.FeatureFlagContentType) &&
+                                       setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+                }
+            }
 
-            return string.Equals(contentType, FeatureManagementConstants.FeatureFlagContentType) &&
-                                    setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+            return false;
         }
 
         public void InvalidateCache(ConfigurationSetting setting = null)

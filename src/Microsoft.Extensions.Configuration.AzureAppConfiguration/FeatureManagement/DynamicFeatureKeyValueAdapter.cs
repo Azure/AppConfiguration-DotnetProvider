@@ -12,6 +12,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class DynamicFeatureKeyValueAdapter : IKeyValueAdapter
     {
+        private static readonly string DynamicFeatureSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName + 
+                                                                     ConfigurationPath.KeyDelimiter +
+                                                                     FeatureManagementConstants.DynamicFeaturesSectionName;
+
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             DynamicFeature dynamicFeature;
@@ -27,23 +31,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeaturesSectionName}:{dynamicFeature.Id}:Assigner", dynamicFeature.ClientAssigner));
+            keyValues.Add(
+                new KeyValuePair<string, string>(
+                    $"{DynamicFeatureSectionPrefix}:{dynamicFeature.Id}:{FeatureManagementConstants.Assigner}",
+                    dynamicFeature.ClientAssigner));
 
             for (int i = 0; i < dynamicFeature.Variants.Count; i++)
             {
                 FeatureVariant variant = dynamicFeature.Variants[i];
+                string variantsSectionPrefix = $"{DynamicFeatureSectionPrefix}:{dynamicFeature.Id}:{FeatureManagementConstants.Variants}:{i}";
 
-                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeaturesSectionName}:{dynamicFeature.Id}:Variants:{i}:Name", variant.Name));
-                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeaturesSectionName}:{dynamicFeature.Id}:Variants:{i}:ConfigurationReference", variant.ConfigurationReference));
+                keyValues.Add(
+                    new KeyValuePair<string, string>(
+                        $"{variantsSectionPrefix}:{FeatureManagementConstants.Name}", 
+                        variant.Name));
+
+                keyValues.Add(
+                    new KeyValuePair<string, string>(
+                        $"{variantsSectionPrefix}:{FeatureManagementConstants.ConfigurationReference}", 
+                        variant.ConfigurationReference));
                 
                 if (variant.Default)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeaturesSectionName}:{dynamicFeature.Id}:Variants:{i}:Default", variant.Default.ToString()));
+                    keyValues.Add(
+                        new KeyValuePair<string, string>(
+                            $"{variantsSectionPrefix}:{FeatureManagementConstants.Default}", 
+                            variant.Default.ToString()));
                 }
 
                 foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(variant.AssignmentParameters))
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeaturesSectionName}:{dynamicFeature.Id}:Variants:{i}:AssignmentParameters:{kvp.Key}", kvp.Value));
+                    keyValues.Add(
+                        new KeyValuePair<string, string>(
+                            $"{variantsSectionPrefix}:{FeatureManagementConstants.AssignmentParameters}:{kvp.Key}", 
+                            kvp.Value));
                 }
             }
 
@@ -52,10 +73,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            if (setting != null && setting.Key != null && setting.ContentType != null)
+            {
+                var endIndex = setting.ContentType.IndexOf(";");
+                if (endIndex > 0)
+                {
+                    return string.Equals(setting.ContentType.Substring(0, endIndex), FeatureManagementConstants.DynamicFeatureContentType) &&
+                                       setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+                }
+            }
 
-            return string.Equals(contentType, FeatureManagementConstants.DynamicFeatureContentType) &&
-                               setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+            return false;
         }
 
         public void InvalidateCache(ConfigurationSetting setting = null)

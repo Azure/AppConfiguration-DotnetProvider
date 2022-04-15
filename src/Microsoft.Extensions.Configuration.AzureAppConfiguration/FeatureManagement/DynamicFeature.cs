@@ -16,9 +16,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         [JsonPropertyName("variants")]
         public List<FeatureVariant> Variants { get; set; } = new List<FeatureVariant>();
-
-        // Reserved to allow variants list to be pulled from separate configuration.
-        [JsonPropertyName("variants_reference")]
-        public string VariantsReference { get; set; }
     }
 }
