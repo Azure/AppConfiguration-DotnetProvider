@@ -38,15 +38,64 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            List<KeyValuePair<string, string>> keyValues;
+            string featureFlagsSectionPrefix;
 
             if (_schemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1)
             {
-                keyValues = FlattenFeatureFlagWithV1Schema(featureFlag);
+                featureFlagsSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName;
             }
             else
             {
-                keyValues = FlattenFeatureFlagWithV2Schema(featureFlag);
+                featureFlagsSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName +
+                                            ConfigurationPath.KeyDelimiter +
+                                            FeatureManagementConstants.FeatureFlagSectionName;
+            }
+
+            var keyValues = new List<KeyValuePair<string, string>>();
+
+            if (featureFlag.Enabled)
+            {
+                //if (featureFlag.Conditions?.ClientFilters == null)
+                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
+                {
+                    //
+                    // Always on
+                    keyValues.Add(
+                        new KeyValuePair<string, string>(
+                            $"{featureFlagsSectionPrefix}:{featureFlag.Id}",
+                            true.ToString()));
+                }
+                else
+                {
+                    //
+                    // Conditionally on based on feature filters
+                    for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
+                    {
+                        ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+                        string enabledForSectionPrefix =
+                            $"{featureFlagsSectionPrefix}:{featureFlag.Id}:{FeatureManagementConstants.FeatureFlagEnabledFor}:{i}";
+
+                        keyValues.Add(
+                            new KeyValuePair<string, string>(
+                                $"{enabledForSectionPrefix}:{FeatureManagementConstants.FeatureFlagFilterName}",
+                                clientFilter.Name));
+
+                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
+                        {
+                            keyValues.Add(
+                                new KeyValuePair<string, string>(
+                                    $"{enabledForSectionPrefix}:{FeatureManagementConstants.FeatureFlagParameters}:{kvp.Key}",
+                                    kvp.Value));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                keyValues.Add(
+                    new KeyValuePair<string, string>(
+                        $"{featureFlagsSectionPrefix}:{featureFlag.Id}",
+                        false.ToString()));
             }
 
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
@@ -75,111 +124,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool NeedsRefresh()
         {
             return false;
-        }
-
-        private List<KeyValuePair<string, string>> FlattenFeatureFlagWithV1Schema(FeatureFlag featureFlag)
-        {
-            var keyValues = new List<KeyValuePair<string, string>>();
-
-            if (featureFlag.Enabled)
-            {
-                //if (featureFlag.Conditions?.ClientFilters == null)
-                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
-                {
-                    //
-                    // Always on
-                    keyValues.Add(
-                        new KeyValuePair<string, string>(
-                            $"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}",
-                            true.ToString()));
-                }
-                else
-                {
-                    //
-                    // Conditionally on based on feature filters
-                    for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
-                    {
-                        ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
-                        string enabledForSectionPrefix =
-                            $"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}:{FeatureManagementConstants.FeatureFlagEnabledFor}:{i}";
-
-                        keyValues.Add(
-                            new KeyValuePair<string, string>(
-                                $"{enabledForSectionPrefix}:{FeatureManagementConstants.FeatureFlagFilterName}",
-                                clientFilter.Name));
-
-                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
-                        {
-                            keyValues.Add(
-                                new KeyValuePair<string, string>(
-                                    $"{enabledForSectionPrefix}:{FeatureManagementConstants.FeatureFlagParameters}:{kvp.Key}",
-                                    kvp.Value));
-                        }
-                    }
-                }
-            }
-            else
-            {
-                keyValues.Add(
-                    new KeyValuePair<string, string>(
-                        $"{FeatureManagementConstants.FeatureManagementSectionName}:{featureFlag.Id}",
-                        false.ToString()));
-            }
-
-            return keyValues;
-        }
-
-        private List<KeyValuePair<string, string>> FlattenFeatureFlagWithV2Schema(FeatureFlag featureFlag)
-        {
-            var keyValues = new List<KeyValuePair<string, string>>();
-            string FeatureFlagsSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName +
-                                               ConfigurationPath.KeyDelimiter +
-                                               FeatureManagementConstants.FeatureFlagSectionName;
-            if (featureFlag.Enabled)
-            {
-                //if (featureFlag.Conditions?.ClientFilters == null)
-                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
-                {
-                    //
-                    // Always on
-                    keyValues.Add(
-                        new KeyValuePair<string, string>(
-                            $"{FeatureFlagsSectionPrefix}:{featureFlag.Id}",
-                            true.ToString()));
-                }
-                else
-                {
-                    //
-                    // Conditionally on based on feature filters
-                    for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
-                    {
-                        ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
-                        string enabledForSectionPrefix = $"{FeatureFlagsSectionPrefix}:{featureFlag.Id}:{FeatureManagementConstants.FeatureFlagEnabledFor}:{i}";
-
-                        keyValues.Add(
-                            new KeyValuePair<string, string>(
-                                $"{enabledForSectionPrefix}:{FeatureManagementConstants.FeatureFlagFilterName}",
-                                clientFilter.Name));
-
-                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
-                        {
-                            keyValues.Add(
-                                new KeyValuePair<string, string>(
-                                    $"{enabledForSectionPrefix}:{FeatureManagementConstants.FeatureFlagParameters}:{kvp.Key}",
-                                    kvp.Value));
-                        }
-                    }
-                }
-            }
-            else
-            {
-                keyValues.Add(
-                    new KeyValuePair<string, string>(
-                        $"{FeatureFlagsSectionPrefix}:{featureFlag.Id}",
-                        false.ToString()));
-            }
-
-            return keyValues;
         }
     }
 }
