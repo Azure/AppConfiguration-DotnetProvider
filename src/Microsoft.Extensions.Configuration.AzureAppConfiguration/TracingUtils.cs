@@ -114,6 +114,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
+            correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementSchemaVersionTag, requestTracingOptions.FeatureManagementSchemaVersion));
+
             if (requestTracingOptions.IsKeyVaultConfigured)
             {
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
@@ -122,11 +124,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.IsKeyVaultRefreshConfigured)
             {
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
-            }
-
-            if (requestTracingOptions.IsFeatureManagementV2SchemaEnabled)
-            {
-                correlationContextTags.Add(RequestTracingConstants.FeatureManagementV2SchemaEnabledTag);
             }
 
             var sb = new StringBuilder();

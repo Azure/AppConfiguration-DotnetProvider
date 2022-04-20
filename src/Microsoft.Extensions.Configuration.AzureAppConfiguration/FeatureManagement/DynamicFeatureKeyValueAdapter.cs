@@ -12,9 +12,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class DynamicFeatureKeyValueAdapter : IKeyValueAdapter
     {
-        private static readonly string DynamicFeatureSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName + 
+        private static readonly string DynamicFeatureSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName +
                                                                      ConfigurationPath.KeyDelimiter +
-                                                                     FeatureManagementConstants.DynamicFeaturesSectionName;
+                                                                     FeatureManagementConstants.DynamicFeatureSectionName;
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
@@ -33,29 +33,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             keyValues.Add(
                 new KeyValuePair<string, string>(
-                    $"{DynamicFeatureSectionPrefix}:{dynamicFeature.Id}:{FeatureManagementConstants.Assigner}",
+                    $"{DynamicFeatureSectionPrefix}:{dynamicFeature.Id}:{FeatureManagementConstants.DynamicFeatureAssigner}",
                     dynamicFeature.ClientAssigner));
 
             for (int i = 0; i < dynamicFeature.Variants.Count; i++)
             {
                 FeatureVariant variant = dynamicFeature.Variants[i];
-                string variantsSectionPrefix = $"{DynamicFeatureSectionPrefix}:{dynamicFeature.Id}:{FeatureManagementConstants.Variants}:{i}";
+                string variantsSectionPrefix = $"{DynamicFeatureSectionPrefix}:{dynamicFeature.Id}:{FeatureManagementConstants.DynamicFeatureVariants}:{i}";
 
                 keyValues.Add(
                     new KeyValuePair<string, string>(
-                        $"{variantsSectionPrefix}:{FeatureManagementConstants.Name}", 
+                        $"{variantsSectionPrefix}:{FeatureManagementConstants.DynamicFeatureVariantName}", 
                         variant.Name));
 
                 keyValues.Add(
                     new KeyValuePair<string, string>(
-                        $"{variantsSectionPrefix}:{FeatureManagementConstants.ConfigurationReference}", 
+                        $"{variantsSectionPrefix}:{FeatureManagementConstants.DynamicFeatureConfigurationReference}", 
                         variant.ConfigurationReference));
                 
                 if (variant.Default)
                 {
                     keyValues.Add(
                         new KeyValuePair<string, string>(
-                            $"{variantsSectionPrefix}:{FeatureManagementConstants.Default}", 
+                            $"{variantsSectionPrefix}:{FeatureManagementConstants.DynamicFeatureDefault}", 
                             variant.Default.ToString()));
                 }
 
@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 {
                     keyValues.Add(
                         new KeyValuePair<string, string>(
-                            $"{variantsSectionPrefix}:{FeatureManagementConstants.AssignmentParameters}:{kvp.Key}", 
+                            $"{variantsSectionPrefix}:{FeatureManagementConstants.DynamicFeatureAssignmentParameters}:{kvp.Key}", 
                             kvp.Value));
                 }
             }

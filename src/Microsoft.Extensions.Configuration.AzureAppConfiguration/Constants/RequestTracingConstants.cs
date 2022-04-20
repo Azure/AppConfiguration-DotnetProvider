@@ -23,9 +23,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string HostTypeKey = "Host";
         public const string EnvironmentKey = "Env";
         public const string DevEnvironmentValue = "Dev";
+        public const string FeatureManagementSchemaVersionTag = "FeatureManagementSchemaVersion";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
-        public const string FeatureManagementV2SchemaEnabledTag = "UsesFeatureManagementV2Schema";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

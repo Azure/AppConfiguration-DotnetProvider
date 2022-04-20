@@ -29,12 +29,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public TimeSpan CacheExpirationInterval { get; set; } = RefreshConstants.DefaultFeatureFlagsCacheExpirationInterval;
 
         /// <summary>
-        /// Forces feature flags and dynamic features to be written into the configuration system using the  
-        /// feature management V2.0 schema introduced in Microsoft.FeatureManagement 3.0.0-preview library.
-        /// </summary>
-        public bool EnableFeatureManagementV2SchemaPreview { get; set; } = false;
-
-        /// <summary>
         /// Specify what feature flags to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of feature flags.
         /// </summary>

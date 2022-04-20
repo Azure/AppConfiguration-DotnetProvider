@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -102,9 +103,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether feature management v2.0 schema is being used.
+        /// This value indicates the feature management schema version being used. 
+        /// Allowed values: 1 | 2
+        /// Default value: 1
         /// </summary>
-        internal bool IsFeatureManagementV2SchemaEnabled { get; private set; } = false;
+        internal string FeatureManagementSchemaVersion { get; private set; } = FeatureManagementConstants.FeatureManagementSchemaV1;
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -172,31 +175,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
 
-            IsFeatureManagementV2SchemaEnabled = options.EnableFeatureManagementV2SchemaPreview;
+            // Read Feature Management schema version from environment variables
+            string featureManagementSchemaVersion = null;
 
-            if (IsFeatureManagementV2SchemaEnabled)
+            try
             {
-                if (_adapters.Any(a => a is FeatureFlagV1KeyValueAdapter))
-                {
-                    throw new InvalidOperationException($"Please select either Feature Management V1 schema or V2 schema, not both.");
-                }
-
-                if (!_adapters.Any(a => a is FeatureFlagV2KeyValueAdapter))
-                {
-                    _adapters.Add(new FeatureFlagV2KeyValueAdapter());
-                    _adapters.Add(new DynamicFeatureKeyValueAdapter());
-                }
+                featureManagementSchemaVersion = Environment.GetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable);
             }
-            else
+            catch (SecurityException) { }
+            
+            if (!string.IsNullOrWhiteSpace(featureManagementSchemaVersion))
             {
-                if (_adapters.Any(a => a is FeatureFlagV2KeyValueAdapter))
-                {
-                    throw new InvalidOperationException($"Please select either Feature Management V1 schema or V2 schema, not both.");
-                }
+                FeatureManagementSchemaVersion = featureManagementSchemaVersion;
+            }
 
-                if (!_adapters.Any(a => a is FeatureFlagV1KeyValueAdapter))
+            if (!_adapters.Any(a => a is FeatureFlagKeyValueAdapter))
+            {
+                _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion));
+
+                if (FeatureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
                 {
-                    _adapters.Add(new FeatureFlagV1KeyValueAdapter());
+                    _adapters.Add(new DynamicFeatureKeyValueAdapter());
                 }
             }
 

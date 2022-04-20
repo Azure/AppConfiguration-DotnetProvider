@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class RequestTracingOptions
@@ -26,8 +28,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsDevEnvironment { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether Feature Management V2 schema is enabled.
+        /// This value indicates the feature management schema version being used. 
         /// </summary>
-        public bool IsFeatureManagementV2SchemaEnabled { get; set; } = false;
+        public string FeatureManagementSchemaVersion { get; set; } = FeatureManagementConstants.FeatureManagementSchemaV1;
     }
 }

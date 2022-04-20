@@ -15,6 +15,9 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
+    // This attribute ensures that feature management v1 and v2 tests are never run in parallel.
+    // Since feature flag behavior is controlled by an environment variable, running them in parallel has side effects.
+    [Collection("Feature Management Test Collection")]
     public class FeatureManagementV2Tests
     {
         private static ConfigurationSetting _ff1 = ConfigurationModelFactory.ConfigurationSetting(
@@ -171,6 +174,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UsesFeatureManagementV2Schema()
         {
+            // Set environment variable to choose v2 schema
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, FeatureManagementConstants.FeatureManagementSchemaV2);
+
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
@@ -183,7 +189,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.UseFeatureFlags(opt => opt.EnableFeatureManagementV2SchemaPreview = true);
+                    options.UseFeatureFlags();
                 })
                 .Build();
 
@@ -208,11 +214,16 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("50", config["FeatureManagement:DynamicFeatures:ShoppingCart:Variants:1:AssignmentParameters:Audience:Groups:0:RolloutPercentage"]);
             Assert.Equal("ShoppingCart:Small", config["FeatureManagement:DynamicFeatures:ShoppingCart:Variants:1:ConfigurationReference"]);
             Assert.Equal("Small", config["FeatureManagement:DynamicFeatures:ShoppingCart:Variants:1:Name"]);
+
+            // Delete the environment variable
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
         }
 
         [Fact]
-        public void UsesFeatureManagementV1Schema()
+        public void UsesDefaultSchemaIfNoEnvironmentVariable()
         {
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
+
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
@@ -225,7 +236,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Client = mockClient.Object;
-                    options.UseFeatureFlags(opt => opt.EnableFeatureManagementV2SchemaPreview = false);
+                    options.UseFeatureFlags();
                 })
                 .Build();
 
@@ -247,26 +258,11 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ThrowsIfUsingBothV1AndV2Schema()
-        {
-            void action() => new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.UseFeatureFlags(ff =>
-                    {
-                        ff.EnableFeatureManagementV2SchemaPreview = true;
-                    });
-
-                    options.UseFeatureFlags(); // Default EnableFeatureManagementV2SchemaPreview is false
-                })
-                .Build();
-
-            Assert.Throws<ArgumentException>(action);
-        }
-
-        [Fact]
         public void WatchesDynamicFeatures()
         {
+            // Set environment variable to choose v2 schema
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, FeatureManagementConstants.FeatureManagementSchemaV2);
+
             var dynamicFeatures = new List<ConfigurationSetting> { _df1 };
 
             var mockResponse = new Mock<Response>();
@@ -284,7 +280,6 @@ namespace Tests.AzureAppConfiguration
                     options.UseFeatureFlags(o =>
                     {
                         o.CacheExpirationInterval = cacheExpirationTimeSpan;
-                        o.EnableFeatureManagementV2SchemaPreview = true;
                     });
 
                     refresher = options.GetRefresher();
@@ -372,11 +367,17 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Alicia", config["FeatureManagement:DynamicFeatures:DiscountBanner:Variants:1:AssignmentParameters:Audience:Users:1"]);
             Assert.Equal("DiscountBanner:Small", config["FeatureManagement:DynamicFeatures:DiscountBanner:Variants:1:ConfigurationReference"]);
             Assert.Equal("Small", config["FeatureManagement:DynamicFeatures:DiscountBanner:Variants:1:Name"]);
+
+            // Delete the environment variable
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
         }
 
         [Fact]
         public void SelectsDynamicFeatures()
         {
+            // Set environment variable to choose v2 schema
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, FeatureManagementConstants.FeatureManagementSchemaV2);
+
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
             var featureFlagPrefix = "Shopping";
@@ -393,7 +394,6 @@ namespace Tests.AzureAppConfiguration
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(featureFlagPrefix + "*");
-                        ff.EnableFeatureManagementV2SchemaPreview = true;
                     });
                 })
                 .Build();
@@ -413,6 +413,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["FeatureManagement:FeatureFlags:Beta"]);
             Assert.Null(config["FeatureManagement:FeatureFlags:MyFeature"]);
             Assert.Null(config["FeatureManagement:DynamicFeatures:DiscountBanner:Assigner"]);
+
+            // Delete the environment variable
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
         }
     }
 }

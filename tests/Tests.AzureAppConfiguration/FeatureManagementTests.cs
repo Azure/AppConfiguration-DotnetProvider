@@ -17,6 +17,9 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
+    // This attribute ensures that feature management v1 and v2 tests are never run in parallel.
+    // Since feature flag behavior is controlled by an environment variable, running them in parallel has side effects.
+    [Collection("Feature Management Test Collection")]
     public class FeatureManagementTests
     {
         private ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
