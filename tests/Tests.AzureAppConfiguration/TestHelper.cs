@@ -2,23 +2,42 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Azure.Identity;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
     class TestHelpers
     {
-        static public string CreateMockEndpointString()
+        public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
+        public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
+
+        static public FailOverClient CreateMockConfigurationClient(AzureAppConfigurationOptions options = null)
+        {
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            var localConfigurationClient = new FailOverClient(
+                                                new List<Uri>() { PrimaryConfigStoreEndpoint, SecondaryConfigStoreEndpoint }, mockTokenCredential.Object, options);
+            return localConfigurationClient;
+        }
+
+        static public string CreateMockEndpointString(string endpoint = "https://xxxxx.azconfig.io")
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
-            return $"Endpoint=https://xxxxx;Id=b1d9b31;Secret={returnValue}";
+            return $"Endpoint={endpoint};Id=b1d9b31;Secret={returnValue}";
         }
 
         static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)

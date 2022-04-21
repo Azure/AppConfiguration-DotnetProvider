@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -42,14 +43,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The endpoint of the Azure App Configuration.
+        /// The list of endpoints of an Azure App Configuration store and its replicas.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal Uri Endpoint { get; private set; }
+        internal IEnumerable<Uri> Endpoints { get; private set; }
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// The credential used to connect to the Azure App Configuration.
+        /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
         internal TokenCredential Credential { get; private set; }
 
@@ -85,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
         /// </summary>
-        internal ConfigurationClient Client { get; set; }
+        internal FailOverClient Client { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -256,7 +257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            Endpoint = null;
+            Endpoints = null;
             Credential = null;
             ConnectionString = connectionString;
             return this;
@@ -279,9 +280,42 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
+            return Connect(new List<Uri>() { endpoint }, credential);
+        }
+
+        /// <summary>
+        /// Connect the provider to Azure App Configuration and their replicas using list of endpoints and token credential.
+        /// </summary>
+        /// <param name="endpoints">The list of endpoints of the Azure App Configuration and its replicas to connect to.</param>
+        /// <param name="credential">Token credential to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
+        {
+            if (endpoints == null || endpoints.Count() == 0)
+            {
+                throw new ArgumentNullException(nameof(endpoints));
+            }
+
+            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
+
+            if (endpoints.Count() > 1)
+            {
+                string firstEndpoint = endpoints.First().Host;
+
+                // If the first endpoint is a replica or the store name has a '-', the common prefix would be string before first '-'
+                // else if there is no '-' in it, then it is not a replica and the common prefix would be a substring before first '.'
+                string commonPrefix = firstEndpoint.Substring(0, firstEndpoint.IndexOf('-') > 0 ? firstEndpoint.IndexOf('-') : firstEndpoint.IndexOf('.'));
+                string commonDomain = firstEndpoint.Substring(firstEndpoint.IndexOf('.'));
+
+                if (endpoints.Count() != endpoints.Distinct().Count() || // All endpoints must be unique.
+                    !endpoints.All(e => e.Host.Substring(e.Host.IndexOf('.')).Equals(commonDomain, StringComparison.InvariantCultureIgnoreCase)) || // All endpoints must have the same domain.
+                    !endpoints.All(e => e.Host.StartsWith(commonPrefix, StringComparison.InvariantCultureIgnoreCase))) // All endpoints must start with the same common prefix.
+                {
+                    throw new ArgumentException("All endpoints must be unique and must belong to the same configuration store.");
+                }
+            }
+
+            Endpoints = endpoints;
             ConnectionString = null;
-            Endpoint = endpoint;
-            Credential = credential;
             return this;
         }
 
@@ -307,6 +341,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
         {
             configure?.Invoke(ClientOptions);
+            return this;
+        }
+
+        /// <summary>
+        /// Configure the parallel failover interval.
+        /// </summary>
+        /// <param name="parallelFailOverInterval">Time to wait for a response from one replica before initiating a request to the next available replica.</param>
+        public AzureAppConfigurationOptions ConfigureParallelFailOverInterval(TimeSpan parallelFailOverInterval)
+        {
+            if (parallelFailOverInterval < FailOverConstants.MinParallelFailOverInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(parallelFailOverInterval), $"{nameof(parallelFailOverInterval)} can not be less than 1 second.");
+            }
+            this.ParallelFailOverInterval = parallelFailOverInterval;
+
             return this;
         }
 
@@ -373,6 +422,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
-        }
+        }        
     }
 }

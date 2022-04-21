@@ -13,11 +13,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-	public class PushRefreshTests
+    public class PushRefreshTests
 	{
 		List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
 		{
@@ -226,7 +227,7 @@ namespace Tests.AzureAppConfiguration
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
-			var mockClient = GetMockConfigurationClient();
+			var mockClient = GetMockConfigurationClient(isStrict: false);
 
 			IConfigurationRefresher refresher = null;
 
@@ -251,7 +252,7 @@ namespace Tests.AzureAppConfiguration
 			}
 
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(_pushNotificationList.Count));
-			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(_pushNotificationList.Count));
+			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<Uri>(), It.IsAny<string>()), Times.Exactly(_pushNotificationList.Count));
 		}
 
 		[Fact]
@@ -259,7 +260,7 @@ namespace Tests.AzureAppConfiguration
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
-			var mockClient = GetMockConfigurationClient();
+			var mockClient = GetMockConfigurationClient(isStrict: false);
 
 			IConfigurationRefresher refresher = null;
 
@@ -292,10 +293,10 @@ namespace Tests.AzureAppConfiguration
 			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null;
         }
 
-		private Mock<ConfigurationClient> GetMockConfigurationClient()
+		private Mock<FailOverClient> GetMockConfigurationClient(bool isStrict = true)
 		{
 			var mockResponse = new Mock<Response>();
-			var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+			var mockClient = isStrict ? new Mock<FailOverClient>(MockBehavior.Strict) : new Mock<FailOverClient>() { CallBase = true };
 
 			Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
 			{
@@ -314,7 +315,7 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
 				.Returns(() =>
 				{
-					return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
+					return Task.FromResult(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)));
 				});
 
 			mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -323,7 +324,7 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-			mockClient.Setup(c => c.UpdateSyncToken(It.IsAny<string>()));
+			mockClient.Setup(c => c.UpdateSyncToken(It.IsAny<Uri>(), It.IsAny<string>()));
 
 			return mockClient;
 		}

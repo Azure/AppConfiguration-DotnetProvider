@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
@@ -49,6 +50,42 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             return TimeSpan.FromMilliseconds(min.TotalMilliseconds + new Random().NextDouble() * (maxMilliseconds - min.TotalMilliseconds));
+        }
+
+        /// <summary>
+        /// This method calculates the backoff interval for the configuration store after a failure
+        /// which lies between <paramref name="minInterval"/> and <paramref name="maxInterval"/>/>.
+        /// </summary>
+        /// <param name="minInterval">The minimum interval to retry after.</param>
+        /// <param name="maxInterval">The maximum interval to retry after.</param>
+        /// <param name="attempts">The number of attempts made to the configuration store.</param>
+        /// <returns>The backoff interval before retrying a request to the configuration store or replica again.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// An exception is thrown when <paramref name="attempts"/> is less than 1.
+        /// </exception>
+        public static TimeSpan CalculateBackoffInterval(this TimeSpan minInterval, TimeSpan maxInterval, int attempts)
+        {
+            if (attempts < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
+            }
+
+            if (attempts == 1)
+            {
+                return minInterval;
+            }
+
+            //
+            // IMPORTANT: This can overflow
+            double calculatedMilliseconds = Math.Max(1, minInterval.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
+
+            if (calculatedMilliseconds > maxInterval.TotalMilliseconds ||
+                    calculatedMilliseconds <= 0 /*overflow*/)
+            {
+                calculatedMilliseconds = maxInterval.TotalMilliseconds;
+            }
+
+            return TimeSpan.FromMilliseconds(calculatedMilliseconds);
         }
     }
 }

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -86,9 +87,9 @@ namespace Tests.AzureAppConfiguration
         public void NotSecretIdentifierURI()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvNoUrl }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kvNoUrl }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault"));
@@ -113,9 +114,9 @@ namespace Tests.AzureAppConfiguration
         public void UseSecret()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -138,9 +139,9 @@ namespace Tests.AzureAppConfiguration
         public void UseCertificate()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvCertRef }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kvCertRef }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -163,9 +164,9 @@ namespace Tests.AzureAppConfiguration
         public void ThrowsWhenSecretNotFound()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -188,9 +189,9 @@ namespace Tests.AzureAppConfiguration
         public void DisabledSecretIdentifier()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -213,9 +214,9 @@ namespace Tests.AzureAppConfiguration
         public void WrongContentType()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvWrongContentType }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kvWrongContentType }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -235,9 +236,9 @@ namespace Tests.AzureAppConfiguration
         public void MultipleKeys()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+                .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -261,9 +262,9 @@ namespace Tests.AzureAppConfiguration
         public void CancellationToken()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+                .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -286,9 +287,9 @@ namespace Tests.AzureAppConfiguration
         public void HasNoAccessToKeyVault()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -312,9 +313,9 @@ namespace Tests.AzureAppConfiguration
         public void RegisterMultipleClients()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient1 = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient1.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -343,9 +344,9 @@ namespace Tests.AzureAppConfiguration
         public void ServerRequestIsMadeWhenDefaultCredentialIsSet()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
             {
@@ -364,9 +365,9 @@ namespace Tests.AzureAppConfiguration
         public void ThrowsWhenNoMatchingSecretClientIsFound()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient1 = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient1.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics1.vault.azure.net"));
@@ -393,9 +394,9 @@ namespace Tests.AzureAppConfiguration
         public void ThrowsWhenConfigureKeyVaultIsMissing()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             Assert.Throws<KeyVaultReferenceException>(() =>
             {
@@ -411,9 +412,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void DoesNotThrowKeyVaultExceptionWhenProviderIsOptional()
         {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockKeyValueAdapter = new Mock<IKeyValueAdapter>(MockBehavior.Strict);
             mockKeyValueAdapter.Setup(adapter => adapter.CanProcess(_kv))
@@ -435,9 +436,9 @@ namespace Tests.AzureAppConfiguration
         public void CallsSecretResolverCallbackWhenNoMatchingSecretClientIsFound()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             IConfiguration config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -460,9 +461,9 @@ namespace Tests.AzureAppConfiguration
         public void ThrowsWhenBothDefaultCredentialAndSecretResolverCallbackAreSet()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             ArgumentException ex = Assert.Throws<ArgumentException>(() =>
             {
@@ -490,9 +491,9 @@ namespace Tests.AzureAppConfiguration
         public void ThrowsWhenSecretResolverIsNull()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             Assert.Throws<ArgumentNullException>(() =>
             {
@@ -512,9 +513,9 @@ namespace Tests.AzureAppConfiguration
         public void LastKeyVaultOptionsWinWithMultipleConfigureKeyVaultCalls()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             IConfiguration config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -541,9 +542,9 @@ namespace Tests.AzureAppConfiguration
         public void DontUseSecretResolverCallbackWhenMatchingSecretClientIsPresent()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -574,9 +575,9 @@ namespace Tests.AzureAppConfiguration
         public void ThrowsWhenSecretRefreshIntervalIsTooShort()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
             {
@@ -599,7 +600,7 @@ namespace Tests.AzureAppConfiguration
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>() {  CallBase = true };
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -614,7 +615,7 @@ namespace Tests.AzureAppConfiguration
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
@@ -672,7 +673,7 @@ namespace Tests.AzureAppConfiguration
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -687,7 +688,7 @@ namespace Tests.AzureAppConfiguration
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
@@ -744,9 +745,9 @@ namespace Tests.AzureAppConfiguration
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -787,9 +788,9 @@ namespace Tests.AzureAppConfiguration
             TimeSpan shortCacheExpirationTime = TimeSpan.FromSeconds(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+                .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
@@ -833,9 +834,9 @@ namespace Tests.AzureAppConfiguration
             TimeSpan longCacheExpirationTime = TimeSpan.FromDays(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+                .Returns(Task.FromResult(_kvCollectionPageOne.AsEnumerable()));
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));

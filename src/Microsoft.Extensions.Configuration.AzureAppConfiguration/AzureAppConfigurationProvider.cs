@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
 
-        private readonly ConfigurationClient _client;
+        private readonly FailOverClient _client;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -47,9 +47,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             get
             {
-                if (_options.Endpoint != null)
+                if (_options.Endpoints != null)
                 {
-                    return _options.Endpoint;
+                    return _options.Endpoints.First();
                 }
 
                 if (_options.ConnectionString != null)
@@ -59,10 +59,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, "Endpoint"));
+                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, ConnectionStringParser.EndpointSection));
                     }
-                    catch (ArgumentException) { }
-                    catch (UriFormatException) { }
+                    catch (FormatException) { }
                 }
 
                 return null;
@@ -82,7 +81,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(FailOverClient client, AzureAppConfigurationOptions options, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -279,8 +278,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
-            _client.UpdateSyncToken(pushNotification.SyncToken);
-
+            _client.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken);
             SetDirty(maxDelay);
         }
 
@@ -307,7 +305,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                        foreach (ConfigurationSetting setting in await _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                         {
                             serverData[setting.Key] = setting;
                         }
@@ -335,7 +333,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        await foreach (ConfigurationSetting setting in _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                        foreach (ConfigurationSetting setting in await _client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                         {
                             serverData[setting.Key] = setting;
                         }

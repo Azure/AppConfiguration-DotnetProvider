@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -181,12 +182,12 @@ namespace Tests.AzureAppConfiguration
         public void UsesFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
-            var featureFlags = new List<ConfigurationSetting> { _kv };
+            IEnumerable<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(Task.FromResult(featureFlags));
 
             var testClient = mockClient.Object;
 
@@ -216,10 +217,10 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>() {  CallBase = true };
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(Task.FromResult(featureFlags.AsEnumerable()));
 
             IConfigurationRefresher refresher = null;
             var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
@@ -287,10 +288,10 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(Task.FromResult(featureFlags.AsEnumerable()));
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
@@ -355,15 +356,14 @@ namespace Tests.AzureAppConfiguration
             response.SetContent(SerializationHelpers.Serialize(new[] { _kv }, TestHelpers.SerializeBatch));
 
             var mockTransport = new MockTransport(response);
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
 
             var builder = new ConfigurationBuilder();
+            var client = TestHelpers.CreateMockConfigurationClient(options);
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
+                options.Client = client;
                 options.UseFeatureFlags();
             }).Build();
 
@@ -383,15 +383,13 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
-
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
+            var client = TestHelpers.CreateMockConfigurationClient(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
+                    options.Client = client;
                     options.UseFeatureFlags(o => o.Label = "myLabel");
                 })
                 .Build();
@@ -406,9 +404,9 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UsesEtagForFeatureFlagRefresh()
         {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kv }.AsEnumerable()));
 
             IConfigurationRefresher refresher = null;
             var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
@@ -433,13 +431,13 @@ namespace Tests.AzureAppConfiguration
         public void SelectFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var featureFlagPrefix = "App1";
             var labelFilter = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_featureFlagCollection.Where(s => s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + featureFlagPrefix) && s.Label == labelFilter).ToList()));
+                .Returns(Task.FromResult(_featureFlagCollection.Where(s => s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + featureFlagPrefix) && s.Label == labelFilter)));
 
             var testClient = mockClient.Object;
 
@@ -470,7 +468,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleSelectsInSameUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -479,9 +477,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                    return Task.FromResult(_featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)));
                 });
 
             var testClient = mockClient.Object;
@@ -545,7 +543,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleCallsToUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -554,9 +552,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s => 
+                    return Task.FromResult(_featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) || 
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)));
                 });
 
             var testClient = mockClient.Object;
@@ -589,7 +587,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleCallsToUseFeatureFlagsWithSelectAndLabel()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var label1 = "App1_Label";
             var label2 = "App2_Label";
@@ -597,9 +595,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                    return Task.FromResult(_featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Label == label2)).ToList());
+                        (s.Label == label2)));
                 });
 
             var testClient = mockClient.Object;
@@ -633,7 +631,7 @@ namespace Tests.AzureAppConfiguration
         public void DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -646,9 +644,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(featureFlagCollection.Where(s =>
+                    return Task.FromResult(featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")).ToList());
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")));
                 });
 
             var config = new ConfigurationBuilder()
@@ -733,14 +731,14 @@ namespace Tests.AzureAppConfiguration
         public void OverwrittenCacheExpirationForSameFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
             var cacheExpiration1 = TimeSpan.FromSeconds(1);
             var cacheExpiration2 = TimeSpan.FromSeconds(60);
             IConfigurationRefresher refresher = null;
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlagCollection));
+                .Returns(Task.FromResult(featureFlagCollection.AsEnumerable()));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -808,7 +806,7 @@ namespace Tests.AzureAppConfiguration
         public void SelectAndRefreshSingleFeatureFlag()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<FailOverClient>() { CallBase = true };
             var prefix1 = "Feature1";
             var label1 = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);
@@ -818,8 +816,8 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(featureFlagCollection.Where(s =>
-                        s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1).ToList());
+                    return Task.FromResult(featureFlagCollection.Where(s =>
+                        s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1));
                 });
 
             var config = new ConfigurationBuilder()
