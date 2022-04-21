@@ -13,10 +13,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureFlagKeyValueAdapter : IKeyValueAdapter
     {
-        private static string _schemaVersion = FeatureManagementConstants.FeatureManagementSchemaV1;
+        private static string _schemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
 
         public FeatureFlagKeyValueAdapter(string schemaVersion)
         {
+            if (schemaVersion != FeatureManagementConstants.FeatureManagementSchemaV1
+                && schemaVersion != FeatureManagementConstants.FeatureManagementSchemaV2)
+            {
+                throw new InvalidOperationException(
+                    $"Please select a valid Feature Management schema version by setting the '{FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable}' " + 
+                    $"environment variable to '{FeatureManagementConstants.FeatureManagementSchemaV1}' or '{FeatureManagementConstants.FeatureManagementSchemaV2}'.");
+            }
+
             _schemaVersion = schemaVersion;
         }
 

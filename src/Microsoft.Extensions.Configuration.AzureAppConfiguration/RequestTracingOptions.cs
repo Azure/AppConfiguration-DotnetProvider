@@ -30,6 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// This value indicates the feature management schema version being used. 
         /// </summary>
-        public string FeatureManagementSchemaVersion { get; set; } = FeatureManagementConstants.FeatureManagementSchemaV1;
+        public string FeatureManagementSchemaVersion { get; set; } = FeatureManagementConstants.FeatureManagementDefaultSchema;
     }
 }

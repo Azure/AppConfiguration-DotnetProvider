@@ -417,5 +417,25 @@ namespace Tests.AzureAppConfiguration
             // Delete the environment variable
             Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
         }
+
+
+        [Fact]
+        public void ThrowsIfUsingInvalidSchema()
+        {
+            // Set environment variable to an invalid schema version
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, "3");
+
+            void action() => new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Throws<ArgumentException>(action);
+
+            // Delete the environment variable
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
+        }
     }
 }

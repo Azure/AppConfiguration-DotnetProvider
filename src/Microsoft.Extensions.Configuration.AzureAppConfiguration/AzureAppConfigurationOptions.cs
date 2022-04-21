@@ -107,7 +107,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Allowed values: 1 | 2
         /// Default value: 1
         /// </summary>
-        internal string FeatureManagementSchemaVersion { get; private set; } = FeatureManagementConstants.FeatureManagementSchemaV1;
+        internal string FeatureManagementSchemaVersion { get; private set; } = FeatureManagementConstants.FeatureManagementDefaultSchema;
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
