@@ -104,10 +104,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// This value indicates the feature management schema version being used. 
-        /// Allowed values: 1 | 2
-        /// Default value: 1
         /// </summary>
-        internal string FeatureManagementSchemaVersion { get; private set; } = FeatureManagementConstants.FeatureManagementDefaultSchema;
+        internal string FeatureManagementSchemaVersion { get; private set; }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -184,11 +182,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (SecurityException) { }
             
-            if (!string.IsNullOrWhiteSpace(featureManagementSchemaVersion))
+            if (!string.IsNullOrWhiteSpace(featureManagementSchemaVersion) 
+                && featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
             {
-                FeatureManagementSchemaVersion = featureManagementSchemaVersion;
+                FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementSchemaV2;
             }
-
+            else
+            {
+                FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
+            }
+            
             if (!_adapters.Any(a => a is FeatureFlagKeyValueAdapter))
             {
                 _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion));

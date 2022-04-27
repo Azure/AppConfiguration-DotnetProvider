@@ -12,10 +12,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class DynamicFeatureKeyValueAdapter : IKeyValueAdapter
     {
-        private static readonly string DynamicFeatureSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName +
-                                                                     ConfigurationPath.KeyDelimiter +
-                                                                     FeatureManagementConstants.DynamicFeatureSectionName;
-
+        private static readonly string DynamicFeatureSectionPrefix =
+            $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeatureSectionName}";
+                                                                    
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             DynamicFeature dynamicFeature;

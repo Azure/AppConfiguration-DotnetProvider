@@ -14,18 +14,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureFlagKeyValueAdapter : IKeyValueAdapter
     {
         private static string _schemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
+        private static string _featureFlagsSectionPrefix;
 
         public FeatureFlagKeyValueAdapter(string schemaVersion)
         {
-            if (schemaVersion != FeatureManagementConstants.FeatureManagementSchemaV1
-                && schemaVersion != FeatureManagementConstants.FeatureManagementSchemaV2)
-            {
-                throw new InvalidOperationException(
-                    $"Please select a valid Feature Management schema version by setting the '{FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable}' " + 
-                    $"environment variable to '{FeatureManagementConstants.FeatureManagementSchemaV1}' or '{FeatureManagementConstants.FeatureManagementSchemaV2}'.");
-            }
-
             _schemaVersion = schemaVersion;
+
+            if (_schemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1)
+            {
+                _featureFlagsSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName;
+            }
+            else
+            {
+                _featureFlagsSectionPrefix = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagSectionName}";
+            }
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
@@ -41,47 +43,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 throw new FormatException(setting.Key, e);
             }
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-
-            string featureFlagsSectionPrefix;
-
-            if (_schemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1)
-            {
-                featureFlagsSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName;
-            }
-            else
-            {
-                featureFlagsSectionPrefix = FeatureManagementConstants.FeatureManagementSectionName +
-                                            ConfigurationPath.KeyDelimiter +
-                                            FeatureManagementConstants.FeatureFlagSectionName;
-            }
-
             var keyValues = new List<KeyValuePair<string, string>>();
 
             if (featureFlag.Enabled)
             {
-                //if (featureFlag.Conditions?.ClientFilters == null)
                 if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
                 {
-                    //
                     // Always on
                     keyValues.Add(
                         new KeyValuePair<string, string>(
-                            $"{featureFlagsSectionPrefix}:{featureFlag.Id}",
+                            $"{_featureFlagsSectionPrefix}:{featureFlag.Id}",
                             true.ToString()));
                 }
                 else
                 {
-                    //
                     // Conditionally on based on feature filters
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
                         string enabledForSectionPrefix =
-                            $"{featureFlagsSectionPrefix}:{featureFlag.Id}:{FeatureManagementConstants.FeatureFlagEnabledFor}:{i}";
+                            $"{_featureFlagsSectionPrefix}:{featureFlag.Id}:{FeatureManagementConstants.FeatureFlagEnabledFor}:{i}";
 
                         keyValues.Add(
                             new KeyValuePair<string, string>(
@@ -102,7 +83,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 keyValues.Add(
                     new KeyValuePair<string, string>(
-                        $"{featureFlagsSectionPrefix}:{featureFlag.Id}",
+                        $"{_featureFlagsSectionPrefix}:{featureFlag.Id}",
                         false.ToString()));
             }
 
