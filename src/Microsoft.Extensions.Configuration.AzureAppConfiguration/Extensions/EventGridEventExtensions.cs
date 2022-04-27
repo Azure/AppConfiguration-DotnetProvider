@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Messaging.EventGrid;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Text.Json;
 
@@ -12,8 +13,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     /// </summary>
     public static class EventGridEventExtensions
     {
-        private const string SyncTokenPropertyName = "syncToken";
-
         /// <summary>
         /// Tries to create the <see cref="PushNotification"/> object from the details in <see cref="EventGridEvent"/> object. Return value indicates whether the operation succeeded or failed.
         /// </summary>
@@ -31,27 +30,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
             {
-                JsonElement eventGridEventData;
+                NotificationDataV2 notificationData;
 
                 try
                 {
-                    eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
+                    notificationData = JsonSerializer.Deserialize<NotificationDataV2>(eventGridEvent.Data.ToString());
                 }
                 catch (JsonException)
                 {
                     return false;
                 }
 
-                if (eventGridEventData.ValueKind == JsonValueKind.Object &&
-                    eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
-                    syncTokenJson.ValueKind == JsonValueKind.String)
+                if (notificationData != null &&
+                   !string.IsNullOrWhiteSpace(notificationData.Key) &&
+                   !string.IsNullOrWhiteSpace(notificationData.Etag) &&
+                   !string.IsNullOrWhiteSpace(notificationData.SyncToken))
                 {
                     pushNotification = new PushNotification()
                     {
-                        SyncToken = syncTokenJson.GetString(),
+                        SyncToken = notificationData.SyncToken,
                         EventType = eventGridEvent.EventType,
-                        ResourceUri = resourceUri
+                        ResourceUri = resourceUri,
+                        Key = notificationData.Key,
+                        Label = notificationData.Label,
+                        ETag = notificationData.Etag
                     };
+
                     return true;
                 }
             }

@@ -12,7 +12,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -25,10 +24,10 @@ namespace Tests.AzureAppConfiguration
             string appconfigFilePath = "./MockTestData/appconfig-settings.json";
             string jsonFilePath = "./MockTestData/jsonconfig-settings.json";
             List<ConfigurationSetting> _kvCollection = TestHelpers.LoadJsonSettingsFromFile(appconfigFilePath);
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientProvider = GetMockConfigurationClientProvider(_kvCollection);
 
             var appconfigSettings = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientProvider = mockClientProvider)
                 .Build()
                 .AsEnumerable();
 
@@ -38,6 +37,7 @@ namespace Tests.AzureAppConfiguration
                 .AsEnumerable();
 
             Assert.Equal(jsonSettings.Count(), appconfigSettings.Count());
+
             foreach (KeyValuePair<string, string> jsonSetting in jsonSettings)
             {
                 KeyValuePair<string, string> appconfigSetting = appconfigSettings.SingleOrDefault(x => x.Key == jsonSetting.Key);
@@ -67,10 +67,10 @@ namespace Tests.AzureAppConfiguration
                     value: null,
                     contentType: "APPLICATION/JSON")
             };
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientProvider = GetMockConfigurationClientProvider(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientProvider = mockClientProvider)
                 .Build();
 
             Assert.Equal("True", config["TestKey1"]);
@@ -114,10 +114,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/")
                 };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientProvider = GetMockConfigurationClientProvider(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientProvider = mockClientProvider)
                 .Build();
 
             Assert.Equal("true", config["TestKey1"]);
@@ -180,10 +180,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/json")
                 };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientProvider = GetMockConfigurationClientProvider(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientProvider = mockClientProvider)
                 .Build();
 
             Assert.Null(config["MyNumberList"]);
@@ -215,10 +215,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
             };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientProvider = GetMockConfigurationClientProvider(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientProvider = mockClientProvider)
                 .Build();
 
             Assert.Equal(compactJsonValue, config[FeatureManagementConstants.FeatureFlagMarker + "Beta"]);
@@ -236,10 +236,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/json")
             };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientProvider = GetMockConfigurationClientProvider(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientProvider = mockClientProvider)
                 .Build();
 
             Assert.Equal("Beta", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:id"]);
@@ -292,10 +292,10 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
-        private Mock<FailOverClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
+        private IConfigurationClientProvider GetMockConfigurationClientProvider(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
@@ -303,11 +303,11 @@ namespace Tests.AzureAppConfiguration
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(_kvCollection.AsEnumerable()));
+                .Returns(new MockAsyncPageable(_kvCollection));
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            return mockClient;
+            return TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
         }
     }
 }

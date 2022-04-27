@@ -25,5 +25,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public string EventType { get; set; }
 
+        /// <summary>
+        /// The changed key.
+        /// </summary>
+        public string Key { get; set; }
+
+        /// <summary>
+        /// The label of the changed key
+        /// </summary>
+        public string Label { get; set; }
+
+        /// <summary>
+        /// The eTag of the changed key-value.
+        /// </summary>
+        public string ETag { get; set; }
 	}
 }

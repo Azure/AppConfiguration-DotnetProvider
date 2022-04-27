@@ -14,7 +14,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -77,7 +76,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient(isStrict: false);
+            var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                .Throws(new RequestFailedException("Request failed."));
 
@@ -85,10 +84,12 @@ namespace Tests.AzureAppConfiguration
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
 
+            var mockClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = mockClientProvider;
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -114,7 +115,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateUnauthorizedExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient(isStrict: false);
+            var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                .Throws(new RequestFailedException(401, "Unauthorized"));
 
@@ -125,7 +126,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -155,7 +156,7 @@ namespace Tests.AzureAppConfiguration
 
             // Mock FailOverClient
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<FailOverClient>() { CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -171,13 +172,14 @@ namespace Tests.AzureAppConfiguration
 
             // No KVR during startup; return KVR during refresh operation to see error because ConfigureKeyVault is missing
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting))))
-                .Returns(Task.FromResult(new List<ConfigurationSetting> { _kvr }.AsEnumerable()));
+                .Returns(new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvr }));
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
+            var mockClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
             // Mock ILogger and ILoggerFactory
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -186,7 +188,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = mockClientProvider;
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("SentinelKey", refreshAll: true)
@@ -211,7 +213,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateOperationCanceledExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient(isStrict: false);
+            var mockClient = GetMockConfigurationClient();
 
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -220,7 +222,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -249,7 +251,7 @@ namespace Tests.AzureAppConfiguration
         public void OverwriteLoggerFactory()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient(isStrict: false);
+            var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                .Throws(new RequestFailedException(403, "Forbidden"));
 
@@ -264,7 +266,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -306,10 +308,10 @@ namespace Tests.AzureAppConfiguration
             return true;
         }
 
-        private Mock<FailOverClient> GetMockConfigurationClient(bool isStrict = true)
+        private Mock<ConfigurationClient> GetMockConfigurationClient()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = isStrict ? new Mock<FailOverClient>(MockBehavior.Strict) : new Mock<FailOverClient>() { CallBase  = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -338,7 +340,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return Task.FromResult(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)));
+                    return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
                 });
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))

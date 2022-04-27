@@ -84,9 +84,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
+        /// An optional configuration client provider that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal FailOverClient Client { get; set; }
+        internal IConfigurationClientProvider ClientProvider { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -345,21 +345,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the parallel failover interval.
-        /// </summary>
-        /// <param name="parallelFailOverInterval">Time to wait for a response from one replica before initiating a request to the next available replica.</param>
-        public AzureAppConfigurationOptions ConfigureParallelFailOverInterval(TimeSpan parallelFailOverInterval)
-        {
-            if (parallelFailOverInterval < FailOverConstants.MinParallelFailOverInterval)
-            {
-                throw new ArgumentOutOfRangeException(nameof(parallelFailOverInterval), $"{nameof(parallelFailOverInterval)} can not be less than 1 second.");
-            }
-            this.ParallelFailOverInterval = parallelFailOverInterval;
-
-            return this;
-        }
-
-        /// <summary>
         /// Configure refresh for key-values in the configuration provider.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration refresh options.</param>
@@ -422,6 +407,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
-        }        
+        }
     }
 }

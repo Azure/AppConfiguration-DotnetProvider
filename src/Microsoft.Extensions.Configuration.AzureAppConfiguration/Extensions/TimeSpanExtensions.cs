@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
         /// <summary>
         /// This method calculates the backoff interval for the configuration store after a failure
-        /// which lies between <paramref name="minInterval"/> and <paramref name="maxInterval"/>/>.
+        /// which lies between <paramref name="minInterval"/> and <paramref name="maxInterval"/>.
         /// </summary>
         /// <param name="minInterval">The minimum interval to retry after.</param>
         /// <param name="maxInterval">The maximum interval to retry after.</param>

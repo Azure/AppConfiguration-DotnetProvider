@@ -4,7 +4,6 @@
 using Azure;
 using Azure.Core;
 using Azure.Data.AppConfiguration;
-using Azure.Identity;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
@@ -22,15 +21,45 @@ namespace Tests.AzureAppConfiguration
         public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
         public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
 
-        static public FailOverClient CreateMockConfigurationClient(AzureAppConfigurationOptions options = null)
+        static public ConfigurationClient CreateMockConfigurationClient(Uri endpoint, AzureAppConfigurationOptions options = null)
         {
             var mockTokenCredential = new Mock<TokenCredential>();
             mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
                 .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
 
-            var localConfigurationClient = new FailOverClient(
-                                                new List<Uri>() { PrimaryConfigStoreEndpoint, SecondaryConfigStoreEndpoint }, mockTokenCredential.Object, options);
-            return localConfigurationClient;
+            return new ConfigurationClient(endpoint, mockTokenCredential.Object, options.ClientOptions);
+        }
+
+        static public IConfigurationClientProvider CreateMockedConfigurationClientProvider(AzureAppConfigurationOptions options)
+        {
+            ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
+            ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
+
+            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, c1);
+            ConfigurationClientWrapper w2 = new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, c2);
+
+            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1, w2 };
+
+            MockedConfigurationClientProvider provider = new MockedConfigurationClientProvider(clients);
+
+            return provider;
+        }
+
+        static public MockedConfigurationClientProvider CreateMockedConfigurationClientProvider(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
+        {
+            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, primaryClient);
+            ConfigurationClientWrapper w2 = secondaryClient != null ? new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient) : null;
+
+            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1 };
+
+            if (secondaryClient != null)
+            {
+                clients.Add(w2);
+            }
+
+            MockedConfigurationClientProvider provider = new MockedConfigurationClientProvider(clients);
+
+            return provider;
         }
 
         static public string CreateMockEndpointString(string endpoint = "https://xxxxx.azconfig.io")

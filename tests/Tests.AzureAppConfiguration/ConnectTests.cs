@@ -19,14 +19,14 @@ namespace Tests.AzureAppConfiguration
         public void ConnectTests_UsesClientInstanceIfSpecified()
         {
             // Arrange
-            var mockClient = new Mock<FailOverClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(Enumerable.Empty<ConfigurationSetting>()));
+                .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                 });
 
             // Act

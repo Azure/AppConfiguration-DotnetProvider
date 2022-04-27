@@ -20,7 +20,10 @@ namespace Tests.AzureAppConfiguration
 {
     public class PushRefreshTests
 	{
-		List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+        static readonly Uri PrimaryResourceUri = new Uri(TestHelpers.PrimaryConfigStoreEndpoint.ToString() + "/kv/searchQuery1");
+        static readonly Uri SecondaryResourceUri = new Uri(TestHelpers.SecondaryConfigStoreEndpoint.ToString() + "/kv/searchQuery2");
+
+        List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
 		{
 			ConfigurationModelFactory.ConfigurationSetting(
 				key: "TestKey1",
@@ -61,44 +64,68 @@ namespace Tests.AzureAppConfiguration
         List<PushNotification> _pushNotificationList = new List<PushNotification>
             {
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+                                    ResourceUri = PrimaryResourceUri,
 									EventType = "eventType.KeyValueModified",
-                                    SyncToken = "SyncToken1;sn=001"
+                                    SyncToken = "SyncToken1;sn=001",
+									Key = "TestKey1",
+									Label = "label",
+									ETag = "eTag1"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+                                    ResourceUri = PrimaryResourceUri,
 									EventType = "eventType.KeyValueModified",
-                                    SyncToken = "SyncToken2"
+                                    SyncToken = "SyncToken2",
+                                    Key = "TestKey2",
+                                    Label = "label",
+                                    ETag = "eTag2"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+                                    ResourceUri = PrimaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
-                                    SyncToken = "SyncToken1;sn=001"
+                                    SyncToken = "SyncToken1;sn=001",
+                                    Key = "TestKey3",
+                                    Label = "label",
+                                    ETag = "eTag3"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+                                    ResourceUri = PrimaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
-                                    SyncToken = "SyncToken2"
+                                    SyncToken = "SyncToken2",
+                                    Key = "TestKey1",
+                                    Label = "label",
+                                    ETag = "eTag4"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
+                                    ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueModified",
-                                    SyncToken = "SyncToken1"
+                                    SyncToken = "SyncToken1",
+                                    Key = "TestKey1",
+                                    Label = "label",
+                                    ETag = "eTag5"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
+                                    ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueModified",
-                                    SyncToken = "SyncToken2"
+                                    SyncToken = "SyncToken2",
+                                    Key = "TestKeyWithMultipleLabels",
+                                    Label = "label1",
+                                    ETag = "eTag6"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
+                                    ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
-                                    SyncToken = "SyncToken1"
+                                    SyncToken = "SyncToken1",
+                                    Key = "TestKeyWithMultipleLabels",
+                                    Label = "label2",
+                                    ETag = "eTag7"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
+                                    ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
-                                    SyncToken = "SyncToken2"
+                                    SyncToken = "SyncToken2",
+                                    Key = "TestKeyWithMultipleLabels",
+                                    Label = "label1",
+                                    ETag = "eTag8"
                                     }
             };
 
@@ -110,12 +137,12 @@ namespace Tests.AzureAppConfiguration
                                     SyncToken = "SyncToken1;sn=001"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store2.resource.io/kv/searchQuery2"),
+                                    ResourceUri = SecondaryResourceUri,
 									EventType = null,
                                     SyncToken = "SyncToken2"
                                     },
               new PushNotification  {
-                                    ResourceUri = new Uri("https://store1.resource.io/kv/searchQuery1"),
+                                    ResourceUri = PrimaryResourceUri,
 									EventType = "eventType.KeyValueDeleted",
                                     SyncToken = null
                                     },
@@ -199,7 +226,7 @@ namespace Tests.AzureAppConfiguration
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.Client = mockClient.Object;
+					options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -227,14 +254,15 @@ namespace Tests.AzureAppConfiguration
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
-			var mockClient = GetMockConfigurationClient(isStrict: false);
+			var mockClient = GetMockConfigurationClient();
 
 			IConfigurationRefresher refresher = null;
+			var clientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
 
-			var config = new ConfigurationBuilder()
+            var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.Client = mockClient.Object;
+					options.ClientProvider = clientProvider;
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -251,8 +279,12 @@ namespace Tests.AzureAppConfiguration
 				refresher.RefreshAsync().Wait();
 			}
 
-			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(_pushNotificationList.Count));
-			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<Uri>(), It.IsAny<string>()), Times.Exactly(_pushNotificationList.Count));
+			var validNotificationKVWatcherCount = 3;
+			var validEndpointCount = 4;
+
+			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(validNotificationKVWatcherCount));
+			Assert.Equal(_pushNotificationList.Count, clientProvider.UpdateSyncTokenCalled);
+			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(validEndpointCount));
 		}
 
 		[Fact]
@@ -260,14 +292,14 @@ namespace Tests.AzureAppConfiguration
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
-			var mockClient = GetMockConfigurationClient(isStrict: false);
+			var mockClient = GetMockConfigurationClient();
 
 			IConfigurationRefresher refresher = null;
 
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.Client = mockClient.Object;
+					options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);;
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -290,13 +322,13 @@ namespace Tests.AzureAppConfiguration
 
 		private bool IsPushNotificationValid(PushNotification pn)
         {
-			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null;
+			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null && pn.Key != null && pn.Label != null ;
         }
 
-		private Mock<FailOverClient> GetMockConfigurationClient(bool isStrict = true)
+		private Mock<ConfigurationClient> GetMockConfigurationClient()
 		{
 			var mockResponse = new Mock<Response>();
-			var mockClient = isStrict ? new Mock<FailOverClient>(MockBehavior.Strict) : new Mock<FailOverClient>() { CallBase = true };
+			var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
 			Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
 			{
@@ -315,7 +347,7 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
 				.Returns(() =>
 				{
-					return Task.FromResult(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)));
+					return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
 				});
 
 			mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -324,7 +356,7 @@ namespace Tests.AzureAppConfiguration
 			mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-			mockClient.Setup(c => c.UpdateSyncToken(It.IsAny<Uri>(), It.IsAny<string>()));
+			mockClient.Setup(c => c.UpdateSyncToken(It.IsAny<string>()));
 
 			return mockClient;
 		}
