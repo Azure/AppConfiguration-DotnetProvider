@@ -184,7 +184,7 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            List<ConfigurationSetting> featureFlags = new List<ConfigurationSetting> { _kv };
+            var featureFlags = new List<ConfigurationSetting> { _kv };
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
@@ -217,7 +217,7 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>() {  CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
@@ -404,7 +404,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UsesEtagForFeatureFlagRefresh()
         {
-            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
@@ -631,7 +631,7 @@ namespace Tests.AzureAppConfiguration
         public void DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -806,7 +806,7 @@ namespace Tests.AzureAppConfiguration
         public void SelectAndRefreshSingleFeatureFlag()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "Feature1";
             var label1 = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);

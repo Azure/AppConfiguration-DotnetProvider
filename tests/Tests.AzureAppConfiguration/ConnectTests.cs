@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,7 +22,7 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>

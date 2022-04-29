@@ -600,7 +600,7 @@ namespace Tests.AzureAppConfiguration
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>() {  CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
@@ -673,7 +673,7 @@ namespace Tests.AzureAppConfiguration
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {

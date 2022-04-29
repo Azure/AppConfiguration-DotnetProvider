@@ -259,7 +259,7 @@ namespace Tests.AzureAppConfiguration
 			IConfigurationRefresher refresher = null;
 			var clientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
 
-            var config = new ConfigurationBuilder()
+			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
 					options.ClientProvider = clientProvider;
@@ -319,11 +319,6 @@ namespace Tests.AzureAppConfiguration
 
 			Assert.Equal("newValue1", config["TestKey1"]);
 		}
-
-		private bool IsPushNotificationValid(PushNotification pn)
-        {
-			return pn != null && pn.SyncToken != null && pn.ResourceUri != null && pn.EventType != null && pn.Key != null && pn.Label != null ;
-        }
 
 		private Mock<ConfigurationClient> GetMockConfigurationClient()
 		{

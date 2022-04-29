@@ -154,7 +154,7 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
-            // Mock FailOverClient
+            // Mock ConfigurationClient
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
