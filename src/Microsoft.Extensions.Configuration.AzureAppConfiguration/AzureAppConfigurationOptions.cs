@@ -173,27 +173,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
 
-            // Read Feature Management schema version from environment variables
-            string featureManagementSchemaVersion = null;
-
-            try
-            {
-                featureManagementSchemaVersion = Environment.GetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable);
-            }
-            catch (SecurityException) { }
-            
-            if (!string.IsNullOrWhiteSpace(featureManagementSchemaVersion) 
-                && featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
-            {
-                FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementSchemaV2;
-            }
-            else
-            {
-                FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
-            }
-            
             if (!_adapters.Any(a => a is FeatureFlagKeyValueAdapter))
             {
+                // Read Feature Management schema version from environment variables
+                string featureManagementSchemaVersion = null;
+
+                try
+                {
+                    featureManagementSchemaVersion = Environment.GetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable);
+                }
+                catch (SecurityException) { }
+
+                if (featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1 ||
+                    featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
+                {
+                    FeatureManagementSchemaVersion = featureManagementSchemaVersion;
+                }
+                else
+                {
+                    FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
+                }
+
                 _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion));
 
                 if (FeatureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)

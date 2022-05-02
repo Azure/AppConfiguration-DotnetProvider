@@ -258,6 +258,44 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void UsesDefaultSchemaIfInvalidEnvironmentVariable()
+        {
+            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, "3");
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            var featureFlags = new List<ConfigurationSetting> { _ff1, _df1 };
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
+            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
+            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
+            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
+
+            // Dynamic feature will be treated as a regular key-value
+            Assert.NotNull(config[FeatureManagementConstants.FeatureFlagMarker + "ShoppingCart"]);
+            Assert.Contains("\"client_assigner\": \"Microsoft.Targeting\"", config[FeatureManagementConstants.FeatureFlagMarker + "ShoppingCart"]);
+            Assert.Null(config["FeatureManagement:DynamicFeatures:ShoppingCart:Assigner"]);
+        }
+
+        [Fact]
         public void WatchesDynamicFeatures()
         {
             // Set environment variable to choose v2 schema
@@ -413,26 +451,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["FeatureManagement:FeatureFlags:Beta"]);
             Assert.Null(config["FeatureManagement:FeatureFlags:MyFeature"]);
             Assert.Null(config["FeatureManagement:DynamicFeatures:DiscountBanner:Assigner"]);
-
-            // Delete the environment variable
-            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);
-        }
-
-
-        [Fact]
-        public void ThrowsIfUsingInvalidSchema()
-        {
-            // Set environment variable to an invalid schema version
-            Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, "3");
-
-            void action() => new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.UseFeatureFlags();
-                })
-                .Build();
-
-            Assert.Throws<ArgumentException>(action);
 
             // Delete the environment variable
             Environment.SetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable, null);

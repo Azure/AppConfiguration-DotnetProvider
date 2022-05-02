@@ -18,6 +18,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public FeatureFlagKeyValueAdapter(string schemaVersion)
         {
+            if (string.IsNullOrWhiteSpace(schemaVersion))
+            {
+                throw new ArgumentNullException(nameof(schemaVersion));
+            }
+
             _schemaVersion = schemaVersion;
 
             if (_schemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1)
