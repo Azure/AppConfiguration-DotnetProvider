@@ -67,65 +67,41 @@ namespace Tests.AzureAppConfiguration
                                     ResourceUri = PrimaryResourceUri,
 									EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken1;sn=001",
-									Key = "TestKey1",
-									Label = "label",
-									ETag = "eTag1"
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
 									EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken2",
-                                    Key = "TestKey2",
-                                    Label = "label",
-                                    ETag = "eTag2"
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken1;sn=001",
-                                    Key = "TestKey3",
-                                    Label = "label",
-                                    ETag = "eTag3"
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken2",
-                                    Key = "TestKey1",
-                                    Label = "label",
-                                    ETag = "eTag4"
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken1",
-                                    Key = "TestKey1",
-                                    Label = "label",
-                                    ETag = "eTag5"
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken2",
-                                    Key = "TestKeyWithMultipleLabels",
-                                    Label = "label1",
-                                    ETag = "eTag6"
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken1",
-                                    Key = "TestKeyWithMultipleLabels",
-                                    Label = "label2",
-                                    ETag = "eTag7"
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
                                     EventType = "eventType.KeyValueDeleted",
                                     SyncToken = "SyncToken2",
-                                    Key = "TestKeyWithMultipleLabels",
-                                    Label = "label1",
-                                    ETag = "eTag8"
                                     }
             };
 
@@ -279,7 +255,7 @@ namespace Tests.AzureAppConfiguration
 				refresher.RefreshAsync().Wait();
 			}
 
-			var validNotificationKVWatcherCount = 3;
+			var validNotificationKVWatcherCount = 8;
 			var validEndpointCount = 4;
 
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(validNotificationKVWatcherCount));

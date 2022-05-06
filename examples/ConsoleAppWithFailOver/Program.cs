@@ -1,19 +1,16 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
-{
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
 
+using Azure.Identity;
+using System.Text;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplicationWithFailOver
+{
     class Program
     {
-        static IConfiguration Configuration { get; set; }
-        static IConfigurationRefresher _refresher;
+        static IConfiguration? Configuration { get; set; }
+        private static IConfigurationRefresher? _refresher;
 
         static void Main(string[] args)
         {
@@ -38,10 +35,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
             IConfiguration configuration = builder.Build();
 
-            if (string.IsNullOrEmpty(configuration["connection_string"]))
+            IConfigurationSection endpointsSection = configuration.GetSection("AppConfig:Endpoints");
+            IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
+
+            if (endpoints == null || !endpoints.Any())
             {
-                Console.WriteLine("Connection string not found.");
-                Console.WriteLine("Please set the 'connection_string' environment variable to a valid Azure App Configuration connection string and re-run this example.");
+                Console.WriteLine("Endpoints not found.");
+                Console.WriteLine("Please set the array 'Appconfig:Endpoints' in appsettings.json with valid Azure App Configuration replica endpoints and re-run this example.");
                 return;
             }
 
@@ -49,14 +49,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(configuration["connection_string"])
-                       .Select("AppName")
-                       .Select("Settings:BackgroundColor")
-                       .ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 5)
+                options.Connect(endpoints, new DefaultAzureCredential())
                        .ConfigureRefresh(refresh =>
                        {
                            refresh.Register("AppName")
-                                  .Register("Language", refreshAll: true)
                                   .SetCacheExpiration(TimeSpan.FromSeconds(10));
                        });
 
@@ -70,21 +66,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
         private static async Task Run(CancellationToken token)
         {
             string display = string.Empty;
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
 
             while (!token.IsCancellationRequested)
             {
                 // Trigger an async refresh for registered configuration settings without wait
-                _ = _refresher.TryRefreshAsync();
+                _ = _refresher?.TryRefreshAsync(token);
 
-                sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
-                sb.AppendLine();
-
-                sb.AppendLine(string.Equals(Configuration["Language"], "spanish", StringComparison.OrdinalIgnoreCase) ? "Buenos Dias." : "Good morning");
+                sb.AppendLine($"The AppName is: {Configuration?["AppName"]}.");
                 sb.AppendLine();
 
                 sb.AppendLine("Press any key to exit...");
-                await Task.Delay(1000);
+                await Task.Delay(1000, token);
 
                 if (!sb.ToString().Equals(display))
                 {

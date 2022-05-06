@@ -12,6 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     /// </summary>
     public static class EventGridEventExtensions
     {
+        private const string SyncTokenPropertyName = "syncToken";
+
         /// <summary>
         /// Tries to create the <see cref="PushNotification"/> object from the details in <see cref="EventGridEvent"/> object. Return value indicates whether the operation succeeded or failed.
         /// </summary>
@@ -29,32 +31,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
             {
-                Notification notificationData;
+                JsonElement eventGridEventData;
 
                 try
                 {
-                    notificationData = JsonSerializer.Deserialize<Notification>(eventGridEvent.Data.ToString());
+                    eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
                 }
                 catch (JsonException)
                 {
                     return false;
                 }
 
-                if (notificationData != null &&
-                   !string.IsNullOrWhiteSpace(notificationData.Key) &&
-                   !string.IsNullOrWhiteSpace(notificationData.Etag) &&
-                   !string.IsNullOrWhiteSpace(notificationData.SyncToken))
+                if (eventGridEventData.ValueKind == JsonValueKind.Object &&
+                    eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
+                    syncTokenJson.ValueKind == JsonValueKind.String)
                 {
                     pushNotification = new PushNotification()
                     {
-                        SyncToken = notificationData.SyncToken,
+                        SyncToken = syncTokenJson.GetString(),
                         EventType = eventGridEvent.EventType,
-                        ResourceUri = resourceUri,
-                        Key = notificationData.Key,
-                        Label = notificationData.Label,
-                        ETag = notificationData.Etag
+                        ResourceUri = resourceUri
                     };
-
                     return true;
                 }
             }

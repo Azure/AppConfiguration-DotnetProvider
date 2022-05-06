@@ -22,7 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientProvider : IConfigurationClientProvider
     {
         private readonly IList<ConfigurationClientStatus> _clients;
-        private readonly TokenCredential _tokenCredential;
 
         public ConfigurationClientProvider(string connectionString, ConfigurationClientOptions clientOptions)
         {
@@ -42,8 +41,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new ArgumentNullException(nameof(endpoints));
             }
-
-            _tokenCredential = credential ?? throw new ArgumentNullException(nameof(credential));
 
             _clients = endpoints.Select(endpoint => new ConfigurationClientStatus(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
         }
@@ -117,17 +114,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (clientWrapper != null)
             {
                 clientWrapper.Client.UpdateSyncToken(syncToken);
-                return true;
-            }
-
-            // If the endpoint is not present in the list, but we have the token credential, then try to create a new client and put it in the list first.
-            if (_tokenCredential != null)
-            {
-                ConfigurationClient newClient = new ConfigurationClient(endpoint, _tokenCredential);
-                newClient.UpdateSyncToken(syncToken);
-                var newClientWrapper = new ConfigurationClientStatus(endpoint, newClient);
-                this._clients.Insert(0, newClientWrapper);
-
                 return true;
             }
 

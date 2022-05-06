@@ -289,29 +289,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
-            if (endpoints == null || endpoints.Count() == 0)
+            if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
-
-            if (endpoints.Count() > 1)
-            {
-                string firstEndpoint = endpoints.First().Host;
-
-                // If the first endpoint is a replica or the store name has a '-', the common prefix would be string before first '-'
-                // else if there is no '-' in it, then it is not a replica and the common prefix would be a substring before first '.'
-                string commonPrefix = firstEndpoint.Substring(0, firstEndpoint.IndexOf('-') > 0 ? firstEndpoint.IndexOf('-') : firstEndpoint.IndexOf('.'));
-                string commonDomain = firstEndpoint.Substring(firstEndpoint.IndexOf('.'));
-
-                if (endpoints.Count() != endpoints.Distinct().Count() || // All endpoints must be unique.
-                    !endpoints.All(e => e.Host.Substring(e.Host.IndexOf('.')).Equals(commonDomain, StringComparison.InvariantCultureIgnoreCase)) || // All endpoints must have the same domain.
-                    !endpoints.All(e => e.Host.StartsWith(commonPrefix, StringComparison.InvariantCultureIgnoreCase))) // All endpoints must start with the same common prefix.
-                {
-                    throw new ArgumentException("All endpoints must be unique and must belong to the same configuration store.");
-                }
-            }
 
             Endpoints = endpoints;
             ConnectionString = null;

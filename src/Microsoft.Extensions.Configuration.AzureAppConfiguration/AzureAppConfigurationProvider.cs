@@ -266,31 +266,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
-            if (string.IsNullOrWhiteSpace(pushNotification.Key))
-            {
-                throw new ArgumentException(
-                    "Key is required.",
-                    $"{nameof(pushNotification)}.{nameof(pushNotification.Key)}");
-            }
-
-            if (string.IsNullOrWhiteSpace(pushNotification.ETag))
-            {
-                throw new ArgumentException(
-                    "ETag is required.",
-                    $"{nameof(pushNotification)}.{nameof(pushNotification.ETag)}");
-            }
-
-            KeyValueWatcher pushNotificationKeyValue = new KeyValueWatcher
-            {
-                Key = pushNotification.Key,
-                Label = pushNotification.Label.NormalizeNull()
-            };
-
-            if ((_configClientProvider.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken)) &&
-                (_options.ChangeWatchers.Contains(pushNotificationKeyValue) ||
-                 _options.MultiKeyWatchers.Contains(pushNotificationKeyValue)))
+            if (_configClientProvider.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
             {
                 SetDirty(maxDelay);
+            }
+            else
+            {
+                _logger.LogWarning($"Ignoring the push notification received for endpoint '{pushNotification.ResourceUri}' that is not present in the applications' configured list of endpoints.");
             }
         }
 
@@ -800,14 +782,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         throw;
                     }
-                    else
-                    {
-                        _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: false);
 
-                        if (!clientEnumerator.MoveNext())
-                        {
-                            throw;
-                        }
+                    _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: false);
+
+                    if (!clientEnumerator.MoveNext())
+                    {
+                        throw;
                     }
                 }
                 catch (RequestFailedException e)
@@ -816,14 +796,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         throw;
                     }
-                    else
-                    {
-                        _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: false);
 
-                        if (!clientEnumerator.MoveNext())
-                        {
-                            throw;
-                        }
+                    _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: false);
+
+                    if (!clientEnumerator.MoveNext())
+                    {
+                        throw;
                     }
                 }
             }
