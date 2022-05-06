@@ -188,7 +188,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.UseFeatureFlags();
                 })
                 .Build();
@@ -235,7 +235,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.UseFeatureFlags();
                 })
                 .Build();
@@ -273,7 +273,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.UseFeatureFlags();
                 })
                 .Build();
@@ -314,7 +314,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
                     options.UseFeatureFlags(o =>
                     {
                         o.CacheExpirationInterval = cacheExpirationTimeSpan;
@@ -428,7 +428,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = testClient;
+                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(featureFlagPrefix + "*");
