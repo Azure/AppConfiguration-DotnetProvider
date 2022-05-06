@@ -35,10 +35,10 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
             ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
 
-            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, c1);
-            ConfigurationClientWrapper w2 = new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, c2);
+            ConfigurationClientStatus w1 = new ConfigurationClientStatus(PrimaryConfigStoreEndpoint, c1);
+            ConfigurationClientStatus w2 = new ConfigurationClientStatus(SecondaryConfigStoreEndpoint, c2);
 
-            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1, w2 };
+            IList<ConfigurationClientStatus> clients = new List<ConfigurationClientStatus>() { w1, w2 };
 
             MockedConfigurationClientProvider provider = new MockedConfigurationClientProvider(clients);
 
@@ -47,10 +47,10 @@ namespace Tests.AzureAppConfiguration
 
         static public MockedConfigurationClientProvider CreateMockedConfigurationClientProvider(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
         {
-            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, primaryClient);
-            ConfigurationClientWrapper w2 = secondaryClient != null ? new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient) : null;
+            ConfigurationClientStatus w1 = new ConfigurationClientStatus(PrimaryConfigStoreEndpoint, primaryClient);
+            ConfigurationClientStatus w2 = secondaryClient != null ? new ConfigurationClientStatus(SecondaryConfigStoreEndpoint, secondaryClient) : null;
 
-            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1 };
+            IList<ConfigurationClientStatus> clients = new List<ConfigurationClientStatus>() { w1 };
 
             if (secondaryClient != null)
             {

@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientProvider
     {
-        IEnumerator<ConfigurationClient> GetClientEnumerator();
+        IEnumerable<ConfigurationClient> GetClients();
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 

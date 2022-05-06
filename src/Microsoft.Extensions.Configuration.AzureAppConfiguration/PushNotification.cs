@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public string Key { get; set; }
 
         /// <summary>
-        /// The label of the changed key
+        /// The label of the changed key-value.
         /// </summary>
         public string Label { get; set; }
 

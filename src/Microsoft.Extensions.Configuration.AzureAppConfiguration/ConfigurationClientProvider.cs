@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </remarks>
     internal class ConfigurationClientProvider : IConfigurationClientProvider
     {
-        private readonly IList<ConfigurationClientWrapper> _clients;
+        private readonly IList<ConfigurationClientStatus> _clients;
         private readonly TokenCredential _tokenCredential;
 
         public ConfigurationClientProvider(string connectionString, ConfigurationClientOptions clientOptions)
@@ -32,35 +32,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
-            _clients = new List<ConfigurationClientWrapper> { new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions)) };
+            var configurationClientStatus = new ConfigurationClientStatus(endpoint, new ConfigurationClient(connectionString, clientOptions));
+            _clients = new List<ConfigurationClientStatus> { configurationClientStatus };
         }
 
         public ConfigurationClientProvider(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
-            if (endpoints == null || endpoints.Count() < 1)
+            if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            _tokenCredential = credential ?? throw new NullReferenceException(nameof(credential));
+            _tokenCredential = credential ?? throw new ArgumentNullException(nameof(credential));
 
-            _clients = endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
+            _clients = endpoints.Select(endpoint => new ConfigurationClientStatus(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
         }
 
         /// <summary>
         /// Internal constructor; Only used for unit testing.
         /// </summary>
         /// <param name="clients"></param>
-        internal ConfigurationClientProvider(IList<ConfigurationClientWrapper> clients)
+        internal ConfigurationClientProvider(IList<ConfigurationClientStatus> clients)
         {
             _clients = clients;
         }
 
-        public IEnumerator<ConfigurationClient> GetClientEnumerator()
+        public IEnumerable<ConfigurationClient> GetClients()
         {
             IList<ConfigurationClient> clients = new List<ConfigurationClient>();
 
-            foreach(ConfigurationClientWrapper configurationClient in _clients)
+            foreach(ConfigurationClientStatus configurationClient in _clients)
             {
                 if (configurationClient.BackoffEndTime <= DateTimeOffset.UtcNow)
                 {
@@ -74,12 +75,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clients = _clients.Select(c => c.Client).ToList();
             }
 
-            return clients.GetEnumerator();
+            return clients;
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
         {
-            ConfigurationClientWrapper clientWrapper = _clients.First(c => c.Client.Equals(client));
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            ConfigurationClientStatus clientWrapper = _clients.First(c => c.Client.Equals(client));
 
             if (successful)
             {
@@ -96,7 +102,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public bool UpdateSyncToken(Uri endpoint, string syncToken)
         {
-            ConfigurationClientWrapper clientWrapper = this._clients.SingleOrDefault(c => c.Endpoint.Host.ToLowerInvariant().Equals(endpoint.Host.ToLowerInvariant()));
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if (string.IsNullOrWhiteSpace(syncToken))
+            {
+                throw new ArgumentNullException(nameof(syncToken));
+            }
+
+            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => string.Equals(c.Endpoint.Host, endpoint.Host, StringComparison.OrdinalIgnoreCase));
 
             if (clientWrapper != null)
             {
@@ -109,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 ConfigurationClient newClient = new ConfigurationClient(endpoint, _tokenCredential);
                 newClient.UpdateSyncToken(syncToken);
-                var newClientWrapper = new ConfigurationClientWrapper(endpoint, newClient);
+                var newClientWrapper = new ConfigurationClientStatus(endpoint, newClient);
                 this._clients.Insert(0, newClientWrapper);
 
                 return true;

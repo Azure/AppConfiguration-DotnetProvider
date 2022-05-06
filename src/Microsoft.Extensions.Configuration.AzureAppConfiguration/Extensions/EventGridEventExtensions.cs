@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Messaging.EventGrid;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Text.Json;
 
@@ -30,11 +29,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
             {
-                NotificationDataV2 notificationData;
+                Notification notificationData;
 
                 try
                 {
-                    notificationData = JsonSerializer.Deserialize<NotificationDataV2>(eventGridEvent.Data.ToString());
+                    notificationData = JsonSerializer.Deserialize<Notification>(eventGridEvent.Data.ToString());
                 }
                 catch (JsonException)
                 {

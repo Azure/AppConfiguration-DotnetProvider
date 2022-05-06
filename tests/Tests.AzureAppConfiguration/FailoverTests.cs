@@ -46,17 +46,14 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ConfigurationClientStatus cw1 = new ConfigurationClientStatus(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
             var configClientProvider = new ConfigurationClientProvider(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            int configClientCount = 0;
-            var clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -74,10 +71,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // The client enumerator should return just 1 client since one client is in the backoff state.
-            configClientCount = 0;
-            clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(1, configClientCount);
+            Assert.Single(configClientProvider.GetClients());
         }
 
         [Fact]
@@ -105,17 +99,14 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ConfigurationClientStatus cw1 = new ConfigurationClientStatus(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
             var configClientProvider = new ConfigurationClientProvider(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            int configClientCount = 0;
-            var clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -135,10 +126,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<RequestFailedException>(configBuilder.Build);
 
             // The client enumerator should return 2 clients since all clients are in the back-off state.
-            configClientCount = 0;
-            clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
         }
 
         [Fact]
@@ -166,17 +154,14 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ConfigurationClientStatus cw1 = new ConfigurationClientStatus(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
             var configClientProvider = new ConfigurationClientProvider(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            int configClientCount = 0;
-            var clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -196,10 +181,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<RequestFailedException>(configBuilder.Build);
 
             // The client enumerator should return 2 clients for the second time since the first exception was not failoverable.
-            configClientCount = 0;
-            clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
         }
 
         [Fact]
@@ -234,17 +216,14 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ConfigurationClientStatus cw1 = new ConfigurationClientStatus(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
             var configClientProvider = new ConfigurationClientProvider(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            int configClientCount = 0;
-            var clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -261,10 +240,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // The client enumerator should return just 1 client for the second time.
-            configClientCount = 0;
-            clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(1, configClientCount);
+            Assert.Single(configClientProvider.GetClients());
 
             // Sleep for backoff-time to pass.
             Thread.Sleep(TimeSpan.FromSeconds(31));
@@ -272,10 +248,7 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // The client enumerator should return 2 clients for the third time.
-            configClientCount = 0;
-            clientEnumerator = configClientProvider.GetClientEnumerator();
-            while (clientEnumerator.MoveNext()) { configClientCount++; }
-            Assert.Equal(2, configClientCount);
+            Assert.Equal(2, configClientProvider.GetClients().Count());
         }
     }
 }

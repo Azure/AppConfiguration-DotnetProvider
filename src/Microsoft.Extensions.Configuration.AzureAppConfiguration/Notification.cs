@@ -3,9 +3,9 @@
 //
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class NotificationDataV2
+    internal class Notification
     {
         [JsonPropertyName("key")]
         public string Key { get; set; }

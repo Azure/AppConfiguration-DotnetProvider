@@ -4,7 +4,6 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -43,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The list of endpoints of an Azure App Configuration store and its replicas.
+        /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
         internal IEnumerable<Uri> Endpoints { get; private set; }

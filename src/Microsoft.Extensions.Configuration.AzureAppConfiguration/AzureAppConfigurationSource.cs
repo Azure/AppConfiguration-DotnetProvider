@@ -49,11 +49,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 provider = new AzureAppConfigurationProvider(clientProvider, options, _optional);
             }
-            catch (Exception ex) when (ex is InvalidOperationException || ex is FormatException)
+            catch (InvalidOperationException ex)
             {
                 if (!_optional)
                 {
                     throw new ArgumentException(ex.Message, ex);
+                }
+            }
+            catch (FormatException fe)
+            {
+                if (!_optional)
+                {
+                    throw new ArgumentException(fe.Message, fe);
                 }
             }
 

@@ -12,6 +12,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,9 +32,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private RequestTracingOptions _requestTracingOptions;
 
         private readonly TimeSpan MinCacheExpirationInterval;
-
-        // This constant is necessary because HttpStatusCode.TooManyRequests is only available in netstandard2.1 and higher.
-        private const int HttpStatusCodeRequestThrottled = 429;
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
         private DateTimeOffset InitializationCacheExpires = default;
@@ -169,26 +168,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    async Task funcToExecute(ConfigurationClient client) {
-
-                        // Check if initial configuration load had failed
-                        if (_applicationSettings == null)
-                        {
-                            if (InitializationCacheExpires < DateTimeOffset.UtcNow)
-                            {
-                                InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
-                                await LoadAll(client, ignoreFailures: false, cancellationToken).ConfigureAwait(false);
-                            }
-
-                            return;
-                        }
-
-                        await RefreshIndividualKeyValues(client, cancellationToken).ConfigureAwait(false);
-                        await RefreshKeyValueCollections(client, cancellationToken).ConfigureAwait(false);
-                        await RefreshKeyValueAdapters(cancellationToken).ConfigureAwait(false);
-                    };
-
-                    await ExecuteWithFailOverPolicyAsync(funcToExecute, cancellationToken).ConfigureAwait(false);
+                    await ExecuteWithFailOverPolicyAsync((client) => RefreshAsync(client, cancellationToken), cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -312,6 +292,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 SetDirty(maxDelay);
             }
+        }
+
+        /// <remarks>
+        /// This method doesn't guarantee there is only one network operation in progress at a time, this needs to be ensured by the caller.
+        /// </remarks>
+        private async Task RefreshAsync(ConfigurationClient client, CancellationToken cancellationToken)
+        {
+            // Check if initial configuration load had failed
+            if (_applicationSettings == null)
+            {
+                if (InitializationCacheExpires < DateTimeOffset.UtcNow)
+                {
+                    InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
+                    await LoadAll(client, ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                }
+
+                return;
+            }
+
+            await RefreshIndividualKeyValues(client, cancellationToken).ConfigureAwait(false);
+            await RefreshKeyValueCollections(client, cancellationToken).ConfigureAwait(false);
+            await RefreshKeyValueAdapters(cancellationToken).ConfigureAwait(false);
         }
 
         private async Task LoadAll(ConfigurationClient client, bool ignoreFailures, CancellationToken cancellationToken)
@@ -775,16 +777,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task ExecuteWithFailOverPolicyAsync(Func<ConfigurationClient, Task> funcToExecute, CancellationToken cancellationToken = default)
         {
-            IEnumerator<ConfigurationClient> clientEnumerator = _configClientProvider.GetClientEnumerator();
+            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientProvider.GetClients().GetEnumerator();
 
             // Guaranteed to return at least 1 element
             Debug.Assert(clientEnumerator.MoveNext());
 
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
                     await funcToExecute(clientEnumerator.Current);
 
                     _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: true);
@@ -828,7 +831,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool ShouldFailoverForException(Exception ex)
         {
-            int statusCode = 0;
+            int statusCode = HttpStatusCodes.NoResponse;
 
             if (ex is AggregateException aggregateException)
             {
@@ -842,9 +845,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else if (ex is RequestFailedException rfe)
             {
                 statusCode = rfe.Status;
+
+                // The InnerException could be SocketException or WebException when endpoint is invalid
+                if ((statusCode == HttpStatusCodes.NoResponse && ex.InnerException is HttpRequestException hre && hre.InnerException != null) &&
+                    (hre.InnerException is WebException we && we.Status == WebExceptionStatus.NameResolutionFailure ||
+                    (hre.InnerException is SocketException se && se.SocketErrorCode == SocketError.HostNotFound)))
+                {
+                    return true;
+                }
             }
 
-            return statusCode == HttpStatusCodeRequestThrottled || statusCode == (int)HttpStatusCode.RequestTimeout || statusCode >= (int)HttpStatusCode.InternalServerError;
+            return statusCode == HttpStatusCodes.TooManyRequests || statusCode == (int)HttpStatusCode.RequestTimeout || statusCode >= (int)HttpStatusCode.InternalServerError;
         }
     }
 }
