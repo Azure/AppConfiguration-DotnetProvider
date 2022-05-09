@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -158,7 +157,7 @@ namespace Tests.AzureAppConfiguration
             var response = new MockResponse(200);
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
-            var mockTransport = new MockTransport(response, new MockResponse(200));
+            var mockTransport = new MockTransport(response);
 
             var options = new AzureAppConfigurationOptions();
             options.ClientOptions.Transport = mockTransport;

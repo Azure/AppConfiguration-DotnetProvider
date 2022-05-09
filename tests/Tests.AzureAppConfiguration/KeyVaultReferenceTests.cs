@@ -12,7 +12,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;

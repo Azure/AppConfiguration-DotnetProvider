@@ -34,7 +34,7 @@ namespace Tests.AzureAppConfiguration
         public bool UpdateSyncToken(Uri endpoint, string syncToken)
         {
             this.UpdateSyncTokenCalled++;
-            var client = _clients.SingleOrDefault(c => c.Endpoint.Host.ToLowerInvariant().Equals(endpoint.Host.ToLowerInvariant()));
+            var client = _clients.SingleOrDefault(c => string.Equals(c.Endpoint.Host, endpoint.Host, StringComparison.OrdinalIgnoreCase));
             client?.Client?.UpdateSyncToken(syncToken);
             return true;
         }

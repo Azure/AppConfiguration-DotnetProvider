@@ -668,7 +668,7 @@ namespace Tests.AzureAppConfiguration
         {
             IConfigurationRefresher refresher = null;
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
@@ -715,7 +715,7 @@ namespace Tests.AzureAppConfiguration
         public async Task RefreshTests_UpdatesAllSettingsIfInitialLoadFails()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Throws(new RequestFailedException("Request failed"))
@@ -810,7 +810,7 @@ namespace Tests.AzureAppConfiguration
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>() { CallBase = true };
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {

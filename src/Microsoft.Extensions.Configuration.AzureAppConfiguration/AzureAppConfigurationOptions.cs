@@ -294,6 +294,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
+            if (endpoints.Distinct().Count() != endpoints.Count())
+            {
+                throw new ArgumentException($"All endpoints in '{nameof(endpoints)}' must be unique.");
+            }
+
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
 
             Endpoints = endpoints;

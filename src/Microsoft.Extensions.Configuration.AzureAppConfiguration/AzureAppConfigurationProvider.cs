@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                Task funcToExecute(ConfigurationClient client) => LoadAll(client, _optional, CancellationToken.None);
+                Task funcToExecute(ConfigurationClient client, Func<bool> updateCacheExpirationOnFailure) => LoadAll(client, _optional, updateCacheExpirationOnFailure, CancellationToken.None);
                 ExecuteWithFailOverPolicyAsync(funcToExecute, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
@@ -168,7 +168,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    await ExecuteWithFailOverPolicyAsync((client) => RefreshAsync(client, cancellationToken), cancellationToken).ConfigureAwait(false);
+                    await ExecuteWithFailOverPolicyAsync((client, updateCacheExpirationOnFailure) => RefreshAsync(client, updateCacheExpirationOnFailure, cancellationToken), cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -279,7 +279,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <remarks>
         /// This method doesn't guarantee there is only one network operation in progress at a time, this needs to be ensured by the caller.
         /// </remarks>
-        private async Task RefreshAsync(ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task RefreshAsync(ConfigurationClient client, Func<bool> updateCacheExpirationOnFailure, CancellationToken cancellationToken)
         {
             // Check if initial configuration load had failed
             if (_applicationSettings == null)
@@ -287,18 +287,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (InitializationCacheExpires < DateTimeOffset.UtcNow)
                 {
                     InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
-                    await LoadAll(client, ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                    await LoadAll(client, ignoreFailures: false, updateCacheExpirationOnFailure, cancellationToken).ConfigureAwait(false);
                 }
 
                 return;
             }
 
-            await RefreshIndividualKeyValues(client, cancellationToken).ConfigureAwait(false);
+            await RefreshIndividualKeyValues(client, updateCacheExpirationOnFailure, cancellationToken).ConfigureAwait(false);
             await RefreshKeyValueCollections(client, cancellationToken).ConfigureAwait(false);
             await RefreshKeyValueAdapters(cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task LoadAll(ConfigurationClient client, bool ignoreFailures, CancellationToken cancellationToken)
+        private async Task LoadAll(ConfigurationClient client, bool ignoreFailures, Func<bool> updateCacheExpirationOnFailure, CancellationToken cancellationToken)
         {
             IDictionary<string, ConfigurationSetting> data = null;
             bool success = false;
@@ -368,10 +368,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             { }
             finally
             {
-                // Update the cache expiration time for all refresh registered settings and feature flags
-                foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
+                if (success || updateCacheExpirationOnFailure())
                 {
-                    UpdateCacheExpirationTime(changeWatcher, success);
+                    // Update the cache expiration time for all refresh registered settings and feature flags
+                    foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
+                    {
+                        UpdateCacheExpirationTime(changeWatcher, success);
+                    }
                 }
             }
 
@@ -425,7 +428,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshIndividualKeyValues(ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task RefreshIndividualKeyValues(ConfigurationClient client, Func<bool> updateCacheExpirationOnFailure, CancellationToken cancellationToken)
         {
             bool shouldRefreshAll = false;
 
@@ -528,7 +531,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
             if (shouldRefreshAll)
             {
-                await LoadAll(client, ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                await LoadAll(client, ignoreFailures: false, updateCacheExpirationOnFailure, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -757,9 +760,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 
-        private async Task ExecuteWithFailOverPolicyAsync(Func<ConfigurationClient, Task> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task ExecuteWithFailOverPolicyAsync(Func<ConfigurationClient, Func<bool>, Task> funcToExecute, CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientProvider.GetClients().GetEnumerator();
+            var clients = _configClientProvider.GetClients();
+            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             // Guaranteed to return at least 1 element
             Debug.Assert(clientEnumerator.MoveNext());
@@ -770,7 +774,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    await funcToExecute(clientEnumerator.Current);
+                    await funcToExecute(clientEnumerator.Current, () => clientEnumerator.Current.Equals(clients.Last())).ConfigureAwait(false);
 
                     _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: true);
 
@@ -813,9 +817,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (ex is AggregateException aggregateException)
             {
-                IReadOnlyCollection<Exception> innerExceptions = aggregateException.Flatten().InnerExceptions;
+                IReadOnlyCollection<Exception> innerExceptions = aggregateException.InnerExceptions;
 
-                if (innerExceptions.Count > 0 && innerExceptions.All(ex => ex is RequestFailedException))
+                if (innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
                 {
                     statusCode = (innerExceptions.Last() as RequestFailedException).Status;
                 }
