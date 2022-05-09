@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         /// <summary>
-        /// This method calculates the backoff interval for the configuration store after a failure
+        /// This method calculates the randomized exponential backoff interval for the configuration store after a failure
         /// which lies between <paramref name="minInterval"/> and <paramref name="maxInterval"/>.
         /// </summary>
         /// <param name="minInterval">The minimum interval to retry after.</param>
@@ -85,7 +85,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 calculatedMilliseconds = maxInterval.TotalMilliseconds;
             }
 
-            return TimeSpan.FromMilliseconds(calculatedMilliseconds);
+            return TimeSpan.FromMilliseconds(minInterval.TotalMilliseconds + new Random().NextDouble() * (calculatedMilliseconds - minInterval.TotalMilliseconds));
         }
     }
 }
