@@ -6,28 +6,18 @@ using Azure.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplicationWithFailOver
 {
     class Program
     {
-        static IConfiguration? Configuration { get; set; }
-        private static IConfigurationRefresher? _refresher;
+        static IConfiguration Configuration { get; set; }
 
         static void Main(string[] args)
         {
             Configure();
 
-            var cts = new CancellationTokenSource();
-
-            _ = Run(cts.Token);
-
-            // Finish on key press
-            Console.ReadKey();
-            cts.Cancel();
+            Console.WriteLine($"The AppName is: {Configuration?["AppName"]}.");
         }
 
         private static void Configure()
@@ -54,46 +44,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(endpoints, new DefaultAzureCredential())
-                       .ConfigureRefresh(refresh =>
-                       {
-                           refresh.Register("AppName")
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(10));
-                       });
-
-                // Get an instance of the refresher that can be used to refresh data
-                _refresher = options.GetRefresher();
+                options.Connect(endpoints, new DefaultAzureCredential());
             });
 
             Configuration = builder.Build();
-        }
-
-        private static async Task Run(CancellationToken token)
-        {
-            string display = string.Empty;
-            StringBuilder sb = new();
-
-            while (!token.IsCancellationRequested)
-            {
-                // Trigger an async refresh for registered configuration settings without wait
-                _ = _refresher?.TryRefreshAsync(token);
-
-                sb.AppendLine($"The AppName is: {Configuration?["AppName"]}.");
-                sb.AppendLine();
-
-                sb.AppendLine("Press any key to exit...");
-                await Task.Delay(1000, token);
-
-                if (!sb.ToString().Equals(display))
-                {
-                    display = sb.ToString();
-
-                    Console.Clear();
-                    Console.Write(display);
-                }
-
-                sb.Clear();
-            }
         }
     }
 }
