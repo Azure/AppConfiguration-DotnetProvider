@@ -41,7 +41,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             }
 
             // Augment the configuration builder with Azure App Configuration
-            // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
                 options.Connect(endpoints, new DefaultAzureCredential());

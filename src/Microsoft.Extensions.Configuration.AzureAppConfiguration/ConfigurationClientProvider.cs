@@ -56,7 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IEnumerable<ConfigurationClient> GetClients()
         {
-            IList<ConfigurationClient> clients = new List<ConfigurationClient>();
+            List<ConfigurationClient> clients = new List<ConfigurationClient>();
 
             foreach(ConfigurationClientStatus configurationClient in _clients)
             {
@@ -67,9 +67,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             // If all clients are in the back-off state, try all clients anyways.
-            if (clients.Count == 0)
+            if (!clients.Any())
             {
-                clients = _clients.Select(c => c.Client).ToList();
+                clients.AddRange(_clients.Select(c => c.Client));
             }
 
             return clients;

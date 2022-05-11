@@ -285,7 +285,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Connect the provider to Azure App Configuration and their replicas using list of endpoints and token credential.
         /// </summary>
-        /// <param name="endpoints">The list of endpoints of the Azure App Configuration and its replicas to connect to.</param>
+        /// <param name="endpoints">The list of endpoints of an Azure App Configuration and its replicas to connect to.</param>
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
@@ -296,7 +296,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (endpoints.Distinct().Count() != endpoints.Count())
             {
-                throw new ArgumentException($"All endpoints in '{nameof(endpoints)}' must be unique.");
+                throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
