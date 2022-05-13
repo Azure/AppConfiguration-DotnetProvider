@@ -22,6 +22,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
+        private readonly EndpointUriComparer _endpointUriComparer = new EndpointUriComparer();
+
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
@@ -85,7 +87,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An optional configuration client provider that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal IConfigurationClientProvider ClientProvider { get; set; }
+        internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -294,7 +296,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            if (endpoints.Distinct().Count() != endpoints.Count())
+            if (endpoints.Distinct(_endpointUriComparer).Count() != endpoints.Count())
             {
                 throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
             }

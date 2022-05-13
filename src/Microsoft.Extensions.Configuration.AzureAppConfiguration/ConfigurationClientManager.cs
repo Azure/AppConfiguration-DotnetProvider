@@ -19,11 +19,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// This class is not thread-safe. Since config provider does not allow multiple network requests at the same time,
     /// there won't be multiple threads calling this client at the same time.
     /// </remarks>
-    internal class ConfigurationClientProvider : IConfigurationClientProvider
+    internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private readonly IList<ConfigurationClientStatus> _clients;
+        private readonly EndpointUriComparer _endpointComparer = new EndpointUriComparer();
 
-        public ConfigurationClientProvider(string connectionString, ConfigurationClientOptions clientOptions)
+        public ConfigurationClientManager(string connectionString, ConfigurationClientOptions clientOptions)
         {
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -35,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = new List<ConfigurationClientStatus> { configurationClientStatus };
         }
 
-        public ConfigurationClientProvider(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
+        public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -49,27 +50,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Internal constructor; Only used for unit testing.
         /// </summary>
         /// <param name="clients"></param>
-        internal ConfigurationClientProvider(IList<ConfigurationClientStatus> clients)
+        internal ConfigurationClientManager(IList<ConfigurationClientStatus> clients)
         {
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
-            List<ConfigurationClient> clients = new List<ConfigurationClient>();
+            IEnumerable<ConfigurationClient> clients = Enumerable.Empty<ConfigurationClient>();
 
-            foreach(ConfigurationClientStatus configurationClient in _clients)
-            {
-                if (configurationClient.BackoffEndTime <= DateTimeOffset.UtcNow)
-                {
-                    clients.Add(configurationClient.Client);
-                }
-            }
+            clients = _clients.Where(client => client.BackoffEndTime <= DateTimeOffset.UtcNow).Select(c => c.Client);
 
             // If all clients are in the back-off state, try all clients anyways.
             if (!clients.Any())
             {
-                clients.AddRange(_clients.Select(c => c.Client));
+                clients = _clients.Select(c => c.Client);
             }
 
             return clients;
@@ -109,7 +104,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => string.Equals(c.Endpoint.Host, endpoint.Host, StringComparison.OrdinalIgnoreCase));
+            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => this._endpointComparer.Equals(c.Endpoint, endpoint));
 
             if (clientWrapper != null)
             {

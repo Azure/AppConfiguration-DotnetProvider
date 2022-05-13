@@ -30,7 +30,7 @@ namespace Tests.AzureAppConfiguration
             return new ConfigurationClient(endpoint, mockTokenCredential.Object, options.ClientOptions);
         }
 
-        static public IConfigurationClientProvider CreateMockedConfigurationClientProvider(AzureAppConfigurationOptions options)
+        static public IConfigurationClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
         {
             ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
             ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
@@ -40,12 +40,12 @@ namespace Tests.AzureAppConfiguration
 
             IList<ConfigurationClientStatus> clients = new List<ConfigurationClientStatus>() { w1, w2 };
 
-            MockedConfigurationClientProvider provider = new MockedConfigurationClientProvider(clients);
+            MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
 
             return provider;
         }
 
-        static public MockedConfigurationClientProvider CreateMockedConfigurationClientProvider(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
+        static public MockedConfigurationClientManager CreateMockedConfigurationClientManager(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
         {
             ConfigurationClientStatus w1 = new ConfigurationClientStatus(PrimaryConfigStoreEndpoint, primaryClient);
             ConfigurationClientStatus w2 = secondaryClient != null ? new ConfigurationClientStatus(SecondaryConfigStoreEndpoint, secondaryClient) : null;
@@ -57,7 +57,7 @@ namespace Tests.AzureAppConfiguration
                 clients.Add(w2);
             }
 
-            MockedConfigurationClientProvider provider = new MockedConfigurationClientProvider(clients);
+            MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
 
             return provider;
         }

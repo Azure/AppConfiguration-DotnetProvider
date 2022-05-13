@@ -28,26 +28,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                IConfigurationClientProvider clientProvider;
+                IConfigurationClientManager clientManager;
 
-                if (options.ClientProvider != null)
+                if (options.ClientManager != null)
                 {
-                    clientProvider = options.ClientProvider;
+                    clientManager = options.ClientManager;
                 }
                 else if (!string.IsNullOrWhiteSpace(options.ConnectionString))
                 {
-                    clientProvider = new ConfigurationClientProvider(options.ConnectionString, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options.ConnectionString, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    clientProvider = new ConfigurationClientProvider(options.Endpoints, options.Credential, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(clientProvider, options, _optional);
+                provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
             }
             catch (InvalidOperationException ex)
             {

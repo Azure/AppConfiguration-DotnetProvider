@@ -10,18 +10,18 @@ using System.Linq;
 
 namespace Tests.AzureAppConfiguration
 {
-    internal class MockedConfigurationClientProvider : IConfigurationClientProvider
+    internal class MockedConfigurationClientManager : IConfigurationClientManager
     {
         IList<ConfigurationClientStatus> _clients;
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
-        public MockedConfigurationClientProvider(IEnumerable<ConfigurationClientStatus> clients)
+        public MockedConfigurationClientManager(IEnumerable<ConfigurationClientStatus> clients)
         {
             this._clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
             return this._clients.Select(cw => cw.Client);
         }

@@ -93,7 +93,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register("TestKey1", "label")
@@ -113,7 +113,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey1", "label");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -138,7 +138,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -166,7 +166,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey2", "label");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -195,7 +195,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -228,7 +228,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -266,7 +266,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -337,7 +337,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -409,7 +409,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -485,7 +485,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -520,7 +520,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -556,7 +556,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -592,7 +592,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -635,7 +635,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -688,7 +688,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -730,7 +730,7 @@ namespace Tests.AzureAppConfiguration
             .AddAzureAppConfiguration(options =>
             {
                 options.Select("TestKey*");
-                options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 options.ConfigureRefresh(refreshOptions =>
                 {
                     refreshOptions.Register("TestKey1", "label")
@@ -778,7 +778,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -837,7 +837,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -886,7 +886,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -928,7 +928,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -971,7 +971,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -1067,7 +1067,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -1101,7 +1101,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {

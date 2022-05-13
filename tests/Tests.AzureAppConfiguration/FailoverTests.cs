@@ -50,15 +50,15 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
             var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
-            var configClientProvider = new ConfigurationClientProvider(clientList);
+            var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = configClientProvider;
+                    options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -71,7 +71,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // The client enumerator should return just 1 client since one client is in the backoff state.
-            Assert.Single(configClientProvider.GetClients());
+            Assert.Single(configClientManager.GetAvailableClients());
         }
 
         [Fact]
@@ -103,15 +103,15 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
             var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
-            var configClientProvider = new ConfigurationClientProvider(clientList);
+            var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = configClientProvider;
+                    options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -126,7 +126,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<RequestFailedException>(configBuilder.Build);
 
             // The client enumerator should return 2 clients since all clients are in the back-off state.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
         }
 
         [Fact]
@@ -158,15 +158,15 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
             var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
-            var configClientProvider = new ConfigurationClientProvider(clientList);
+            var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = configClientProvider;
+                    options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -181,7 +181,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<RequestFailedException>(configBuilder.Build);
 
             // The client enumerator should return 2 clients for the second time since the first exception was not failoverable.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
         }
 
         [Fact]
@@ -220,15 +220,15 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientStatus cw2 = new ConfigurationClientStatus(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
             var clientList = new List<ConfigurationClientStatus>() { cw1, cw2 };
-            var configClientProvider = new ConfigurationClientProvider(clientList);
+            var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = configClientProvider;
+                    options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -240,7 +240,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // The client enumerator should return just 1 client for the second time.
-            Assert.Single(configClientProvider.GetClients());
+            Assert.Single(configClientManager.GetAvailableClients());
 
             // Sleep for backoff-time to pass.
             Thread.Sleep(TimeSpan.FromSeconds(31));
@@ -248,7 +248,7 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // The client enumerator should return 2 clients for the third time.
-            Assert.Equal(2, configClientProvider.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
         }
     }
 }

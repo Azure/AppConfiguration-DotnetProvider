@@ -8,9 +8,9 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal interface IConfigurationClientProvider
+    internal interface IConfigurationClientManager
     {
-        IEnumerable<ConfigurationClient> GetClients();
+        IEnumerable<ConfigurationClient> GetAvailableClients();
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 

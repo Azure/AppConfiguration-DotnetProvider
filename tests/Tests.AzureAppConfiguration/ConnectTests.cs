@@ -27,7 +27,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 });
 
             // Act

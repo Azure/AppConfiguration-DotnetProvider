@@ -202,7 +202,7 @@ namespace Tests.AzureAppConfiguration
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+					options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -233,12 +233,12 @@ namespace Tests.AzureAppConfiguration
 			var mockClient = GetMockConfigurationClient();
 
 			IConfigurationRefresher refresher = null;
-			var clientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+			var clientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.ClientProvider = clientProvider;
+					options.ClientManager = clientManager;
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -259,7 +259,7 @@ namespace Tests.AzureAppConfiguration
 			var validEndpointCount = 4;
 
 			mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(validNotificationKVWatcherCount));
-			Assert.Equal(_pushNotificationList.Count, clientProvider.UpdateSyncTokenCalled);
+			Assert.Equal(_pushNotificationList.Count, clientManager.UpdateSyncTokenCalled);
 			mockClient.Verify(c => c.UpdateSyncToken(It.IsAny<string>()), Times.Exactly(validEndpointCount));
 		}
 
@@ -275,7 +275,7 @@ namespace Tests.AzureAppConfiguration
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);;
+					options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{

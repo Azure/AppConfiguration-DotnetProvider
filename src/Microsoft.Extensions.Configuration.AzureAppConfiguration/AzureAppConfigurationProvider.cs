@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
-        private readonly IConfigurationClientProvider _configClientProvider;
+        private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -83,9 +83,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(IConfigurationClientProvider clientProvider, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(IConfigurationClientManager clientManager, AzureAppConfigurationOptions options, bool optional)
         {
-            _configClientProvider = clientProvider ?? throw new ArgumentNullException(nameof(clientProvider));
+            _configClientManager = clientManager ?? throw new ArgumentNullException(nameof(clientManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
@@ -282,7 +282,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
-            if (_configClientProvider.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
+            if (_configClientManager.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
             {
                 SetDirty(maxDelay);
             }
@@ -751,7 +751,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task ExecuteWithFailOverPolicyAsync(Func<ConfigurationClient, Task> funcToExecute, CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientProvider.GetClients().GetEnumerator();
+            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetAvailableClients().GetEnumerator();
 
             // Guaranteed to return at least 1 element
             Debug.Assert(clientEnumerator.MoveNext());
@@ -764,39 +764,42 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await funcToExecute(clientEnumerator.Current).ConfigureAwait(false);
 
-                    _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: true);
+                    _configClientManager.UpdateClientStatus(clientEnumerator.Current, successful: true);
 
                     break;
                 }
                 catch (AggregateException ae)
                 {
-                    if (!ShouldFailoverForException(ae))
-                    {
-                        throw;
-                    }
-
-                    _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: false);
-
-                    if (!clientEnumerator.MoveNext())
+                    if (!TryFailOver(ae, clientEnumerator))
                     {
                         throw;
                     }
                 }
                 catch (RequestFailedException e)
                 {
-                    if (!ShouldFailoverForException(e))
-                    {
-                        throw;
-                    }
-
-                    _configClientProvider.UpdateClientStatus(clientEnumerator.Current, successful: false);
-
-                    if (!clientEnumerator.MoveNext())
+                    if (!TryFailOver(e, clientEnumerator))
                     {
                         throw;
                     }
                 }
             }
+        }
+
+        private bool TryFailOver(Exception e, IEnumerator<ConfigurationClient> clientEnumerator)
+        {
+            if (!ShouldFailoverForException(e))
+            {
+                return false;
+            }
+
+            _configClientManager.UpdateClientStatus(clientEnumerator.Current, successful: false);
+
+            if (!clientEnumerator.MoveNext())
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void UpdateCacheExpirationForWatchers(bool success)

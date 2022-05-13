@@ -84,12 +84,12 @@ namespace Tests.AzureAppConfiguration
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
 
-            var mockClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = mockClientProvider;
+                    options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -126,7 +126,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -179,7 +179,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
 
-            var mockClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
             // Mock ILogger and ILoggerFactory
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -188,7 +188,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = mockClientProvider;
+                    options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("SentinelKey", refreshAll: true)
@@ -222,7 +222,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -266,7 +266,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")

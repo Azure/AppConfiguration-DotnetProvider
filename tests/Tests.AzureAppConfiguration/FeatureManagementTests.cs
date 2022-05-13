@@ -193,7 +193,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(testClient);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags();
                 })
                 .Build();
@@ -226,7 +226,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
                     refresher = options.GetRefresher();
@@ -296,7 +296,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(10));
 
                     refresher = options.GetRefresher();
@@ -359,10 +359,10 @@ namespace Tests.AzureAppConfiguration
             options.ClientOptions.Transport = mockTransport;
 
             var builder = new ConfigurationBuilder();
-            var clientProvider = TestHelpers.CreateMockedConfigurationClientProvider(options);
+            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             builder.AddAzureAppConfiguration(options =>
             {
-                options.ClientProvider = clientProvider;
+                options.ClientManager = clientManager;
                 options.UseFeatureFlags();
             }).Build();
 
@@ -384,11 +384,11 @@ namespace Tests.AzureAppConfiguration
 
             var options = new AzureAppConfigurationOptions();
             options.ClientOptions.Transport = mockTransport;
-            var clientProvider = TestHelpers.CreateMockedConfigurationClientProvider(options);
+            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = clientProvider;
+                    options.ClientManager = clientManager;
                     options.UseFeatureFlags(o => o.Label = "myLabel");
                 })
                 .Build();
@@ -412,7 +412,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
                     refresher = options.GetRefresher();
@@ -443,7 +443,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(testClient);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.CacheExpirationInterval = cacheExpiration;
@@ -486,7 +486,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(testClient);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(prefix1 + "*", label1);
@@ -561,7 +561,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(testClient);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(prefix1 + "*", label1);
@@ -604,7 +604,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(testClient);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(prefix1 + "*", label1);
@@ -651,7 +651,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.CacheExpirationInterval = cacheExpiration1;
@@ -742,7 +742,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select("*", "App1_Label");
@@ -822,7 +822,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientProvider = TestHelpers.CreateMockedConfigurationClientProvider(mockClient.Object);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.CacheExpirationInterval = cacheExpiration;
