@@ -201,7 +201,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return shouldRefreshAll;
                     }
 
-                    bool shouldRefreshAll = await ExecuteWithFailOverPolicyAsync(funcToExecute, cancellationToken).ConfigureAwait(false);
+                    void resetStateOnFailure()
+                    {
+                        watchedSettings = CloneWatchedSettings(watchedSettings);
+                        changedAdapterSettings.Clear();
+                        changedKeyValues.Clear();
+                    }
+
+                    bool shouldRefreshAll = await ExecuteWithFailOverPolicyAsync(funcToExecute, resetStateOnFailure, cancellationToken).ConfigureAwait(false);
 
                     // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
                     if (shouldRefreshAll)
@@ -351,12 +358,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             IDictionary<string, ConfigurationSetting> data = null;
 
-            Task<IDictionary<string, ConfigurationSetting>> funcToExecute(ConfigurationClient client) => LoadAll(client, ignoreFailures, CancellationToken.None);
+            Task<IDictionary<string, ConfigurationSetting>> funcToExecute(ConfigurationClient client) => LoadAll(client, CancellationToken.None);
             bool success = false;
 
             try
             {
-                data = await ExecuteWithFailOverPolicyAsync(funcToExecute, CancellationToken.None).ConfigureAwait(false);
+                data = await ExecuteWithFailOverPolicyAsync(funcToExecute, resetStateOnFailure: null, CancellationToken.None).ConfigureAwait(false);
                 success = true;
 
             }
@@ -383,7 +390,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<IDictionary<string, ConfigurationSetting>> LoadAll(ConfigurationClient client, bool ignoreFailures, CancellationToken cancellationToken)
+        private async Task<IDictionary<string, ConfigurationSetting>> LoadAll(ConfigurationClient client, CancellationToken cancellationToken)
         {
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
@@ -781,7 +788,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 
-        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<T>> funcToExecute, Action resetStateOnFailure, CancellationToken cancellationToken = default)
         {
             using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetAvailableClients().GetEnumerator();
 
@@ -804,6 +811,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (Exception e) when (e is AggregateException || e is RequestFailedException)
                 {
+                    resetStateOnFailure?.Invoke();
+
                     if (!IsFailOverable(e))
                     {
                         throw;
