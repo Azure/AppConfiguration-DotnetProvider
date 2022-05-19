@@ -49,14 +49,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions.
             {
                 if (!_optional)
                 {
                     throw new ArgumentException(ex.Message, ex);
                 }
             }
-            catch (FormatException fe)
+            catch (FormatException fe) // FormatException is thrown when the connection string is not a well formed connection string.
             {
                 if (!_optional)
                 {

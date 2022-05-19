@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
     internal class FailOverConstants
     {
         // Timeouts to retry requests to config stores and their replicas after failure.
-        public static readonly TimeSpan MinBackoffInterval = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan MaxBackoffInterval = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan MinBackoffDuration = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MaxBackoffDuration = TimeSpan.FromMinutes(10);
     }
 }

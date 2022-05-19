@@ -57,17 +57,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
-            IEnumerable<ConfigurationClient> clients = Enumerable.Empty<ConfigurationClient>();
+            IEnumerable<ConfigurationClient> clients = _clients.Where(client => client.BackoffEndTime <= DateTimeOffset.UtcNow).Select(c => c.Client);
 
-            clients = _clients.Where(client => client.BackoffEndTime <= DateTimeOffset.UtcNow).Select(c => c.Client);
-
-            // If all clients are in the back-off state, try all clients anyways.
-            if (!clients.Any())
-            {
-                clients = _clients.Select(c => c.Client);
-            }
-
-            return clients;
+            return clients.ToList();
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -87,8 +79,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 clientWrapper.FailedAttempts++;
-                TimeSpan backoffInterval = FailOverConstants.MinBackoffInterval.CalculateBackoffInterval(FailOverConstants.MaxBackoffInterval, clientWrapper.FailedAttempts);
-                clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffInterval);
+                TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
+                clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }
         }
 

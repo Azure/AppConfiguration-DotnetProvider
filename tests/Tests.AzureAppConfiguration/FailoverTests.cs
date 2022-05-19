@@ -75,7 +75,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void FailOverTests_ReturnsAllClientsIfAllBackedOff()
+        public void FailOverTests_ReturnsNoClientsIfAllBackedOff()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -126,7 +126,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<RequestFailedException>(configBuilder.Build);
 
             // The client enumerator should return 2 clients since all clients are in the back-off state.
-            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
+            Assert.False(configClientManager.GetAvailableClients().Any());
         }
 
         [Fact]

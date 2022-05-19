@@ -53,17 +53,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         /// <summary>
-        /// This method calculates the randomized exponential backoff interval for the configuration store after a failure
-        /// which lies between <paramref name="minInterval"/> and <paramref name="maxInterval"/>.
+        /// This method calculates the randomized exponential backoff duration for the configuration store after a failure
+        /// which lies between <paramref name="minDuration"/> and <paramref name="maxDuration"/>.
         /// </summary>
-        /// <param name="minInterval">The minimum interval to retry after.</param>
-        /// <param name="maxInterval">The maximum interval to retry after.</param>
+        /// <param name="minDuration">The minimum duration to retry after.</param>
+        /// <param name="maxDuration">The maximum duration to retry after.</param>
         /// <param name="attempts">The number of attempts made to the configuration store.</param>
-        /// <returns>The backoff interval before retrying a request to the configuration store or replica again.</returns>
+        /// <returns>The backoff duration before retrying a request to the configuration store or replica again.</returns>
         /// <exception cref="ArgumentOutOfRangeException">
         /// An exception is thrown when <paramref name="attempts"/> is less than 1.
         /// </exception>
-        public static TimeSpan CalculateBackoffInterval(this TimeSpan minInterval, TimeSpan maxInterval, int attempts)
+        public static TimeSpan CalculateBackoffDuration(this TimeSpan minDuration, TimeSpan maxDuration, int attempts)
         {
             if (attempts < 1)
             {
@@ -72,20 +72,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (attempts == 1)
             {
-                return minInterval;
+                return minDuration;
             }
 
             //
             // IMPORTANT: This can overflow
-            double calculatedMilliseconds = Math.Max(1, minInterval.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
+            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
 
-            if (calculatedMilliseconds > maxInterval.TotalMilliseconds ||
+            if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
                     calculatedMilliseconds <= 0 /*overflow*/)
             {
-                calculatedMilliseconds = maxInterval.TotalMilliseconds;
+                calculatedMilliseconds = maxDuration.TotalMilliseconds;
             }
 
-            return TimeSpan.FromMilliseconds(minInterval.TotalMilliseconds + new Random().NextDouble() * (calculatedMilliseconds - minInterval.TotalMilliseconds));
+            return TimeSpan.FromMilliseconds(minDuration.TotalMilliseconds + new Random().NextDouble() * (calculatedMilliseconds - minDuration.TotalMilliseconds));
         }
     }
 }
