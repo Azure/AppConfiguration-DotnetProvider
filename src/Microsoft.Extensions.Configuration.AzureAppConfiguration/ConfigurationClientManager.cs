@@ -22,7 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private readonly IList<ConfigurationClientStatus> _clients;
-        private readonly EndpointUriComparer _endpointComparer = new EndpointUriComparer();
 
         public ConfigurationClientManager(string connectionString, ConfigurationClientOptions clientOptions)
         {
@@ -46,6 +45,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = endpoints.Select(endpoint => new ConfigurationClientStatus(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
         }
 
+        public bool HasAvailableClients => _clients.Any(client => client.BackoffEndTime <= DateTimeOffset.UtcNow);
+
         /// <summary>
         /// Internal constructor; Only used for unit testing.
         /// </summary>
@@ -58,6 +59,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
             IEnumerable<ConfigurationClient> clients = _clients.Where(client => client.BackoffEndTime <= DateTimeOffset.UtcNow).Select(c => c.Client);
+
+            if (!clients.Any())
+            {
+                clients = _clients.Select(client => client.Client);
+            }
 
             return clients.ToList();
         }
@@ -96,7 +102,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => this._endpointComparer.Equals(c.Endpoint, endpoint));
+            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => new EndpointUriComparer().Equals(c.Endpoint, endpoint));
 
             if (clientWrapper != null)
             {

@@ -9,7 +9,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         None,
         Modified,
-        Deleted
+        Deleted,
+        Added
     }
 
     internal struct KeyValueChange

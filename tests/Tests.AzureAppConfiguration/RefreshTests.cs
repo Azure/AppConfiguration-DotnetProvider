@@ -1092,46 +1092,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
-        [Fact]
-        public void RefreshTests_UpdateCacheExpirationTimeForFailedRefreshOperations()
-        {
-            IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(2));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
-
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .Throws(new RequestFailedException("Request failed."));
-
-            // Wait for the cache to expire
-            Thread.Sleep(2500);
-
-            bool result = refresher.TryRefreshAsync().Result;
-            Assert.False(result);
-
-            // refresh again will be no-op
-            result = refresher.TryRefreshAsync().Result;
-            Assert.True(result);
-
-            Assert.NotEqual("newValue", config["TestKey1"]);
-        }
-
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
             Task.Delay(millisecondsDelay).Wait();

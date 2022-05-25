@@ -610,7 +610,7 @@ namespace Tests.AzureAppConfiguration
             {
                 var unchanged = sentinelKv.Key == setting.Key && sentinelKv.Label == setting.Label && sentinelKv.Value == setting.Value;
                 var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(sentinelKv, response);
+                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), response);
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))

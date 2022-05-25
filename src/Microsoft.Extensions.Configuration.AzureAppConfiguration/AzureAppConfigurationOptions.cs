@@ -22,8 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
-        private readonly EndpointUriComparer _endpointUriComparer = new EndpointUriComparer();
-
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
@@ -296,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            if (endpoints.Distinct(_endpointUriComparer).Count() != endpoints.Count())
+            if (endpoints.Distinct(new EndpointUriComparer()).Count() != endpoints.Count())
             {
                 throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
             }
