@@ -49,7 +49,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
             }
-            catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions.
+            catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {
                 if (!_optional)
                 {

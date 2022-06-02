@@ -10,7 +10,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         public bool Equals(Uri endpoint1, Uri endpoint2)
         {
-            return Compare(endpoint1, endpoint2) == 0;
+            return Uri.Compare(endpoint1,
+                               endpoint2,
+                               UriComponents.NormalizedHost | UriComponents.Port,
+                               UriFormat.SafeUnescaped,
+                               StringComparison.OrdinalIgnoreCase) == 0;
         }
 
         public int GetHashCode(Uri obj)
@@ -23,15 +27,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return -1;
-        }
-
-        private int Compare(Uri endpoint1, Uri endpoint2)
-        {
-            return Uri.Compare(endpoint1,
-                               endpoint2,
-                               UriComponents.NormalizedHost | UriComponents.Port,
-                               UriFormat.SafeUnescaped,
-                               StringComparison.OrdinalIgnoreCase);
         }
     }
 }

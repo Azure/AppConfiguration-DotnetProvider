@@ -187,52 +187,136 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     async Task<(bool, List<ConfigurationSetting>, Dictionary<KeyValueWatcher, KeyValueChange>, List<KeyValueChange>)> funcToExecute(ConfigurationClient client)
                     {
-                        (bool shouldRefreshAll,
-                         List<ConfigurationSetting> changedAdapterSettings,
-                         Dictionary<KeyValueWatcher, KeyValueChange> changedKeyValues) = await GetRefreshedIndividualKeyValues(client, cancellationToken).ConfigureAwait(false);
+                        var changedAdapters = new List<ConfigurationSetting>();
+                        var keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
+                        bool shouldRefreshAll = false;
+
+                        foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+                        {
+                            string watchedKey = changeWatcher.Key;
+                            string watchedLabel = changeWatcher.Label;
+
+                            // Skip the refresh for this key if the cached value has not expired
+                            if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires)
+                            {
+                                continue;
+                            }
+
+                            KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+
+                            if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                            {
+                                KeyValueChange keyValueChange = default;
+                                await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                                    async () => keyValueChange = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+
+
+                                // Check if a change has been detected in the key-value registered for refresh
+                                if (keyValueChange.ChangeType != KeyValueChangeType.None)
+                                {
+                                    if (changeWatcher.RefreshAll)
+                                    {
+                                        shouldRefreshAll = true;
+                                        break;
+                                    }
+
+                                    keyValueChanges[changeWatcher] = keyValueChange;
+                                }
+                            }
+                            else
+                            {
+                                // Load the key-value in case the previous load attempts had failed
+                                var options = new SettingSelector { LabelFilter = watchedLabel };
+
+                                try
+                                {
+                                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                }
+                                catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
+                                {
+                                    watchedKv = null;
+                                }
+
+                                if (watchedKv != null)
+                                {
+                                    if (changeWatcher.RefreshAll)
+                                    {
+                                        shouldRefreshAll = true;
+                                        break;
+                                    }
+
+                                    keyValueChanges[changeWatcher] = new KeyValueChange()
+                                    {
+                                        Key = watchedKv.Key,
+                                        Label = watchedKv.Label.NormalizeNull(),
+                                        Current = watchedKv,
+                                        ChangeType = KeyValueChangeType.Added
+                                    };
+
+                                    // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                                    foreach (IKeyValueAdapter adapter in _options.Adapters)
+                                    {
+                                        changedAdapters.Add(watchedKv);
+                                    }
+                                }
+                            }
+                        }
 
                         if (shouldRefreshAll)
                         {
-                            return (shouldRefreshAll, changedAdapterSettings, changedKeyValues, null);
+                            // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
+                            IDictionary<string, ConfigurationSetting> data = await LoadAll(client, cancellationToken).ConfigureAwait(false);
+
+                            if (data != null)
+                            {
+                                // Invalidate all the cached KeyVault secrets
+                                foreach (IKeyValueAdapter adapter in _options.Adapters)
+                                {
+                                    adapter.InvalidateCache();
+                                }
+
+                                await SetData(data, ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                            }
+
+                            return (shouldRefreshAll, null, null, null);
                         }
 
                         List<KeyValueChange> changedKeyValuesCollection = await GetRefreshedKeyValueCollections(client, cancellationToken).ConfigureAwait(false);
 
-                        return (shouldRefreshAll, changedAdapterSettings, changedKeyValues, changedKeyValuesCollection);
+                        return (shouldRefreshAll, changedAdapters, keyValueChanges, changedKeyValuesCollection);
                     }
 
-                    (bool shouldRefreshAll, List<ConfigurationSetting> changedAdapterSettings, Dictionary<KeyValueWatcher, KeyValueChange> changedKeyValues, List<KeyValueChange> changedKeyValueCollections) = await ExecuteWithFailOverPolicyAsync(funcToExecute, cancellationToken).ConfigureAwait(false);
+                    (bool refreshedAll, List<ConfigurationSetting> changedAdapterSettings, Dictionary<KeyValueWatcher, KeyValueChange> changedKeyValues, List<KeyValueChange> changedKeyValueCollections) = await ExecuteWithFailOverPolicyAsync(funcToExecute, cancellationToken).ConfigureAwait(false);
 
-                    // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
-                    if (shouldRefreshAll)
+                    if (refreshedAll)
                     {
-                        await LoadAllWithFailOverPolicyAsync(ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                        // Already refreshed all, nothing more to do!
                         return;
                     }
-                    else
+
+                    UpdateWatchedSettings(changedKeyValues);
+
+                    foreach (ConfigurationSetting changedSetting in changedAdapterSettings)
                     {
-                        UpdateWatchedSettings(changedKeyValues);
-
-                        foreach(ConfigurationSetting changedSetting in changedAdapterSettings)
+                        foreach (IKeyValueAdapter adapter in _options.Adapters)
                         {
-                            foreach(IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(changedSetting);
-                            }
+                            adapter.InvalidateCache(changedSetting);
                         }
-
-                        ProcessChanges(changedKeyValues.Values);
-                        ProcessChanges(changedKeyValueCollections);
-
-                        await RefreshKeyValueAdapters(cancellationToken).ConfigureAwait(false);
-
-                        if (changedAdapterSettings.Any() || changedKeyValues.Any() || changedKeyValueCollections.Any())
-                        {
-                            await SetData(_applicationSettings, false, cancellationToken);
-                        }
-
-                        UpdateCacheExpirationForWatchers(success: true);
                     }
+
+                    ProcessChanges(changedKeyValues.Values);
+                    ProcessChanges(changedKeyValueCollections);
+
+                    if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) ||
+                        changedKeyValueCollections.Any() ||
+                        changedAdapterSettings.Any() ||
+                        changedKeyValues.Any())
+                    {
+                        await SetData(_applicationSettings, false, cancellationToken);
+                    }
+
+                    UpdateCacheExpirationForWatchers(success: true);
+
                 }
                 finally
                 {
@@ -377,7 +461,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                data = await ExecuteWithFailOverPolicyAsync(funcToExecute, CancellationToken.None).ConfigureAwait(false);
+                data = await ExecuteWithFailOverPolicyAsync(funcToExecute, cancellationToken).ConfigureAwait(false);
                 UpdateCacheExpirationForWatchers(success: true);
             }
             catch (Exception exception) when (ignoreFailures &&
@@ -492,93 +576,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _watchedSettings[watchedKeyLabel] = watchedKv;
                 }
             }
-        }
-
-        private async Task<(bool, List<ConfigurationSetting>, Dictionary<KeyValueWatcher, KeyValueChange>)> GetRefreshedIndividualKeyValues(ConfigurationClient client, CancellationToken cancellationToken)
-        {
-            var changedAdapters = new List<ConfigurationSetting>();
-            var keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
-
-            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
-            {
-                string watchedKey = changeWatcher.Key;
-                string watchedLabel = changeWatcher.Label;
-
-                // Skip the refresh for this key if the cached value has not expired
-                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires)
-                {
-                    continue;
-                }
-
-                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-
-                if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
-                {
-                    KeyValueChange keyValueChange = default;
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => keyValueChange = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-
-
-                    // Check if a change has been detected in the key-value registered for refresh
-                    if (keyValueChange.ChangeType != KeyValueChangeType.None)
-                    {
-                        if (changeWatcher.RefreshAll)
-                        {
-                            return (true, changedAdapters, keyValueChanges);
-                        }
-
-                        keyValueChanges[changeWatcher] = keyValueChange;
-                    }
-                }
-                else
-                {
-                    // Load the key-value in case the previous load attempts had failed
-                    var options = new SettingSelector { LabelFilter = watchedLabel };
-
-                    try
-                    {
-                        await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                    }
-                    catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
-                    {
-                        watchedKv = null;
-                    }
-
-                    if (watchedKv != null)
-                    {
-                        if (changeWatcher.RefreshAll)
-                        {
-                            return (true, changedAdapters, keyValueChanges);
-                        }
-
-                        keyValueChanges[changeWatcher] = new KeyValueChange()
-                        {
-                            Key = watchedKv.Key,
-                            Label = watchedKv.Label.NormalizeNull(),
-                            Current = watchedKv,
-                            ChangeType = KeyValueChangeType.Added
-                        };
-
-                        // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                        foreach (IKeyValueAdapter adapter in _options.Adapters)
-                        {
-                            changedAdapters.Add(watchedKv);
-                        }
-                    }
-                }
-            }
-
-            return (false, changedAdapters, keyValueChanges);
-        }
-
-        private Task RefreshKeyValueAdapters(CancellationToken cancellationToken)
-        {
-            if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
-            {
-                return SetData(_applicationSettings, false, cancellationToken);
-            }
-
-            return Task.CompletedTask;
         }
 
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(ConfigurationClient client, CancellationToken cancellationToken)
@@ -834,20 +831,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private bool IsFailOverable(Exception ex)
+        private bool IsFailOverable(AggregateException ex)
         {
-            if (ex is AggregateException aggregateException)
-            {
-                IReadOnlyCollection<Exception> innerExceptions = aggregateException.InnerExceptions;
+            IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
 
-                if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
-                {
-                    return IsFailOverable(innerExceptions.Last() as RequestFailedException);
-                }
-            }
-            else if (ex is RequestFailedException rfe)
+            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
             {
-                return IsFailOverable(rfe);
+                return IsFailOverable((RequestFailedException)innerExceptions.Last());
             }
 
             return false;

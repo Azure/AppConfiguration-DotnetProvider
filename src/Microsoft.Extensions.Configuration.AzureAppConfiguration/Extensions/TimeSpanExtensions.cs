@@ -32,24 +32,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return interval;
             }
 
-            if (attempts == 1)
-            {
-                return min;
-            }
-
             max = TimeSpan.FromTicks(Math.Min(interval.Ticks, max.Ticks));
 
-            //
-            // IMPORTANT: This can overflow
-            double maxMilliseconds = Math.Max(1, min.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
-
-            if (maxMilliseconds > max.TotalMilliseconds ||
-                    maxMilliseconds <= 0 /*overflow*/)
-            {
-                maxMilliseconds = max.TotalMilliseconds;
-            }
-
-            return TimeSpan.FromMilliseconds(min.TotalMilliseconds + new Random().NextDouble() * (maxMilliseconds - min.TotalMilliseconds));
+            return min.CalculateBackoffDuration(max, attempts);
         }
 
         /// <summary>

@@ -45,7 +45,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = endpoints.Select(endpoint => new ConfigurationClientStatus(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
         }
 
-        public bool HasAvailableClients => _clients.Any(client => client.BackoffEndTime <= DateTimeOffset.UtcNow);
+        public bool HasAvailableClients
+        {
+            get
+            {
+                var utcNow = DateTimeOffset.UtcNow;
+                return _clients.Any(client => client.BackoffEndTime <= utcNow);
+            }
+        }
 
         /// <summary>
         /// Internal constructor; Only used for unit testing.
@@ -58,7 +65,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
-            IEnumerable<ConfigurationClient> clients = _clients.Where(client => client.BackoffEndTime <= DateTimeOffset.UtcNow).Select(c => c.Client);
+            var utcNow = DateTimeOffset.UtcNow;
+            IEnumerable<ConfigurationClient> clients = _clients.Where(client => client.BackoffEndTime <= utcNow).Select(c => c.Client);
 
             if (!clients.Any())
             {
