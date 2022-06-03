@@ -310,12 +310,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || changedKeyValuesCollection?.Any() == true || keyValueChanges.Any())
                     {
-                        SetData(
-                            await PrepareData(
-                                applicationSettings,
-                                cancellationToken)
-                                .ConfigureAwait(false),
-                            cancellationToken);
+                        SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
 
                         _applicationSettings = applicationSettings;
 
@@ -507,7 +502,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    SetData(await PrepareData(data, cancellationToken).ConfigureAwait(false), cancellationToken);
+                    SetData(await PrepareData(data, cancellationToken).ConfigureAwait(false));
                     _applicationSettings = data;
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
@@ -662,7 +657,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return keyValueChanges;
         }
 
-        private void SetData(IDictionary<string, string> data, CancellationToken cancellationToken)
+        private void SetData(IDictionary<string, string> data)
         {
             // Set the application data for the configuration provider
             Data = data;
