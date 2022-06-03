@@ -23,15 +23,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
             Label = label.NormalizeNull();
         }
 
-        public KeyValueIdentifier Clone()
-        {
-            return new KeyValueIdentifier()
-            {
-                Key = string.Copy(Key),
-                Label = Label != null ? string.Copy(Label) : null
-            };
-        }
-
         public override bool Equals(object obj)
         {
             if (obj is KeyValueIdentifier keyLabel)

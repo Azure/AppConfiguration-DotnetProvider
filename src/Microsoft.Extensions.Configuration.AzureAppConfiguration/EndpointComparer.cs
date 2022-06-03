@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class EndpointUriComparer : IEqualityComparer<Uri>
+    internal class EndpointComparer : IEqualityComparer<Uri>
     {
         public bool Equals(Uri endpoint1, Uri endpoint2)
         {

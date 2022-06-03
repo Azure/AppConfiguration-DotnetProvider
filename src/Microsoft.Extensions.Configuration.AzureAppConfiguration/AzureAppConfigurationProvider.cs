@@ -225,7 +225,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 else
                                 {
                                     // Load the key-value in case the previous load attempts had failed
-                                    var options = new SettingSelector { LabelFilter = watchedLabel };
 
                                     try
                                     {
@@ -335,7 +334,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 _watchedSettings.Remove(kvIdentifier);
                             }
 
-                            UpdateCacheExpirationTime(kvp.Key, success: true);
+                            UpdateCacheExpirationTime(kvp.Key);
                         }
                     }
                 }
@@ -482,18 +481,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Dictionary<string, ConfigurationSetting> data = null;
 
-            Task<Dictionary<string, ConfigurationSetting>> funcToExecute(ConfigurationClient client) => LoadAll(client, CancellationToken.None);
-
             try
             {
-                data = await ExecuteWithFailOverPolicyAsync(funcToExecute, cancellationToken).ConfigureAwait(false);
-                UpdateCacheExpirationForWatchers(success: true);
+                data = await ExecuteWithFailOverPolicyAsync((client) => LoadAll(client, CancellationToken.None), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
                                              exception is OperationCanceledException))
             { }
+
+            // Update the cache expiration time for all refresh registered settings and feature flags
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
+            {
+                UpdateCacheExpirationTime(changeWatcher);
+            }
 
             if (data != null)
             {
@@ -568,8 +570,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-            // Block current thread for the initial load of key-values registered for refresh that are not already loaded
-            await Task.Run(() => LoadKeyValuesRegisteredForRefresh(client, serverData, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult()).ConfigureAwait(false);
+            // Load key-values registered for refresh that are not already loaded
+            await LoadKeyValuesRegisteredForRefresh(client, serverData, cancellationToken).ConfigureAwait(false);
             return serverData;
         }
 
@@ -624,7 +626,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 IEnumerable<ConfigurationSetting> currentKeyValues;
-                IEnumerable<KeyValueChange> localKeyValueChanges;
 
                 if (changeWatcher.Key.EndsWith("*"))
                 {
@@ -643,18 +644,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     });
                 }
 
-                localKeyValueChanges = await client.GetKeyValueChangeCollection(
-                    currentKeyValues,
-                    new GetKeyValueChangeCollectionOptions
-                    {
-                        KeyFilter = changeWatcher.Key,
-                        Label = changeWatcher.Label.NormalizeNull(),
-                        RequestTracingEnabled = _requestTracingEnabled,
-                        RequestTracingOptions = _requestTracingOptions
-                    },
-                    cancellationToken).ConfigureAwait(false);
+                keyValueChanges.AddRange(
+                    await client.GetKeyValueChangeCollection(
+                        currentKeyValues,
+                        new GetKeyValueChangeCollectionOptions
+                        {
+                            KeyFilter = changeWatcher.Key,
+                            Label = changeWatcher.Label.NormalizeNull(),
+                            RequestTracingEnabled = _requestTracingEnabled,
+                            RequestTracingOptions = _requestTracingOptions
+                        },
+                        cancellationToken)
+                    .ConfigureAwait(false));
 
-                keyValueChanges.AddRange(localKeyValueChanges);
             }
 
             return keyValueChanges;
@@ -732,34 +734,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        private void UpdateCacheExpirationForWatchers(bool success)
+        private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher)
         {
-            // Update the cache expiration time for all refresh registered settings and feature flags
-            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
-            {
-                UpdateCacheExpirationTime(changeWatcher, success);
-            }
-        }
-
-        private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher, bool success)
-        {
-            TimeSpan cacheExpirationTime;
-
-            if (success)
-            {
-                changeWatcher.RefreshAttempts = 0;
-                cacheExpirationTime = changeWatcher.CacheExpirationInterval;
-            }
-            else
-            {
-                if (changeWatcher.RefreshAttempts < int.MaxValue)
-                {
-                    changeWatcher.RefreshAttempts++;
-                }
-
-                cacheExpirationTime = changeWatcher.CacheExpirationInterval.CalculateBackoffTime(RefreshConstants.DefaultMinBackoff, RefreshConstants.DefaultMaxBackoff, changeWatcher.RefreshAttempts);
-            }
-
+            TimeSpan cacheExpirationTime = changeWatcher.CacheExpirationInterval;
+            changeWatcher.RefreshAttempts = 0;
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 

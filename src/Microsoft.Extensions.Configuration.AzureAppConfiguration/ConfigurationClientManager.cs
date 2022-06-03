@@ -110,7 +110,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => new EndpointUriComparer().Equals(c.Endpoint, endpoint));
+            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
             if (clientWrapper != null)
             {

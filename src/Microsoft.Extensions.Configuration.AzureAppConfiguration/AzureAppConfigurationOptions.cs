@@ -294,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            if (endpoints.Distinct(new EndpointUriComparer()).Count() != endpoints.Count())
+            if (endpoints.Distinct(new EndpointComparer()).Count() != endpoints.Count())
             {
                 throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
             }
