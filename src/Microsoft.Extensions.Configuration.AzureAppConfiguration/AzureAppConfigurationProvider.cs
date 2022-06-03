@@ -468,7 +468,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                _logger.LogWarning($"Ignoring the push notification received for endpoint '{pushNotification.ResourceUri}' that is not present in the input list of endpoints.");
+                _logger.LogWarning($"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'");
             }
         }
 
@@ -737,7 +737,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher)
         {
             TimeSpan cacheExpirationTime = changeWatcher.CacheExpirationInterval;
-            changeWatcher.RefreshAttempts = 0;
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 
