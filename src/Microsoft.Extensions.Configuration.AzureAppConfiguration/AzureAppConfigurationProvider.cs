@@ -478,7 +478,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                data = await ExecuteWithFailOverPolicyAsync((client) => LoadAll(client, CancellationToken.None), cancellationToken).ConfigureAwait(false);
+                data = await ExecuteWithFailOverPolicyAsync((client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
