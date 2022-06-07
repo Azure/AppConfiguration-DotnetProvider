@@ -83,8 +83,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional configuration client provider that can be used to provide clients to communicate with Azure App Configuration.
+        /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
+        /// <remarks>This property is used only for unit testing.</remarks>
         internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
@@ -283,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Connect the provider to Azure App Configuration and their replicas using list of endpoints and token credential.
+        /// Connect the provider to an Azure App Configuration store and its replicas using a list of endpoints and a token credential.
         /// </summary>
         /// <param name="endpoints">The list of endpoints of an Azure App Configuration store and its replicas to connect to.</param>
         /// <param name="credential">Token credential to use to connect.</param>

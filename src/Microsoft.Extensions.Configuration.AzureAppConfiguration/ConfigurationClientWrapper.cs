@@ -6,9 +6,9 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class ConfigurationClientStatus
+    internal class ConfigurationClientWrapper
     {
-        public ConfigurationClientStatus(Uri endpoint, ConfigurationClient configurationClient)
+        public ConfigurationClientWrapper(Uri endpoint, ConfigurationClient configurationClient)
         {
             Endpoint = endpoint;
             Client = configurationClient;

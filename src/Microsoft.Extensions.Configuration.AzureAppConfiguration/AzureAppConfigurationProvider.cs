@@ -737,7 +737,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetAvailableClients().GetEnumerator();
+            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetClients().GetEnumerator();
             clientEnumerator.MoveNext();
             ConfigurationClient currentClient;
 

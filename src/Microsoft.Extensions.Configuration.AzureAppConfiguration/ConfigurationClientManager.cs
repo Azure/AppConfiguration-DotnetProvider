@@ -13,7 +13,7 @@ using System.Linq;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// A configuration client provider which maintains state of configuration clients and provides set of clients to use when requested.
+    /// A configuration client manager which maintains state of configuration clients and provides set of clients to use when requested.
     /// </summary>
     /// <remarks>
     /// This class is not thread-safe. Since config provider does not allow multiple network requests at the same time,
@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </remarks>
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
-        private readonly IList<ConfigurationClientStatus> _clients;
+        private readonly IList<ConfigurationClientWrapper> _clients;
 
         public ConfigurationClientManager(string connectionString, ConfigurationClientOptions clientOptions)
         {
@@ -31,8 +31,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
-            var configurationClientStatus = new ConfigurationClientStatus(endpoint, new ConfigurationClient(connectionString, clientOptions));
-            _clients = new List<ConfigurationClientStatus> { configurationClientStatus };
+            var configurationClientWrapper = new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
+            _clients = new List<ConfigurationClientWrapper> { configurationClientWrapper };
         }
 
         public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            _clients = endpoints.Select(endpoint => new ConfigurationClientStatus(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
+            _clients = endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
         }
 
         public bool HasAvailableClients
@@ -58,12 +58,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Internal constructor; Only used for unit testing.
         /// </summary>
         /// <param name="clients"></param>
-        internal ConfigurationClientManager(IList<ConfigurationClientStatus> clients)
+        internal ConfigurationClientManager(IList<ConfigurationClientWrapper> clients)
         {
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public IEnumerable<ConfigurationClient> GetClients()
         {
             var utcNow = DateTimeOffset.UtcNow;
             IEnumerable<ConfigurationClient> clients = _clients.Where(client => client.BackoffEndTime <= utcNow).Select(c => c.Client);
@@ -83,7 +83,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(client));
             }
 
-            ConfigurationClientStatus clientWrapper = _clients.First(c => c.Client.Equals(client));
+            ConfigurationClientWrapper clientWrapper = _clients.First(c => c.Client.Equals(client));
 
             if (successful)
             {
@@ -110,7 +110,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientStatus clientWrapper = this._clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+            ConfigurationClientWrapper clientWrapper = this._clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
             if (clientWrapper != null)
             {

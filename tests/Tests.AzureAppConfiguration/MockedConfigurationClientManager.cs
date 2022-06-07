@@ -12,18 +12,18 @@ namespace Tests.AzureAppConfiguration
 {
     internal class MockedConfigurationClientManager : IConfigurationClientManager
     {
-        IList<ConfigurationClientStatus> _clients;
+        IList<ConfigurationClientWrapper> _clients;
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
         public bool HasAvailableClients => _clients.Any(client => client.BackoffEndTime <= DateTime.UtcNow);
 
-        public MockedConfigurationClientManager(IEnumerable<ConfigurationClientStatus> clients)
+        public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
         {
             this._clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public IEnumerable<ConfigurationClient> GetClients()
         {
             return this._clients.Select(cw => cw.Client);
         }

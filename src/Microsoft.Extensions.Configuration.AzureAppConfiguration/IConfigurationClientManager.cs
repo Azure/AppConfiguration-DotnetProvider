@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         public bool HasAvailableClients { get; }
 
-        IEnumerable<ConfigurationClient> GetAvailableClients();
+        IEnumerable<ConfigurationClient> GetClients();
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 
