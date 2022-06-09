@@ -53,7 +53,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -71,7 +71,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // The client enumerator should return just 1 client since one client is in the backoff state.
-            Assert.Single(configClientManager.GetClients());
+            Assert.Single(configClientManager.GetAvailableClients());
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -125,8 +125,8 @@ namespace Tests.AzureAppConfiguration
             // Throws last exception when all clients fail.
             Assert.Throws<RequestFailedException>(configBuilder.Build);
 
-            // The client enumerator should return 2 clients since all clients are in the back-off state.
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            // The client manager should return no clients since all clients are in the back-off state.
+            Assert.False(configClientManager.GetAvailableClients().Any());
         }
 
         [Fact]
@@ -161,7 +161,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -220,7 +220,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -237,7 +237,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // The client enumerator should return just 1 client for the second time.
-            Assert.Single(configClientManager.GetClients());
+            Assert.Single(configClientManager.GetAvailableClients());
 
             // Sleep for backoff-time to pass.
             Thread.Sleep(TimeSpan.FromSeconds(31));
@@ -245,7 +245,7 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // The client enumerator should return 2 clients for the third time.
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
         }
     }
 }

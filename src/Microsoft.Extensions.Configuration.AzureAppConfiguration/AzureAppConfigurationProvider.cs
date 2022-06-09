@@ -181,11 +181,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    if (!_configClientManager.HasAvailableClients)
-                    {
-                        return;
-                    }
-
                     // Check if initial configuration load had failed
                     if (_applicationSettings == null)
                     {
@@ -483,11 +478,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAllWithFailOverPolicyAsync(bool ignoreFailures, CancellationToken cancellationToken = default)
         {
-            if (!_configClientManager.HasAvailableClients)
-            {
-                return;
-            }
-
             Dictionary<string, ConfigurationSetting> data = null;
 
             try
@@ -745,8 +735,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetClients().GetEnumerator();
-            clientEnumerator.MoveNext();
+            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetAvailableClients().GetEnumerator();
+
+            // No ConfigurationClients are available to execute the function.
+            if (!clientEnumerator.MoveNext())
+            {
+                return default;
+            }
+
             ConfigurationClient currentClient;
 
             while (true)

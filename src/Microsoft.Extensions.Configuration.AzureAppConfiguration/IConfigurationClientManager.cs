@@ -10,9 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientManager
     {
-        public bool HasAvailableClients { get; }
-
-        IEnumerable<ConfigurationClient> GetClients();
+        IEnumerable<ConfigurationClient> GetAvailableClients();
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 

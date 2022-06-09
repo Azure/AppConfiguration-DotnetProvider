@@ -23,7 +23,7 @@ namespace Tests.AzureAppConfiguration
             this._clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
             return this._clients.Select(cw => cw.Client);
         }
