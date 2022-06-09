@@ -163,22 +163,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
         {
-            if (!_configClientManager.HasAvailableClients)
-            {
-                return;
-            }
-
             // Ensure that concurrent threads do not simultaneously execute refresh operation. 
             if (Interlocked.Exchange(ref _networkOperationsInProgress, 1) == 0)
             {
                 try
                 {
+                    var utcNow = DateTimeOffset.UtcNow;
+                    IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
+                    IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
+
+                    // Skip refresh if the applicationSettings are loaded, but none of the watchers or adapters cache is expired.
+                    if (_applicationSettings != null &&
+                        !cacheExpiredWatchers.Any() &&
+                        !cacheExpiredMultiKeyWatchers.Any() &&
+                        !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
+                    {
+                        return;
+                    }
+
+                    if (!_configClientManager.HasAvailableClients)
+                    {
+                        return;
+                    }
+
                     // Check if initial configuration load had failed
                     if (_applicationSettings == null)
                     {
-                        if (InitializationCacheExpires < DateTimeOffset.UtcNow)
+                        if (InitializationCacheExpires < utcNow)
                         {
-                            InitializationCacheExpires = DateTimeOffset.UtcNow.Add(MinCacheExpirationInterval);
+                            InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
                             await LoadAllWithFailOverPolicyAsync(ignoreFailures: false, cancellationToken).ConfigureAwait(false);
                         }
 
@@ -194,21 +207,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await ExecuteWithFailOverPolicyAsync(async (client) =>
                         {
-                            keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
-                            refreshAll = false;
-                            changedKeyValuesCollection = null;
                             applicationSettings = null;
+                            keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
+                            changedKeyValuesCollection = null;
+                            refreshAll = false;
 
-                            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+                            foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
-                                // Skip the refresh for this key if the cached value has not expired
-                                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires)
-                                {
-                                    continue;
-                                }
-
                                 string watchedKey = changeWatcher.Key;
-
                                 string watchedLabel = changeWatcher.Label;
 
                                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
@@ -264,15 +270,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (refreshAll)
                             {
-                                // Trigger a single refresh-all operation if a change was detected in one or more key-values with refreshAll: true
+                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
 
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(client, cancellationToken).ConfigureAwait(false);
-
-                            return;
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken).ConfigureAwait(false);
                         },
                         cancellationToken)
                         .ConfigureAwait(false);
@@ -306,6 +310,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             adapter.InvalidateCache();
                         }
+
+                        // Update the cache expiration time for all refresh registered settings and feature flags
+                        foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
+                        {
+                            UpdateCacheExpirationTime(changeWatcher);
+                        }
                     }
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || changedKeyValuesCollection?.Any() == true || keyValueChanges.Any())
@@ -329,7 +339,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 _watchedSettings.Remove(kvIdentifier);
                             }
 
-                            UpdateCacheExpirationTime(kvp.Key);
+                            // Already updated cache expiration time if refreshAll is true.
+                            if (!refreshAll)
+                            {
+                                UpdateCacheExpirationTime(kvp.Key);
+                            }
                         }
                     }
                 }
@@ -608,18 +622,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(IEnumerable<KeyValueWatcher> multiKeyWatchers, ConfigurationClient client, CancellationToken cancellationToken)
         {
             var keyValueChanges = new List<KeyValueChange>();
 
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            foreach (KeyValueWatcher changeWatcher in multiKeyWatchers)
             {
-                // Skip the refresh for this key-prefix if the cached value has not expired
-                if (DateTimeOffset.UtcNow < changeWatcher.CacheExpires)
-                {
-                    continue;
-                }
-
                 IEnumerable<ConfigurationSetting> currentKeyValues;
 
                 if (changeWatcher.Key.EndsWith("*"))
