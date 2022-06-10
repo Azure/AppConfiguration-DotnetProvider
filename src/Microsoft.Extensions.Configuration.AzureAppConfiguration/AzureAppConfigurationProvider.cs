@@ -122,11 +122,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var watch = Stopwatch.StartNew();
 
+            var loadStartTime = DateTimeOffset.UtcNow;
+
+            // Guaranteed to have atleast one available client since it is a application startup path.
+            IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(loadStartTime);
+
             try
             {
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                InitializeAsync(_optional, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                InitializeAsync(_optional, availableClients, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -181,7 +186,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
                     if (!availableClients.Any())
                     {
                         return;
@@ -193,7 +198,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         if (InitializationCacheExpires < utcNow)
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
-                            await InitializeAsync(ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                            await InitializeAsync(ignoreFailures: false, availableClients, cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -482,18 +487,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task InitializeAsync(bool ignoreFailures, CancellationToken cancellationToken = default)
+        private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
 
             try
             {
-                IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
-                if (!availableClients.Any())
-                {
-                    return;
-                }
-
                 data = await ExecuteWithFailOverPolicyAsync(availableClients, (client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&

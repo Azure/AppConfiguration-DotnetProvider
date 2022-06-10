@@ -54,10 +54,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
         {
-            var utcNow = DateTimeOffset.UtcNow;
-            return _clients.Where(client => client.BackoffEndTime <= utcNow).Select(c => c.Client).ToList();
+            return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
