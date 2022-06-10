@@ -126,7 +126,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                LoadAllWithFailOverPolicyAsync(_optional, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                InitializeAsync(_optional, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -181,13 +181,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+                    if (!availableClients.Any())
+                    {
+                        return;
+                    }
+
                     // Check if initial configuration load had failed
                     if (_applicationSettings == null)
                     {
                         if (InitializationCacheExpires < utcNow)
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
-                            await LoadAllWithFailOverPolicyAsync(ignoreFailures: false, cancellationToken).ConfigureAwait(false);
+                            await InitializeAsync(ignoreFailures: false, cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -200,7 +206,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     bool refreshAll = false;
 
-                    await ExecuteWithFailOverPolicyAsync(async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
                             applicationSettings = null;
                             keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
@@ -476,13 +482,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task LoadAllWithFailOverPolicyAsync(bool ignoreFailures, CancellationToken cancellationToken = default)
+        private async Task InitializeAsync(bool ignoreFailures, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
 
             try
             {
-                data = await ExecuteWithFailOverPolicyAsync((client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
+                IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+                if (!availableClients.Any())
+                {
+                    return;
+                }
+
+                data = await ExecuteWithFailOverPolicyAsync(availableClients, (client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
@@ -733,15 +745,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 
-        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(IEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = _configClientManager.GetAvailableClients().GetEnumerator();
+            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
-            // No ConfigurationClients are available to execute the function.
-            if (!clientEnumerator.MoveNext())
-            {
-                return default;
-            }
+            clientEnumerator.MoveNext();
 
             ConfigurationClient currentClient;
 
@@ -779,9 +787,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task ExecuteWithFailOverPolicyAsync(Func<ConfigurationClient, Task> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task ExecuteWithFailOverPolicyAsync(IEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task> funcToExecute, CancellationToken cancellationToken = default)
         {
-            await ExecuteWithFailOverPolicyAsync<object>(async (client) =>
+            await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
                 await funcToExecute(client);
                 return null;
