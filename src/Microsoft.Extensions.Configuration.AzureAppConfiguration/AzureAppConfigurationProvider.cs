@@ -326,8 +326,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || changedKeyValuesCollection?.Any() == true || keyValueChanges.Any())
                     {
-                        SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
-
                         _applicationSettings = applicationSettings;
 
                         foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
@@ -351,6 +349,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 UpdateCacheExpirationTime(kvp.Key);
                             }
                         }
+
+                        SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -755,6 +755,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             while (true)
             {
                 bool success = false;
+                bool backoffAllClients = false;
+
                 cancellationToken.ThrowIfCancellationRequested();
                 currentClient = clientEnumerator.Current;
 
@@ -769,6 +771,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
+                        backoffAllClients = true;
+
                         throw;
                     }
                 }
@@ -776,12 +780,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
+                        backoffAllClients = true;
+
                         throw;
                     }
                 }
                 finally
                 {
-                    _configClientManager.UpdateClientStatus(currentClient, success);
+                    if (!success && backoffAllClients)
+                    {
+                        do
+                        {
+                            _configClientManager.UpdateClientStatus(currentClient, success);
+                            clientEnumerator.MoveNext();
+                            currentClient = clientEnumerator.Current;
+                        }
+                        while (currentClient != null);
+                    }
+                    else
+                    {
+                        _configClientManager.UpdateClientStatus(currentClient, success);
+                    }
                 }
             }
         }
