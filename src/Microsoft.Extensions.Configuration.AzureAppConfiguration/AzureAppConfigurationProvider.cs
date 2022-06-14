@@ -350,6 +350,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                         }
 
+                        // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
+                        // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
+                        // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
                     }
                 }
