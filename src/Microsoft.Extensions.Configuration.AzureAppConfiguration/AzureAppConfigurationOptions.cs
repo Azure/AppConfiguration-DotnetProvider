@@ -42,14 +42,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The endpoint of the Azure App Configuration.
+        /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal Uri Endpoint { get; private set; }
+        internal IEnumerable<Uri> Endpoints { get; private set; }
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// The credential used to connect to the Azure App Configuration.
+        /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
         internal TokenCredential Credential { get; private set; }
 
@@ -83,9 +83,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
+        /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClient Client { get; set; }
+        /// <remarks>This property is used only for unit testing.</remarks>
+        internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -256,7 +257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            Endpoint = null;
+            Endpoints = null;
             Credential = null;
             ConnectionString = connectionString;
             return this;
@@ -279,9 +280,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
+            return Connect(new List<Uri>() { endpoint }, credential);
+        }
+
+        /// <summary>
+        /// Connect the provider to an Azure App Configuration store and its replicas using a list of endpoints and a token credential.
+        /// </summary>
+        /// <param name="endpoints">The list of endpoints of an Azure App Configuration store and its replicas to connect to.</param>
+        /// <param name="credential">Token credential to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
+        {
+            if (endpoints == null || !endpoints.Any())
+            {
+                throw new ArgumentNullException(nameof(endpoints));
+            }
+
+            if (endpoints.Distinct(new EndpointComparer()).Count() != endpoints.Count())
+            {
+                throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
+            }
+
+            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
+
+            Endpoints = endpoints;
             ConnectionString = null;
-            Endpoint = endpoint;
-            Credential = credential;
             return this;
         }
 

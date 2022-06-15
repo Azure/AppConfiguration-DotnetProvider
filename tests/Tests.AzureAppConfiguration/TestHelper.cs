@@ -2,23 +2,71 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
     class TestHelpers
     {
-        static public string CreateMockEndpointString()
+        public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
+        public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
+
+        static public ConfigurationClient CreateMockConfigurationClient(Uri endpoint, AzureAppConfigurationOptions options = null)
+        {
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            return new ConfigurationClient(endpoint, mockTokenCredential.Object, options.ClientOptions);
+        }
+
+        static public IConfigurationClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
+        {
+            ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
+            ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
+
+            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, c1);
+            ConfigurationClientWrapper w2 = new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, c2);
+
+            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1, w2 };
+
+            MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
+
+            return provider;
+        }
+
+        static public MockedConfigurationClientManager CreateMockedConfigurationClientManager(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
+        {
+            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, primaryClient);
+            ConfigurationClientWrapper w2 = secondaryClient != null ? new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient) : null;
+
+            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1 };
+
+            if (secondaryClient != null)
+            {
+                clients.Add(w2);
+            }
+
+            MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
+
+            return provider;
+        }
+
+        static public string CreateMockEndpointString(string endpoint = "https://xxxxx.azconfig.io")
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
-            return $"Endpoint=https://xxxxx;Id=b1d9b31;Secret={returnValue}";
+            return $"Endpoint={endpoint};Id=b1d9b31;Secret={returnValue}";
         }
 
         static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)
