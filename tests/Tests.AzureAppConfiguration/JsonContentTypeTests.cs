@@ -24,10 +24,10 @@ namespace Tests.AzureAppConfiguration
             string appconfigFilePath = "./MockTestData/appconfig-settings.json";
             string jsonFilePath = "./MockTestData/jsonconfig-settings.json";
             List<ConfigurationSetting> _kvCollection = TestHelpers.LoadJsonSettingsFromFile(appconfigFilePath);
-            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var appconfigSettings = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build()
                 .AsEnumerable();
 
@@ -37,7 +37,6 @@ namespace Tests.AzureAppConfiguration
                 .AsEnumerable();
 
             Assert.Equal(jsonSettings.Count(), appconfigSettings.Count());
-
             foreach (KeyValuePair<string, string> jsonSetting in jsonSettings)
             {
                 KeyValuePair<string, string> appconfigSetting = appconfigSettings.SingleOrDefault(x => x.Key == jsonSetting.Key);
@@ -67,10 +66,10 @@ namespace Tests.AzureAppConfiguration
                     value: null,
                     contentType: "APPLICATION/JSON")
             };
-            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             Assert.Equal("True", config["TestKey1"]);
@@ -114,10 +113,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/")
                 };
 
-            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             Assert.Equal("true", config["TestKey1"]);
@@ -180,10 +179,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/json")
                 };
 
-            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             Assert.Null(config["MyNumberList"]);
@@ -215,10 +214,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
             };
 
-            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             Assert.Equal(compactJsonValue, config[FeatureManagementConstants.FeatureFlagMarker + "Beta"]);
@@ -236,10 +235,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/json")
             };
 
-            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+            var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             Assert.Equal("Beta", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:id"]);
@@ -292,10 +291,10 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
-        private IConfigurationClientManager GetMockConfigurationClientManager(List<ConfigurationSetting> _kvCollection)
+        private Mock<ConfigurationClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
@@ -307,7 +306,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            return TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+            return mockClient;
         }
     }
 }

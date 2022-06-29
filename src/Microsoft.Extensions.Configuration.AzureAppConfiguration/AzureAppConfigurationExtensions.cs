@@ -58,5 +58,13 @@ namespace Microsoft.Extensions.Configuration
             services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
             return services;
         }
+
+        internal static IConfigurationBuilder AddAzureAppConfiguration(
+            this IConfigurationBuilder configurationBuilder,
+            Action<AzureAppConfigurationOptions> action,
+            IConfigurationClientFactory configurationClientFactory)
+        {
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory));
+        }
     }
 }
