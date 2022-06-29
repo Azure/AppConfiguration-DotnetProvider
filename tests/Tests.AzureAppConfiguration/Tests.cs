@@ -19,6 +19,8 @@ namespace Tests.AzureAppConfiguration
 {
     public class Tests
     {
+        string _connectionString = TestHelpers.CreateMockEndpointString();
+
         ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "newTestValue1", "test",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c6"),
             contentType: "text");
@@ -47,7 +49,7 @@ namespace Tests.AzureAppConfiguration
         public void AddsConfigurationValues()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -56,7 +58,7 @@ namespace Tests.AzureAppConfiguration
                 .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object))
+                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
                 .Build();
 
             Assert.True(config["TestKey1"] == "TestValue1");
@@ -91,7 +93,7 @@ namespace Tests.AzureAppConfiguration
         public void TrimKeyPrefix_TestCase1()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -107,7 +109,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Client = mockClient.Object;
                     options.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3);
                 })
                 .Build();
@@ -123,7 +125,7 @@ namespace Tests.AzureAppConfiguration
         public void TrimKeyPrefix_TestCase2()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -139,7 +141,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Client = mockClient.Object;
                     options.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1);
                 })
                 .Build();
@@ -159,13 +161,15 @@ namespace Tests.AzureAppConfiguration
 
             var mockTransport = new MockTransport(response);
 
-            var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
-            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
+            var clientOptions = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = clientManager;
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
                     options.Select("*", null);
                 })
                 .Build();
@@ -193,17 +197,17 @@ namespace Tests.AzureAppConfiguration
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
             var mockTransport = new MockTransport(response);
-            var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
+            var clientOptions = new ConfigurationClientOptions { Transport = mockTransport };
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
-            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = clientManager;
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
                 }).Build();
 
             MockRequest request = mockTransport.SingleRequest;
+            string appUserAgent = UserAgentHeaderPolicy.GenerateUserAgent();
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
             Assert.Matches(userAgentRegex, userAgentHeader);
         }
@@ -216,16 +220,17 @@ namespace Tests.AzureAppConfiguration
 
             var mockTransport = new MockTransport(response);
 
-            var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
+            var clientOptions = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
 
             Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
 
-            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = clientManager;
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
                     options.Select("*", null);
                 })
                 .Build();
@@ -239,17 +244,19 @@ namespace Tests.AzureAppConfiguration
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
             mockTransport = new MockTransport(response);
-            options.ClientOptions.Transport = mockTransport;
+            clientOptions = new ConfigurationClientOptions
+            {
+                Transport = mockTransport
+            };
 
             // Delete the request tracing environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
 
-            var clientManager1 = TestHelpers.CreateMockedConfigurationClientManager(options);
             config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = clientManager1;
+                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
                     options.Select("*", null);
                 })
                 .Build();

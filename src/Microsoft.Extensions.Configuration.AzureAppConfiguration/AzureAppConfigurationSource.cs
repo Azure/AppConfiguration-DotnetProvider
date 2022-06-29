@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Data.AppConfiguration;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -9,8 +10,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private readonly bool _optional;
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
+        private readonly IConfigurationClientFactory _configurationClientFactory;
 
-        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
+        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false, IConfigurationClientFactory configurationClientFactory = null)
         {
             _optionsProvider = () => {
                 var options = new AzureAppConfigurationOptions();
@@ -19,6 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             };
 
             _optional = optional;
+            _configurationClientFactory = configurationClientFactory ?? new ConfigurationClientFactory();
         }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
@@ -28,39 +31,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                IConfigurationClientManager clientManager;
+                ConfigurationClient client;
 
-                if (options.ClientManager != null)
+                if (options.Client != null)
                 {
-                    clientManager = options.ClientManager;
+                    client = options.Client;
                 }
                 else if (!string.IsNullOrWhiteSpace(options.ConnectionString))
                 {
-                    clientManager = new ConfigurationClientManager(options.ConnectionString, options.ClientOptions);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.ConnectionString, options.ClientOptions);
                 }
-                else if (options.Endpoints != null && options.Credential != null)
+                else if (options.Endpoint != null && options.Credential != null)
                 {
-                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    client = _configurationClientFactory.CreateConfigurationClient(options.Endpoint, options.Credential, options.ClientOptions);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
+                provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
-            catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
+            catch (InvalidOperationException e)
             {
                 if (!_optional)
                 {
-                    throw new ArgumentException(ex.Message, ex);
-                }
-            }
-            catch (FormatException fe) // FormatException is thrown when the connection string is not a well formed connection string.
-            {
-                if (!_optional)
-                {
-                    throw new ArgumentException(fe.Message, fe);
+                    throw new ArgumentException(e.Message, e);
                 }
             }
 
