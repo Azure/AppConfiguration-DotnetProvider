@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using System;
+using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -31,6 +32,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// The cache expiration time for the key-value.
         /// </summary>
         public DateTimeOffset CacheExpires { get; set; }
+
+        /// <summary>
+        /// The number of times we tried to reload this key-value.
+        /// </summary>
+        public int RefreshAttempts { get; set; } = 0;
 
         public override bool Equals(object obj)
         {
