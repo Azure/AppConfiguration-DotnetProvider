@@ -17,9 +17,6 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    // This attribute ensures that feature management v1 and v2 tests are never run in parallel.
-    // Since feature flag behavior is controlled by an environment variable, running them in parallel has side effects.
-    [Collection("Feature Management Test Collection")]
     public class FeatureManagementTests
     {
         private ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
@@ -60,7 +57,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         private ConfigurationSetting _kv2 = ConfigurationModelFactory.ConfigurationSetting(
@@ -81,7 +78,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
@@ -98,7 +95,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -113,7 +110,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -128,7 +125,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -143,7 +140,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -158,7 +155,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -173,7 +170,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
         };
 
@@ -265,7 +262,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: default,
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             featureFlags.Add(_kv2);
@@ -335,7 +332,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: default,
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             featureFlags.Add(_kv2);
@@ -695,7 +692,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             // add new feature flag with label2
@@ -711,7 +708,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f")));
 
             // Sleep to let the cache for feature flag with label1 expire
@@ -789,7 +786,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(cacheExpiration1);
@@ -858,7 +855,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             // Sleep to let the cache for feature flag with label1 expire
