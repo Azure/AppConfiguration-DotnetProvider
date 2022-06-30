@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -102,6 +103,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
+        /// This value indicates the feature management schema version being used. 
+        /// </summary>
+        internal string FeatureManagementSchemaVersion { get; private set; }
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -166,7 +172,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
+            if (!_adapters.Any(a => a is FeatureFlagKeyValueAdapter))
+            {
+                // Read Feature Management schema version from environment variables
+                string featureManagementSchemaVersion = null;
+
+                try
+                {
+                    featureManagementSchemaVersion = Environment.GetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable);
+                }
+                catch (SecurityException) { }
+
+                if (featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1 ||
+                    featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
+                {
+                    FeatureManagementSchemaVersion = featureManagementSchemaVersion;
+                }
+                else
+                {
+                    FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
+                }
+
+                _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion));
+
+                if (FeatureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
+                {
+                    _adapters.Add(new DynamicFeatureKeyValueAdapter());
+                }
+            }
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -203,11 +238,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
                 }
-            }
-
-            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
-            {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
             return this;

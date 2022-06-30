@@ -23,6 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string HostTypeKey = "Host";
         public const string EnvironmentKey = "Env";
         public const string DevEnvironmentValue = "Dev";
+        public const string FeatureManagementSchemaVersionTag = "FeatureManagementSchemaVersion";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
 
