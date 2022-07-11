@@ -103,7 +103,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IList<string> correlationContextTags = new List<string>();
             
             correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
-            correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ReplicaCount, requestTracingOptions.ReplicaCount.ToString()));
+
+            if (requestTracingOptions.ReplicaCount > 0)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ReplicaCount, requestTracingOptions.ReplicaCount.ToString()));
+            }
 
             if (requestTracingOptions.HostType != HostType.Unidentified)
             {

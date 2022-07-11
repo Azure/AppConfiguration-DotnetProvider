@@ -35,6 +35,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// This value indicates number of replicas configured.
         /// </summary>
-        public int ReplicaCount { get; set; } = 1;
+        public int ReplicaCount { get; set; } = 0;
     }
 }

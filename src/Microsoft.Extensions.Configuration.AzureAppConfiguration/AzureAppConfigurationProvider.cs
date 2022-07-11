@@ -717,7 +717,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureManagementSchemaVersion = _options.FeatureManagementSchemaVersion,
-                ReplicaCount = _options.Endpoints?.Count() ?? 1,
+                ReplicaCount = _options.Endpoints?.Count() - 1 ?? 0,
             };
         }
 
