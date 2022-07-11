@@ -716,7 +716,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
-                FeatureManagementSchemaVersion = _options.FeatureManagementSchemaVersion
+                FeatureManagementSchemaVersion = _options.FeatureManagementSchemaVersion,
+                ReplicaCount = _options.Endpoints?.Count() ?? 1,
             };
         }
 

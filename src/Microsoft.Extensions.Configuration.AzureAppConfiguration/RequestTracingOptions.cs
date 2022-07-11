@@ -31,5 +31,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// This value indicates the feature management schema version being used. 
         /// </summary>
         public string FeatureManagementSchemaVersion { get; set; }
+
+        /// <summary>
+        /// This value indicates number of replicas configured.
+        /// </summary>
+        public int ReplicaCount { get; set; } = 1;
     }
 }
