@@ -640,6 +640,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             List<KeyValuePair<string, string>> keyValues = null;
+            _options.FeatureFilterType = FeatureFilterType.None;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
@@ -695,7 +696,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 HostType = TracingUtils.GetHostType(),
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
-                IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured
+                IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
+                FilterType = _options.FeatureFilterType
             };
         }
 

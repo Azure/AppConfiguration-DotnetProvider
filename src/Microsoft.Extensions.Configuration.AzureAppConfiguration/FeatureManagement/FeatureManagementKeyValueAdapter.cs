@@ -13,6 +13,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
+        private FeatureFilterType _ffType = FeatureFilterType.None;
+
+        public FeatureManagementKeyValueAdapter(out FeatureFilterType featureFilterType)
+        {
+            featureFilterType = _ffType;
+        }
+
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag;
@@ -43,6 +50,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+
+                        UpdateFilterTelemetry(clientFilter.Name);
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
 
@@ -77,6 +86,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool NeedsRefresh()
         {
             return false;
+        }
+
+        private void UpdateFilterTelemetry(string filterName)
+        {
+            FeatureFilterType filterType = FeatureManagementTelemetryHelper.GetFilterTypeFromName(filterName);
+
+            if (_ffType == FeatureFilterType.None)
+            {
+                _ffType = filterType;
+            }
+            else
+            {
+                _ffType = _ffType | filterType;
+            }
         }
     }
 }
