@@ -13,18 +13,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private static List<string> TimeWindowFilterNames = new List<string> { "TimeWindow", "Microsoft.TimeWindow", "TimeWindowFilter", "Microsoft.TimeWindowFilter" };
         private static List<string> TargetingFilterNames = new List<string> { "Targeting", "Microsoft.Targeting", "TargetingFilter", "Microsoft.TargetingFilter" };
 
-        public static FeatureFilterType GetFilterTypeFromName (string filterName)
+        public static void UpdateFilterTypesTelemetry(string filterName, FeatureFilterTypes filterTypes)
         {
             if (PercentageFilterNames.Any(name => name == filterName))
-                return FeatureFilterType.Percent;
-
-            if (TimeWindowFilterNames.Any(name => name == filterName))
-                return FeatureFilterType.Time;
-           
-            if (TargetingFilterNames.Any(name => name == filterName))
-                return FeatureFilterType.Target;
-
-            return FeatureFilterType.Custom;
+            { 
+                filterTypes.UsesPercentageFilter = true;
+            }
+            else if (TimeWindowFilterNames.Any(name => name == filterName))
+            {
+                filterTypes.UsesTimeWindowFilter = true;
+            }
+            else if (TargetingFilterNames.Any(name => name == filterName))
+            {
+                filterTypes.UsesTargetingFilter = true;
+            }
+            else
+            {
+                filterTypes.UsesCustomFilter = true;
+            }
         }
     }
 }

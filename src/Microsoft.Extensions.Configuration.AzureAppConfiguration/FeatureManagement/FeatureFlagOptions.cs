@@ -14,11 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     public class FeatureFlagOptions
     {
         /// <summary>
-        /// Option to trace the types of feature filters being used.
-        /// </summary>
-        internal FeatureFilterType FeatureFilterType { get; set; } = FeatureFilterType.None;
-
-        /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
         internal List<KeyValueSelector> FeatureFlagSelectors = new List<KeyValueSelector>();

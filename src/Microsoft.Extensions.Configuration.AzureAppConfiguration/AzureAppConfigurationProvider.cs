@@ -597,6 +597,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Set the application data for the configuration provider
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+            // Reset old filter types in order to track the filter types present in the current response from server.
+            _options.FeatureFilterTypes.ResetFeatureFilters();
+
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
@@ -640,7 +643,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<IEnumerable<KeyValuePair<string, string>>> ProcessAdapters(ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             List<KeyValuePair<string, string>> keyValues = null;
-            _options.FeatureFilterType = FeatureFilterType.None;
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
@@ -697,7 +699,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
-                FilterType = _options.FeatureFilterType
+                FilterType = _options.FeatureFilterTypes
             };
         }
 

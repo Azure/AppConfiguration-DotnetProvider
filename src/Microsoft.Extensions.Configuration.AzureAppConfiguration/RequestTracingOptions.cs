@@ -30,6 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Type of feature filters used by the application.
         /// </summary>
-        public FeatureFilterType FilterType { get; set; } = FeatureFilterType.None;
+        public FeatureFilterTypes FilterType { get; set; }
     }
 }
