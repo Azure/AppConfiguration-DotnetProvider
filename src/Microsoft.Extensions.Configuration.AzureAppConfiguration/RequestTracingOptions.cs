@@ -30,6 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Type of feature filters used by the application.
         /// </summary>
-        public FeatureFilterTypes FilterType { get; set; }
+        public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
     }
 }

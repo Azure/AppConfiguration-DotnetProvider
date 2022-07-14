@@ -104,7 +104,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Indicates all types of feature filters used by the application.
         /// </summary>
-        internal FeatureFilterTypes FeatureFilterTypes { get; set; } = new FeatureFilterTypes();
+        internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -212,7 +212,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter(FeatureFilterTypes));
+                _adapters.Add(new FeatureManagementKeyValueAdapter(FeatureFilterTelemetry));
             }
 
             return this;

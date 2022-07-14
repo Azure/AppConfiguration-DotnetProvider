@@ -597,8 +597,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Set the application data for the configuration provider
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Reset old filter types in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTypes.ResetFeatureFilters();
+            // Reset old filter telemetry in order to track the filter types present in the current response from server.
+            _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -699,7 +699,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
-                FilterType = _options.FeatureFilterTypes
+                FilterTelemetry = _options.FeatureFilterTelemetry
             };
         }
 
