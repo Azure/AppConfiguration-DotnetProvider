@@ -70,7 +70,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public override string ToString()
         {
             if (!UsesAnyFeatureFilter())
+            {
                 return string.Empty;
+            }
 
             var sb = new StringBuilder();
 
