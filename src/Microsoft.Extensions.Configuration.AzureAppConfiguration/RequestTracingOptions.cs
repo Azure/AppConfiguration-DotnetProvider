@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class RequestTracingOptions
@@ -24,5 +26,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether the request is from a development environment.
         /// </summary>
         public bool IsDevEnvironment { get; set; } = false;
+
+        /// <summary>
+        /// Type of feature filters used by the application.
+        /// </summary>
+        public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
     }
 }

@@ -21,6 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string RequestTypeKey = "RequestType";
         public const string HostTypeKey = "Host";
+        public const string FilterTypeKey = "Filter";
         public const string EnvironmentKey = "Env";
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
