@@ -102,6 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
+        /// Indicates all types of feature filters used by the application.
+        /// </summary>
+        internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -207,7 +212,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
+                _adapters.Add(new FeatureManagementKeyValueAdapter(FeatureFilterTelemetry));
             }
 
             return this;
