@@ -10,7 +10,7 @@ using System.Text;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
     /// <summary>
-    /// Types of built-in feature filters.
+    /// Telemetry for tracking built-in feature filter usage.
     /// </summary>
     internal class FeatureFilterTelemetry
     {
@@ -63,8 +63,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
+        /// </summary>
+        /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
         public override string ToString()
         {
+            if (!UsesAnyFeatureFilter())
+                return string.Empty;
+
             var sb = new StringBuilder();
 
             if (UsesCustomFilter)
