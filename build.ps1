@@ -20,6 +20,7 @@ $ErrorActionPreference = "Stop"
 
 $LogDirectory = "$PSScriptRoot\buildlogs"
 $Solution     = "$PSScriptRoot\Microsoft.Extensions.Configuration.AzureAppConfiguration.sln"
+$dotnet       = & "$PSScriptRoot/build/resolve-dotnet.ps1"
 
 # Create the log directory.
 if ((Test-Path -Path $LogDirectory) -ne $true) {
@@ -28,11 +29,11 @@ if ((Test-Path -Path $LogDirectory) -ne $true) {
 
 if ($RestoreOnly)
 {
-    dotnet restore "$Solution"
+    & $dotnet restore "$Solution"
 }
 else
 {
-    dotnet build -c $BuildConfig "$Solution" | Tee-Object -FilePath "$LogDirectory\build.log"
+    & $dotnet build -c $BuildConfig "$Solution" | Tee-Object -FilePath "$LogDirectory\build.log"
 }
 
 exit $LASTEXITCODE
