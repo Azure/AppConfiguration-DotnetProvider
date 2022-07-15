@@ -109,6 +109,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string FeatureManagementSchemaVersion { get; private set; }
 
         /// <summary>
+        /// Indicates all types of feature filters used by the application.
+        /// </summary>
+        internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -195,7 +200,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
                 }
 
-                _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion));
+                _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion, FeatureFilterTelemetry));
 
                 if (FeatureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
                 {
