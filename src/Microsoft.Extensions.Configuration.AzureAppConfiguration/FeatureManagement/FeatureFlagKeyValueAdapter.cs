@@ -15,9 +15,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private static string _schemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
         private static string _featureFlagsSectionPrefix;
+        private FeatureFilterTelemetry _ffTelemetry;
 
-        public FeatureFlagKeyValueAdapter(string schemaVersion)
+        public FeatureFlagKeyValueAdapter(string schemaVersion, FeatureFilterTelemetry ffTelemetry)
         {
+            _ffTelemetry = ffTelemetry ?? throw new ArgumentNullException(nameof(ffTelemetry));
+
             if (string.IsNullOrWhiteSpace(schemaVersion))
             {
                 throw new ArgumentNullException(nameof(schemaVersion));
@@ -66,6 +69,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+
+                        _ffTelemetry.UpdateFeatureFilterTelemetry(clientFilter.Name);
+
                         string enabledForSectionPrefix =
                             $"{_featureFlagsSectionPrefix}:{featureFlag.Id}:{FeatureManagementConstants.FeatureFlagEnabledFor}:{i}";
 
