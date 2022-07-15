@@ -24,8 +24,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FilterTypeKey = "Filter";
         public const string EnvironmentKey = "Env";
         public const string DevEnvironmentValue = "Dev";
+        public const string FeatureManagementSchemaVersionTag = "FeatureManagementSchemaVersion";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
+        public const string ReplicaCount = "ReplicaCount";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

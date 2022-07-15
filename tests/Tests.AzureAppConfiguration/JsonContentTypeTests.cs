@@ -24,10 +24,10 @@ namespace Tests.AzureAppConfiguration
             string appconfigFilePath = "./MockTestData/appconfig-settings.json";
             string jsonFilePath = "./MockTestData/jsonconfig-settings.json";
             List<ConfigurationSetting> _kvCollection = TestHelpers.LoadJsonSettingsFromFile(appconfigFilePath);
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var appconfigSettings = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build()
                 .AsEnumerable();
 
@@ -37,6 +37,7 @@ namespace Tests.AzureAppConfiguration
                 .AsEnumerable();
 
             Assert.Equal(jsonSettings.Count(), appconfigSettings.Count());
+
             foreach (KeyValuePair<string, string> jsonSetting in jsonSettings)
             {
                 KeyValuePair<string, string> appconfigSetting = appconfigSettings.SingleOrDefault(x => x.Key == jsonSetting.Key);
@@ -66,10 +67,10 @@ namespace Tests.AzureAppConfiguration
                     value: null,
                     contentType: "APPLICATION/JSON")
             };
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
             Assert.Equal("True", config["TestKey1"]);
@@ -113,10 +114,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/")
                 };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
             Assert.Equal("true", config["TestKey1"]);
@@ -179,10 +180,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/json")
                 };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
             Assert.Null(config["MyNumberList"]);
@@ -211,13 +212,13 @@ namespace Tests.AzureAppConfiguration
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
                     value: compactJsonValue,
-                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8")
+                    contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
             };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
             Assert.Equal(compactJsonValue, config[FeatureManagementConstants.FeatureFlagMarker + "Beta"]);
@@ -235,10 +236,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: "application/json")
             };
 
-            var mockClient = GetMockConfigurationClient(_kvCollection);
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
             Assert.Equal("Beta", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:id"]);
@@ -256,7 +257,20 @@ namespace Tests.AzureAppConfiguration
             ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
                 value: compactJsonValue,
-                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8");
+                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8");
+
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
+            Assert.False(jsonKeyValueAdapter.CanProcess(setting));
+        }
+
+        [Fact]
+        public void JsonContentTypeTests_JsonKeyValueAdapterCannotProcessDynamicFeatures()
+        {
+            var compactJsonValue = "{\"id\":\"ShoppingCart\",\"description\":\"\",\"client_assigner\":\"Microsoft.Targeting\",\"variants\":[{\"default\":true,\"name\":\"Big\",\"configuration_reference\":\"ShoppingCart:Big\",\"assignment_parameters\":{\"Audience\":{\"Users\":[\"Alec\"],\"Groups\":[]}}},{\"name\":\"Small\",\"configuration_reference\":\"ShoppingCart:Small\",\"assignment_parameters\":{\"Audience\":{\"Users\":[],\"Groups\":[{\"Name\":\"Ring1\",\"RolloutPercentage\":50}],\"DefaultRolloutPercentage\":30}}}]}";
+            ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "ShoppingCart",
+                value: compactJsonValue,
+                contentType: FeatureManagementConstants.DynamicFeatureContentType + ";charset=utf-8");
 
             var jsonKeyValueAdapter = new JsonKeyValueAdapter();
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
@@ -278,10 +292,10 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
-        private Mock<ConfigurationClient> GetMockConfigurationClient(List<ConfigurationSetting> _kvCollection)
+        private IConfigurationClientManager GetMockConfigurationClientManager(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string k, string l, CancellationToken ct)
             {
@@ -293,7 +307,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            return mockClient;
+            return TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
         }
     }
 }

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -41,14 +42,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal string ConnectionString { get; private set; }
 
         /// <summary>
-        /// The endpoint of the Azure App Configuration.
+        /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal Uri Endpoint { get; private set; }
+        internal IEnumerable<Uri> Endpoints { get; private set; }
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// The credential used to connect to the Azure App Configuration.
+        /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
         internal TokenCredential Credential { get; private set; }
 
@@ -82,9 +83,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
+        /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClient Client { get; set; }
+        /// <remarks>This property is used only for unit testing.</remarks>
+        internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -100,6 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
         /// </summary>
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
+
+        /// <summary>
+        /// This value indicates the feature management schema version being used. 
+        /// </summary>
+        internal string FeatureManagementSchemaVersion { get; private set; }
 
         /// <summary>
         /// Indicates all types of feature filters used by the application.
@@ -171,7 +178,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
+            if (!_adapters.Any(a => a is FeatureFlagKeyValueAdapter))
+            {
+                // Read Feature Management schema version from environment variables
+                string featureManagementSchemaVersion = null;
+
+                try
+                {
+                    featureManagementSchemaVersion = Environment.GetEnvironmentVariable(FeatureManagementConstants.FeatureManagementSchemaEnvironmentVariable);
+                }
+                catch (SecurityException) { }
+
+                if (featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV1 ||
+                    featureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
+                {
+                    FeatureManagementSchemaVersion = featureManagementSchemaVersion;
+                }
+                else
+                {
+                    FeatureManagementSchemaVersion = FeatureManagementConstants.FeatureManagementDefaultSchema;
+                }
+
+                _adapters.Add(new FeatureFlagKeyValueAdapter(FeatureManagementSchemaVersion, FeatureFilterTelemetry));
+
+                if (FeatureManagementSchemaVersion == FeatureManagementConstants.FeatureManagementSchemaV2)
+                {
+                    _adapters.Add(new DynamicFeatureKeyValueAdapter());
+                }
+            }
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -210,11 +246,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
-            {
-                _adapters.Add(new FeatureManagementKeyValueAdapter(FeatureFilterTelemetry));
-            }
-
             return this;
         }
 
@@ -231,7 +262,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            Endpoint = null;
+            Endpoints = null;
             Credential = null;
             ConnectionString = connectionString;
             return this;
@@ -254,9 +285,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
+            return Connect(new List<Uri>() { endpoint }, credential);
+        }
+
+        /// <summary>
+        /// Connect the provider to an Azure App Configuration store and its replicas using a list of endpoints and a token credential.
+        /// </summary>
+        /// <param name="endpoints">The list of endpoints of an Azure App Configuration store and its replicas to connect to.</param>
+        /// <param name="credential">Token credential to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
+        {
+            if (endpoints == null || !endpoints.Any())
+            {
+                throw new ArgumentNullException(nameof(endpoints));
+            }
+
+            if (endpoints.Distinct(new EndpointComparer()).Count() != endpoints.Count())
+            {
+                throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
+            }
+
+            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
+
+            Endpoints = endpoints;
             ConnectionString = null;
-            Endpoint = endpoint;
-            Credential = credential;
             return this;
         }
 

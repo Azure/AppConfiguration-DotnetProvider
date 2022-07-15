@@ -105,6 +105,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             
             correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
 
+            if (requestTracingOptions.ReplicaCount > 0)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ReplicaCount, requestTracingOptions.ReplicaCount.ToString()));
+            }
+
             if (requestTracingOptions.HostType != HostType.Unidentified)
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.HostTypeKey, Enum.GetName(typeof(HostType), requestTracingOptions.HostType)));
@@ -113,6 +118,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.IsDevEnvironment)
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestTracingOptions.FeatureManagementSchemaVersion))
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementSchemaVersionTag, requestTracingOptions.FeatureManagementSchemaVersion));
             }
 
             if (requestTracingOptions.FilterTelemetry.UsesAnyFeatureFilter())
