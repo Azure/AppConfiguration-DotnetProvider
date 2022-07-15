@@ -43,7 +43,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             // Augment the configuration builder with Azure App Configuration
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(endpoints, new DefaultAzureCredential());
+                // Pass the list of endpoints when `Connect(List<Uri>, TokenCredential)` becomes public.
+                options.Connect(endpoints.First(), new DefaultAzureCredential());
             });
 
             Configuration = builder.Build();

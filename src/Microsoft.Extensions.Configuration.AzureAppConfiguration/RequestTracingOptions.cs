@@ -36,5 +36,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// This value indicates number of replicas configured.
         /// </summary>
         public int ReplicaCount { get; set; } = 0;
+
+        /// <summary>
+        /// Type of feature filters used by the application.
+        /// </summary>
+        public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
     }
 }
