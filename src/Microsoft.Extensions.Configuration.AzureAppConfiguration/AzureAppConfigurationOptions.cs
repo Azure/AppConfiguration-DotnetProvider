@@ -288,7 +288,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="endpoints">The list of endpoints of an Azure App Configuration store and its replicas to connect to.</param>
         /// <param name="credential">Token credential to use to connect.</param>
-        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
+        internal AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
             if (endpoints == null || !endpoints.Any())
             {
