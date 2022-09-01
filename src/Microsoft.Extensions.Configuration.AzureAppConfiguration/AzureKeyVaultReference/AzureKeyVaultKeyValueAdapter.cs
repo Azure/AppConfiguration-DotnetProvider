@@ -51,7 +51,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             try
             {
-                secret = await _secretProvider.GetSecretValue(secretUri, setting.Key, cancellationToken).ConfigureAwait(false);
+                secret = await _secretProvider.GetSecretValue(identifier, setting.Key, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {

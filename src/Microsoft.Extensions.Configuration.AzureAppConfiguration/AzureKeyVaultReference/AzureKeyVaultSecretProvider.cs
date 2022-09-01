@@ -35,10 +35,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(Uri secretUri, string key, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier identifier, string key, CancellationToken cancellationToken)
         {
-            string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
-            string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
+            string secretName = identifier.Name;
+            string secretVersion = identifier.Version;
+            Uri secretUri = identifier.SourceId;
             string secretValue = null;
 
             if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
