@@ -129,7 +129,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(keyFilter));
             }
 
-            if (labelFilter == null || string.IsNullOrWhiteSpace(labelFilter))
+            if (string.IsNullOrWhiteSpace(labelFilter))
             {
                 labelFilter = LabelFilter.Null;
             }
