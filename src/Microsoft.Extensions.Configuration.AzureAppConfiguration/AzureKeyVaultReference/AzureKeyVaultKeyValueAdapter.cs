@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             // Uri validation
-            if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier identifier))
+            if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
             {
                 throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier", setting, null, secretRef);
             }
@@ -51,7 +51,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             try
             {
-                secret = await _secretProvider.GetSecretValue(identifier, setting.Key, cancellationToken).ConfigureAwait(false);
+                secret = await _secretProvider.GetSecretValue(secretIdentifier, setting.Key, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {

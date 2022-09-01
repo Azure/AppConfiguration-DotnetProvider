@@ -35,11 +35,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier identifier, string key, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, string key, CancellationToken cancellationToken)
         {
-            string secretName = identifier.Name;
-            string secretVersion = identifier.Version;
-            Uri secretUri = identifier.SourceId;
             string secretValue = null;
 
             if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
@@ -48,7 +45,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return cachedSecret.SecretValue;
             }
 
-            SecretClient client = GetSecretClient(secretUri);
+            SecretClient client = GetSecretClient(secretIdentifier.SourceId);
 
             if (client == null && _keyVaultOptions.SecretResolver == null)
             {
@@ -61,12 +58,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 if (client != null)
                 {
-                    KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
+                    KeyVaultSecret secret = await client.GetSecretAsync(secretIdentifier.Name, secretIdentifier.Version, cancellationToken).ConfigureAwait(false);
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)
                 {
-                    secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                    secretValue = await _keyVaultOptions.SecretResolver(secretIdentifier.SourceId).ConfigureAwait(false);
                 }
 
                 cachedSecret = new CachedKeyVaultSecret(secretValue);
