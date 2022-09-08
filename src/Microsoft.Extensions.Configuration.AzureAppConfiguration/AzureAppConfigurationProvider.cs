@@ -278,7 +278,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
-
+                                _logger?.LogInformation(LoggingConstants.SuccessfulConfigurationUpdated + " on endpoint: " + AppConfigurationEndpoint); // what endpoint is client coming from? for georeplication
                                 return;
                             }
 
@@ -291,15 +291,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         applicationSettings = new Dictionary<string, ConfigurationSetting>(_applicationSettings, StringComparer.OrdinalIgnoreCase);
 
-                        foreach (KeyValueChange change in keyValueChanges.Values.Concat(changedKeyValuesCollection))
+                        foreach (KeyValueChange change in keyValueChanges.Values)
                         {
                             if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
                                 applicationSettings.Remove(change.Key);
+                                _logger?.LogInformation(LoggingConstants.SuccessfulKeyValueDeleted + change.Key + " on endpoint: " + AppConfigurationEndpoint);
                             }
                             else if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 applicationSettings[change.Key] = change.Current;
+                                _logger?.LogInformation(LoggingConstants.SuccessfulKeyValueModified + change.Current + " on endpoint: " + AppConfigurationEndpoint);
+                            }
+
+                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                            foreach (IKeyValueAdapter adapter in _options.Adapters)
+                            {
+                                adapter.InvalidateCache(change.Current);
+                            }
+                        }
+
+                        foreach (KeyValueChange change in changedKeyValuesCollection)
+                        {
+                            if (change.ChangeType == KeyValueChangeType.Deleted)
+                            {
+                                applicationSettings.Remove(change.Key);
+                                _logger?.LogInformation(LoggingConstants.SuccessfulFeatureFlagDeleted + change.Key + " on endpoint: " + AppConfigurationEndpoint);
+                            }
+                            else if (change.ChangeType == KeyValueChangeType.Modified)
+                            {
+                                applicationSettings[change.Key] = change.Current;
+                                _logger?.LogInformation(LoggingConstants.SuccessfulFeatureFlagModified + change.Current + " on endpoint: " + AppConfigurationEndpoint);
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
@@ -692,7 +714,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, _logger, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {
