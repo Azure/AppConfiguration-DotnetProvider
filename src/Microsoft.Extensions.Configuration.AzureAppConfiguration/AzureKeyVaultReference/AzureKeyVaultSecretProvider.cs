@@ -62,7 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 if (client != null)
                 {
                     KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    logger?.LogInformation(LoggingConstants.SuccessfulKeyVaultSecretUpdated + secret.Name);
+                    logger?.LogInformation(LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess); // add uri
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)

@@ -16,6 +16,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Security;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -210,6 +211,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     bool refreshAll = false;
+                    StringBuilder logBuilder = new StringBuilder();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
@@ -274,15 +276,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                             }
 
+                            Uri endpoint = _configClientManager.GetEndpointForClient(client);
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
-                                _logger?.LogInformation(LoggingConstants.SuccessfulConfigurationUpdated + " on endpoint: " + AppConfigurationEndpoint); // what endpoint is client coming from? for georeplication
+                                logBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
                             }
 
+                            if (keyValueChanges.Any())
+                            {
+                                logBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
+                            }
+
                             changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken).ConfigureAwait(false);
+
+                            if (changedKeyValuesCollection.Any())
+                            {
+                                logBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
+                            }
                         },
                         cancellationToken)
                         .ConfigureAwait(false);
@@ -291,37 +304,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         applicationSettings = new Dictionary<string, ConfigurationSetting>(_applicationSettings, StringComparer.OrdinalIgnoreCase);
 
-                        foreach (KeyValueChange change in keyValueChanges.Values)
+                        foreach (KeyValueChange change in keyValueChanges.Values.Concat(changedKeyValuesCollection))
                         {
                             if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
                                 applicationSettings.Remove(change.Key);
-                                _logger?.LogInformation(LoggingConstants.SuccessfulKeyValueDeleted + change.Key + " on endpoint: " + AppConfigurationEndpoint);
                             }
                             else if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 applicationSettings[change.Key] = change.Current;
-                                _logger?.LogInformation(LoggingConstants.SuccessfulKeyValueModified + change.Current + " on endpoint: " + AppConfigurationEndpoint);
-                            }
-
-                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                            foreach (IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(change.Current);
-                            }
-                        }
-
-                        foreach (KeyValueChange change in changedKeyValuesCollection)
-                        {
-                            if (change.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                applicationSettings.Remove(change.Key);
-                                _logger?.LogInformation(LoggingConstants.SuccessfulFeatureFlagDeleted + change.Key + " on endpoint: " + AppConfigurationEndpoint);
-                            }
-                            else if (change.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                applicationSettings[change.Key] = change.Current;
-                                _logger?.LogInformation(LoggingConstants.SuccessfulFeatureFlagModified + change.Current + " on endpoint: " + AppConfigurationEndpoint);
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
@@ -376,6 +367,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
+                        if (logBuilder.Length > 0)
+                        {
+                            _logger?.LogInformation(logBuilder.ToString());
+                        }
                     }
                 }
                 finally

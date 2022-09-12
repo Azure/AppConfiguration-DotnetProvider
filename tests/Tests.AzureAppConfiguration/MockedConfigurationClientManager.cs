@@ -40,5 +40,17 @@ namespace Tests.AzureAppConfiguration
             client?.Client?.UpdateSyncToken(syncToken);
             return true;
         }
+
+        public Uri GetEndpointForClient(ConfigurationClient client)
+        {
+            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
+
+            if (currentClient == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            return currentClient.Endpoint;
+        }
     }
 }
