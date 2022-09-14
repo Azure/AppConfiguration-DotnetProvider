@@ -243,7 +243,7 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
 
             using var cancellationSource = new CancellationTokenSource();
-            cancellationSource.CancelAfter(TimeSpan.Zero);
+            cancellationSource.Cancel();
             refresher.TryRefreshAsync(cancellationSource.Token).Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
@@ -415,6 +415,7 @@ namespace Tests.AzureAppConfiguration
         public void ValidateKeyVaultUpdatedSuccessLoggedDuringRefresh()
         {
             string _secretValue = "SecretValue from KeyVault";
+            Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -427,7 +428,7 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
-            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
             mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns((string name, string version, CancellationToken cancellationToken) =>
                     Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
@@ -458,14 +459,21 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.True(ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess));
-            Assert.True(ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess));
+            Assert.True(ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess + vaultUri.ToString()));
         }
 
         [Fact]
         public void ValidateCorrectEndpointLoggedOnConfigurationUpdate()
         {
             IConfigurationRefresher refresher = null;
-            var mockClient1 = GetMockConfigurationClient();
+            var mockClient1 = new Mock<ConfigurationClient>();
+            mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+           .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
             var mockClient2 = GetMockConfigurationClient();
 
             var mockLogger = new Mock<ILogger>();
@@ -488,31 +496,14 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            var config2 = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = mockClientManager;
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            // check which endpoint is used in 1, verify it's the other one in 2
-
-            Assert.Equal("TestValue1", config1["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
-            Assert.Equal("newValue1", config1["TestKey1"]);
-            Assert.True(ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess));
+            // We should see the second client's endpoint logged since the first client is backed off
+            Assert.True(ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess + TestHelpers.SecondaryConfigStoreEndpoint.ToString()));
         }
 
         [Fact]

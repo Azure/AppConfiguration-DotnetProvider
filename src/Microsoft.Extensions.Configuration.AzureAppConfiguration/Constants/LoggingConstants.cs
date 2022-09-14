@@ -17,7 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Successful update messages
         public const string RefreshConfigurationUpdatedSuccess = "All configuration updated from Azure App Configuration endpoint: ";
         public const string RefreshKeyValueUpdatedSuccess = "Key-Values updated from Azure App Configuration endpoint: ";
-        public const string RefreshKeyVaultSecretUpdatedSuccess = "KeyVault updated from KeyVault endpoint: ";
+        public const string RefreshKeyVaultSecretUpdatedSuccess = "KeyVault updated from KeyVault Uri: ";
         public const string RefreshFeatureFlagUpdatedSuccess = "Feature flags updated from Azure App Configuration endpoint: ";
 
         // add endpoints to all constants, just success for now
