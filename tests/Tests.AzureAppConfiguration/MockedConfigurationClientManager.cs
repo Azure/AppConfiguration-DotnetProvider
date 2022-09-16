@@ -43,14 +43,14 @@ namespace Tests.AzureAppConfiguration
 
         public Uri GetEndpointForClient(ConfigurationClient client)
         {
-            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
-
-            if (currentClient == null)
+            if (client == null)
             {
                 throw new ArgumentNullException(nameof(client));
             }
 
-            return currentClient.Endpoint;
+            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
+
+            return currentClient?.Endpoint;
         }
     }
 }

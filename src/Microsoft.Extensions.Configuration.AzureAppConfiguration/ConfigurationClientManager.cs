@@ -114,7 +114,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
             
-            return currentClient.Endpoint;
+            return currentClient?.Endpoint;
         }
     }
 }
