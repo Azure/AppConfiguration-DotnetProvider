@@ -37,7 +37,7 @@ namespace Tests.AzureAppConfiguration
                 label: "label",
                 value: "TestValue2",
                 eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
-                contentType: "text"),
+                contentType: "text")
     };
 
         ConfigurationSetting FirstKeyValue => _kvCollection.First();
