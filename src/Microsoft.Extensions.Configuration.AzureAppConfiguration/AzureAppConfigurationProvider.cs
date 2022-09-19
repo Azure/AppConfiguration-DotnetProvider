@@ -211,7 +211,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     bool refreshAll = false;
-                    StringBuilder logBuilder = new StringBuilder();
+                    StringBuilder logInfoBuilder = new StringBuilder();
+                    StringBuilder logDebugBuilder = new StringBuilder();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
@@ -219,6 +220,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
                             changedKeyValuesCollection = null;
                             refreshAll = false;
+                            Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
                             foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
@@ -265,6 +267,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
+                                    logDebugBuilder.AppendLine(LoggingConstants.RefreshKeyValueChanged + watchedKey);
+
                                     keyValueChanges[changeWatcher] = change;
 
                                     if (changeWatcher.RefreshAll)
@@ -273,28 +277,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                         break;
                                     }
+                                } else
+                                {
+                                    logDebugBuilder.AppendLine(LoggingConstants.RefreshKeyValueUnchanged + watchedKey);
                                 }
                             }
 
-                            Uri endpoint = _configClientManager.GetEndpointForClient(client);
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
-                                logBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
+                                logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
+                                logDebugBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
                             }
 
                             if (keyValueChanges.Any())
                             {
-                                logBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
+                                logInfoBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
+                                logDebugBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
                             }
 
                             changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken).ConfigureAwait(false);
 
                             if (changedKeyValuesCollection.Any())
                             {
-                                logBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
+                                logInfoBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
+                                logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
                             }
                         },
                         cancellationToken)
@@ -367,9 +376,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
-                        if (logBuilder.Length > 0)
+                        if (logInfoBuilder.Length > 0)
                         {
-                            _logger?.LogInformation(logBuilder.ToString());
+                            _logger?.LogInformation(logInfoBuilder.ToString());
+                        }
+                        if (logDebugBuilder.Length > 0)
+                        {
+                            _logger?.LogDebug(logDebugBuilder.ToString());
                         }
                     }
                 }
