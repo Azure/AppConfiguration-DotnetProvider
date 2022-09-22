@@ -38,14 +38,6 @@ namespace Tests.AzureAppConfiguration
 
         ConfigurationSetting FirstKeyValue => _kvCollection.First();
         ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
-        ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
-        key: "TestKey3",
-        value: @"
-                        {
-                            ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
-                        }",
-        eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
-        contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
 
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
@@ -94,7 +86,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvr }));
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { FirstKeyValue }));
 
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
@@ -108,22 +100,23 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
-                    options.Map((setting) =>
-                    {
-                        if (setting.ContentType == KeyVaultConstants.ContentType + "; charset=utf-8")
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object))
+                        .Map((setting) =>
+                        {
+                        if (setting.ContentType != KeyVaultConstants.ContentType + "; charset=utf-8")
                         {
                             setting.Value = @"
                                             {
                                                 ""uri"":""https://keyvault-theclassics.vault.azure.net/certificates/TestCertificate""
                                             }";
+                            setting.ContentType = KeyVaultConstants.ContentType + "; charset=utf-8";
                         }
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                 })
                 .Build();
 
-            Assert.Equal(_certValue, config["TestKey3"]);
+            Assert.Equal(_certValue, config["TestKey1"]);
         }
 
         [Fact]

@@ -29,6 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _applicationSettings;
+        private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
 
@@ -209,7 +210,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<string, ConfigurationSetting> applicationSettings = null;
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
-                    Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>(_applicationSettings);
+                    Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>(_mappedData);
                     bool refreshAll = false;
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
@@ -512,10 +513,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
+            Dictionary<string, ConfigurationSetting> dataCopy = null;
 
             try
             {
                 data = await ExecuteWithFailOverPolicyAsync(availableClients, (client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
+                dataCopy = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
@@ -552,7 +555,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
-                    _applicationSettings = data;
+                    _applicationSettings = dataCopy;
+                    _mappedData = mappedData;
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
