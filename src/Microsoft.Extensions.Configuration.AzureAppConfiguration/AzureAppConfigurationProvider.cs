@@ -168,7 +168,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
         {
-            // Ensure that concurrent threads do not simultaneously execute refresh operation. 
+            // Ensure that concurrent threads do not simultaneously execute refresh operation.
             if (Interlocked.Exchange(ref _networkOperationsInProgress, 1) == 0)
             {
                 try
@@ -209,6 +209,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<string, ConfigurationSetting> applicationSettings = null;
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
+                    Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>(_applicationSettings);
                     bool refreshAll = false;
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
@@ -268,7 +269,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     if (changeWatcher.RefreshAll)
                                     {
                                         refreshAll = true;
-
                                         break;
                                     }
                                 }
@@ -278,7 +278,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
-
+                                mappedData = new Dictionary<string, ConfigurationSetting>(applicationSettings);
+                                foreach (KeyValuePair<string, ConfigurationSetting> kvp in applicationSettings)
+                                {
+                                    ConfigurationSetting setting = kvp.Value;
+                                    foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
+                                    {
+                                        setting = func(setting).Result;
+                                    }
+                                    mappedData[kvp.Key] = setting;
+                                }
                                 return;
                             }
 
@@ -296,9 +305,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
                                 applicationSettings.Remove(change.Key);
+                                mappedData.Remove(change.Key);
                             }
                             else if (change.ChangeType == KeyValueChangeType.Modified)
                             {
+                                ConfigurationSetting setting = change.Current;
+                                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
+                                {
+                                    setting = func(setting).Result;
+                                }
+                                mappedData[change.Key] = setting;
                                 applicationSettings[change.Key] = change.Current;
                             }
 
@@ -353,7 +369,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
+                        SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -521,9 +537,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.InvalidateCache();
                 }
 
+                Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>();
+
+                foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+                {
+                    ConfigurationSetting setting = kvp.Value;
+                    foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
+                    {
+                        setting = func(setting).Result;
+                    }
+                    mappedData[kvp.Key] = setting;
+                }
+
                 try
                 {
-                    SetData(await PrepareData(data, cancellationToken).ConfigureAwait(false));
+                    SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
                     _applicationSettings = data;
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)

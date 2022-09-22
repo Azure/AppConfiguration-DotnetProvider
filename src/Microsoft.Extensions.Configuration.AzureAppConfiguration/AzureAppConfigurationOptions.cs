@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -29,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
             new JsonKeyValueAdapter() 
         };
+        private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
@@ -76,6 +78,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             get => _adapters;
             set => _adapters = value?.ToList();
         }
+
+        /// <summary>
+        /// A collection of user defined functions that transform each <see cref="ConfigurationSetting"/>.
+        /// </summary>
+        internal IEnumerable<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> UserDefinedMappers => _mappers;
 
         /// <summary>
         /// A collection of key prefixes to be trimmed.
@@ -388,6 +395,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IsKeyVaultRefreshConfigured = keyVaultOptions.IsKeyVaultRefreshConfigured;
             IsKeyVaultConfigured = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Transforms the configuration settings passed to the Azure App Configuration Provider before being passed to internal adapters.
+        /// </summary>
+        /// <param name="mapper">A callback registered by the user to transform each configuration setting.</param>
+        public AzureAppConfigurationOptions Map(Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> mapper)
+        {
+            _mappers.Add(mapper);
             return this;
         }
 
