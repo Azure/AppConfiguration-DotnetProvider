@@ -364,7 +364,7 @@ namespace Tests.AzureAppConfiguration
             builder.AddAzureAppConfiguration(options =>
             {
                 options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
-                options.UseFeatureFlags(o => o.Label = "myLabel");
+                options.UseFeatureFlags();
             }).Build();
 
             MockRequest request = mockTransport.Requests.First();
