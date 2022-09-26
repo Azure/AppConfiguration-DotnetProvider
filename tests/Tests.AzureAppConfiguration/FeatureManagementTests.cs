@@ -348,10 +348,13 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void PreservesDefaultQuery()
         {
-            var response = new MockResponse(200);
-            response.SetContent(SerializationHelpers.Serialize(new[] { _kv }, TestHelpers.SerializeBatch));
+            var mockTransport = new MockTransport(req =>
+            {
+                var response = new MockResponse(200);
+                response.SetContent(SerializationHelpers.Serialize(new[] { _kv }, TestHelpers.SerializeBatch));
+                return response;
+            });
 
-            var mockTransport = new MockTransport(response);
             var clientOptions = new ConfigurationClientOptions
             {
                 Transport = mockTransport
@@ -361,10 +364,10 @@ namespace Tests.AzureAppConfiguration
             builder.AddAzureAppConfiguration(options =>
             {
                 options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
-                options.UseFeatureFlags();
+                options.UseFeatureFlags(o => o.Label = "myLabel");
             }).Build();
 
-            MockRequest request = mockTransport.SingleRequest;
+            MockRequest request = mockTransport.Requests.First();
 
             Assert.Contains("/kv/?key=%252A&label=%2500", Uri.EscapeUriString(request.Uri.PathAndQuery));
             Assert.DoesNotContain(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker), request.Uri.PathAndQuery);
@@ -423,7 +426,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(cacheExpirationTimeSpan);
 
             refresher.TryRefreshAsync().Wait();
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
 
         [Fact]
