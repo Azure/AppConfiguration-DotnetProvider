@@ -190,6 +190,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
                     if (!availableClients.Any())
                     {
+                        _logger?.LogDebug(LoggingConstants.RefreshCanceledDueToNoAvailableEndpoints);
                         return;
                     }
 
@@ -221,6 +222,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             changedKeyValuesCollection = null;
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
+                            logInfoBuilder.Clear();
+                            logDebugBuilder.Clear();
 
                             foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
@@ -288,14 +291,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
-                                logDebugBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
                             }
 
                             if (keyValueChanges.Any())
                             {
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
-                                logDebugBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
                             }
 
                             changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken).ConfigureAwait(false);
@@ -303,7 +304,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (changedKeyValuesCollection.Any())
                             {
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
-                                logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
                             }
                         },
                         cancellationToken)

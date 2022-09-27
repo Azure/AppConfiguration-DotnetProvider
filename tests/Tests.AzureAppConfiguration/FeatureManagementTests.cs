@@ -8,6 +8,7 @@ using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -865,6 +866,94 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Browser", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
             Assert.Equal("Edge", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+        }
+
+        [Fact]
+        public void ValidateFeatureFlagUpdatedSuccessLoggedDuringRefresh()
+        {
+            TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+            ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            value: @"
+                    {
+                      ""id"": ""MyFeature"",
+                      ""description"": ""The new beta version of our web site."",
+                      ""display_name"": ""Beta Feature"",
+                      ""enabled"": true,
+                      ""conditions"": {
+                        ""client_filters"": [
+                          {
+                            ""name"": ""AllUsers""
+                          }, 
+                          {
+                            ""name"": ""SuperUsers""
+                          }
+                        ]
+                      }
+                    }
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+            IConfigurationRefresher refresher = null;
+            var featureFlags = new List<ConfigurationSetting> { _kv };
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            value: @"
+                    {
+                      ""id"": ""MyFeature"",
+                      ""description"": ""The new beta version of our web site."",
+                      ""display_name"": ""Beta Feature"",
+                      ""enabled"": true,
+                      ""conditions"": {
+                        ""client_filters"": [                        
+                          {
+                            ""name"": ""SuperUsers""
+                          }
+                        ]
+                      }
+                    }
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess));
+
+            featureFlags.RemoveAt(0);
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+            Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess));
         }
     }
 }

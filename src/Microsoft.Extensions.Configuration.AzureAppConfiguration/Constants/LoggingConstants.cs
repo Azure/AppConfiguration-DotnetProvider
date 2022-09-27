@@ -16,12 +16,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         // Successful update messages
         public const string RefreshConfigurationUpdatedSuccess = "All configuration updated from Azure App Configuration endpoint: ";
-        public const string RefreshKeyValueUpdatedSuccess = "Key-values updated from Azure App Configuration endpoint: ";
-        public const string RefreshKeyValueUnchanged = "Key-value unchanged: ";
+        public const string RefreshKeyValueUpdatedSuccess = "Some key-value(s) updated from Azure App Configuration endpoint: ";
+        public const string RefreshKeyValueUnchanged = "No new changes for key-value: ";
         public const string RefreshKeyValueChanged = "Key-value changed: ";
         public const string RefreshKeyVaultSecretUpdatedSuccess = "Key Vault secret updated from vault: ";
+        public const string RefreshKeyVaultSecretChanged = "Key Vault secret changed: ";
         public const string RefreshFeatureFlagUpdatedSuccess = "Feature flags updated from Azure App Configuration endpoint: ";
 
-        // add endpoints to all constants, just success for now
+        // Other
+        public const string RefreshCanceledDueToNoAvailableEndpoints = "Skipping refresh operation because all AppConfig endpoints are backed off due to previous failures.";
     }
 }
