@@ -367,10 +367,11 @@ namespace Tests.AzureAppConfiguration
                 options.UseFeatureFlags();
             }).Build();
 
-            MockRequest request = mockTransport.Requests.First();
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
+            bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
-            Assert.Contains("/kv/?key=%252A&label=%2500", Uri.EscapeUriString(request.Uri.PathAndQuery));
-            Assert.DoesNotContain(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker), request.Uri.PathAndQuery);
+            Assert.True(performedDefaultQuery);
+            Assert.True(queriedFeatureFlags);
         }
 
         [Fact]
