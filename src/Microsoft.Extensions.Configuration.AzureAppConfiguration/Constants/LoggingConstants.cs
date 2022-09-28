@@ -24,6 +24,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshFeatureFlagUpdatedSuccess = "Feature flags updated from Azure App Configuration endpoint: ";
 
         // Other
-        public const string RefreshCanceledDueToNoAvailableEndpoints = "Skipping refresh operation because all AppConfig endpoints are backed off due to previous failures.";
+        public const string RefreshSkippedNoClientAvailable = "Skipping refresh operation because all AppConfig endpoints are backed off due to previous failures.";
     }
 }
