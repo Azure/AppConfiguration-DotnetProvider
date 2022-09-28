@@ -278,6 +278,104 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
 
+        //[Fact]
+        //public void MapTransformSettingKeyWithRefresh()
+        //{
+        //    IConfigurationRefresher refresher = null;
+        //    var mockClient = GetMockConfigurationClient();
+
+        //    var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+        //    var config = new ConfigurationBuilder()
+        //        .AddAzureAppConfiguration(options =>
+        //        {
+        //            options.ClientManager = mockClientManager;
+        //            options.ConfigureRefresh(refreshOptions =>
+        //            {
+        //                refreshOptions.Register("TestKey1", "label", true)
+        //                    .SetCacheExpiration(CacheExpirationTime);
+        //            });
+        //            options.Map((setting) =>
+        //            {
+        //                if (setting.Key == "TestKey1")
+        //                {
+        //                    setting.Key = "newTestKey1";
+        //                }
+        //                return new ValueTask<ConfigurationSetting>(setting);
+        //            }).Map((setting) =>
+        //            {
+        //                if (setting.Key == "newTestKey1")
+        //                {
+        //                    setting.Value += " changed";
+        //                }
+        //                return new ValueTask<ConfigurationSetting>(setting);
+        //            });
+        //            refresher = options.GetRefresher();
+        //        })
+        //        .Build();
+
+        //    Assert.Equal("TestValue1 changed", config["newTestKey1"]);
+        //    Assert.Null(config["TestKey1"]);
+        //    Assert.Equal("TestValue2", config["TestKey2"]);
+
+        //    FirstKeyValue.Value = "newValue1";
+        //    _kvCollection.Last().Value = "newValue2";
+
+        //    Thread.Sleep(CacheExpirationTime);
+        //    refresher.TryRefreshAsync().Wait();
+
+        //    Assert.Equal("newValue1", config["newTestKey1"]);
+        //    Assert.Equal("newValue2", config["TestKey2"]);
+        //}
+
+        //[Fact]
+        //public void MapTransformSettingLabelWithRefresh()
+        //{
+        //    IConfigurationRefresher refresher = null;
+        //    var mockClient = GetMockConfigurationClient();
+
+        //    var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+        //    var config = new ConfigurationBuilder()
+        //        .AddAzureAppConfiguration(options =>
+        //        {
+        //            options.ClientManager = mockClientManager;
+        //            options.ConfigureRefresh(refreshOptions =>
+        //            {
+        //                refreshOptions.Register("TestKey1", "label", true)
+        //                    .SetCacheExpiration(CacheExpirationTime);
+        //            });
+        //            options.Map((setting) =>
+        //            {
+        //                if (setting.Label == "label")
+        //                {
+        //                    setting.Label = "newLabel";
+        //                }
+        //                return new ValueTask<ConfigurationSetting>(setting);
+        //            }).Map((setting) =>
+        //            {
+        //                if (setting.Label == "newLabel")
+        //                {
+        //                    setting.Value += " changed";
+        //                }
+        //                return new ValueTask<ConfigurationSetting>(setting);
+        //            });
+        //            refresher = options.GetRefresher();
+        //        })
+        //        .Build();
+
+        //    Assert.Equal("TestValue1 changed", config["TestKey1"]);
+        //    Assert.Equal("TestValue2 changed", config["TestKey2"]);
+        //    FirstKeyValue.Value = "newValue1";
+        //    _kvCollection.Last().Value = "newValue2";
+
+        //    Thread.Sleep(CacheExpirationTime);
+        //    refresher.TryRefreshAsync().Wait();
+
+        //    Assert.Equal("newValue1", config["TestKey1"]);
+        //    Assert.Equal("newValue2", config["TestKey2"]);
+        //}
+
         private Mock<ConfigurationClient> GetMockConfigurationClient()
         {
             var mockResponse = new Mock<Response>();

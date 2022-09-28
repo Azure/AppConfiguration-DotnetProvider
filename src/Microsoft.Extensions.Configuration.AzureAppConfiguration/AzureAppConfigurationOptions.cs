@@ -404,7 +404,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="mapper">A callback registered by the user to transform each configuration setting.</param>
         public AzureAppConfigurationOptions Map(Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> mapper)
         {
-            _mappers.Add(mapper);
+            if (mapper != null)
+            {
+                _mappers.Add(mapper);
+            }
             return this;
         }
 

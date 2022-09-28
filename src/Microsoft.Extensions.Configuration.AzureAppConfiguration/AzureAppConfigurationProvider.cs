@@ -279,16 +279,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
-                                mappedData = new Dictionary<string, ConfigurationSetting>(applicationSettings);
-                                foreach (KeyValuePair<string, ConfigurationSetting> kvp in applicationSettings)
-                                {
-                                    ConfigurationSetting setting = kvp.Value;
-                                    foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
-                                    {
-                                        setting = func(setting).Result;
-                                    }
-                                    mappedData[kvp.Key] = setting;
-                                }
+                                mappedData = await MapConfigurationData(applicationSettings);
                                 return;
                             }
 
@@ -313,7 +304,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 ConfigurationSetting setting = change.Current;
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
                                 {
-                                    setting = func(setting).Result;
+                                    setting = await func(setting);
                                 }
                                 mappedData[change.Key] = setting;
                                 applicationSettings[change.Key] = change.Current;
@@ -513,12 +504,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
-            Dictionary<string, ConfigurationSetting> dataCopy = null;
-
+            
             try
             {
                 data = await ExecuteWithFailOverPolicyAsync(availableClients, (client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
-                dataCopy = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
@@ -540,22 +529,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.InvalidateCache();
                 }
 
-                Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>();
-
-                foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
-                {
-                    ConfigurationSetting setting = kvp.Value;
-                    foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
-                    {
-                        setting = func(setting).Result;
-                    }
-                    mappedData[kvp.Key] = setting;
-                }
+                Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationData(data);
 
                 try
                 {
                     SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
-                    _applicationSettings = dataCopy;
+                    _applicationSettings = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
                     _mappedData = mappedData;
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
@@ -881,6 +860,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return rfe.Status == HttpStatusCodes.TooManyRequests ||
                    rfe.Status == (int)HttpStatusCode.RequestTimeout ||
                    rfe.Status >= (int)HttpStatusCode.InternalServerError;
+        }
+
+        private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationData(Dictionary<string, ConfigurationSetting> data)
+        {
+            Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>();
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+            {
+                ConfigurationSetting setting = kvp.Value;
+                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
+                {
+                    setting = await func(setting);
+                }
+                mappedData[kvp.Key] = setting;
+            }
+
+            return mappedData;
         }
     }
 }
