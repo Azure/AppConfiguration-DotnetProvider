@@ -304,7 +304,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 ConfigurationSetting setting = change.Current;
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
                                 {
-                                    setting = await func(setting);
+                                    setting = await func(setting).ConfigureAwait(false);
                                 }
                                 mappedData[change.Key] = setting;
                                 applicationSettings[change.Key] = change.Current;
@@ -529,13 +529,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.InvalidateCache();
                 }
 
-                Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationData(data);
-
                 try
                 {
-                    SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
                     _applicationSettings = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
+                    Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationData(data);
                     _mappedData = mappedData;
+                    SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
@@ -871,7 +870,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 ConfigurationSetting setting = kvp.Value;
                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
                 {
-                    setting = await func(setting);
+                    setting = await func(setting).ConfigureAwait(false);
                 }
                 mappedData[kvp.Key] = setting;
             }
