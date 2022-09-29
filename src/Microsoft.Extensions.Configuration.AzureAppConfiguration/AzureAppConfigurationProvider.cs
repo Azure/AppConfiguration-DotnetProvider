@@ -190,7 +190,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
                     if (!availableClients.Any())
                     {
-                        _logger?.LogDebug(LoggingConstants.RefreshCanceledDueToNoAvailableEndpoints);
+                        _logger?.LogDebug(LoggingConstants.RefreshSkippedNoClientAvailable);
                         return;
                     }
 

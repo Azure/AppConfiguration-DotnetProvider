@@ -129,28 +129,13 @@ namespace Tests.AzureAppConfiguration
             return _kvCollection;
         }
 
-        public static bool ValidateLoggedError(Mock<ILogger> logger, string expectedMessage)
-        {
-            Func<object, Type, bool> state = (v, t) => v.ToString().StartsWith(expectedMessage);
-
-            logger.Verify(
-                x => x.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Warning),
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => state(v, t)),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)));
-
-            return true;
-        }
-
-        public static bool ValidateLoggedSuccess(Mock<ILogger> logger, string expectedMessage)
+        public static bool ValidateLog(Mock<ILogger> logger, string expectedMessage, LogLevel level)
         {
             Func<object, Type, bool> state = (v, t) => v.ToString().Contains(expectedMessage);
 
             logger.Verify(
                 x => x.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Information || l == LogLevel.Debug),
+                    It.Is<LogLevel>(l => l == level),
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => state(v, t)),
                     It.IsAny<Exception>(),

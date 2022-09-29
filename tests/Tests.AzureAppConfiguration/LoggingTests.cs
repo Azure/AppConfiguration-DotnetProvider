@@ -111,7 +111,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedError, LogLevel.Warning));
         }
 
         [Fact]
@@ -148,7 +148,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedDueToAuthenticationError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedDueToAuthenticationError, LogLevel.Warning));
         }
 
         [Fact]
@@ -208,7 +208,7 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
-            Assert.True(TestHelpers.ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedDueToKeyVaultError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedDueToKeyVaultError, LogLevel.Warning));
         }
 
         [Fact]
@@ -246,7 +246,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync(cancellationSource.Token).Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedError(mockLogger, LoggingConstants.RefreshCanceledError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshCanceledError, LogLevel.Warning));
         }
 
         [Fact]
@@ -283,7 +283,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess, LogLevel.Information));
         }
 
         [Fact]
@@ -320,8 +320,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueChanged));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "TestKey1"));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueUpdatedSuccess, LogLevel.Information));
         }
 
         [Fact]
@@ -371,8 +370,8 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess + vaultUri.ToString()));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess, LogLevel.Information));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess + vaultUri.ToString(), LogLevel.Information));
         }
 
         [Fact]
@@ -416,7 +415,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             // We should see the second client's endpoint logged since the first client is backed off
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess + TestHelpers.SecondaryConfigStoreEndpoint.ToString()));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess + TestHelpers.SecondaryConfigStoreEndpoint.ToString(), LogLevel.Information));
         }
 
         [Fact]
@@ -453,10 +452,8 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueChanged));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "TestKey1"));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueUnchanged));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "TestKey2"));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueChanged + "TestKey1", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueUnchanged + "TestKey2", LogLevel.Debug));
         }
 
         [Fact]
@@ -505,9 +502,8 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess + vaultUri.ToString()));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretChanged));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "Password3"));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess + vaultUri.ToString(), LogLevel.Information));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyVaultSecretChanged + "Password3", LogLevel.Debug));
         }
 
         [Fact]
@@ -553,7 +549,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedError(mockLogger2, LoggingConstants.RefreshFailedDueToAuthenticationError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger2, LoggingConstants.RefreshFailedDueToAuthenticationError, LogLevel.Warning));
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

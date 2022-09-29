@@ -946,14 +946,14 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess, LogLevel.Information));
 
             featureFlags.RemoveAt(0);
 
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess, LogLevel.Information));
         }
     }
 }
