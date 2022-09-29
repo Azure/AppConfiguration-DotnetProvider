@@ -320,7 +320,8 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueUpdatedSuccess, LogLevel.Information));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueChanged, LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, "TestKey1", LogLevel.Debug));
         }
 
         [Fact]
