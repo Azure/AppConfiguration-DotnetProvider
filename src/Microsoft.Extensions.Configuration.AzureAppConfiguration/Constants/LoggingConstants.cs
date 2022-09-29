@@ -15,10 +15,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshCanceledError = "A refresh operation was canceled.";
 
         // Successful update messages
-        public const string RefreshConfigurationUpdatedSuccess = "All configuration updated from Azure App Configuration endpoint: ";
-        public const string RefreshKeyValueUpdatedSuccess = "Some key-value(s) updated from Azure App Configuration endpoint: ";
+        public const string RefreshConfigurationUpdatedSuccess = "Configuration reloaded for all selected key-values from endpoint: ";
         public const string RefreshKeyValueUnchanged = "No new changes for key-value: ";
-        public const string RefreshKeyValueChanged = "Key-value changed: ";
+        public const string RefreshKeyValueChanged = "Change detected for key-value ";
         public const string RefreshKeyVaultSecretUpdatedSuccess = "Key Vault secret updated from vault: ";
         public const string RefreshKeyVaultSecretChanged = "Key Vault secret changed: ";
         public const string RefreshFeatureFlagUpdatedSuccess = "Feature flags updated from Azure App Configuration endpoint: ";

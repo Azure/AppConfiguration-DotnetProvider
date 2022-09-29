@@ -320,7 +320,8 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueUpdatedSuccess));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueChanged));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "TestKey1"));
         }
 
         [Fact]
@@ -452,8 +453,10 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueChanged + "TestKey1"));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueUnchanged + "TestKey2"));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueChanged));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "TestKey1"));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyValueUnchanged));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "TestKey2"));
         }
 
         [Fact]
@@ -503,7 +506,8 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretUpdatedSuccess + vaultUri.ToString()));
-            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretChanged + "Password3"));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, LoggingConstants.RefreshKeyVaultSecretChanged));
+            Assert.True(TestHelpers.ValidateLoggedSuccess(mockLogger, "Password3"));
         }
 
         [Fact]

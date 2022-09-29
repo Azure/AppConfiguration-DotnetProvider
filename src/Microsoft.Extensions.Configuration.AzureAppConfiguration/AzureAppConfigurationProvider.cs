@@ -270,7 +270,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine(LoggingConstants.RefreshKeyValueChanged + watchedKey);
+                                    logDebugBuilder.AppendLine(String.Format("{0}(key: \"{1}\", label: \"{2}\")", LoggingConstants.RefreshKeyValueChanged, change.Key, change.Label));
 
                                     keyValueChanges[changeWatcher] = change;
 
@@ -282,7 +282,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine(LoggingConstants.RefreshKeyValueUnchanged + watchedKey);
+                                    logDebugBuilder.AppendLine(String.Format("{0}(key: \"{1}\", label: \"{2}\")", LoggingConstants.RefreshKeyValueUnchanged, change.Key, change.Label));
                                 }
                             }
 
@@ -292,11 +292,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
-                            }
-
-                            if (keyValueChanges.Any())
-                            {
-                                logInfoBuilder.AppendLine(LoggingConstants.RefreshKeyValueUpdatedSuccess + endpoint);
                             }
 
                             changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken).ConfigureAwait(false);
@@ -376,13 +371,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
-                        if (logInfoBuilder.Length > 0)
-                        {
-                            _logger?.LogInformation(logInfoBuilder.ToString());
-                        }
                         if (logDebugBuilder.Length > 0)
                         {
                             _logger?.LogDebug(logDebugBuilder.ToString());
+                        }
+                        if (logInfoBuilder.Length > 0)
+                        {
+                            _logger?.LogInformation(logInfoBuilder.ToString());
                         }
                     }
                 }
