@@ -532,18 +532,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.InvalidateCache();
                 }
 
-<<<<<<< HEAD
-
                 try
                 {
                     _serverData = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
                     Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationData(data).ConfigureAwait(false);
-=======
-                try
-                {
-                    _applicationSettings = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
-                    Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationData(data);
->>>>>>> 9f50c356208526e24cc5987c0564a3cf04cb9eb0
                     _mappedData = mappedData;
                     SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
                 }
