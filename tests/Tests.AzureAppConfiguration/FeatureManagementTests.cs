@@ -869,35 +869,12 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateFeatureFlagUpdatedSuccessLoggedDuringRefresh()
+        public void ValidateCorrectFeatureFlagLoggedDuringRefresh()
         {
             TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
-            ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
-            value: @"
-                    {
-                      ""id"": ""MyFeature"",
-                      ""description"": ""The new beta version of our web site."",
-                      ""display_name"": ""Beta Feature"",
-                      ""enabled"": true,
-                      ""conditions"": {
-                        ""client_filters"": [
-                          {
-                            ""name"": ""AllUsers""
-                          }, 
-                          {
-                            ""name"": ""SuperUsers""
-                          }
-                        ]
-                      }
-                    }
-                    ",
-            label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             IConfigurationRefresher refresher = null;
-            var featureFlags = new List<ConfigurationSetting> { _kv };
+            var featureFlags = new List<ConfigurationSetting> { _kv2 };
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -919,10 +896,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
 
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
             value: @"
                     {
                       ""id"": ""MyFeature"",
@@ -932,7 +909,7 @@ namespace Tests.AzureAppConfiguration
                       ""conditions"": {
                         ""client_filters"": [                        
                           {
-                            ""name"": ""SuperUsers""
+                            ""name"": ""AllUsers""
                           }
                         ]
                       }
@@ -945,15 +922,54 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess, LogLevel.Information));
+            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: '" + FeatureManagementConstants.FeatureFlagMarker + "myFeature2', label: '')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + FeatureManagementConstants.FeatureFlagMarker + "myFeature2", LogLevel.Information));
 
             featureFlags.RemoveAt(0);
 
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagUpdatedSuccess, LogLevel.Information));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: '" + FeatureManagementConstants.FeatureFlagMarker + "myFeature1', label: 'label2')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + FeatureManagementConstants.FeatureFlagMarker + "myFeature1", LogLevel.Information));
+        }
+
+        [Fact]
+        public void ValidateFeatureFlagsUnchangedLogged()
+        {
+            TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+
+            IConfigurationRefresher refresher = null;
+            var featureFlags = new List<ConfigurationSetting> { _kv2 };
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagsUnchanged, LogLevel.Debug));
         }
     }
 }

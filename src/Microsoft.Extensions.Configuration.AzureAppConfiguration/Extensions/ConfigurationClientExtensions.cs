@@ -3,10 +3,12 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -60,7 +62,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options,
+            StringBuilder logDebugBuilder, StringBuilder logInfoBuilder, Uri endpoint, CancellationToken cancellationToken)
         {
             if (options == null)
             {
@@ -166,6 +169,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Label = options.Label.NormalizeNull(),
                         Current = null
                     });
+                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{kvp.Key}', label: '{options.Label.NormalizeNull()}')");
+                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{kvp.Key}' from endpoint: {endpoint}");
                 }
             }
 

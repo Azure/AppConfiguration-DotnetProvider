@@ -270,8 +270,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine(String.Format("{0}(key: \"{1}\", label: \"{2}\")", LoggingConstants.RefreshKeyValueChanged, change.Key, change.Label));
-
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
+                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
                                     keyValueChanges[changeWatcher] = change;
 
                                     if (changeWatcher.RefreshAll)
@@ -282,7 +282,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine(String.Format("{0}(key: \"{1}\", label: \"{2}\")", LoggingConstants.RefreshKeyValueUnchanged, change.Key, change.Label));
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueUnchanged}(key: '{change.Key}', label: '{change.Label}')");
                                 }
                             }
 
@@ -294,11 +294,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken, logDebugBuilder, logInfoBuilder, endpoint).ConfigureAwait(false);
 
-                            if (changedKeyValuesCollection.Any())
+                            if (!changedKeyValuesCollection.Any())
                             {
-                                logInfoBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagUpdatedSuccess + endpoint);
+                                _logger?.LogDebug(LoggingConstants.RefreshFeatureFlagsUnchanged);
                             }
                         },
                         cancellationToken)
@@ -654,7 +654,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(IEnumerable<KeyValueWatcher> multiKeyWatchers, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(IEnumerable<KeyValueWatcher> multiKeyWatchers, ConfigurationClient client, CancellationToken cancellationToken, 
+            StringBuilder logDebugBuilder, StringBuilder logInfoBuilder, Uri endpoint)
         {
             var keyValueChanges = new List<KeyValueChange>();
 
@@ -689,9 +690,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             RequestTracingEnabled = _requestTracingEnabled,
                             RequestTracingOptions = _requestTracingOptions
                         },
+                        logDebugBuilder, logInfoBuilder, endpoint,
                         cancellationToken)
                     .ConfigureAwait(false));
-
             }
 
             return keyValueChanges;
