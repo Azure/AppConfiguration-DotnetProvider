@@ -36,6 +36,15 @@ namespace Tests.AzureAppConfiguration
                 contentType: "text")
         };
 
+        ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
+        key: "TestKey3",
+        value: @"
+                        {
+                            ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                        }",
+        eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+        contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
+
         ConfigurationSetting FirstKeyValue => _kvCollection.First();
         ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
 
@@ -278,103 +287,194 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
 
-        //[Fact]
-        //public void MapTransformSettingKeyWithRefresh()
-        //{
-        //    IConfigurationRefresher refresher = null;
-        //    var mockClient = GetMockConfigurationClient();
+        [Fact]
+        public void MapTransformSettingKeyWithRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
 
-        //    var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
-        //    var config = new ConfigurationBuilder()
-        //        .AddAzureAppConfiguration(options =>
-        //        {
-        //            options.ClientManager = mockClientManager;
-        //            options.ConfigureRefresh(refreshOptions =>
-        //            {
-        //                refreshOptions.Register("TestKey1", "label", true)
-        //                    .SetCacheExpiration(CacheExpirationTime);
-        //            });
-        //            options.Map((setting) =>
-        //            {
-        //                if (setting.Key == "TestKey1")
-        //                {
-        //                    setting.Key = "newTestKey1";
-        //                }
-        //                return new ValueTask<ConfigurationSetting>(setting);
-        //            }).Map((setting) =>
-        //            {
-        //                if (setting.Key == "newTestKey1")
-        //                {
-        //                    setting.Value += " changed";
-        //                }
-        //                return new ValueTask<ConfigurationSetting>(setting);
-        //            });
-        //            refresher = options.GetRefresher();
-        //        })
-        //        .Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.Map((setting) =>
+                    {
+                        if (setting.Key == "TestKey1")
+                        {
+                            setting.Key = "newTestKey1";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    }).Map((setting) =>
+                    {
+                        if (setting.Key == "newTestKey1")
+                        {
+                            setting.Value += " changed";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
 
-        //    Assert.Equal("TestValue1 changed", config["newTestKey1"]);
-        //    Assert.Null(config["TestKey1"]);
-        //    Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue1 changed", config["newTestKey1"]);
+            Assert.Null(config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
 
-        //    FirstKeyValue.Value = "newValue1";
-        //    _kvCollection.Last().Value = "newValue2";
+            FirstKeyValue.Value = "newValue1";
+            _kvCollection.Last().Value = "newValue2";
 
-        //    Thread.Sleep(CacheExpirationTime);
-        //    refresher.TryRefreshAsync().Wait();
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
 
-        //    Assert.Equal("newValue1", config["newTestKey1"]);
-        //    Assert.Equal("newValue2", config["TestKey2"]);
-        //}
+            Assert.Equal("newValue1 changed", config["newTestKey1"]);
+            Assert.Equal("newValue2", config["TestKey2"]);
+        }
 
-        //[Fact]
-        //public void MapTransformSettingLabelWithRefresh()
-        //{
-        //    IConfigurationRefresher refresher = null;
-        //    var mockClient = GetMockConfigurationClient();
+        [Fact]
+        public void MapTransformSettingLabelWithRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
 
-        //    var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
-        //    var config = new ConfigurationBuilder()
-        //        .AddAzureAppConfiguration(options =>
-        //        {
-        //            options.ClientManager = mockClientManager;
-        //            options.ConfigureRefresh(refreshOptions =>
-        //            {
-        //                refreshOptions.Register("TestKey1", "label", true)
-        //                    .SetCacheExpiration(CacheExpirationTime);
-        //            });
-        //            options.Map((setting) =>
-        //            {
-        //                if (setting.Label == "label")
-        //                {
-        //                    setting.Label = "newLabel";
-        //                }
-        //                return new ValueTask<ConfigurationSetting>(setting);
-        //            }).Map((setting) =>
-        //            {
-        //                if (setting.Label == "newLabel")
-        //                {
-        //                    setting.Value += " changed";
-        //                }
-        //                return new ValueTask<ConfigurationSetting>(setting);
-        //            });
-        //            refresher = options.GetRefresher();
-        //        })
-        //        .Build();
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.Map((setting) =>
+                    {
+                        if (setting.Label == "label")
+                        {
+                            setting.Label = "newLabel";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    }).Map((setting) =>
+                    {
+                        if (setting.Label == "newLabel")
+                        {
+                            setting.Value += " changed";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
 
-        //    Assert.Equal("TestValue1 changed", config["TestKey1"]);
-        //    Assert.Equal("TestValue2 changed", config["TestKey2"]);
-        //    FirstKeyValue.Value = "newValue1";
-        //    _kvCollection.Last().Value = "newValue2";
+            Assert.Equal("TestValue1 changed", config["TestKey1"]);
+            Assert.Equal("TestValue2 changed", config["TestKey2"]);
+            FirstKeyValue.Value = "newValue1";
+            _kvCollection.Last().Value = "newValue2";
 
-        //    Thread.Sleep(CacheExpirationTime);
-        //    refresher.TryRefreshAsync().Wait();
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
 
-        //    Assert.Equal("newValue1", config["TestKey1"]);
-        //    Assert.Equal("newValue2", config["TestKey2"]);
-        //}
+            Assert.Equal("newValue1 changed", config["TestKey1"]);
+            Assert.Equal("newValue2 changed", config["TestKey2"]);
+        }
+
+        [Fact]
+        public void MapCreateNewSettingWithRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.Map((setting) =>
+                    {
+                        if (setting.Key == "TestKey1")
+                        {
+                            setting = ConfigurationModelFactory.ConfigurationSetting(
+                                        key: "TestKey1",
+                                        label: "label",
+                                        value: "mappedValue1",
+                                        eTag: new ETag("changed"),
+                                        contentType: "text");
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("mappedValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("mappedValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
+        [Fact]
+        public void MapResolvingKeyVaultReferenceThrowsExceptionInAdapter()
+        {
+            string _secretValue = "SecretValue from KeyVault";
+            Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvr }));
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
+
+            KeyVaultReferenceException ex = Assert.Throws<KeyVaultReferenceException>(() =>
+            {
+                var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
+                    options.Map((setting) =>
+                    {
+                        if (setting.ContentType == KeyVaultConstants.ContentType + "; charset=utf-8")
+                        {
+                            setting.Value = _secretValue;
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+            });
+
+
+        }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
         {
@@ -398,7 +498,7 @@ namespace Tests.AzureAppConfiguration
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
+                var newSetting = _kvCollection.FirstOrDefault(s => (s.ETag == setting.ETag) || (s.Key == setting.Key && s.Label == setting.Label));
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
