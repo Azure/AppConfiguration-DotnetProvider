@@ -170,7 +170,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{kvp.Key}', label: '{options.Label.NormalizeNull()}')");
-                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{kvp.Key}' from endpoint: {endpoint}");
+                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{kvp.Key.Replace(FeatureManagementConstants.FeatureFlagMarker, "")}' from endpoint: {endpoint}");
                 }
             }
 

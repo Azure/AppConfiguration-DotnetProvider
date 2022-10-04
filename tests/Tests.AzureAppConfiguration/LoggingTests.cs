@@ -333,7 +333,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectKeyNameLoggedDuringRefresh()
+        public void ValidateCorrectKeyValueLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();

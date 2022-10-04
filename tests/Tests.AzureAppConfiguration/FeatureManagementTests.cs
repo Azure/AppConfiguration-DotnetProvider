@@ -178,6 +178,15 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
         };
 
+        ConfigurationSetting FirstKeyValue = ConfigurationModelFactory.ConfigurationSetting(
+                key: "TestKey1",
+                label: "label",
+                value: "TestValue1",
+                eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
+                contentType: "text");
+
+        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+
         [Fact]
         public void UsesFeatureFlags()
         {
@@ -871,8 +880,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ValidateCorrectFeatureFlagLoggedDuringRefresh()
         {
-            TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
-
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
 
@@ -915,7 +922,7 @@ namespace Tests.AzureAppConfiguration
                       }
                     }
                     ",
-            label: default,
+            label: "label2",
             contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
@@ -924,22 +931,22 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
             Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: '" + FeatureManagementConstants.FeatureFlagMarker + "myFeature2', label: '')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + FeatureManagementConstants.FeatureFlagMarker + "myFeature2", LogLevel.Information));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature2'", LogLevel.Information));
+        }
 
-            featureFlags.RemoveAt(0);
+        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(FirstKeyValue, new MockResponse(200));
+        }
 
-            Thread.Sleep(CacheExpirationTime);
-            refresher.TryRefreshAsync().Wait();
-            Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: '" + FeatureManagementConstants.FeatureFlagMarker + "myFeature1', label: 'label2')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + FeatureManagementConstants.FeatureFlagMarker + "myFeature1", LogLevel.Information));
+        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
         }
 
         [Fact]
         public void ValidateFeatureFlagsUnchangedLogged()
         {
-            TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
-
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
 
@@ -947,6 +954,12 @@ namespace Tests.AzureAppConfiguration
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
             var mockLogger = new Mock<ILogger>();
             var mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -959,11 +972,17 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = mockClientManager;
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
                     refresher = options.GetRefresher();
                 })
                 .Build();
 
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
             refresher.LoggerFactory = mockLoggerFactory.Object;

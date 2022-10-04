@@ -298,7 +298,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (!changedKeyValuesCollection.Any())
                             {
-                                _logger?.LogDebug(LoggingConstants.RefreshFeatureFlagsUnchanged);
+                                logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagsUnchanged);
                             }
                         },
                         cancellationToken)
