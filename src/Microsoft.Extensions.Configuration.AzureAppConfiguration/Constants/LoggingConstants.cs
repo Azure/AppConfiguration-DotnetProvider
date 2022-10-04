@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshKeyValueUnchanged = "No change detected for key-value ";
         public const string RefreshKeyValueSettingUpdated = "Value updated for key: ";
         public const string RefreshKeyVaultSecretChanged = "Secret loaded from Key Vault for key-value ";
-        public const string RefreshKeyVaultSettingUpdated = "Value updated from Key Vault for setting: ";
+        public const string RefreshKeyVaultSettingUpdated = "Value updated from Key Vault for key: ";
         public const string RefreshFeatureFlagChanged = "Change detected for feature flag ";
         public const string RefreshFeatureFlagsUnchanged = "No change detected for feature flags.";
         public const string RefreshFeatureFlagValueUpdated = "Value updated for feature flag: ";
