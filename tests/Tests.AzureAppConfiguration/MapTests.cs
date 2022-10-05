@@ -52,7 +52,7 @@ namespace Tests.AzureAppConfiguration
 
         string _certValue = "Certificate Value from KeyVault";
         string _secretValue = "SecretValue from KeyVault";
-        Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
+        Uri _vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
 
         [Fact]
         public void MapTransformKeyValue()
@@ -101,7 +101,7 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
-            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(_vaultUri);
             mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns((string name, string version, CancellationToken cancellationToken) =>
                     Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _certValue))));
@@ -110,8 +110,8 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object))
-                        .Map((setting) =>
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
+                    options.Map((setting) =>
                         {
                         if (setting.ContentType != KeyVaultConstants.ContentType + "; charset=utf-8")
                         {
@@ -434,7 +434,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void MapResolveKeyVaultReferenceThrowsExceptionInAdapter()
         {
-            Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -443,7 +442,7 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
-            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(_vaultUri);
             mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns((string name, string version, CancellationToken cancellationToken) =>
                     Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
@@ -472,8 +471,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void MapAsyncResolveKeyVaultReference()
         {
-            string _secretValue = "SecretValue from KeyVault";
-            Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -482,7 +479,7 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
-            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(_vaultUri);
             mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns((string name, string version, CancellationToken cancellationToken) =>
                     Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
