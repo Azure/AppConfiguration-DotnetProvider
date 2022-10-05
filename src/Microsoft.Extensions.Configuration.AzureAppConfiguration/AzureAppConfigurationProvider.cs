@@ -373,11 +373,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
                         if (logDebugBuilder.Length > 0)
                         {
-                            _logger?.LogDebug(logDebugBuilder.ToString());
+                            _logger?.LogDebug(logDebugBuilder.ToString().TrimEnd('\r', '\n'));
                         }
                         if (logInfoBuilder.Length > 0)
                         {
-                            _logger?.LogInformation(logInfoBuilder.ToString());
+                            _logger?.LogInformation(logInfoBuilder.ToString().TrimEnd('\r', '\n'));
                         }
                     }
                 }
