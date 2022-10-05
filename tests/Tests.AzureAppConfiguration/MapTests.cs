@@ -51,6 +51,7 @@ namespace Tests.AzureAppConfiguration
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
         string _certValue = "Certificate Value from KeyVault";
+        string _secretValue = "SecretValue from KeyVault";
         Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
 
         [Fact]
@@ -431,9 +432,8 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapResolvingKeyVaultReferenceThrowsExceptionInAdapter()
+        public void MapResolveKeyVaultReferenceThrowsExceptionInAdapter()
         {
-            string _secretValue = "SecretValue from KeyVault";
             Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -454,11 +454,6 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
-                    });
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
                     options.Map((setting) =>
                     {
@@ -472,8 +467,47 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
             });
+        }
+
+        [Fact]
+        public void MapAsyncResolveKeyVaultReference()
+        {
+            string _secretValue = "SecretValue from KeyVault";
+            Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvr }));
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
 
 
+            var config = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(options =>
+            {
+                options.ClientManager = mockClientManager;
+                options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
+                options.Map(async (setting) =>
+                {
+                    if (setting.ContentType == KeyVaultConstants.ContentType + "; charset=utf-8")
+                    {
+                        KeyVaultSecret secret = await mockSecretClient.Object.GetSecretAsync("TheTrialSecret").ConfigureAwait(false);
+                        setting.Value = secret.Value;
+                        setting.ContentType = "text";
+                    }
+                    return setting;
+                });
+                refresher = options.GetRefresher();
+            })
+            .Build();
+
+            Assert.Equal(_secretValue, config["TestKey3"]);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
