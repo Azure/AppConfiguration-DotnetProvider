@@ -222,8 +222,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             changedKeyValuesCollection = null;
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
-                            logInfoBuilder.Clear();
                             logDebugBuilder.Clear();
+                            logInfoBuilder.Clear();
 
                             foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
@@ -294,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cancellationToken, logDebugBuilder, logInfoBuilder, endpoint).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
 
                             if (!changedKeyValuesCollection.Any())
                             {
@@ -367,18 +367,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                         }
 
+                        if (logDebugBuilder.Length > 0)
+                        {
+                            _logger?.LogDebug(logDebugBuilder.ToString().Trim('\r', '\n'));
+                        }
+                        if (logInfoBuilder.Length > 0)
+                        {
+                            _logger?.LogInformation(logInfoBuilder.ToString().Trim('\r', '\n'));
+                        }
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(applicationSettings, cancellationToken).ConfigureAwait(false));
-                        if (logDebugBuilder.Length > 0)
-                        {
-                            _logger?.LogDebug(logDebugBuilder.ToString().TrimEnd('\r', '\n'));
-                        }
-                        if (logInfoBuilder.Length > 0)
-                        {
-                            _logger?.LogInformation(logInfoBuilder.ToString().TrimEnd('\r', '\n'));
-                        }
                     }
                 }
                 finally
@@ -654,8 +654,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(IEnumerable<KeyValueWatcher> multiKeyWatchers, ConfigurationClient client, CancellationToken cancellationToken, 
-            StringBuilder logDebugBuilder, StringBuilder logInfoBuilder, Uri endpoint)
+        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
+            IEnumerable<KeyValueWatcher> multiKeyWatchers,
+            ConfigurationClient client,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
+            Uri endpoint,
+            CancellationToken cancellationToken)
         {
             var keyValueChanges = new List<KeyValueChange>();
 
@@ -690,7 +695,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             RequestTracingEnabled = _requestTracingEnabled,
                             RequestTracingOptions = _requestTracingOptions
                         },
-                        logDebugBuilder, logInfoBuilder, endpoint,
+                        logDebugBuilder,
+                        logInfoBuilder,
+                        endpoint,
                         cancellationToken)
                     .ConfigureAwait(false));
             }

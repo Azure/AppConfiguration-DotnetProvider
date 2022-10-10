@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Core;
-using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Logging;

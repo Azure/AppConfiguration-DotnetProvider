@@ -878,7 +878,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectFeatureFlagLoggedDuringRefresh()
+        public void ValidateCorrectFeatureFlagLoggedIfModifiedOrRemovedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
@@ -922,7 +922,7 @@ namespace Tests.AzureAppConfiguration
                       }
                     }
                     ",
-            label: "label2",
+            label: default,
             contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
@@ -930,18 +930,16 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: '" + FeatureManagementConstants.FeatureFlagMarker + "myFeature2', label: '')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature2'", LogLevel.Information));
-        }
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: 'myFeature1', label: '')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature1'", LogLevel.Information));
 
-        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
-        {
-            return Response.FromValue(FirstKeyValue, new MockResponse(200));
-        }
+            featureFlags.RemoveAt(0);
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
 
-        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
-        {
-            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
+            Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: 'myFeature1', label: '')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature1'", LogLevel.Information));
         }
 
         [Fact]
@@ -989,6 +987,15 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
             Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagsUnchanged, LogLevel.Debug));
+        }
+        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(FirstKeyValue, new MockResponse(200));
+        }
+
+        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
         }
     }
 }

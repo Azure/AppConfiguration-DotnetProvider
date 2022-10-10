@@ -62,8 +62,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(this ConfigurationClient client, IEnumerable<ConfigurationSetting> keyValues, GetKeyValueChangeCollectionOptions options,
-            StringBuilder logDebugBuilder, StringBuilder logInfoBuilder, Uri endpoint, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(
+            this ConfigurationClient client,
+            IEnumerable<ConfigurationSetting> keyValues,
+            GetKeyValueChangeCollectionOptions options,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
+            Uri endpoint,
+            CancellationToken cancellationToken)
         {
             if (options == null)
             {
@@ -154,6 +160,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Label = options.Label.NormalizeNull(),
                                     Current = setting
                                 });
+                                string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
+                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
+                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -169,7 +178,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Label = options.Label.NormalizeNull(),
                         Current = null
                     });
-                    string key = kvp.Key.Replace(FeatureManagementConstants.FeatureFlagMarker, "");
+                    string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
                     logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
                     logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
                 }

@@ -8,14 +8,12 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -39,7 +37,7 @@ namespace Tests.AzureAppConfiguration
                 value: "TestValue2",
                 eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
                 contentType: "text")
-    };
+        };
 
         ConfigurationSetting FirstKeyValue => _kvCollection.First();
         ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
@@ -402,7 +400,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label", true)
                                       .SetCacheExpiration(CacheExpirationTime);
                     });
-                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(CacheExpirationTime));
                     refresher = options.GetRefresher();
                 })
                 .Build();
