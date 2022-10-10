@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Security;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -597,7 +598,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
                 }
-                catch (KeyVaultReferenceException)
+                catch (Exception e) when (e is KeyVaultReferenceException || e is JsonException || e is FormatException || e is ArgumentNullException)
                 {
                     if (!ignoreFailures)
                     {
