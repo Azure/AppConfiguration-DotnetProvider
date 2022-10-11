@@ -598,7 +598,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception e) when (e is KeyVaultReferenceException || e is JsonException || e is FormatException || e is ArgumentNullException)
+                catch (Exception e) when (e is KeyVaultReferenceException || e is FormatException)
                 {
                     if (!ignoreFailures)
                     {
