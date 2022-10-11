@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -102,6 +103,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return false;
+        }
+
+        public Uri GetEndpointForClient(ConfigurationClient client)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
+            
+            return currentClient?.Endpoint;
         }
     }
 }

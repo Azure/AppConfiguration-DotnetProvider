@@ -4,6 +4,7 @@
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
@@ -14,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -40,7 +42,8 @@ namespace Tests.AzureAppConfiguration
         ConfigurationSetting FirstKeyValue => _kvCollection.First();
         ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
         ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
-                key: "TestKey1",
+                key: "TestKey3",
+                label: "label3",
                 value: @"
                         {
                             ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
@@ -108,7 +111,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedError, LogLevel.Warning));
         }
 
         [Fact]
@@ -145,14 +148,13 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedDueToAuthenticationError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedDueToAuthenticationError, LogLevel.Warning));
         }
 
         [Fact]
         public void ValidateKeyVaultExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
 
             // Mock ConfigurationClient
             var mockResponse = new Mock<Response>();
@@ -206,7 +208,7 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
-            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshFailedDueToKeyVaultError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedDueToKeyVaultError, LogLevel.Warning));
         }
 
         [Fact]
@@ -240,11 +242,181 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
 
             using var cancellationSource = new CancellationTokenSource();
-            cancellationSource.CancelAfter(TimeSpan.Zero);
+            cancellationSource.Cancel();
             refresher.TryRefreshAsync(cancellationSource.Token).Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger, LoggingConstants.RefreshCanceledError));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshCanceledError, LogLevel.Warning));
+        }
+
+        [Fact]
+        public void ValidateConfigurationUpdatedSuccessLoggedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess, LogLevel.Information));
+        }
+
+        [Fact]
+        public void ValidateCorrectEndpointLoggedOnConfigurationUpdate()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient1 = new Mock<ConfigurationClient>();
+            mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+           .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
+            var mockClient2 = GetMockConfigurationClient();
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient1.Object, mockClient2.Object);
+
+            var config1 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+
+            // We should see the second client's endpoint logged since the first client is backed off
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshConfigurationUpdatedSuccess + TestHelpers.SecondaryConfigStoreEndpoint.ToString(), LogLevel.Information));
+        }
+
+        [Fact]
+        public void ValidateCorrectKeyValueLoggedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", false).Register("TestKey2", "label", false)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueChanged + "(key: 'TestKey1', label: 'label')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueSettingUpdated + "'TestKey1'", LogLevel.Information));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueUnchanged + "(key: 'TestKey2', label: 'label')", LogLevel.Debug));
+        }
+
+        [Fact]
+        public void ValidateCorrectKeyVaultSecretLoggedDuringRefresh()
+        {
+            string _secretValue = "SecretValue from KeyVault";
+            Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvr }));
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(vaultUri);
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                                      .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(CacheExpirationTime));
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("SecretValue from KeyVault", config[_kvr.Key]);
+
+            _kvr.Value = @"
+                    {
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/Password3/6db5a48680104dda9097b1e6d859e553""
+                    }
+                   ";
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyVaultSecretChanged + "(key: 'TestKey3', label: 'label3')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyVaultSettingUpdated + "'TestKey3'", LogLevel.Information));
         }
 
         [Fact]
@@ -290,22 +462,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.True(ValidateLoggedError(mockLogger2, LoggingConstants.RefreshFailedDueToAuthenticationError));
-        }
-
-        private bool ValidateLoggedError(Mock<ILogger> logger, string expectedMessage)
-        {
-            Func<object, Type, bool> state = (v, t) => v.ToString().StartsWith(expectedMessage);
-
-            logger.Verify(
-                x => x.Log(
-                    It.Is<LogLevel>(l => l == LogLevel.Warning),
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => state(v, t)),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)));
-
-            return true;
+            Assert.True(TestHelpers.ValidateLog(mockLogger2, LoggingConstants.RefreshFailedDueToAuthenticationError, LogLevel.Warning));
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

@@ -15,5 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 
         bool UpdateSyncToken(Uri endpoint, String syncToken);
+
+        Uri GetEndpointForClient(ConfigurationClient client);
     }
 }

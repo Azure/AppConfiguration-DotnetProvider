@@ -4,6 +4,7 @@
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             KeyVaultConstants.ContentType
         };
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, ILogger logger, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
