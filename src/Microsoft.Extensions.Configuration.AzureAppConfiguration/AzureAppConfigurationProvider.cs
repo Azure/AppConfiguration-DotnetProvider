@@ -178,7 +178,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
-                    bool any = cacheExpiredMultiKeyWatchers.Any();
 
                     // Skip refresh if serverData is loaded, but none of the watchers or adapters cache is expired.
                     if (_serverData != null &&
