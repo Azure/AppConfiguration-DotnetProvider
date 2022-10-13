@@ -178,6 +178,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
+                    bool any = cacheExpiredMultiKeyWatchers.Any();
 
                     // Skip refresh if serverData is loaded, but none of the watchers or adapters cache is expired.
                     if (_serverData != null &&
@@ -381,11 +382,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (logDebugBuilder.Length > 0)
                         {
-                            _logger?.LogDebug(logDebugBuilder.ToString().Trim('\r', '\n'));
+                            _logger?.LogDebug(logDebugBuilder.ToString().Trim());
                         }
                         if (logInfoBuilder.Length > 0)
                         {
-                            _logger?.LogInformation(logInfoBuilder.ToString().Trim('\r', '\n'));
+                            _logger?.LogInformation(logInfoBuilder.ToString().Trim());
                         }
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
