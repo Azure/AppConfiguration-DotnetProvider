@@ -387,6 +387,54 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void MapTransformSettingCreateDuplicateKeyWithRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.Map((setting) =>
+                    {
+                        if (setting.Key == "TestKey1")
+                        {
+                            setting.Key = "TestKey2";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    }).Map((setting) =>
+                    {
+                        if (setting.Key == "TestKey2")
+                        {
+                            setting.Value += " changed";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue2 changed", config["TestKey2"]);
+            Assert.Null(config["TestKey1"]);
+
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("TestValue2 changed", config["TestKey2"]);
+            Assert.Null(config["TestKey1"]);
+        }
+
+        [Fact]
         public void MapCreateNewSettingWithRefresh()
         {
             IConfigurationRefresher refresher = null;

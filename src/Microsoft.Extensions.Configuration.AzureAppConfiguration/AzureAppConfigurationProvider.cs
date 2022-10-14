@@ -644,7 +644,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (data.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
                     && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
                 {
-                    _watchedSettings[watchedKeyLabel] = loadedKv;
+                    ConfigurationSetting loadedKvCopy = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
+                    _watchedSettings[watchedKeyLabel] = loadedKvCopy;
                     continue;
                 }
 
@@ -662,8 +663,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
+                    ConfigurationSetting watchedKvCopy = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
                     data[watchedKey] = watchedKv;
-                    _watchedSettings[watchedKeyLabel] = watchedKv;
+                    _watchedSettings[watchedKeyLabel] = watchedKvCopy;
                 }
             }
         }
