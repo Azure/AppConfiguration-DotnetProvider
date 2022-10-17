@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text;
 using System.Threading;
@@ -357,24 +358,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _serverData = serverData;
 
-                        foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
+                        if (refreshAll)
                         {
-                            KeyValueChange keyValueChange = kvp.Value;
-                            KeyValueWatcher changeWatcher = kvp.Key;
-                            KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
+                            UpdateWatchedSettings();
+                        } 
+                        else
+                        {
+                            foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
+                            {
+                                KeyValueChange keyValueChange = kvp.Value;
+                                KeyValueWatcher changeWatcher = kvp.Key;
+                                KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
 
-                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                _watchedSettings[kvIdentifier] = keyValueChange.Current;
-                            }
-                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                _watchedSettings.Remove(kvIdentifier);
-                            }
+                                if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
+                                {
+                                    _watchedSettings[kvIdentifier] = keyValueChange.Current;
+                                }
+                                else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
+                                {
+                                    _watchedSettings.Remove(kvIdentifier);
+                                }
 
-                            // Already updated cache expiration time if refreshAll is true.
-                            if (!refreshAll)
-                            {
                                 UpdateCacheExpirationTime(kvp.Key);
                             }
                         }
@@ -561,6 +565,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     _serverData = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, kvp.Value.Value, kvp.Value.Label, kvp.Value.ETag));
+                    UpdateWatchedSettings();
                     Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationData(data).ConfigureAwait(false);
                     _mappedData = mappedData;
                     SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
@@ -632,8 +637,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken)
         {
-            _watchedSettings.Clear();
-
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
                 string watchedKey = changeWatcher.Key;
@@ -644,8 +647,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (data.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
                     && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
                 {
-                    ConfigurationSetting loadedKvCopy = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
-                    _watchedSettings[watchedKeyLabel] = loadedKvCopy;
                     continue;
                 }
 
@@ -663,9 +664,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
-                    ConfigurationSetting watchedKvCopy = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
                     data[watchedKey] = watchedKv;
-                    _watchedSettings[watchedKeyLabel] = watchedKvCopy;
                 }
             }
         }
@@ -915,6 +914,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return mappedData;
+        }
+
+        private void UpdateWatchedSettings()
+        {
+            _watchedSettings.Clear();
+
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+            {
+                string watchedKey = changeWatcher.Key;
+                string watchedLabel = changeWatcher.Label;
+                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+
+                ConfigurationSetting watchedKvCopy = _serverData.Values.FirstOrDefault((kv) => kv.Key.Equals(watchedKey) && kv.Label == watchedLabel);
+
+                // If the key-value was found, store it for updating the settings
+                if (watchedKvCopy != null)
+                {
+                    _watchedSettings[watchedKeyLabel] = watchedKvCopy;
+                }
+            }
         }
     }
 }

@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using Xunit;
 using Azure.Data.AppConfiguration;
 using Azure;
@@ -13,7 +12,7 @@ using Moq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Logging;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -180,112 +179,6 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1 mapped first", config["TestKey1"]);
             Assert.Equal("TestValue2 second", config["TestKey2"]);
-        }
-
-        [Fact]
-        public void MapTransformFeatureFlagWithRefresh()
-        {
-            ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
-            value: @"
-                                {
-                                    ""id"": ""MyFeature"",
-                                    ""description"": ""The new beta version of our web site."",
-                                    ""display_name"": ""Beta Feature"",
-                                    ""enabled"": true,
-                                    ""conditions"": {
-                                    ""client_filters"": [
-                                        {
-                                        ""name"": ""AllUsers""
-                                        }, 
-                                        {
-                                        ""name"": ""SuperUsers""
-                                        }
-                                    ]
-                                    }
-                                }
-                                ",
-            label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
-
-            IConfigurationRefresher refresher = null;
-            var featureFlags = new List<ConfigurationSetting> { _kv };
-            var mockClient = GetMockConfigurationClient();
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
-
-            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = mockClientManager;
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
-                    });
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
-                    options.Map((setting) =>
-                    {
-                        if (setting.ContentType == FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
-                        {
-                            setting.Value = @"
-                                {
-                                    ""id"": ""MyFeature"",
-                                    ""description"": ""The new beta version of our web site."",
-                                    ""display_name"": ""Beta Feature"",
-                                    ""enabled"": true,
-                                    ""conditions"": {
-                                    ""client_filters"": [
-                                        {
-                                        ""name"": ""NoUsers""
-                                        }, 
-                                        {
-                                        ""name"": ""SuperUsers""
-                                        }
-                                    ]
-                                    }
-                                }
-                                ";
-                        }
-                        return new ValueTask<ConfigurationSetting>(setting);
-                    });
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            Assert.Equal("TestValue1", config["TestKey1"]);
-            Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-
-            FirstKeyValue.Value = "newValue1";
-            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
-            value: @"
-                                {
-                                  ""id"": ""MyFeature"",
-                                  ""description"": ""The new beta version of our web site."",
-                                  ""display_name"": ""Beta Feature"",
-                                  ""enabled"": true,
-                                  ""conditions"": {
-                                    ""client_filters"": [                        
-                                      {
-                                        ""name"": ""SuperUsers""
-                                      }
-                                    ]
-                                  }
-                                }
-                                ",
-            label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
-
-            Thread.Sleep(CacheExpirationTime);
-            refresher.TryRefreshAsync().Wait();
-
-            Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
 
         [Fact]
@@ -553,6 +446,63 @@ namespace Tests.AzureAppConfiguration
             .Build();
 
             Assert.Equal(_secretValue, config["TestKey3"]);
+        }
+
+        [Fact]
+        public void MapTransformSettingKeyWithLogAndRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var mockLogger = new Mock<ILogger>();
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.Map((setting) =>
+                    {
+                        if (setting.Key == "TestKey1")
+                        {
+                            setting.Key = "newTestKey1";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    }).Map((setting) =>
+                    {
+                        if (setting.Key == "newTestKey1")
+                        {
+                            setting.Value += " changed";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1 changed", config["newTestKey1"]);
+            Assert.Null(config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+
+            FirstKeyValue.Value = "newValue1";
+            _kvCollection.Last().Value = "newValue2";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.LoggerFactory = mockLoggerFactory.Object;
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1 changed", config["newTestKey1"]);
+            Assert.Equal("newValue2", config["TestKey2"]);
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueChanged + "(key: 'TestKey1', label: 'label')", LogLevel.Debug));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueSettingUpdated + "'TestKey1'", LogLevel.Information));
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
