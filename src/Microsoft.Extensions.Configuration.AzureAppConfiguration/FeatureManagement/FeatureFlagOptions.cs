@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 throw new ArgumentException(@"Feature flag filter should not end with '\*'.", nameof(featureFlagFilter));
             }
 
-            if (labelFilter == null)
+            if (string.IsNullOrWhiteSpace(labelFilter))
             {
                 labelFilter = LabelFilter.Null;
             }
