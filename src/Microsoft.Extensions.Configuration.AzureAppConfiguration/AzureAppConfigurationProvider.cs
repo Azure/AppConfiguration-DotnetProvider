@@ -362,24 +362,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _serverData = serverData;
                         _watchedSettings = watchedSettings;
 
-                        if (!refreshAll)
+                        foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
                         {
-                            foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
+                            KeyValueChange keyValueChange = kvp.Value;
+                            KeyValueWatcher changeWatcher = kvp.Key;
+                            KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
+
+                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
                             {
-                                KeyValueChange keyValueChange = kvp.Value;
-                                KeyValueWatcher changeWatcher = kvp.Key;
-                                KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
+                                _watchedSettings[kvIdentifier] = keyValueChange.Current;
+                            }
+                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
+                            {
+                                _watchedSettings.Remove(kvIdentifier);
+                            }
 
-                                if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
-                                {
-                                    _watchedSettings[kvIdentifier] = keyValueChange.Current;
-                                }
-                                else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
-                                {
-                                    _watchedSettings.Remove(kvIdentifier);
-                                }
-
-                                // Already updated cache expiration time if refreshAll is true.
+                            // Already updated cache expiration time if refreshAll is true.
+                            if (!refreshAll)
+                            {
                                 UpdateCacheExpirationTime(kvp.Key);
                             }
                         }
@@ -560,7 +560,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 UpdateCacheExpirationTime(changeWatcher);
             }
 
-            if (data != null && watchedSettings != null)
+            if (data != null)
             {
                 // Invalidate all the cached KeyVault secrets
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
@@ -636,8 +636,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-            // Load key-values registered for refresh that are not already loaded
-            await LoadKeyValuesRegisteredForRefresh(client, serverData, cancellationToken).ConfigureAwait(false);
             return serverData;
         }
 
@@ -648,7 +646,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
                 string watchedKey = changeWatcher.Key;
-                string watchedLabel = changeWatcher.Label;
+                string watchedLabel = changeWatcher.Label.NormalizeNull();
                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
 
                 // Skip the loading for the key-value in case it has already been loaded
