@@ -82,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of user defined functions that transform each <see cref="ConfigurationSetting"/>.
         /// </summary>
-        internal IEnumerable<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> UserDefinedMappers => _mappers;
+        internal IEnumerable<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> Mappers => _mappers;
 
         /// <summary>
         /// A collection of key prefixes to be trimmed.
@@ -399,7 +399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Transforms the configuration settings passed to the Azure App Configuration Provider before being passed to internal adapters.
+        /// Provides a way to transform settings retrieved from App Configuration before they are processed by the configuration provider.
         /// </summary>
         /// <param name="mapper">A callback registered by the user to transform each configuration setting.</param>
         public AzureAppConfigurationOptions Map(Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> mapper)
