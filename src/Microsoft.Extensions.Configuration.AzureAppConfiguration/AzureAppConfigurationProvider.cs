@@ -327,7 +327,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 ConfigurationSetting setting = change.Current;
                                 ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
+                                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                                 {
                                     setting = await func(setting).ConfigureAwait(false);
                                 }
@@ -916,7 +916,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 ConfigurationSetting setting = kvp.Value;
-                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.UserDefinedMappers)
+                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                 {
                     setting = await func(setting).ConfigureAwait(false);
                 }
