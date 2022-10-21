@@ -530,8 +530,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                 {
-                    data = await LoadSelectedKeyValues(client, cancellationToken);
-                    watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken);
+                    data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+                    watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                 }, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&
