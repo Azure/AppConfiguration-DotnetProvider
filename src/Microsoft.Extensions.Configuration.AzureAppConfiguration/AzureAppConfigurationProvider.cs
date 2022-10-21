@@ -209,7 +209,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     //
                     // Avoid instance state modification
                     Dictionary<string, ConfigurationSetting> applicationSettings = null;
-                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
+                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     bool refreshAll = false;
@@ -229,7 +229,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
                                 string watchedKey = changeWatcher.Key;
-                                string watchedLabel = changeWatcher.Label.NormalizeNull();
+                                string watchedLabel = changeWatcher.Label;
 
                                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
 
@@ -309,6 +309,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (!refreshAll)
                     {
                         applicationSettings = new Dictionary<string, ConfigurationSetting>(_applicationSettings, StringComparer.OrdinalIgnoreCase);
+                        watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
                         foreach (KeyValueChange change in keyValueChanges.Values.Concat(changedKeyValuesCollection))
                         {
@@ -528,11 +529,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
-                {
-                    data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
-                    watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                }, cancellationToken).ConfigureAwait(false);
+                await ExecuteWithFailOverPolicyAsync(
+                    availableClients,
+                    async (client) =>
+                    {
+                        data = await LoadSelectedKeyValues(
+                            client,
+                            cancellationToken)
+                            .ConfigureAwait(false);
+
+                        watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                            client,
+                            data,
+                            cancellationToken)
+                            .ConfigureAwait(false);
+                    },
+                    cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
@@ -623,18 +636,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return serverData;
         }
 
-        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken)
+        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, CancellationToken cancellationToken)
         {
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
                 string watchedKey = changeWatcher.Key;
-                string watchedLabel = changeWatcher.Label.NormalizeNull();
+                string watchedLabel = changeWatcher.Label;
                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
 
                 // Skip the loading for the key-value in case it has already been loaded
-                if (data.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
+                if (existingSettings.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
                     && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
                 {
                     watchedSettings[watchedKeyLabel] = loadedKv;
@@ -656,7 +669,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (watchedKv != null)
                 {
                     watchedSettings[watchedKeyLabel] = watchedKv;
-                    data[watchedKey] = watchedKv;
+                    existingSettings[watchedKey] = watchedKv;
                 }
             }
 
