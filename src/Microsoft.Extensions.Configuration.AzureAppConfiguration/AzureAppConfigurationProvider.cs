@@ -209,6 +209,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     //
                     // Avoid instance state modification
                     Dictionary<string, ConfigurationSetting> applicationSettings = null;
+                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     bool refreshAll = false;
@@ -289,7 +290,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                applicationSettings = await LoadAll(client, cancellationToken).ConfigureAwait(false);
+                                applicationSettings = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, applicationSettings, cancellationToken).ConfigureAwait(false);
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
                             }
@@ -307,6 +309,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (!refreshAll)
                     {
                         applicationSettings = new Dictionary<string, ConfigurationSetting>(_applicationSettings, StringComparer.OrdinalIgnoreCase);
+                        watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
                         foreach (KeyValueChange change in keyValueChanges.Values.Concat(changedKeyValuesCollection))
                         {
@@ -344,6 +347,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || changedKeyValuesCollection?.Any() == true || keyValueChanges.Any())
                     {
                         _applicationSettings = applicationSettings;
+                        _watchedSettings = watchedSettings;
 
                         foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
                         {
@@ -521,10 +525,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
+            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
 
             try
             {
-                data = await ExecuteWithFailOverPolicyAsync(availableClients, (client) => LoadAll(client, cancellationToken), cancellationToken).ConfigureAwait(false);
+                await ExecuteWithFailOverPolicyAsync(
+                    availableClients,
+                    async (client) =>
+                    {
+                        data = await LoadSelectedKeyValues(
+                            client,
+                            cancellationToken)
+                            .ConfigureAwait(false);
+
+                        watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                            client,
+                            data,
+                            cancellationToken)
+                            .ConfigureAwait(false);
+                    },
+                    cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
@@ -550,6 +571,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     SetData(await PrepareData(data, cancellationToken).ConfigureAwait(false));
                     _applicationSettings = data;
+                    _watchedSettings = watchedSettings;
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
@@ -558,7 +580,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> LoadAll(ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<Dictionary<string, ConfigurationSetting>> LoadSelectedKeyValues(ConfigurationClient client, CancellationToken cancellationToken)
         {
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
@@ -611,14 +633,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-            // Load key-values registered for refresh that are not already loaded
-            await LoadKeyValuesRegisteredForRefresh(client, serverData, cancellationToken).ConfigureAwait(false);
             return serverData;
         }
 
-        private async Task LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken)
+        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, CancellationToken cancellationToken)
         {
-            _watchedSettings.Clear();
+            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -627,10 +647,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
 
                 // Skip the loading for the key-value in case it has already been loaded
-                if (data.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
+                if (existingSettings.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
                     && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
                 {
-                    _watchedSettings[watchedKeyLabel] = loadedKv;
+                    watchedSettings[watchedKeyLabel] = loadedKv;
                     continue;
                 }
 
@@ -648,10 +668,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
-                    data[watchedKey] = watchedKv;
-                    _watchedSettings[watchedKeyLabel] = watchedKv;
+                    watchedSettings[watchedKeyLabel] = watchedKv;
+                    existingSettings[watchedKey] = watchedKv;
                 }
             }
+
+            return watchedSettings;
         }
 
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
