@@ -682,24 +682,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                IEnumerable<ConfigurationSetting> currentKeyValues;
-
-                if (changeWatcher.Key.EndsWith("*"))
-                {
-                    // Get current application settings starting with changeWatcher.Key, excluding the last * character
-                    var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
-                    currentKeyValues = existingSettings.Values.Where(kv =>
-                    {
-                        return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
-                }
-                else
-                {
-                    currentKeyValues = existingSettings.Values.Where(kv =>
-                    {
-                        return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
-                }
+                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValues(existingSettings.Values, changeWatcher);
 
                 foreach (ConfigurationSetting setting in currentKeyValues)
                 {
@@ -722,24 +705,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValueWatcher changeWatcher in multiKeyWatchers)
             {
-                IEnumerable<ConfigurationSetting> currentKeyValues;
-
-                if (changeWatcher.Key.EndsWith("*"))
-                {
-                    // Get current application settings starting with changeWatcher.Key, excluding the last * character
-                    var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
-                    currentKeyValues = _watchedSettings.Values.Where(kv =>
-                    {
-                        return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
-                }
-                else
-                {
-                    currentKeyValues = _watchedSettings.Values.Where(kv =>
-                    {
-                        return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
-                    });
-                }
+                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValues(_watchedSettings.Values, changeWatcher);
 
                 keyValueChanges.AddRange(
                     await client.GetKeyValueChangeCollection(
@@ -955,6 +921,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return mappedData;
+        }
+
+        private IEnumerable<ConfigurationSetting> GetCurrentKeyValues(ICollection<ConfigurationSetting> data, KeyValueWatcher changeWatcher)
+        {
+            IEnumerable<ConfigurationSetting> currentKeyValues;
+
+            if (changeWatcher.Key.EndsWith("*"))
+            {
+                // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
+                currentKeyValues = data.Where(kv =>
+                {
+                    return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
+                });
+            }
+            else
+            {
+                currentKeyValues = data.Where(kv =>
+                {
+                    return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
+                });
+            }
+
+            return currentKeyValues;
         }
     }
 }
