@@ -29,7 +29,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
-        private Dictionary<string, ConfigurationSetting> _serverData;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
@@ -179,8 +178,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
 
-                    // Skip refresh if serverData is loaded, but none of the watchers or adapters cache is expired.
-                    if (_serverData != null &&
+                    // Skip refresh if mappedData is loaded, but none of the watchers or adapters cache is expired.
+                    if (_mappedData != null &&
                         !cacheExpiredWatchers.Any() &&
                         !cacheExpiredMultiKeyWatchers.Any() &&
                         !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
@@ -196,7 +195,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
 
                     // Check if initial configuration load had failed
-                    if (_serverData == null)
+                    if (_mappedData == null)
                     {
                         if (InitializationCacheExpires < utcNow)
                         {
@@ -209,7 +208,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Avoid instance state modification
-                    Dictionary<string, ConfigurationSetting> serverData = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
                     Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
@@ -221,7 +219,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
-                            serverData = null;
                             mappedData = null;
                             keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
                             changedKeyValuesCollection = null;
@@ -293,10 +290,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                // Preserve reference to loaded data with deep copy into serverData before calling mapper functions
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                                serverData = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, null, kvp.Value.Label, kvp.Value.ETag));
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
                             }
@@ -313,7 +308,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (!refreshAll)
                     {
-                        serverData = new Dictionary<string, ConfigurationSetting>(_serverData, StringComparer.OrdinalIgnoreCase);
                         mappedData = new Dictionary<string, ConfigurationSetting>(_mappedData, StringComparer.OrdinalIgnoreCase);
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
@@ -321,19 +315,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
-                                serverData.Remove(change.Key);
                                 mappedData.Remove(change.Key);
                             }
                             else if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 ConfigurationSetting setting = change.Current;
-                                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, null, setting.Label, setting.ETag);
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                                 {
                                     setting = await func(setting).ConfigureAwait(false);
                                 }
                                 mappedData[change.Key] = setting;
-                                serverData[change.Key] = settingCopy;
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
@@ -362,7 +353,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || changedKeyValuesCollection?.Any() == true || keyValueChanges.Any())
                     {
-                        _serverData = serverData;
                         _watchedSettings = watchedSettings;
 
                         foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
@@ -585,7 +575,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    _serverData = data.ToDictionary(kvp => kvp.Key, kvp => new ConfigurationSetting(kvp.Value.Key, null, kvp.Value.Label, kvp.Value.ETag));
                     _watchedSettings = watchedSettings;
                     Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                     _mappedData = mappedData;
@@ -691,6 +680,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                IEnumerable<ConfigurationSetting> currentKeyValues;
+
+                if (changeWatcher.Key.EndsWith("*"))
+                {
+                    // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                    var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
+                    currentKeyValues = existingSettings.Values.Where(kv =>
+                    {
+                        return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
+                    });
+                }
+                else
+                {
+                    currentKeyValues = existingSettings.Values.Where(kv =>
+                    {
+                        return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
+                    });
+                }
+
+                foreach (ConfigurationSetting setting in currentKeyValues)
+                {
+                    watchedSettings[new KeyValueIdentifier(setting.Key, setting.Label)] = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+                }
+            }
+
             return watchedSettings;
         }
 
@@ -712,14 +728,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     // Get current application settings starting with changeWatcher.Key, excluding the last * character
                     var keyPrefix = changeWatcher.Key.Substring(0, changeWatcher.Key.Length - 1);
-                    currentKeyValues = _serverData.Values.Where(kv =>
+                    currentKeyValues = _watchedSettings.Values.Where(kv =>
                     {
                         return kv.Key.StartsWith(keyPrefix) && kv.Label == changeWatcher.Label.NormalizeNull();
                     });
                 }
                 else
                 {
-                    currentKeyValues = _serverData.Values.Where(kv =>
+                    currentKeyValues = _watchedSettings.Values.Where(kv =>
                     {
                         return kv.Key.Equals(changeWatcher.Key) && kv.Label == changeWatcher.Label.NormalizeNull();
                     });
