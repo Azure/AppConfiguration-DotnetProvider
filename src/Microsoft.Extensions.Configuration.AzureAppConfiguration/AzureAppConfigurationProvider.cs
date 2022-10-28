@@ -311,7 +311,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         applicationSettings = new Dictionary<string, ConfigurationSetting>(_applicationSettings, StringComparer.OrdinalIgnoreCase);
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
-                        foreach (KeyValueChange change in keyValueChanges.Values.Concat(changedKeyValuesCollection))
+                        foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers.Concat(cacheExpiredMultiKeyWatchers))
+                        {
+                            UpdateCacheExpirationTime(changeWatcher);
+                        }
+
+                        foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
+                        {
+                            KeyValueChange keyValueChange = kvp.Value;
+                            KeyValueWatcher changeWatcher = kvp.Key;
+                            KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
+
+                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
+                            {
+                                applicationSettings[keyValueChange.Key] = keyValueChange.Current;
+                                watchedSettings[kvIdentifier] = keyValueChange.Current;
+                            }
+                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
+                            {
+                                applicationSettings.Remove(keyValueChange.Key);
+                                watchedSettings.Remove(kvIdentifier);
+                            }
+                        }
+
+                        foreach (KeyValueChange change in changedKeyValuesCollection)
                         {
                             if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
@@ -348,28 +371,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _applicationSettings = applicationSettings;
                         _watchedSettings = watchedSettings;
-
-                        foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
-                        {
-                            KeyValueChange keyValueChange = kvp.Value;
-                            KeyValueWatcher changeWatcher = kvp.Key;
-                            KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
-
-                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                _watchedSettings[kvIdentifier] = keyValueChange.Current;
-                            }
-                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                _watchedSettings.Remove(kvIdentifier);
-                            }
-
-                            // Already updated cache expiration time if refreshAll is true.
-                            if (!refreshAll)
-                            {
-                                UpdateCacheExpirationTime(kvp.Key);
-                            }
-                        }
 
                         if (logDebugBuilder.Length > 0)
                         {
