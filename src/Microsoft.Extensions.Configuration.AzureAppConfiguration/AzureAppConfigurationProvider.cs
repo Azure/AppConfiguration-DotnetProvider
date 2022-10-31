@@ -346,23 +346,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-<<<<<<< HEAD
-                                adapter.InvalidateCache(change.Current);
-=======
                                 adapter.InvalidateCache(keyValueChange.Current);
-                            }
-                        }
-
-                        foreach (KeyValueChange change in changedKeyValuesCollection)
-                        {
-                            if (change.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                applicationSettings.Remove(change.Key);
-                            }
-                            else if (change.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                applicationSettings[change.Key] = change.Current;
->>>>>>> 5d38f8ce8e87b869125ed72179219639a5d1af5d
                             }
                         }
 
