@@ -209,7 +209,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     //
                     // Avoid instance state modification
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
-                    Dictionary<KeyValueIdentifier, KeyValueChange> keyValueChanges = null;
+                    List<KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     Dictionary<string, ConfigurationSetting> mappedData = null;
                     bool refreshAll = false;
@@ -219,7 +219,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
                             mappedData = null;
-                            keyValueChanges = new Dictionary<KeyValueIdentifier, KeyValueChange>();
+                            keyValueChanges = new List<KeyValueChange>();
                             changedKeyValuesCollection = null;
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
@@ -273,7 +273,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
                                     logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
-                                    keyValueChanges[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)] = change;
+                                    keyValueChanges.Add(change);
 
                                     if (changeWatcher.RefreshAll)
                                     {
@@ -315,48 +315,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             UpdateCacheExpirationTime(changeWatcher);
                         }
 
-                        foreach (KeyValuePair<KeyValueIdentifier, KeyValueChange> kvp in keyValueChanges)
+                        foreach (KeyValueChange change in keyValueChanges)
                         {
-                            KeyValueChange keyValueChange = kvp.Value;
-
-                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                ConfigurationSetting setting = keyValueChange.Current;
-                                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
-                                {
-                                    setting = await func(setting).ConfigureAwait(false);
-                                }
-                                if (setting == null)
-                                {
-                                    mappedData.Remove(keyValueChange.Key);
-                                }
-                                else
-                                {
-                                    mappedData[keyValueChange.Key] = setting;
-                                }
-                                watchedSettings[kvp.Key] = settingCopy;
-                            }
-                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                mappedData.Remove(keyValueChange.Key);
-                                watchedSettings.Remove(kvp.Key);
-                            }
-
-                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                            foreach (IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(keyValueChange.Current);
-                            }
-                        }
-
-                        foreach (KeyValueChange change in changedKeyValuesCollection)
-                        {
-                            if (change.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                mappedData.Remove(change.Key);
-                            }
-                            else if (change.ChangeType == KeyValueChangeType.Modified)
+                            if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 ConfigurationSetting setting = change.Current;
                                 ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
@@ -372,9 +333,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     mappedData[change.Key] = setting;
                                 }
-                                watchedSettings[change.Key] = settingCopy;
+                                watchedSettings[new KeyValueIdentifier(settingCopy.Key, settingCopy.Label)] = settingCopy;
+                            }
+                            else if (change.ChangeType == KeyValueChangeType.Deleted)
+                            {
+                                mappedData.Remove(change.Key);
+                                watchedSettings.Remove(new KeyValueIdentifier(change.Current.Key, change.Current.Label));
+                            }
+
+                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                            foreach (IKeyValueAdapter adapter in _options.Adapters)
+                            {
+                                adapter.InvalidateCache(change.Current);
                             }
                         }
+
                     }
                     else
                     {
