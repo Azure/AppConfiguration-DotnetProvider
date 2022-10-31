@@ -209,7 +209,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     //
                     // Avoid instance state modification
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
-                    Dictionary<KeyValueWatcher, KeyValueChange> keyValueChanges = null;
+                    Dictionary<KeyValueIdentifier, KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     Dictionary<string, ConfigurationSetting> mappedData = null;
                     bool refreshAll = false;
@@ -218,8 +218,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
+<<<<<<< HEAD
                             mappedData = null;
                             keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
+=======
+                            applicationSettings = null;
+                            keyValueChanges = new Dictionary<KeyValueIdentifier, KeyValueChange>();
+>>>>>>> dbca75afcd935183434eabad6d66b01969530d8f
                             changedKeyValuesCollection = null;
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
@@ -273,7 +278,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
                                     logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
-                                    keyValueChanges[changeWatcher] = change;
+                                    keyValueChanges[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)] = change;
 
                                     if (changeWatcher.RefreshAll)
                                     {
@@ -310,7 +315,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         mappedData = new Dictionary<string, ConfigurationSetting>(_mappedData, StringComparer.OrdinalIgnoreCase);
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
-                        foreach (KeyValueChange change in keyValueChanges.Values.Concat(changedKeyValuesCollection))
+                        foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers.Concat(cacheExpiredMultiKeyWatchers))
+                        {
+                            UpdateCacheExpirationTime(changeWatcher);
+                        }
+
+                        foreach (KeyValuePair<KeyValueIdentifier, KeyValueChange> kvp in keyValueChanges)
+                        {
+                            KeyValueChange keyValueChange = kvp.Value;
+
+                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
+                            {
+                                applicationSettings[keyValueChange.Key] = keyValueChange.Current;
+                                watchedSettings[kvp.Key] = keyValueChange.Current;
+                            }
+                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
+                            {
+                                applicationSettings.Remove(keyValueChange.Key);
+                                watchedSettings.Remove(kvp.Key);
+                            }
+                        }
+
+                        foreach (KeyValueChange change in changedKeyValuesCollection)
                         {
                             if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
@@ -362,6 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _watchedSettings = watchedSettings;
                         _mappedData = mappedData;
 
+<<<<<<< HEAD
                         foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
                         {
                             KeyValueChange keyValueChange = kvp.Value;
@@ -384,6 +411,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                         }
 
+=======
+>>>>>>> dbca75afcd935183434eabad6d66b01969530d8f
                         if (logDebugBuilder.Length > 0)
                         {
                             _logger?.LogDebug(logDebugBuilder.ToString().Trim());
