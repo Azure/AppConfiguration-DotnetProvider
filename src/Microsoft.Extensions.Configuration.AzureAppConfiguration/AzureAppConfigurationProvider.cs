@@ -218,13 +218,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
-<<<<<<< HEAD
                             mappedData = null;
-                            keyValueChanges = new Dictionary<KeyValueWatcher, KeyValueChange>();
-=======
-                            applicationSettings = null;
                             keyValueChanges = new Dictionary<KeyValueIdentifier, KeyValueChange>();
->>>>>>> dbca75afcd935183434eabad6d66b01969530d8f
                             changedKeyValuesCollection = null;
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
@@ -326,13 +321,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
                             {
-                                applicationSettings[keyValueChange.Key] = keyValueChange.Current;
-                                watchedSettings[kvp.Key] = keyValueChange.Current;
+                                ConfigurationSetting setting = keyValueChange.Current;
+                                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+                                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
+                                {
+                                    setting = await func(setting).ConfigureAwait(false);
+                                }
+                                if (setting == null)
+                                {
+                                    mappedData.Remove(keyValueChange.Key);
+                                }
+                                else
+                                {
+                                    mappedData[keyValueChange.Key] = setting;
+                                }
+                                watchedSettings[kvp.Key] = settingCopy;
                             }
                             else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
                             {
-                                applicationSettings.Remove(keyValueChange.Key);
+                                mappedData.Remove(keyValueChange.Key);
                                 watchedSettings.Remove(kvp.Key);
+                            }
+
+                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                            foreach (IKeyValueAdapter adapter in _options.Adapters)
+                            {
+                                adapter.InvalidateCache(change.Current);
                             }
                         }
 
@@ -345,6 +359,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             else if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 ConfigurationSetting setting = change.Current;
+                                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                                 {
                                     setting = await func(setting).ConfigureAwait(false);
@@ -357,12 +372,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     mappedData[change.Key] = setting;
                                 }
-                            }
-
-                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                            foreach (IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(change.Current);
+                                watchedSettings[change.Key] = settingCopy;
                             }
                         }
                     }
@@ -388,31 +398,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _watchedSettings = watchedSettings;
                         _mappedData = mappedData;
 
-<<<<<<< HEAD
-                        foreach (KeyValuePair<KeyValueWatcher, KeyValueChange> kvp in keyValueChanges)
-                        {
-                            KeyValueChange keyValueChange = kvp.Value;
-                            KeyValueWatcher changeWatcher = kvp.Key;
-                            KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
-
-                            if (keyValueChange.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                _watchedSettings[kvIdentifier] = keyValueChange.Current;
-                            }
-                            else if (keyValueChange.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                _watchedSettings.Remove(kvIdentifier);
-                            }
-
-                            // Already updated cache expiration time if refreshAll is true.
-                            if (!refreshAll)
-                            {
-                                UpdateCacheExpirationTime(changeWatcher);
-                            }
-                        }
-
-=======
->>>>>>> dbca75afcd935183434eabad6d66b01969530d8f
                         if (logDebugBuilder.Length > 0)
                         {
                             _logger?.LogDebug(logDebugBuilder.ToString().Trim());
