@@ -330,6 +330,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 applicationSettings.Remove(keyValueChange.Key);
                                 watchedSettings.Remove(kvp.Key);
                             }
+
+                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
+                            foreach (IKeyValueAdapter adapter in _options.Adapters)
+                            {
+                                adapter.InvalidateCache(keyValueChange.Current);
+                            }
                         }
 
                         foreach (KeyValueChange change in changedKeyValuesCollection)
@@ -341,12 +347,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             else if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 applicationSettings[change.Key] = change.Current;
-                            }
-
-                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                            foreach (IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(change.Current);
                             }
                         }
                     }
