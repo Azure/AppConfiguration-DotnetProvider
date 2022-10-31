@@ -315,12 +315,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             UpdateCacheExpirationTime(changeWatcher);
                         }
 
-                        foreach (KeyValueChange change in keyValueChanges)
+                        foreach (KeyValueChange change in keyValueChanges.Concat(changedKeyValuesCollection))
                         {
                             if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 ConfigurationSetting setting = change.Current;
                                 ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+                                watchedSettings[new KeyValueIdentifier(change.Key, change.Label)] = settingCopy;
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                                 {
                                     setting = await func(setting).ConfigureAwait(false);
@@ -333,12 +334,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     mappedData[change.Key] = setting;
                                 }
-                                watchedSettings[new KeyValueIdentifier(settingCopy.Key, settingCopy.Label)] = settingCopy;
                             }
                             else if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
                                 mappedData.Remove(change.Key);
-                                watchedSettings.Remove(new KeyValueIdentifier(change.Current.Key, change.Current.Label));
+                                watchedSettings.Remove(new KeyValueIdentifier(change.Key, change.Label));
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
