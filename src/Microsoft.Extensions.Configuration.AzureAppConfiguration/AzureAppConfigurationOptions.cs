@@ -397,7 +397,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 Diagnostics =
                     {
-                        LoggedQueryParameters = { "key", "label", "$select" }
+                        LoggedQueryParameters = { "key", "label" }
                     }
             };
             clientOptions.Retry.MaxRetries = MaxRetries;
