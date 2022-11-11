@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
+using Azure.Core.Diagnostics;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -9,8 +10,10 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Security;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -40,6 +43,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The connection string to use to connect to Azure App Configuration.
         /// </summary>
         internal string ConnectionString { get; private set; }
+
+        internal EventListener _listener;
 
         /// <summary>
         /// The list of endpoints of an Azure App Configuration store.
@@ -357,6 +362,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _changeWatchers.Add(item);
             }
 
+            _listener = new AzureEventSourceListener((e, message) =>
+            {
+                if (e.EventSource.Name == "AzureAppConfigurationProvider")
+                {
+                    Console.WriteLine("[{1}] {0}: {2}", e.EventSource.Name, e.Level, message);
+                }
+            },
+            level: EventLevel.Verbose);
             return this;
         }
 
@@ -393,13 +406,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0)
-            {
-                Diagnostics =
-                    {
-                        LoggedQueryParameters = { "key", "label" }
-                    }
-            };
+            ConfigurationClientOptions clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;

@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -274,6 +275,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
                                     logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
                                     keyValueChanges[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)] = change;
+                                    AzureAppConfigurationProviderEventSource.Log.LogDebugKeyValue(true, change.Key, change.Label);
+                                    AzureAppConfigurationProviderEventSource.Log.LogInformation(change.Key, endpoint.ToString());
 
                                     if (changeWatcher.RefreshAll)
                                     {
