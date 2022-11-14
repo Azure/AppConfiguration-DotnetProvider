@@ -681,6 +681,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
+            watchedSettings = LoadKeyValueCollections(watchedSettings, existingSettings);
+
+            return watchedSettings;
+        }
+
+        private Dictionary<KeyValueIdentifier, ConfigurationSetting> LoadKeyValueCollections(Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings, IDictionary<string, ConfigurationSetting> existingSettings)
+        {
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
                 IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, existingSettings.Values);
