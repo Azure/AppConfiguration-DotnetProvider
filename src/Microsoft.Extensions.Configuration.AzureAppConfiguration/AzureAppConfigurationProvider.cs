@@ -213,14 +213,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     List<KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     Dictionary<string, ConfigurationSetting> data = null;
-                    Dictionary<string, ConfigurationSetting> mappedData = null;
                     bool refreshAll = false;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
-                            mappedData = null;
+                            data = null;
                             keyValueChanges = new List<KeyValueChange>();
                             changedKeyValuesCollection = null;
                             refreshAll = false;
@@ -306,6 +305,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         },
                         cancellationToken)
                         .ConfigureAwait(false);
+
+                    Dictionary<string, ConfigurationSetting> mappedData = null;
 
                     if (!refreshAll)
                     {
