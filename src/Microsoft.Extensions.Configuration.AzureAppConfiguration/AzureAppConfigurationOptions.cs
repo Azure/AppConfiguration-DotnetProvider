@@ -362,14 +362,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _changeWatchers.Add(item);
             }
 
-            _listener = new AzureEventSourceListener((e, message) =>
-            {
-                if (e.EventSource.Name == "AzureAppConfigurationProvider")
-                {
-                    Console.WriteLine("[{1}] {0}: {2}", e.EventSource.Name, e.Level, message);
-                }
-            },
-            level: EventLevel.Verbose);
+            //_listener = new AzureEventSourceListener((e, message) =>
+            //{
+            //    if (e.EventSource.Name == "AzureAppConfigurationProvider")
+            //    {
+            //        Console.WriteLine("[{1}] {0}: {2}", e.EventSource.Name, e.Level, message);
+            //    }
+            //},
+            //level: EventLevel.Verbose);
             return this;
         }
 
