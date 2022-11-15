@@ -18,20 +18,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public static AzureAppConfigurationProviderEventSource Log { get; } = new AzureAppConfigurationProviderEventSource();
 
-        [Event(1, Message = "Startup", Level = EventLevel.Informational)]
-        public void Startup() { WriteEvent(1); }
+        [Event(1, Message = "{0}", Level = EventLevel.Verbose)]
+        public void LogDebug(string message) { WriteEvent(1, message); }
 
-        [Event(2, Message = "Key-Value retrieved from App Configuration. Modified: {0}. Key: {1}. Label: {2}.", Level = EventLevel.Verbose)]
-        public void LogDebugKeyValue(bool modified, string key, string label) { WriteEvent(2, modified, key, label); }
-
-        [Event(3, Message = "Secret loaded from KeyVault for key-value. Key: {0}. Label: {1}.", Level = EventLevel.Verbose)]
-        public void LogDebugKeyVault(string key, string label) { WriteEvent(3, key, label); }
-
-        [Event(4, Message = "Feature Flag retrieved from App Configuration. Key: {0}. Label: {1}.", Level = EventLevel.Verbose)]
-        public void LogDebugFeatureFlag(string key, string label) { WriteEvent(4, key, label); }
-
-        [Event(5, Message = "Configuration setting updated. Key: {0}. Endpoint: {1}.", Level = EventLevel.Informational)]
-        public void LogInformation(string key, string endpoint) { WriteEvent(5, key, endpoint); }
+        [Event(2, Message = "{0}", Level = EventLevel.Informational)]
+        public void LogInformation(string message) { WriteEvent(2, message); }
 
         protected AzureAppConfigurationProviderEventSource()
            : base(

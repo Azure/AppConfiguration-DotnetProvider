@@ -272,11 +272,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
-                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Modified: Yes. Key: {change.Key}. Label: {change.Label}.");
+                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated} Key: {change.Key}. Endpoint: {endpoint}.");
                                     keyValueChanges[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)] = change;
-                                    AzureAppConfigurationProviderEventSource.Log.LogDebugKeyValue(true, change.Key, change.Label);
-                                    AzureAppConfigurationProviderEventSource.Log.LogInformation(change.Key, endpoint.ToString());
 
                                     if (changeWatcher.RefreshAll)
                                     {
@@ -286,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueUnchanged}(key: '{change.Key}', label: '{change.Label}')");
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Modified: No. Key: {change.Key}. Label: {change.Label}.");
                                 }
                             }
 
@@ -295,7 +293,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 applicationSettings = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, applicationSettings, cancellationToken).ConfigureAwait(false);
-                                logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
+                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshConfigurationUpdatedSuccess} Endpoint: {endpoint}.");
                                 return;
                             }
 

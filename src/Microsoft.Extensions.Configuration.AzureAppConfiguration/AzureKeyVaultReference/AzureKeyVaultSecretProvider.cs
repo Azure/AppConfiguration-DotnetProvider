@@ -62,8 +62,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 if (client != null)
                 {
                     KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    logger?.LogDebug($"{LoggingConstants.RefreshKeyVaultSecretChanged}(key: '{key}', label: '{label}')");
-                    logger?.LogInformation($"{LoggingConstants.RefreshKeyVaultSettingUpdated}'{key}'");
+                    logger?.LogDebug($"{LoggingConstants.RefreshKeyVaultSecretLoaded} Key: {key}. Label: {label}.");
+                    logger?.LogInformation($"{LoggingConstants.RefreshKeyVaultSettingUpdated} Key: {key}");
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)

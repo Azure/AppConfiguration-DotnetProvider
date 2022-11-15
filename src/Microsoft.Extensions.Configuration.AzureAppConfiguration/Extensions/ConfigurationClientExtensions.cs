@@ -161,8 +161,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
-                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
+                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagLoaded} Key: {key}. Label: {options.Label.NormalizeNull()}.");
+                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated} Key: {key}. Endpoint: {endpoint}.");
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -179,8 +179,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
-                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
+                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagLoaded} Key: {key}. Label: {options.Label.NormalizeNull()}.");
+                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated} Key: {key}. Endpoint: {endpoint}.");
                 }
             }
 
