@@ -549,6 +549,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             data,
                             cancellationToken)
                             .ConfigureAwait(false);
+
+                        watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                     },
                     cancellationToken)
                     .ConfigureAwait(false);
@@ -577,7 +579,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                     SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
-                    watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                     _watchedSettings = watchedSettings;
                     _mappedData = mappedData;
                 }
