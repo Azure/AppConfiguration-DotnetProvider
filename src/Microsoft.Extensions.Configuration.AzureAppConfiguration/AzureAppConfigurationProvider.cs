@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -291,9 +292,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                                await LoadAndWatchConfigurationSettings(client, watchedSettings, data, cancellationToken).ConfigureAwait(false);
                                 logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
                                 return;
                             }
@@ -697,6 +696,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return watchedSettings;
+        }
+
+        private async void LoadAndWatchConfigurationSettings(ConfigurationClient client, Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings, Dictionary<string, ConfigurationSetting> existingData, CancellationToken cancellationToken)
+        {
+            existingData = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+            watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, existingData, cancellationToken).ConfigureAwait(false);
+            watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, existingData);
         }
 
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
