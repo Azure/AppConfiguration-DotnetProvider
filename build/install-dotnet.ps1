@@ -1,4 +1,4 @@
-# Installs .NET 7 for CI/CD environment
+# Installs .NET 6 and .NET 7 for CI/CD environment
 # see: https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script#examples
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
