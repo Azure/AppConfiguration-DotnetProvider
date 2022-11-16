@@ -272,7 +272,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Modified: Yes. Key: {change.Key}. Label: {change.Label}.");
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Change: Yes. Key: {change.Key}. Label: {change.Label}.");
                                     logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated} Key: {change.Key}. Endpoint: {endpoint}.");
                                     keyValueChanges[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)] = change;
 
@@ -284,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Modified: No. Key: {change.Key}. Label: {change.Label}.");
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Change: No. Key: {change.Key}. Label: {change.Label}.");
                                 }
                             }
 
@@ -753,7 +753,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, _logger, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {
