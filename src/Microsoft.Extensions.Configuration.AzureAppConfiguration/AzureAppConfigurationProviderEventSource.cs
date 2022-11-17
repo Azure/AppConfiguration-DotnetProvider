@@ -24,6 +24,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         [Event(2, Message = "{0}", Level = EventLevel.Informational)]
         public void LogInformation(string message) { WriteEvent(2, message); }
 
+        [Event(3, Message = "{0}", Level = EventLevel.Warning)]
+        public void LogWarning(string message) { WriteEvent(3, message); }
+
+        [NonEvent]
+        public void LogWarning(Exception e, string message)
+        {
+            LogWarning(message + " " + e.Message);
+        }
+
         protected AzureAppConfigurationProviderEventSource()
            : base(
                 EventSourceName,

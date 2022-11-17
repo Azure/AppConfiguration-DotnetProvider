@@ -208,7 +208,7 @@ namespace Tests.AzureAppConfiguration
             refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedDueToKeyVaultError, LogLevel.Warning));
+            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFailedError, LogLevel.Warning));
         }
 
         [Fact]
