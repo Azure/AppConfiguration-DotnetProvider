@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Core.Diagnostics;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -13,7 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Security;
-using static System.Net.Mime.MediaTypeNames;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -32,6 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
             new JsonKeyValueAdapter() 
         };
+        private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
@@ -81,6 +81,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             get => _adapters;
             set => _adapters = value?.ToList();
         }
+
+        /// <summary>
+        /// A collection of user defined functions that transform each <see cref="ConfigurationSetting"/>.
+        /// </summary>
+        internal IEnumerable<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> Mappers => _mappers;
 
         /// <summary>
         /// A collection of key prefixes to be trimmed.
@@ -401,6 +406,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IsKeyVaultRefreshConfigured = keyVaultOptions.IsKeyVaultRefreshConfigured;
             IsKeyVaultConfigured = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Provides a way to transform settings retrieved from App Configuration before they are processed by the configuration provider.
+        /// </summary>
+        /// <param name="mapper">A callback registered by the user to transform each configuration setting.</param>
+        public AzureAppConfigurationOptions Map(Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> mapper)
+        {
+            if (mapper == null)
+            {
+                throw new ArgumentNullException(nameof(mapper));
+            }
+
+            _mappers.Add(mapper);
             return this;
         }
 
