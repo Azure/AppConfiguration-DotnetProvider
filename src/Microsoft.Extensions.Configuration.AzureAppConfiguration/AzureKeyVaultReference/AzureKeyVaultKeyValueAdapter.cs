@@ -38,13 +38,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (JsonException e)
             {
-                throw CreateKeyVaultReferenceException("Invalid Key Vault reference", setting, e, null);
+                throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
             }
 
             // Uri validation
             if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || secretUri.Segments.Length < 3)
             {
-                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier", setting, null, secretRef);
+                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRef);
             }
 
             string secret;
@@ -59,7 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
-                throw CreateKeyVaultReferenceException("Key vault error", setting, e, secretRef);
+                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRef);
             }
 
             return new KeyValuePair<string, string>[]

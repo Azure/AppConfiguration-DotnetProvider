@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -889,9 +891,20 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
-            var mockLogger = new Mock<ILogger>();
-            var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+            string informationalInvocation = "";
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Informational)
+                    {
+                        informationalInvocation += s;
+                    }
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
 
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
@@ -928,19 +941,18 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagLoaded + "(key: 'myFeature1', label: '')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature1'", LogLevel.Information));
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagLoaded + " Key: myFeature1. Label: .", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagValueUpdated + " Key: myFeature1.", informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagLoaded + "(key: 'myFeature1', label: '')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature1'", LogLevel.Information));
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagLoaded + " Key: myFeature1. Label: .", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagValueUpdated + " Key: myFeature1.", informationalInvocation);
         }
 
         [Fact]
@@ -960,9 +972,15 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            var mockLogger = new Mock<ILogger>();
-            var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
 
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
@@ -984,10 +1002,9 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagsUnchanged, LogLevel.Debug));
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagsUnchanged, verboseInvocation);
         }
 
         [Fact]

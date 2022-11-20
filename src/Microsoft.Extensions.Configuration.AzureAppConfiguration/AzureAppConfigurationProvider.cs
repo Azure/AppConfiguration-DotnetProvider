@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -18,7 +17,6 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Security;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -379,12 +377,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (logDebugBuilder.Length > 0)
                         {
-                            _logger?.LogDebug(logDebugBuilder.ToString().Trim());
+                            AzureAppConfigurationProviderEventSource.Log.LogDebug(logDebugBuilder.ToString().Trim());
                         }
 
                         if (logInfoBuilder.Length > 0)
                         {
-                            _logger?.LogInformation(logInfoBuilder.ToString().Trim());
+                            AzureAppConfigurationProviderEventSource.Log.LogInformation(logInfoBuilder.ToString().Trim());
                         }
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
