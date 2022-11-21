@@ -524,7 +524,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                AzureAppConfigurationProviderEventSource.Log.LogWarning($"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'");
+                AzureAppConfigurationProviderEventSource.Log.LogWarning($"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'.");
             }
         }
 

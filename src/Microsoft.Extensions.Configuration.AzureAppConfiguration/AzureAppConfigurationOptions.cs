@@ -44,8 +44,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         internal string ConnectionString { get; private set; }
 
-        internal EventListener _listener;
-
         /// <summary>
         /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
@@ -367,14 +365,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _changeWatchers.Add(item);
             }
 
-            //_listener = new AzureEventSourceListener((e, message) =>
-            //{
-            //    if (e.EventSource.Name == "AzureAppConfigurationProvider")
-            //    {
-            //        Console.WriteLine("[{1}] {0}: {2}", e.EventSource.Name, e.Level, message);
-            //    }
-            //},
-            //level: EventLevel.Verbose);
             return this;
         }
 
