@@ -316,17 +316,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 foreach (var loadOption in _options.KeyValueSelectors)
                 {
-                    if ((useDefaultQuery && LabelFilter.Null.Equals(loadOption.LabelFilter)) ||
-                        _options.KeyValueSelectors.Any(s => s != loadOption &&
-                           string.Equals(s.KeyFilter, KeyFilter.Any) &&
-                           string.Equals(s.LabelFilter, loadOption.LabelFilter)))
-                    {
-                        // This selection was already encapsulated by a wildcard query
-                        // Or would select kvs obtained by a different selector
-                        // We skip it to prevent unnecessary requests
-                        continue;
-                    }
-
                     var selector = new SettingSelector
                     {
                         KeyFilter = loadOption.KeyFilter,
@@ -608,7 +597,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
                 }
-                catch (KeyVaultReferenceException)
+                catch (Exception e) when (e is KeyVaultReferenceException || e is FormatException)
                 {
                     if (!ignoreFailures)
                     {
