@@ -273,8 +273,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Change: Yes. Key: {change.Key}. Label: {change.Label}.");
-                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated} Key: {change.Key}. Endpoint: {endpoint}.");
+                                    string changeTypeString = change.ChangeType == KeyValueChangeType.Modified ? "Modified" : "Deleted";
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Change: {changeTypeString}. Key: '{change.Key}'. Label: '{change.Label}'.");
+                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated} Key: '{change.Key}'. Endpoint: [ {endpoint} ].");
                                     keyValueChanges.Add(change);
 
                                     if (changeWatcher.RefreshAll)
@@ -284,7 +285,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Change: No. Key: {change.Key}. Label: {change.Label}.");
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueLoaded} Change: None. Key: '{change.Key}'. Label: '{change.Label}'.");
                                 }
                             }
 
@@ -294,7 +295,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshConfigurationUpdatedSuccess} Endpoint: {endpoint}.");
+                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshConfigurationUpdatedSuccess} Endpoint: [ {endpoint} ].");
                                 return;
                             }
 
@@ -377,12 +378,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (logDebugBuilder.Length > 0)
                         {
-                            AzureAppConfigurationProviderEventSource.Log.LogDebug(logDebugBuilder.ToString().Trim());
+                            if (_logger != null)
+                            {
+                                _logger?.LogDebug(logDebugBuilder.ToString().Trim());
+                            } 
+                            else
+                            {
+                                AzureAppConfigurationProviderEventSource.Log.LogDebug("\n\t" + logDebugBuilder.ToString().Trim());
+                            }
                         }
 
                         if (logInfoBuilder.Length > 0)
                         {
-                            AzureAppConfigurationProviderEventSource.Log.LogInformation(logInfoBuilder.ToString().Trim());
+                            if (_logger != null)
+                            {
+                                _logger?.LogInformation(logInfoBuilder.ToString().Trim());
+                            }
+                            else
+                            {
+                                AzureAppConfigurationProviderEventSource.Log.LogInformation("\n\t" + logInfoBuilder.ToString().Trim());
+                            }
                         }
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
@@ -754,7 +769,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, _logger, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {

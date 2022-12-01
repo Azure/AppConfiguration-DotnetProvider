@@ -359,7 +359,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             // We should see the second client's endpoint logged since the first client is backed off
-            Assert.Contains(LoggingConstants.RefreshConfigurationUpdatedSuccess + " Endpoint: " + TestHelpers.SecondaryConfigStoreEndpoint.ToString() + ".", invocation);
+            Assert.Contains(LoggingConstants.RefreshConfigurationUpdatedSuccess + " Endpoint: [ " + TestHelpers.SecondaryConfigStoreEndpoint.ToString() + " ].", invocation);
         }
 
         [Fact]
@@ -406,9 +406,9 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: Yes. Key: TestKey1. Label: label.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: TestKey1.", informationalInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: No. Key: TestKey2. Label: label.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: Modified. Key: 'TestKey1'. Label: 'label'.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: 'TestKey1'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: None. Key: 'TestKey2'. Label: 'label'.", verboseInvocation);
         }
 
         [Fact]
@@ -467,8 +467,8 @@ namespace Tests.AzureAppConfiguration
                    ";
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretLoaded + " Key: TestKey3. Label: label3.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSettingUpdated + " Key: TestKey3.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretLoaded + " Key: 'TestKey3'. Label: 'label3'.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyVaultSettingUpdated + " Key: 'TestKey3'.", informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

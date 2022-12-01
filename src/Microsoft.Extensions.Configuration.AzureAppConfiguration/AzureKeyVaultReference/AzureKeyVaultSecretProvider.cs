@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(Uri secretUri, string key, string label, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(Uri secretUri, string key, string label, ILogger logger, CancellationToken cancellationToken)
         {
             string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
             string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
@@ -62,8 +62,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 if (client != null)
                 {
                     KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    AzureAppConfigurationProviderEventSource.Log.LogDebug($"{LoggingConstants.RefreshKeyVaultSecretLoaded} Key: {key}. Label: {label}.");
-                    AzureAppConfigurationProviderEventSource.Log.LogInformation($"{LoggingConstants.RefreshKeyVaultSettingUpdated} Key: {key}.");
+                    if (logger != null)
+                    {
+                        logger.LogDebug($"{LoggingConstants.RefreshKeyVaultSecretLoaded} Key: '{key}'. Label: '{label}'.");
+                        logger.LogInformation($"{LoggingConstants.RefreshKeyVaultSettingUpdated} Key: '{key}'.");
+                    }
+                    else
+                    {
+                        AzureAppConfigurationProviderEventSource.Log.LogDebug($"\n\t{LoggingConstants.RefreshKeyVaultSecretLoaded} Key: '{key}'. Label: '{label}'.");
+                        AzureAppConfigurationProviderEventSource.Log.LogInformation($"\n\t{LoggingConstants.RefreshKeyVaultSettingUpdated} Key: '{key}'.");
+                    }
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)

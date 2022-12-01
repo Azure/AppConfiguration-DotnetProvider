@@ -513,8 +513,8 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
             Assert.Equal("newValue2", config["TestKey2"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: Yes. Key: TestKey1. Label: label.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: TestKey1.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: Modified. Key: 'TestKey1'. Label: 'label'.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: 'TestKey1'.", informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
