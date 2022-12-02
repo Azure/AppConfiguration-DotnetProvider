@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Security;
 using System.Threading.Tasks;

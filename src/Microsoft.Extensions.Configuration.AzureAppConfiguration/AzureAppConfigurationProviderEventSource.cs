@@ -1,8 +1,5 @@
-﻿using Azure.Core.Diagnostics;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Diagnostics.Tracing;
-using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -18,19 +15,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public static AzureAppConfigurationProviderEventSource Log { get; } = new AzureAppConfigurationProviderEventSource();
 
-        [Event(1, Message = "{0}", Level = EventLevel.Verbose)]
+        [Event(1, Message = "\n{0}", Level = EventLevel.Verbose)]
         public void LogDebug(string message) { WriteEvent(1, message); }
 
-        [Event(2, Message = "{0}", Level = EventLevel.Informational)]
+        [Event(2, Message = "\n{0}", Level = EventLevel.Informational)]
         public void LogInformation(string message) { WriteEvent(2, message); }
 
-        [Event(3, Message = "{0}", Level = EventLevel.Warning)]
+        [Event(3, Message = "\n{0}", Level = EventLevel.Warning)]
         public void LogWarning(string message) { WriteEvent(3, message); }
 
         [NonEvent]
         public void LogWarning(Exception e, string message)
         {
-            LogWarning(message + " " + e.Message);
+            if (e != null)
+            {
+                LogWarning(message + " " + e.Message);
+            }
+            else
+            {
+                LogWarning(message);
+            }
         }
 
         protected AzureAppConfigurationProviderEventSource()

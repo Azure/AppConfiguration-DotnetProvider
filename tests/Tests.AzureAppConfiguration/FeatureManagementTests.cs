@@ -943,16 +943,16 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagLoaded + " Key: 'myFeature1'. Label: ''.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagValueUpdated + " Key: 'myFeature1'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key: 'myFeature1'. Label: ''.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagSettingUpdated + " Key: 'myFeature1'.", informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagLoaded + " Key: 'myFeature1'. Label: ''.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagValueUpdated + " Key: 'myFeature1'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key: 'myFeature1'. Label: ''.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagSettingUpdated + " Key: 'myFeature1'.", informationalInvocation);
         }
 
         [Fact]

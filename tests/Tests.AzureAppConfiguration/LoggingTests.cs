@@ -35,7 +35,7 @@ namespace Tests.AzureAppConfiguration
 
             ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey2",
-                label: "label",
+                label: null,
                 value: "TestValue2",
                 eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
                 contentType: "text")
@@ -225,7 +225,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
-            Assert.Contains(LoggingConstants.RefreshFailedError + " No key vault credential or secret resolver callback configured, and no matching secret client could be found.", warningInvocation);
+            Assert.Contains(LoggingConstants.RefreshFailedDueToKeyVaultError + " No key vault credential or secret resolver callback configured, and no matching secret client could be found.", warningInvocation);
         }
 
         [Fact]
@@ -391,7 +391,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
-                        refreshOptions.Register("TestKey1", "label", false).Register("TestKey2", "label", false)
+                        refreshOptions.Register("TestKey1", "label", false).Register("TestKey2", false)
                             .SetCacheExpiration(CacheExpirationTime);
                     });
 
@@ -406,9 +406,9 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: Modified. Key: 'TestKey1'. Label: 'label'.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change: Modified. Key: 'TestKey1'. Label: 'label'.", verboseInvocation);
             Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: 'TestKey1'.", informationalInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueLoaded + " Change: None. Key: 'TestKey2'. Label: 'label'.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change: None. Key: 'TestKey2'. Label: ''.", verboseInvocation);
         }
 
         [Fact]
@@ -467,7 +467,7 @@ namespace Tests.AzureAppConfiguration
                    ";
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretLoaded + " Key: 'TestKey3'. Label: 'label3'.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretRead + " Key: 'TestKey3'. Label: 'label3'.", verboseInvocation);
             Assert.Contains(LoggingConstants.RefreshKeyVaultSettingUpdated + " Key: 'TestKey3'.", informationalInvocation);
         }
 
