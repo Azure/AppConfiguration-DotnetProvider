@@ -161,8 +161,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagRead, key: key, label: options.Label.NormalizeNull()));
-                                logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagSettingUpdated, key: key, endpoint: endpoint.ToString()));
+                                logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagRead, key: key, label: options.Label.NormalizeNull(), endpoint: endpoint.ToString()));
+                                logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagSettingUpdated, key: key));
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -179,8 +179,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagRead, key: key, label: options.Label.NormalizeNull()));
-                    logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagSettingUpdated, key: key, endpoint: endpoint.ToString()));
+                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagRead, key: key, label: options.Label.NormalizeNull(), endpoint: endpoint.ToString()));
+                    logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagSettingUpdated, key: key));
                 }
             }
 

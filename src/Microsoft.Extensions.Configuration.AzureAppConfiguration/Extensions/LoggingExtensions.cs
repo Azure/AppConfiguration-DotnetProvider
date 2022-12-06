@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
@@ -14,22 +13,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (changeType != null)
             {
-                fullLogMessage.Append($" Change: {changeType}.");
+                fullLogMessage.Append($" Change:'{changeType}'");
             }
 
             if (key != null)
             {
-                fullLogMessage.Append($" Key: '{key}'.");
+                fullLogMessage.Append($" Key:'{key}'");
             }
 
             if (label != LabelFilter.Null)
             {
-                fullLogMessage.Append($" Label: '{label}'.");
+                fullLogMessage.Append($" Label:'{label}'");
             }
 
             if (endpoint != null)
             {
-                fullLogMessage.Append($" Endpoint: [ {endpoint} ].");
+                fullLogMessage.Append($" Endpoint:'{endpoint.TrimEnd('/')}'");
             }
 
             return fullLogMessage.ToString();
@@ -59,13 +58,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 switch (logLevel)
                 {
                     case LogLevel.Debug:
-                        AzureAppConfigurationProviderEventSource.Log.LogDebug(message);
+                        AzureAppConfigurationProviderRefreshEventSource.Log.LogDebug(message);
                         break;
                     case LogLevel.Information:
-                        AzureAppConfigurationProviderEventSource.Log.LogInformation(message);
+                        AzureAppConfigurationProviderRefreshEventSource.Log.LogInformation(message);
                         break;
                     case LogLevel.Warning:
-                        AzureAppConfigurationProviderEventSource.Log.LogWarning(e, message);
+                        AzureAppConfigurationProviderRefreshEventSource.Log.LogWarning(e, message);
                         break;
                     default:
                         break;

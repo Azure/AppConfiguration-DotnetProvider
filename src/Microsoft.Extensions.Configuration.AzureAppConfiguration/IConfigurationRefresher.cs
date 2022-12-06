@@ -20,11 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         Uri AppConfigurationEndpoint { get; }
 
         /// <summary>
-        /// An <see cref="ILoggerFactory"/> for creating a logger to log errors.
-        /// </summary>
-        ILoggerFactory LoggerFactory { get; set; }
-
-        /// <summary>
         /// Refreshes the data from App Configuration asynchronously.
         /// </summary>
         /// <param name="cancellationToken">The cancellation token to cancel the operation.</param>

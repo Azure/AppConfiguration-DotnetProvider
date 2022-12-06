@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -274,8 +273,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, change.ChangeType.ToString(), key: change.Key, label: change.Label));
-                                    logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueSettingUpdated, key: change.Key, endpoint: endpoint.ToString()));
+                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
+                                    logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueSettingUpdated, key: change.Key));
                                     keyValueChanges.Add(change);
 
                                     if (changeWatcher.RefreshAll)
@@ -285,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, change.ChangeType.ToString(), key: change.Key, label: change.Label));
+                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
                                 }
                             }
 
@@ -295,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                                logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshConfigurationUpdatedSuccess, label: LabelFilter.Null, endpoint: endpoint.ToString()));
+                                logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshConfigurationUpdatedSuccess, label: LabelFilter.Null));
                                 return;
                             }
 
@@ -303,7 +302,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (!changedKeyValuesCollection.Any())
                             {
-                                logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagsUnchanged));
+                                logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshFeatureFlagsUnchanged, endpoint: endpoint.ToString()));
                             }
                         },
                         cancellationToken)

@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         ///Gets a message that describes the current exception.
         ///Returns The error message that explains the reason for the exception, or an empty string("").
         /// </summary>
-        public override string  Message => $"{_message} ErrorCode: {ErrorCode}. Key: '{Key}'. Label: '{Label}'. Etag: {Etag}. SecretIdentifier: {SecretIdentifier}.";
+        public override string  Message => $"{_message} ErrorCode:'{ErrorCode}' Key:'{Key}' Label:'{Label}' Etag:'{Etag}' SecretIdentifier:'{SecretIdentifier}'";
 
         /// <summary>
         /// The key of the Key Vault reference that caused the exception.

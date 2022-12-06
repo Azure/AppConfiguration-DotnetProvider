@@ -9,7 +9,6 @@ using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -943,16 +942,16 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key: 'myFeature1'. Label: ''.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagSettingUpdated + " Key: 'myFeature1'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key:'myFeature1' Label:''", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagSettingUpdated + " Key:'myFeature1'", informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key: 'myFeature1'. Label: ''.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagSettingUpdated + " Key: 'myFeature1'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key:'myFeature1' Label:''", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshFeatureFlagSettingUpdated + " Key:'myFeature1'", informationalInvocation);
         }
 
         [Fact]

@@ -9,7 +9,6 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
@@ -54,28 +53,6 @@ namespace Tests.AzureAppConfiguration
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
 
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
-
-        [Fact]
-        public void ThrowsIfLoggerFactorySetWithIConfigurationRefresherBeforeBuild()
-        {
-            IConfigurationRefresher refresher = null;
-
-            void action() => new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
-                    });
-
-                    refresher = options.GetRefresher();
-                    refresher.LoggerFactory = NullLoggerFactory.Instance; // Throws
-                })
-                .Build();
-
-            Assert.Throws<ArgumentException>(action);
-        }
 
         [Fact]
         public void ValidateExceptionLoggedDuringRefresh()
@@ -331,7 +308,7 @@ namespace Tests.AzureAppConfiguration
             using var _ = new AzureEventSourceListener(
                 (args, s) =>
                 {
-                    if (args.Level == EventLevel.Informational)
+                    if (args.Level == EventLevel.Verbose)
                     {
                         invocation += s;
                     }
@@ -359,7 +336,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             // We should see the second client's endpoint logged since the first client is backed off
-            Assert.Contains(LoggingConstants.RefreshConfigurationUpdatedSuccess + " Endpoint: [ " + TestHelpers.SecondaryConfigStoreEndpoint.ToString() + " ].", invocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'Modified' Key:'TestKey1' Label:'label' Endpoint:'" + TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/') + "'", invocation);
         }
 
         [Fact]
@@ -406,9 +383,9 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change: Modified. Key: 'TestKey1'. Label: 'label'.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: 'TestKey1'.", informationalInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change: None. Key: 'TestKey2'. Label: ''.", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'Modified' Key:'TestKey1' Label:'label'", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key:'TestKey1'", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'None' Key:'TestKey2' Label:''", verboseInvocation);
         }
 
         [Fact]
@@ -467,8 +444,8 @@ namespace Tests.AzureAppConfiguration
                    ";
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretRead + " Key: 'TestKey3'. Label: 'label3'.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSettingUpdated + " Key: 'TestKey3'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretRead + " Key:'TestKey3' Label:'label3'", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyVaultSettingUpdated + " Key:'TestKey3'", informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

@@ -12,7 +12,6 @@ using Moq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Extensions.Logging;
 using Azure.Core.Diagnostics;
 using System.Diagnostics.Tracing;
 
@@ -513,8 +512,8 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
             Assert.Equal("newValue2", config["TestKey2"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change: Modified. Key: 'TestKey1'. Label: 'label'.", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key: 'TestKey1'.", informationalInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'Modified' Key:'TestKey1' Label:'label'", verboseInvocation);
+            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key:'TestKey1'", informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

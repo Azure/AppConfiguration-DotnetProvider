@@ -23,12 +23,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (provider is IConfigurationRefresher refresher)
                     {
-                        // Use _loggerFactory only if LoggerFactory hasn't been set in AzureAppConfigurationOptions
-                        if (refresher.LoggerFactory == null)
-                        {
-                            refresher.LoggerFactory = _loggerFactory;
-                        }
-
                         refreshers.Add(refresher);
                     }
                 }

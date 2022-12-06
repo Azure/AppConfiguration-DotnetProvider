@@ -4,16 +4,16 @@ using System.Diagnostics.Tracing;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     [EventSource(Name = EventSourceName)]
-    internal class AzureAppConfigurationProviderEventSource : EventSource
+    internal class AzureAppConfigurationProviderRefreshEventSource : EventSource
     {
         /// <summary>The name to use for the event source.</summary>
-        private const string EventSourceName = "AzureAppConfigurationProvider";
+        private const string EventSourceName = "Microsoft.Extensions.Configuration.AzureAppConfiguration.Refresh[0]";
 
         /// <summary>
         ///   Provides a singleton instance of the event source for callers to
         ///   use for logging.
         /// </summary>
-        public static AzureAppConfigurationProviderEventSource Log { get; } = new AzureAppConfigurationProviderEventSource();
+        public static AzureAppConfigurationProviderRefreshEventSource Log { get; } = new AzureAppConfigurationProviderRefreshEventSource();
 
         [Event(1, Message = "\n{0}", Level = EventLevel.Verbose)]
         public void LogDebug(string message) { WriteEvent(1, message); }
@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        protected AzureAppConfigurationProviderEventSource()
+        protected AzureAppConfigurationProviderRefreshEventSource()
            : base(
                 EventSourceName,
                 EventSourceSettings.Default,

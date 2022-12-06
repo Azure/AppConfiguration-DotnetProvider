@@ -13,19 +13,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationProvider _provider = null;
 
         public Uri AppConfigurationEndpoint { get; private set; } = null;
-   
-        public ILoggerFactory LoggerFactory { 
-            get 
-            {
-                ThrowIfNullProvider(nameof(LoggerFactory));
-                return _provider.LoggerFactory;
-            }
-            set 
-            { 
-                ThrowIfNullProvider(nameof(LoggerFactory)); 
-                _provider.LoggerFactory = value;
-            } 
-        }
 
         public void SetProvider(AzureAppConfigurationProvider provider)
         {
