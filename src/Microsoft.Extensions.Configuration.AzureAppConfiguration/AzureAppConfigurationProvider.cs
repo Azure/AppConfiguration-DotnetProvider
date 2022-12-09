@@ -273,7 +273,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
+                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, changeType: change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
                                     logInfoBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueSettingUpdated, key: change.Key));
                                     keyValueChanges.Add(change);
 
@@ -284,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
+                                    logDebugBuilder.AppendLine(LoggingExtensions.FormatLog(LoggingConstants.RefreshKeyValueRead, changeType: change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
                                 }
                             }
 
