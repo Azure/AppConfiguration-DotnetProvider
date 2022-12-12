@@ -7,11 +7,13 @@ using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -1131,6 +1133,39 @@ namespace Tests.AzureAppConfiguration
 
             Assert.NotEqual("newValue", config["TestKey1"]);
         }
+
+#if NET7_0
+        [Fact]
+        public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
+        {
+            static void optionsInitializer(AzureAppConfigurationOptions options)
+            {
+                options.Connect(TestHelpers.CreateMockEndpointString());
+                options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
+            }
+
+            var chainedConfigurationProvider = new ChainedConfigurationSource
+            {
+                Configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(optionsInitializer, optional: true)
+                .AddAzureAppConfiguration(optionsInitializer, optional: true)
+                .Build(),
+                ShouldDisposeConfiguration = false,
+            }
+            .Build(new ConfigurationBuilder()) as ChainedConfigurationProvider;
+
+            PropertyInfo propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+            IConfigurationRefresherProvider refresherProvider = null;
+
+            if (propertyInfo != null)
+            {
+                refresherProvider = new AzureAppConfigurationRefresherProvider((IConfiguration)propertyInfo.GetValue(chainedConfigurationProvider), NullLoggerFactory.Instance);
+                Assert.Equal(2, refresherProvider.Refreshers.Count());
+            }
+
+            Assert.NotNull(refresherProvider);
+        }
+#endif
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
