@@ -51,8 +51,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (provider is ChainedConfigurationProvider chainedProvider)
                         {
-                            var root = p.GetValue(chainedProvider) as IConfigurationRoot;
-                            FindRefreshers(root, loggerFactory, refreshers);
+                            var chainedProviderConfigurationRoot = p.GetValue(chainedProvider) as IConfigurationRoot;
+                            FindRefreshers(chainedProviderConfigurationRoot, loggerFactory, refreshers);
                         }
                     }
                 }
