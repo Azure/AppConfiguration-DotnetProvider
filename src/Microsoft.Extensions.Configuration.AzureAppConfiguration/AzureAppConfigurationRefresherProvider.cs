@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (propertyInfo != null)
                         {
-                            var chainedProviderConfigurationRoot = p.GetValue(chainedProvider) as IConfigurationRoot;
+                            var chainedProviderConfigurationRoot = propertyInfo.GetValue(chainedProvider) as IConfigurationRoot;
                             FindRefreshers(chainedProviderConfigurationRoot, loggerFactory, refreshers);
                         }
                     }
