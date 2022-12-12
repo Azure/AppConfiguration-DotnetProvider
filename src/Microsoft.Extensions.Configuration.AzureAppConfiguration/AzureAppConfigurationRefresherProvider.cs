@@ -44,12 +44,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         refreshers.Add(refresher);
                     }
-
-                    PropertyInfo p = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
-
-                    if (p != null)
+                    else if (provider is ChainedConfigurationProvider chainedProvider)
                     {
-                        if (provider is ChainedConfigurationProvider chainedProvider)
+                        PropertyInfo propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+
+                        if (propertyInfo != null)
                         {
                             var chainedProviderConfigurationRoot = p.GetValue(chainedProvider) as IConfigurationRoot;
                             FindRefreshers(chainedProviderConfigurationRoot, loggerFactory, refreshers);
