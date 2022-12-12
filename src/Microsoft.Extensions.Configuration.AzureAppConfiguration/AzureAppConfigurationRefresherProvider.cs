@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
