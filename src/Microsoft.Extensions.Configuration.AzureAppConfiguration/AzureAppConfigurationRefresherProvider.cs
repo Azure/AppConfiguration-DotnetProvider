@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -45,10 +46,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         refreshers.Add(refresher);
                     }
 
-                    if (provider is ChainedConfigurationProvider chainedProvider)
+                    PropertyInfo p = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+
+                    if (p != null)
                     {
-                        var root = chainedProvider.Configuration as IConfigurationRoot;
-                        FindRefreshers(root, loggerFactory, refreshers);
+                        if (provider is ChainedConfigurationProvider chainedProvider)
+                        {
+                            var root = p.GetValue(chainedProvider) as IConfigurationRoot;
+                            FindRefreshers(root, loggerFactory, refreshers);
+                        }
                     }
                 }
             }
