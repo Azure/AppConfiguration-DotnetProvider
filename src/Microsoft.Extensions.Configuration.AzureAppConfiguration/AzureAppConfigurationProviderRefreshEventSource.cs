@@ -7,7 +7,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class AzureAppConfigurationProviderRefreshEventSource : EventSource
     {
         /// <summary>The name to use for the event source.</summary>
-        private const string EventSourceName = "Microsoft.Extensions.Configuration.AzureAppConfiguration.Refresh[0]";
+        private const string EventSourceName = "Microsoft-Extensions-Configuration-AzureAppConfiguration-Refresh";
+
+        private const int LogDebugEvent = 1;
+        private const int LogInformationEvent = 2;
+        private const int LogWarningEvent = 3;
 
         /// <summary>
         ///   Provides a singleton instance of the event source for callers to
@@ -15,29 +19,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public static AzureAppConfigurationProviderRefreshEventSource Log { get; } = new AzureAppConfigurationProviderRefreshEventSource();
 
-        [Event(1, Message = "{0}", Level = EventLevel.Verbose)]
-        public void LogDebug(string message) { WriteEvent(1, message); }
+        [Event(LogDebugEvent, Message = "{0}", Level = EventLevel.Verbose)]
+        public void LogDebug(string message)
+        {
+            WriteEvent(1, message);
+        }
 
-        [Event(2, Message = "{0}", Level = EventLevel.Informational)]
-        public void LogInformation(string message) { WriteEvent(2, message); }
+        [Event(LogInformationEvent, Message = "{0}", Level = EventLevel.Informational)]
+        public void LogInformation(string message)
+        {
+            WriteEvent(2, message);
+        }
 
-        [Event(3, Message = "{0}", Level = EventLevel.Warning)]
-        public void LogWarning(string message) { WriteEvent(3, message); }
-
-        [NonEvent]
-        public void LogWarning(Exception e, string message)
+        [Event(LogWarningEvent, Message = "{0}", Level = EventLevel.Warning)]
+        public void LogWarning(string message, Exception e)
         {
             if (e != null)
             {
-                LogWarning(message + " " + e.Message);
+                message += " " + e.Message;
             }
-            else
-            {
-                LogWarning(message);
-            }
+            WriteEvent(3, message);
         }
 
-        protected AzureAppConfigurationProviderRefreshEventSource()
+        private AzureAppConfigurationProviderRefreshEventSource()
            : base(
                 EventSourceName,
                 EventSourceSettings.Default,
