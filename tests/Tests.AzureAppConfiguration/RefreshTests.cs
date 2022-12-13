@@ -7,7 +7,6 @@ using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
@@ -1021,12 +1020,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_AzureAppConfigurationRefresherProviderReturnsRefreshers()
         {
-            static void optionsInitializer(AzureAppConfigurationOptions options)
-            {
-                options.Connect(TestHelpers.CreateMockEndpointString());
-                options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
-            }
-
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
@@ -1138,34 +1131,37 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
         {
-            static void optionsInitializer(AzureAppConfigurationOptions options)
-            {
-                options.Connect(TestHelpers.CreateMockEndpointString());
-                options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
-            }
-
             var chainedConfigurationProvider = new ChainedConfigurationSource
             {
                 Configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(optionsInitializer, optional: true)
-                .AddAzureAppConfiguration(optionsInitializer, optional: true)
-                .Build(),
-                ShouldDisposeConfiguration = false,
+                .Add(new ChainedConfigurationSource
+                {
+                    Configuration = new ConfigurationBuilder()
+                        .AddAzureAppConfiguration(optionsInitializer, optional: true)
+                        .Build()
+                })
+                .Build()
             }
             .Build(new ConfigurationBuilder()) as ChainedConfigurationProvider;
 
             PropertyInfo propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
-            IConfigurationRefresherProvider refresherProvider = null;
 
-            if (propertyInfo != null)
-            {
-                refresherProvider = new AzureAppConfigurationRefresherProvider((IConfiguration)propertyInfo.GetValue(chainedConfigurationProvider), NullLoggerFactory.Instance);
-                Assert.Equal(2, refresherProvider.Refreshers.Count());
-            }
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddConfiguration(propertyInfo.GetValue(chainedConfigurationProvider) as IConfigurationRoot)
+                .Build();
 
+            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration, NullLoggerFactory.Instance);
+
+            Assert.Single(refresherProvider.Refreshers);
             Assert.NotNull(refresherProvider);
         }
 #endif
+
+        private void optionsInitializer(AzureAppConfigurationOptions options)
+        {
+            options.Connect(TestHelpers.CreateMockEndpointString());
+            options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
+        }
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
         {
