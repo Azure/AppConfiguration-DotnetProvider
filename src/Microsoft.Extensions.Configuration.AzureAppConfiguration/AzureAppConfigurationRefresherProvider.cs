@@ -11,6 +11,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationRefresherProvider : IConfigurationRefresherProvider
     {
+        private PropertyInfo _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
         public AzureAppConfigurationRefresherProvider(IConfiguration configuration, ILoggerFactory _loggerFactory)
@@ -46,11 +48,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     else if (provider is ChainedConfigurationProvider chainedProvider)
                     {
-                        PropertyInfo propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
-
-                        if (propertyInfo != null)
+                        if (_propertyInfo != null)
                         {
-                            var chainedProviderConfigurationRoot = propertyInfo.GetValue(chainedProvider) as IConfigurationRoot;
+                            var chainedProviderConfigurationRoot = _propertyInfo.GetValue(chainedProvider) as IConfigurationRoot;
                             FindRefreshers(chainedProviderConfigurationRoot, loggerFactory, refreshers);
                         }
                     }
