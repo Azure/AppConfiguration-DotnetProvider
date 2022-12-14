@@ -21,9 +21,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 foreach (IConfigurationProvider provider in configurationRoot.Providers)
                 {
-                    if (provider is IConfigurationRefresher refresher)
+                    if (provider is AzureAppConfigurationProvider appConfigurationProvider)
                     {
-                        refreshers.Add(refresher);
+                        appConfigurationProvider.LoggerFactory = _loggerFactory;
+                        refreshers.Add(appConfigurationProvider);
                     }
                 }
             }

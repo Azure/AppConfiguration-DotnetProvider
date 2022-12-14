@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshConfigurationUpdatedSuccess = "Configuration reloaded.";
         public const string RefreshKeyValueSettingUpdated = "Setting updated.";
         public const string RefreshKeyVaultSettingUpdated = "Setting updated from Key Vault.";
-        public const string RefreshFeatureFlagSettingUpdated = "Feature flag updated.";
+        public const string RefreshFeatureFlagUpdated = "Feature flag updated.";
 
         // Other
         public const string RefreshSkippedNoClientAvailable = "Refresh skipped because no endpoint is accessible.";

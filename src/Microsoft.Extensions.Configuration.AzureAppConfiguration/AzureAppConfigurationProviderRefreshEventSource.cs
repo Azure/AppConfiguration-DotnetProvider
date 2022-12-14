@@ -9,6 +9,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>The name to use for the event source.</summary>
         private const string EventSourceName = "Microsoft-Extensions-Configuration-AzureAppConfiguration-Refresh";
 
+        private const string AzureEventSourceTraitName = "AzureEventSource";
+        private const string AzureEventSourceTraitValue = "true";
+
         private const int LogDebugEvent = 1;
         private const int LogInformationEvent = 2;
         private const int LogWarningEvent = 3;
@@ -22,13 +25,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         [Event(LogDebugEvent, Message = "{0}", Level = EventLevel.Verbose)]
         public void LogDebug(string message)
         {
-            WriteEvent(1, message);
+            WriteEvent(LogDebugEvent, message);
         }
 
         [Event(LogInformationEvent, Message = "{0}", Level = EventLevel.Informational)]
         public void LogInformation(string message)
         {
-            WriteEvent(2, message);
+            WriteEvent(LogInformationEvent, message);
         }
 
         [Event(LogWarningEvent, Message = "{0}", Level = EventLevel.Warning)]
@@ -38,15 +41,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 message += " " + e.Message;
             }
-            WriteEvent(3, message);
+
+            WriteEvent(LogWarningEvent, message);
         }
 
         private AzureAppConfigurationProviderRefreshEventSource()
            : base(
                 EventSourceName,
                 EventSourceSettings.Default,
-                "AzureEventSource",
-                "true")
+                AzureEventSourceTraitName,
+                AzureEventSourceTraitValue)
         {
         }
     }

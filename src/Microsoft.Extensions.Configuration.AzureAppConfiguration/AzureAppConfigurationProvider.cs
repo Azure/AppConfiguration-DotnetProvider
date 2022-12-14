@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
         private int _networkOperationsInProgress = 0;
-        private ILogger _logger;
+        private Logger _logger;
         private ILoggerFactory _loggerFactory;
 
         public Uri AppConfigurationEndpoint
@@ -191,7 +191,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (!availableClients.Any())
                     {
-                        LogHelper.LogDebug(_logger, LoggingConstants.RefreshSkippedNoClientAvailable);
+                        _logger.LogDebug(LoggingConstants.RefreshSkippedNoClientAvailable);
                         return;
                     }
 
@@ -273,8 +273,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine(LogHelper.FormatLog(LoggingConstants.RefreshKeyValueRead, changeType: change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
-                                    logInfoBuilder.AppendLine(LogHelper.FormatLog(LoggingConstants.RefreshKeyValueSettingUpdated, key: change.Key));
+                                    logDebugBuilder.AppendLine(Logger.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+                                    logInfoBuilder.AppendLine(Logger.BuildKeyValueSettingUpdatedMessage(change.Key));
                                     keyValueChanges.Add(change);
 
                                     if (changeWatcher.RefreshAll)
@@ -284,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine(LogHelper.FormatLog(LoggingConstants.RefreshKeyValueRead, changeType: change.ChangeType.ToString(), key: change.Key, label: change.Label, endpoint: endpoint.ToString()));
+                                    logDebugBuilder.AppendLine(Logger.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                                 }
                             }
 
@@ -294,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                                logInfoBuilder.AppendLine(LogHelper.FormatLog(LoggingConstants.RefreshConfigurationUpdatedSuccess, label: LabelFilter.Null));
+                                logInfoBuilder.AppendLine(Logger.BuildConfigurationUpdatedMessage());
                                 return;
                             }
 
@@ -302,7 +302,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (!changedKeyValuesCollection.Any())
                             {
-                                logDebugBuilder.AppendLine(LogHelper.FormatLog(LoggingConstants.RefreshFeatureFlagsUnchanged, endpoint: endpoint.ToString()));
+                                logDebugBuilder.AppendLine(Logger.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
                             }
                         },
                         cancellationToken)
@@ -377,12 +377,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (logDebugBuilder.Length > 0)
                         {
-                            LogHelper.LogDebug(_logger, logDebugBuilder.ToString().Trim());
+                            _logger.LogDebug(logDebugBuilder.ToString().Trim());
                         }
 
                         if (logInfoBuilder.Length > 0)
                         {
-                            LogHelper.LogInformation(_logger, logInfoBuilder.ToString().Trim());
+                            _logger.LogInformation(logInfoBuilder.ToString().Trim());
                         }
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
@@ -439,11 +439,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (IsAuthenticationError(e))
                 {
-                    LogHelper.LogWarning(_logger, LoggingConstants.RefreshFailedDueToAuthenticationError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError, e);
                 }
                 else
                 {
-                    LogHelper.LogWarning(_logger, LoggingConstants.RefreshFailedError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedError, e);
                 }
 
                 return false;
@@ -452,23 +452,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (IsAuthenticationError(e))
                 {
-                    LogHelper.LogWarning(_logger, LoggingConstants.RefreshFailedDueToAuthenticationError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError, e);
                 }
                 else
                 {
-                    LogHelper.LogWarning(_logger, LoggingConstants.RefreshFailedError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedError, e);
                 }
 
                 return false;
             }
             catch (KeyVaultReferenceException e)
             {
-                LogHelper.LogWarning(_logger, LoggingConstants.RefreshFailedDueToKeyVaultError, e);
+                _logger.LogWarning(LoggingConstants.RefreshFailedDueToKeyVaultError, e);
                 return false;
             }
             catch (OperationCanceledException)
             {
-                LogHelper.LogWarning(_logger, LoggingConstants.RefreshCanceledError, null);
+                _logger.LogWarning(LoggingConstants.RefreshCanceledError, null);
                 return false;
             }
 
@@ -524,7 +524,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                LogHelper.LogWarning(_logger, $"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'.", null);
+                _logger.LogWarning($"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'.", null);
             }
         }
 
