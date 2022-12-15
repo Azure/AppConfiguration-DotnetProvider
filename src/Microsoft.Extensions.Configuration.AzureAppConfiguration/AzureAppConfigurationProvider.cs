@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         // To avoid concurrent network operations, this flag is used to achieve synchronization between multiple threads.
         private int _networkOperationsInProgress = 0;
-        private Logger _logger;
+        private Logger _logger = new Logger();
         private ILoggerFactory _loggerFactory;
 
         public Uri AppConfigurationEndpoint
@@ -80,7 +80,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             set
             {
                 _loggerFactory = value;
-                _logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
+                ILogger logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
+                _logger = logger != null ? new Logger(logger) : new Logger();
             }
         }
 
