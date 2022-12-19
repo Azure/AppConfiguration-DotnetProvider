@@ -31,6 +31,23 @@ namespace Microsoft.Extensions.Configuration
         /// Adds key-value data from an Azure App Configuration store to a configuration builder.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
+        /// <param name="environmentName">Designates in which hosting environment key-values can be read.</param>
+        /// <param name="action">A callback used to configure Azure App Configuration options.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
+        /// <returns>The provided configuration builder.</returns>
+        public static IConfigurationBuilder AddAzureAppConfiguration(
+            this IConfigurationBuilder configurationBuilder,
+            string environmentName,
+            Action<AzureAppConfigurationOptions> action,
+            bool optional = false)
+        {
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, environmentName, optional));
+        }
+
+        /// <summary>
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// </summary>
+        /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="action">A callback used to configure Azure App Configuration options.</param>
         /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
         /// <returns>The provided configuration builder.</returns>
@@ -39,7 +56,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: optional));
         }
 
         /// <summary>
@@ -64,7 +81,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             IConfigurationClientFactory configurationClientFactory)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory: configurationClientFactory));
         }
     }
 }

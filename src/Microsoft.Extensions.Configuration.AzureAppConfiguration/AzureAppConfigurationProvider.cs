@@ -22,6 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
+        private readonly string _environmentName;
         private readonly bool _requestTracingEnabled;
 
         private readonly ConfigurationClient _client;
@@ -82,10 +83,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, string environmentName, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _environmentName = environmentName;
             _optional = optional;
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
@@ -286,6 +288,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken)
         {
+            if (_environmentName != null && _environmentName != Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable))
+            {
+                return;
+            }
+
             IDictionary<string, ConfigurationSetting> data = null;
             bool success = false;
 

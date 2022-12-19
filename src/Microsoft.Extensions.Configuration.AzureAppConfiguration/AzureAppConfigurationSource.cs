@@ -11,8 +11,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly bool _optional;
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
         private readonly IConfigurationClientFactory _configurationClientFactory;
+        private readonly string _environmentName;
 
-        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false, IConfigurationClientFactory configurationClientFactory = null)
+        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, string environmentName = null, bool optional = false, IConfigurationClientFactory configurationClientFactory = null)
         {
             _optionsProvider = () => {
                 var options = new AzureAppConfigurationOptions();
@@ -20,6 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return options;
             };
 
+            _environmentName = environmentName;
             _optional = optional;
             _configurationClientFactory = configurationClientFactory ?? new ConfigurationClientFactory();
         }
@@ -50,7 +52,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(client, options, _optional);
+                provider = new AzureAppConfigurationProvider(client, options, _environmentName, _optional);
             }
             catch (InvalidOperationException e)
             {
