@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Azure.Core.Diagnostics;
+using System;
 using System.Diagnostics.Tracing;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -8,9 +9,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         /// <summary>The name to use for the event source.</summary>
         private const string EventSourceName = "Microsoft-Extensions-Configuration-AzureAppConfiguration-Refresh";
-
-        private const string AzureEventSourceTraitName = "AzureEventSource";
-        private const string AzureEventSourceTraitValue = "true";
 
         private const int LogDebugEvent = 1;
         private const int LogInformationEvent = 2;
@@ -49,8 +47,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
            : base(
                 EventSourceName,
                 EventSourceSettings.Default,
-                AzureEventSourceTraitName,
-                AzureEventSourceTraitValue)
+                AzureEventSourceListener.TraitName,
+                AzureEventSourceListener.TraitValue)
         {
         }
     }
