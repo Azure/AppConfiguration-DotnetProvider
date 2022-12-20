@@ -288,7 +288,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken)
         {
-            if (_environmentName != null && _environmentName != Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable))
+            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable);
+            string dotNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
+            string environmentName = aspNetCoreEnvironment != null ? aspNetCoreEnvironment : dotNetCoreEnvironment;
+
+            if (_environmentName != null && _environmentName != environmentName)
             {
                 return;
             }
