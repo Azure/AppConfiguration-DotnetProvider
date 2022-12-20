@@ -1131,26 +1131,20 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
         {
-            var chainedConfigurationProvider = new ChainedConfigurationSource
-            {
-                Configuration = new ConfigurationBuilder()
-                .Add(new ChainedConfigurationSource
-                {
-                    Configuration = new ConfigurationBuilder()
-                        .AddAzureAppConfiguration(optionsInitializer, optional: true)
-                        .Build()
-                })
-                .Build()
-            }
-            .Build(new ConfigurationBuilder()) as ChainedConfigurationProvider;
-
-            PropertyInfo propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+            var mockClient = GetMockConfigurationClient();
 
             IConfiguration configuration = new ConfigurationBuilder()
-                .AddConfiguration(propertyInfo.GetValue(chainedConfigurationProvider) as IConfigurationRoot)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                })
                 .Build();
 
-            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration, NullLoggerFactory.Instance);
+            IConfiguration loadPrevConfig = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .Build();
+
+            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(loadPrevConfig, NullLoggerFactory.Instance);
 
             Assert.Single(refresherProvider.Refreshers);
             Assert.NotNull(refresherProvider);
