@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
-        private readonly string _environmentName;
+        private readonly bool _loadKeyValuesForEnvironment = true;
         private readonly bool _requestTracingEnabled;
 
         private readonly ConfigurationClient _client;
@@ -87,8 +87,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _environmentName = environmentName;
             _optional = optional;
+            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable);
+            string dotNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
+            string context = aspNetCoreEnvironment != null ? aspNetCoreEnvironment : dotNetCoreEnvironment;
+
+            if (environmentName != null && environmentName != context)
+            {
+                _loadKeyValuesForEnvironment = false;
+            }
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
@@ -288,11 +295,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAll(bool ignoreFailures, CancellationToken cancellationToken)
         {
-            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable);
-            string dotNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
-            string environmentName = aspNetCoreEnvironment != null ? aspNetCoreEnvironment : dotNetCoreEnvironment;
-
-            if (_environmentName != null && _environmentName != environmentName)
+            if (!_loadKeyValuesForEnvironment)
             {
                 return;
             }
