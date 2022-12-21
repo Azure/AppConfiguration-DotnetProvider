@@ -1019,12 +1019,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_AzureAppConfigurationRefresherProviderReturnsRefreshers()
         {
-            static void optionsInitializer(AzureAppConfigurationOptions options)
-            {
-                options.Connect(TestHelpers.CreateMockEndpointString());
-                options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
-            }
-
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
@@ -1130,6 +1124,36 @@ namespace Tests.AzureAppConfiguration
             Assert.True(result);
 
             Assert.NotEqual("newValue", config["TestKey1"]);
+        }
+
+#if NET7_0
+        [Fact]
+        public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
+        {
+            var mockClient = GetMockConfigurationClient();
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Client = mockClient.Object;
+                })
+                .Build();
+
+            IConfiguration loadPrevConfig = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .Build();
+
+            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(loadPrevConfig, NullLoggerFactory.Instance);
+
+            Assert.Single(refresherProvider.Refreshers);
+            Assert.NotNull(refresherProvider);
+        }
+#endif
+
+        private void optionsInitializer(AzureAppConfigurationOptions options)
+        {
+            options.Connect(TestHelpers.CreateMockEndpointString());
+            options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
         }
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)
