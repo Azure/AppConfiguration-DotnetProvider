@@ -53,9 +53,9 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            // Key-values will not be loaded in the wrong environment 
             Assert.Equal("Development", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
 
+            // Key-values will not be loaded in the wrong environment 
             Assert.Null(config["TestKey1"]);
             Assert.Null(config["TestKey2"]);
 
@@ -72,7 +72,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void AllowReadingKeyValuesWithEnvironmentName()
+        public void AllowLoadingKeyValuesWithEnvironmentName()
         {
             var mockClient = GetMockConfigurationClient();
 
@@ -83,18 +83,41 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(environmentName: "Production", options =>
                 {
                     options.Client = mockClient.Object;
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label").Register("TestKey2", "label");
-                    });
                 })
                 .Build();
 
-            // Key-values will not be read in the wrong environment 
             Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
 
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
+        [Fact]
+        public void LoadingKeyValuesWithEnvironmentNameInMultipleConfigurations()
+        {
+            var mockClientDev = GetMockConfigurationClientSelectKeyLabel();
+            var mockClientProd = GetMockConfigurationClientSelectKeyLabel();
+
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, "Production");
+            Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(environmentName: "Production", options =>
+                {
+                    options.Client = mockClientProd.Object;
+                    options.Select("TestKey1", "label");
+                })
+                .AddAzureAppConfiguration(environmentName: "Development", options =>
+                {
+                    options.Client = mockClientDev.Object;
+                    options.Select("TestKey2", "label");
+                })
+                .Build();
+
+            Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Null(config["TestKey2"]);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
@@ -131,6 +154,45 @@ namespace Tests.AzureAppConfiguration
                 {
                     return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
                 });
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            return mockClient;
+        }
+
+        private Mock<ConfigurationClient> GetMockConfigurationClientSelectKeyLabel()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == selector.KeyFilter && s.Label == selector.LabelFilter));
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            }
+
+            Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+            {
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label), mockResponse.Object);
+            }
+
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            {
+                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(newSetting, response);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
