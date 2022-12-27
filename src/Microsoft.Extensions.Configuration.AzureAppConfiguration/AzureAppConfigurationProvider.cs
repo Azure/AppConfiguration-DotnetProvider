@@ -134,7 +134,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             string dotNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
             string context = aspNetCoreEnvironment != null ? aspNetCoreEnvironment : dotNetCoreEnvironment;
 
-            if (environmentName != null && environmentName != context)
+            if (environmentName != context)
             {
                 _loadKeyValuesForEnvironment = false;
             }
