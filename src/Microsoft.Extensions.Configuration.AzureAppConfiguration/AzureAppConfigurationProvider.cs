@@ -83,19 +83,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private void FinishConstructorSetup(
-            ref ConfigurationClient _client,
-            ref AzureAppConfigurationOptions _options,
-            ref bool _optional,
-            ref TimeSpan MinCacheExpirationInterval,
-            ref bool _requestTracingEnabled,
-            ConfigurationClient client,
-            AzureAppConfigurationOptions options,
-            bool optional)
+        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, string environmentName, bool environmentNameEnabled, bool optional)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable);
+            string dotNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
+            string context = aspNetCoreEnvironment != null ? aspNetCoreEnvironment : dotNetCoreEnvironment;
+
+            if (environmentNameEnabled && environmentName != context)
+            {
+                _loadKeyValuesForEnvironment = false;
+            }
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
@@ -121,25 +121,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 SetRequestTracingOptions();
             }
-        }
-
-        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, bool optional)
-        {
-            FinishConstructorSetup(ref _client, ref _options, ref _optional, ref MinCacheExpirationInterval, ref _requestTracingEnabled, client, options, optional);
-        }
-
-        public AzureAppConfigurationProvider(ConfigurationClient client, AzureAppConfigurationOptions options, string environmentName, bool optional)
-        {
-            string aspNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable);
-            string dotNetCoreEnvironment = Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
-            string context = aspNetCoreEnvironment != null ? aspNetCoreEnvironment : dotNetCoreEnvironment;
-
-            if (environmentName != context)
-            {
-                _loadKeyValuesForEnvironment = false;
-            }
-
-            FinishConstructorSetup(ref _client, ref _options, ref _optional, ref MinCacheExpirationInterval, ref _requestTracingEnabled, client, options, optional);
         }
 
         /// <summary>

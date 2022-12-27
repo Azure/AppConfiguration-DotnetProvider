@@ -153,8 +153,10 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = GetMockConfigurationClientSelectKeyLabel();
 
+            Environment.SetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable, null);
             Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, null);
             Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: null, options =>
@@ -166,6 +168,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
 
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);

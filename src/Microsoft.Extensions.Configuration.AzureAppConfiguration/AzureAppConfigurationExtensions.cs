@@ -41,7 +41,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, environmentName, optional));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, environmentName, true, optional));
         }
 
         /// <summary>
