@@ -149,14 +149,12 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void AllowLoadingKeyValuesWithNullEnvironmentName()
+        public void PreventLoadingKeyValuesWithoutNullEnvironmentName()
         {
             var mockClient = GetMockConfigurationClientSelectKeyLabel();
 
-            Environment.SetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable, null);
-            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, null);
-            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
-            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, "Production");
+            Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: null, options =>
@@ -167,11 +165,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
-            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
+            Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
 
-            Assert.Equal("TestValue1", config["TestKey1"]);
-            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Null(config["TestKey1"]);
+            Assert.Null(config["TestKey2"]);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClientSelectKeyLabel()
