@@ -72,7 +72,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void AllowLoadingKeyValuesWithEnvironmentName()
+        public void AllowLoadingKeyValuesWithAspNetCoreEnvironmentName()
         {
             var mockClient = GetMockConfigurationClientSelectKeyLabel();
 
@@ -89,6 +89,32 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
+        [Fact]
+        public void AllowLoadingKeyValuesWithDotNetCoreEnvironmentName()
+        {
+            var mockClient = GetMockConfigurationClientSelectKeyLabel();
+
+            Environment.SetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable, "Production");
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, null);
+            Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(environmentName: "Production", options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey1", "label");
+                    options.Select("TestKey2", "label");
+                })
+                .Build();
+
+            Assert.Equal("Production", Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
 
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
