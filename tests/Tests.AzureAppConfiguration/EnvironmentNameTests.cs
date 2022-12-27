@@ -148,6 +148,29 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey2"]);
         }
 
+        [Fact]
+        public void AllowLoadingKeyValuesWithNullEnvironmentName()
+        {
+            var mockClient = GetMockConfigurationClientSelectKeyLabel();
+
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, null);
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(environmentName: null, options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey1", "label");
+                    options.Select("TestKey2", "label");
+                })
+                .Build();
+
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
         private Mock<ConfigurationClient> GetMockConfigurationClientSelectKeyLabel()
         {
             var mockResponse = new Mock<Response>();
