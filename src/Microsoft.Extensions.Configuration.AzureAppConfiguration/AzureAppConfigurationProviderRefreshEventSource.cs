@@ -5,7 +5,7 @@ using System.Diagnostics.Tracing;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     [EventSource(Name = EventSourceName)]
-    internal class AzureAppConfigurationProviderRefreshEventSource : EventSource
+    internal sealed class AzureAppConfigurationProviderRefreshEventSource : EventSource
     {
         /// <summary>The name to use for the event source.</summary>
         private const string EventSourceName = "Microsoft-Extensions-Configuration-AzureAppConfiguration-Refresh";
@@ -13,6 +13,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int LogDebugEvent = 1;
         private const int LogInformationEvent = 2;
         private const int LogWarningEvent = 3;
+
+        private AzureAppConfigurationProviderRefreshEventSource()
+            : base(
+                EventSourceName,
+                EventSourceSettings.Default,
+                AzureEventSourceListener.TraitName,
+                AzureEventSourceListener.TraitValue)
+        {
+        }
 
         /// <summary>
         ///   Provides a singleton instance of the event source for callers to
@@ -41,15 +50,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             WriteEvent(LogWarningEvent, message);
-        }
-
-        private AzureAppConfigurationProviderRefreshEventSource()
-           : base(
-                EventSourceName,
-                EventSourceSettings.Default,
-                AzureEventSourceListener.TraitName,
-                AzureEventSourceListener.TraitValue)
-        {
         }
     }
 }

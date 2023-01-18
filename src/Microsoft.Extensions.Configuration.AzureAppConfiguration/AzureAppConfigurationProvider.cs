@@ -80,8 +80,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             set
             {
                 _loggerFactory = value;
-                ILogger logger = _loggerFactory?.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory);
-                _logger = logger != null ? new Logger(logger) : new Logger();
+
+                if (_loggerFactory != null)
+                {
+                    _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
+                }
             }
         }
 
@@ -525,7 +528,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                _logger.LogWarning($"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'.", null);
+                _logger.LogWarning(LoggingConstants.PushNotificationUnregisteredEndpoint + pushNotification.ResourceUri + "'.", null);
             }
         }
 

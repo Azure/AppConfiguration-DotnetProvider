@@ -1,17 +1,13 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
-using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    class Logger
+    internal class Logger
     {
         ILogger _logger;
 
-        public Logger()
-        {
-            _logger = null;
-        }
+        public Logger() { }
 
         public Logger(ILogger logger)
         {
@@ -86,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (_logger != null)
             {
-                _logger.LogWarning(message);
+                _logger.LogWarning(e, message);
             }
             else
             {

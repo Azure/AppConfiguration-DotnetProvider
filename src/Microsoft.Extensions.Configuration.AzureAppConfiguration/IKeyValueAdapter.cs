@@ -5,7 +5,6 @@ using Azure.Data.AppConfiguration;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

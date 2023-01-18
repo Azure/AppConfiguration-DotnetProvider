@@ -13,6 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshFailedError = "A refresh operation failed.";
         public const string RefreshCanceledError = "A refresh operation was canceled.";
         public const string RefreshFailedDueToKeyVaultError = "A refresh operation failed while resolving a Key Vault reference.";
+        public const string PushNotificationUnregisteredEndpoint = "Ignoring the push notification received for the unregistered endpoint '";
 
         // Successful update, debug log level
         public const string RefreshKeyValueRead = "Key-value read from App Configuration.";
