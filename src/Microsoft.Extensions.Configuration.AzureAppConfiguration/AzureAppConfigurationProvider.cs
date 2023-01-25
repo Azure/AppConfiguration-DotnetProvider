@@ -443,11 +443,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (IsAuthenticationError(e))
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError + "\n" + e.Message);
                 }
                 else
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedError + "\n" + e.Message);
                 }
 
                 return false;
@@ -456,23 +456,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (IsAuthenticationError(e))
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError + "\n" + e.Message);
                 }
                 else
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedError, e);
+                    _logger.LogWarning(LoggingConstants.RefreshFailedError + "\n" + e.Message);
                 }
 
                 return false;
             }
             catch (KeyVaultReferenceException e)
             {
-                _logger.LogWarning(LoggingConstants.RefreshFailedDueToKeyVaultError, e);
+                _logger.LogWarning(LoggingConstants.RefreshFailedDueToKeyVaultError + "\n" + e.Message);
                 return false;
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning(LoggingConstants.RefreshCanceledError, null);
+                _logger.LogWarning(LoggingConstants.RefreshCanceledError);
                 return false;
             }
 
@@ -528,7 +528,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                _logger.LogWarning(LoggingConstants.PushNotificationUnregisteredEndpoint + pushNotification.ResourceUri + "'.", null);
+                _logger.LogWarning(LoggingConstants.PushNotificationUnregisteredEndpoint + pushNotification.ResourceUri + "'.");
             }
         }
 

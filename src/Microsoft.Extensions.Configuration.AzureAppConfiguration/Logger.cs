@@ -78,15 +78,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public void LogWarning(string message, Exception e)
+        public void LogWarning(string message)
         {
             if (_logger != null)
             {
-                _logger.LogWarning(e, message);
+                _logger.LogWarning(message);
             }
             else
             {
-                AzureAppConfigurationProviderRefreshEventSource.Log.LogWarning(message, e);
+                AzureAppConfigurationProviderRefreshEventSource.Log.LogWarning(message);
             }
         }
     }

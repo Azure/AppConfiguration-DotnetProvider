@@ -42,13 +42,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         [Event(LogWarningEvent, Message = "{0}", Level = EventLevel.Warning)]
-        public void LogWarning(string message, Exception e)
+        public void LogWarning(string message)
         {
-            if (e != null)
-            {
-                message += " " + e.Message;
-            }
-
             WriteEvent(LogWarningEvent, message);
         }
     }
