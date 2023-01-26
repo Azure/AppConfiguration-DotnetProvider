@@ -29,6 +29,7 @@ variables:
   CDP_DEFINITION_BUILD_COUNT_MONTH: $[counter(format('{0:yyyyMM}', pipeline.startTime), 1)]
   CDP_DEFINITION_BUILD_COUNT_YEAR: $[counter(format('{0:yyyy}', pipeline.startTime), 1)]
   NUGET_XMLDOC_MODE: none
+  Codeql.Enabled: true
 
   # Docker image which is used to build the project https://aka.ms/obpipelines/containers
   # Image used in CDPX build: cdpxwin1809.azurecr.io/global/vse2019:16.8.2
