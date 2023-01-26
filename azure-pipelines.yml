@@ -49,9 +49,6 @@ jobs:
     ob_sdl_cg_failOnAlert: false
 
   steps:
-    - checkout: AppConfiguration-DotnetProvider
-      path: s/AppConfiguration-DotnetProvider
-
     - task: CmdLine@2
       inputs:
         script: |
