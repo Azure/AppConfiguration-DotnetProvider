@@ -328,10 +328,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
                                 watchedSettings[changeIdentifier] = settingCopy;
                             }
-                            else if (change.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                watchedSettings.Remove(changeIdentifier);
-                            }
                         }
 
                         Dictionary<string, string> precedenceSettings = new Dictionary<string, string>();
@@ -410,33 +406,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                             else if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
-                                if (!watchedSettings.TryGetValue(changeIdentifier, out ConfigurationSetting setting))
-                                {
-                                    if (precedenceSettings.TryGetValue(change.Key, out string label))
-                                    {
-                                        foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
-                                        {
-                                            setting = await func(setting).ConfigureAwait(false);
-                                        }
-
-                                        if (setting == null)
-                                        {
-                                            _mappedData.Remove(change.Key);
-                                        }
-                                        else
-                                        {
-                                            _mappedData[change.Key] = setting;
-                                        }
-
-                                        _mappedData[change.Key] = setting;
-                                    } 
-                                    else
-                                    {
-                                        _mappedData.Remove(change.Key);
-                                    }
-                                    logDebugBuilder.AppendLine(changedKeyValuesCollectionDebugLogs[changeIdentifier]);
-                                    logInfoBuilder.AppendLine(changedKeyValuesCollectionInfoLogs[changeIdentifier]);
-                                }
+                                _mappedData.Remove(change.Key);
+                                watchedSettings.Remove(changeIdentifier);
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
