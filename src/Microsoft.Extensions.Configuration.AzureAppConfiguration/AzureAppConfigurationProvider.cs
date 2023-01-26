@@ -528,7 +528,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                _logger.LogWarning(LoggingConstants.PushNotificationUnregisteredEndpoint + pushNotification.ResourceUri + "'.");
+                _logger.LogWarning(LoggingConstants.PushNotificationUnregisteredEndpoint + pushNotification.ResourceUri + ".");
             }
         }
 

@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

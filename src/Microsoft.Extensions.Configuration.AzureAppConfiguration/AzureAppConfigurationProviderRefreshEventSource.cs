@@ -1,5 +1,4 @@
 ﻿using Azure.Core.Diagnostics;
-using System;
 using System.Diagnostics.Tracing;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration

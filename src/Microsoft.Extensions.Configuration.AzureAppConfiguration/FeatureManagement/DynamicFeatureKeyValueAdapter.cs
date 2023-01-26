@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
