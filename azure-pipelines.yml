@@ -35,14 +35,6 @@ variables:
   # Image used in CDPX build: cdpxwin1809.azurecr.io/global/vse2019:16.8.2
   WindowsContainerImage: 'onebranch.azurecr.io/windows/ltsc2019/vse2022:latest'
 
-resources:
-  repositories: 
-    - repository: AppConfiguration-DotnetProvider # The name used to reference this repository in the checkout step
-      type: github
-      endpoint: azure
-      name: Azure/AppConfiguration-DotnetProvider
-      ref: refs/heads/main
-
 jobs:
 - job: main
   pool:
