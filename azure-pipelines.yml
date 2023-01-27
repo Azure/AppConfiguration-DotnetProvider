@@ -50,29 +50,29 @@ jobs:
 
     - task: CopyFiles@2
       inputs:
-        SourceFolder: 'buildlogs'
+        SourceFolder: '$(Build.SourcesDirectory)\buildlogs'
         Contents: |
           **/*
-        TargetFolder: 'out\outputs\build\Build Logs'
+        TargetFolder: '$(Build.SourcesDirectory)\out\outputs\build\Build Logs'
 
     - task: CmdLine@2
       displayName: 'Dotnet Pack'
       inputs:
-        script: build\CallPowerShell.cmd pack.ps1
-        workingDirectory: '.'
+        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd pack.ps1
+        workingDirectory: '$(Build.SourcesDirectory)'
 
     - task: CopyFiles@2
       inputs:
-        SourceFolder: 'buildlogs'
+        SourceFolder: '$(Build.SourcesDirectory)\buildlogs'
         Contents: |
           **/*
-        TargetFolder: 'out\outputs\package\Build Logs'
+        TargetFolder: '$(Build.SourcesDirectory)\out\outputs\package\Build Logs'
 
     - task: CmdLine@2
       displayName: 'Dotnet Test'
       inputs:
-        script: 'build/CallPowerShell.cmd test.ps1|| exit /b 0'
-        workingDirectory: '.'
+        script: '$(Build.SourcesDirectory)\build/CallPowerShell.cmd test.ps1|| exit /b 0'
+        workingDirectory: '$(Build.SourcesDirectory)'
 
 
     - task: CopyFiles@2
