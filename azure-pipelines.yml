@@ -38,7 +38,7 @@ jobs:
           move /y ./examples ..
           move /y ./tests ..
           move /y ./src ..
-          cd ../..
+          cd ..
           dir
 
     - task: CmdLine@2
