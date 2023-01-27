@@ -30,21 +30,9 @@ jobs:
 
   steps:
     - task: CmdLine@2
-      inputs:
-        script: |
-          cd $(Build.SourcesDirectory)/AppConfiguration-DotnetProvider/
-          move /y ./*  ..
-          move /y ./build ..
-          move /y ./examples ..
-          move /y ./tests ..
-          move /y ./src ..
-          cd ..
-          ls $(Build.SourcesDirectory)
-
-    - task: CmdLine@2
       displayName: 'Install .NET'
       inputs:
-        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build/install-dotnet.ps1 -RestoreOnly
+        script: build\CallPowerShell.cmd build/install-dotnet.ps1 -RestoreOnly
         workingDirectory: '$(Build.SourcesDirectory)'
 
     - task: CmdLine@2
