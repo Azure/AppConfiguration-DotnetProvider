@@ -38,8 +38,8 @@ jobs:
           move /y ./examples ..
           move /y ./tests ..
           move /y ./src ..
-          cd ..
-          dir
+          ls ..
+          ls ../build
 
     - task: CmdLine@2
       displayName: 'Install .NET'
