@@ -74,23 +74,11 @@ jobs:
         script: 'build/CallPowerShell.cmd test.ps1|| exit /b 0'
         workingDirectory: '.'
 
-    - task: CmdLine@2
-      displayName: 'a'
-      inputs:
-        script: 'ls'
-        workingDirectory: '.'
-
-    - task: CmdLine@2
-      displayName: 'b'
-      inputs:
-        script: 'ls build'
-        workingDirectory: '.'
-
-    - task: CopyFiles@2
-      inputs:
-        SourceFolder: 'TestResults'
-        Contents: '**\*.trx'
-        TargetFolder: 'out\outputs\test\_post_command__run_log_alerts_schedular_tests\_testresults'
+    # - task: CopyFiles@2
+    #   inputs:
+    #     SourceFolder: 'TestResults'
+    #     Contents: '**\*.trx'
+    #     TargetFolder: 'out\outputs\test\_post_command__run_log_alerts_schedular_tests\_testresults'
 
     - task: PublishTestResults@2
       displayName: 'Unit Tests'
