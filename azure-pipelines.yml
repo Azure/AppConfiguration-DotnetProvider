@@ -33,20 +33,20 @@ jobs:
       displayName: 'Install .NET'
       inputs:
         script: build\CallPowerShell.cmd build/install-dotnet.ps1 -RestoreOnly
-        workingDirectory: '.'
+        workingDirectory: '$(Build.SourcesDirectory)'
 
     - task: CmdLine@2
       displayName: 'Restore'
       inputs:
-        script: build\CallPowerShell.cmd build.ps1 -RestoreOnly
-        workingDirectory: '.'
+        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build.ps1 -RestoreOnly
+        workingDirectory: '$(Build.SourcesDirectory)'
 
 
     - task: CmdLine@2
       displayName: 'Dotnet Build'
       inputs:
-        script: build\CallPowerShell.cmd build.ps1
-        workingDirectory: '.'
+        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build.ps1
+        workingDirectory: '$(Build.SourcesDirectory)'
 
     - task: CopyFiles@2
       inputs:
