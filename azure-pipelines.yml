@@ -72,7 +72,7 @@ jobs:
       displayName: 'Dotnet Test'
       inputs:
         script: 'build/CallPowerShell.cmd test.ps1|| exit /b 0'
-        workingDirectory: '$(Build.SourcesDirectory)'
+        workingDirectory: '.'
 
 
     - task: CopyFiles@2
