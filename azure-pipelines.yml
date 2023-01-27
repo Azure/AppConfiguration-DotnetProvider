@@ -123,14 +123,14 @@ jobs:
 #        ↓ 
     
     # Uncomment this task if your CDPx yaml has publish_to_legacy_artifacts set to TRUE 
-    - task: DownloadBuildArtifacts@1
-      displayName: '⚡️Download CDPx Build Artifact'
-      inputs:
-        buildType: 'specific'
-        project: '$(System.TeamProjectId)'
-        pipeline: '287'
-        buildVersionToDownload: 'specific'
-        buildId: '55014'
-        downloadType: 'single'
-        artifactName: 'drop'
-        downloadPath: '.\cdpxArt'
+    # - task: DownloadBuildArtifacts@1
+    #   displayName: '⚡️Download CDPx Build Artifact'
+    #   inputs:
+    #     buildType: 'specific'
+    #     project: '$(System.TeamProjectId)'
+    #     pipeline: '287'
+    #     buildVersionToDownload: 'specific'
+    #     buildId: '55014'
+    #     downloadType: 'single'
+    #     artifactName: 'drop'
+    #     downloadPath: '.\cdpxArt'
