@@ -33,53 +33,64 @@ jobs:
       displayName: 'Install .NET'
       inputs:
         script: build\CallPowerShell.cmd build/install-dotnet.ps1 -RestoreOnly
-        workingDirectory: '$(Build.SourcesDirectory)'
+        workingDirectory: '.'
 
     - task: CmdLine@2
       displayName: 'Restore'
       inputs:
-        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build.ps1 -RestoreOnly
-        workingDirectory: '$(Build.SourcesDirectory)'
+        script: build\CallPowerShell.cmd build.ps1 -RestoreOnly
+        workingDirectory: ''
 
 
     - task: CmdLine@2
       displayName: 'Dotnet Build'
       inputs:
-        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build.ps1
-        workingDirectory: '$(Build.SourcesDirectory)'
+        script: build\CallPowerShell.cmd build.ps1
+        workingDirectory: '.'
 
     - task: CopyFiles@2
       inputs:
-        SourceFolder: '$(Build.SourcesDirectory)\buildlogs'
+        SourceFolder: 'buildlogs'
         Contents: |
           **/*
-        TargetFolder: '$(Build.SourcesDirectory)\out\outputs\build\Build Logs'
+        TargetFolder: 'out\outputs\build\Build Logs'
 
     - task: CmdLine@2
       displayName: 'Dotnet Pack'
       inputs:
-        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd pack.ps1
-        workingDirectory: '$(Build.SourcesDirectory)'
+        script: build\CallPowerShell.cmd pack.ps1
+        workingDirectory: '.'
 
     - task: CopyFiles@2
       inputs:
-        SourceFolder: '$(Build.SourcesDirectory)\buildlogs'
+        SourceFolder: 'buildlogs'
         Contents: |
           **/*
-        TargetFolder: '$(Build.SourcesDirectory)\out\outputs\package\Build Logs'
+        TargetFolder: 'out\outputs\package\Build Logs'
 
     - task: CmdLine@2
       displayName: 'Dotnet Test'
       inputs:
-        script: '$(Build.SourcesDirectory)\build/CallPowerShell.cmd test.ps1|| exit /b 0'
-        workingDirectory: '$(Build.SourcesDirectory)'
+        script: 'build/CallPowerShell.cmd test.ps1|| exit /b 0'
+        workingDirectory: '.'
 
+    - task: CmdLine@2
+      displayName: 'a'
+      inputs:
+        script: 'ls'
+        workingDirectory: '.'
+
+    - task: CmdLine@2
+      displayName: 'b'
+      inputs:
+        script: 'ls build'
+        workingDirectory: '.'
 
     - task: CopyFiles@2
       inputs:
-        SourceFolder: '$(Build.SourcesDirectory)\TestResults'
+        SourceFolder: 'TestResults'
         Contents: '**\*.trx'
-        TargetFolder: '$(Build.SourcesDirectory)\out\outputs\test\_post_command__run_log_alerts_schedular_tests\_testresults'
+        TargetFolder: 'out\outputs\test\_post_command__run_log_alerts_schedular_tests\_testresults'
 
     - task: PublishTestResults@2
       displayName: 'Unit Tests'
