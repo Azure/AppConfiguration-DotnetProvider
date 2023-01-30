@@ -171,6 +171,32 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey2"]);
         }
 
+        [Fact]
+        public void PreventLoadingKeyValuesWithNullEnvironmentName()
+        {
+            var mockClient = GetMockConfigurationClientSelectKeyLabel();
+
+            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, null);
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+            Environment.SetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable, null);
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(environmentName: null, options =>
+                {
+                    options.Client = mockClient.Object;
+                    options.Select("TestKey1", "label");
+                    options.Select("TestKey2", "label");
+                })
+                .Build();
+
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
+            Assert.Null(Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable));
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
         private Mock<ConfigurationClient> GetMockConfigurationClientSelectKeyLabel()
         {
             var mockResponse = new Mock<Response>();
