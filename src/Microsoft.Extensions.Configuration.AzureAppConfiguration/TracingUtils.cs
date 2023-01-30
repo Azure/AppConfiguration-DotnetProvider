@@ -27,6 +27,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     hostType = HostType.AzureWebApp;
                 }
+                else if (Environment.GetEnvironmentVariable(RequestTracingConstants.ContainerAppEnvironmentVariable) != null)
+                {
+                    hostType = HostType.ContainerApp;
+                }
                 else if (Environment.GetEnvironmentVariable(RequestTracingConstants.KubernetesEnvironmentVariable) != null)
                 {
                     hostType = HostType.Kubernetes;
