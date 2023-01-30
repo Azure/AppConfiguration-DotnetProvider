@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration
         /// Adds key-value data from an Azure App Configuration store to a configuration builder.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
-        /// <param name="environmentName">Designates in which hosting environment key-values can be read.</param>
+        /// <param name="environmentName">The name of the environment for which the Azure App Configuration options are applicable</param>
         /// <param name="action">A callback used to configure Azure App Configuration options.</param>
         /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
         /// <returns>The provided configuration builder.</returns>
