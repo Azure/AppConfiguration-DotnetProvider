@@ -89,19 +89,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            try
+            if (environmentNameEnabled)
             {
-                string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
-                                    Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
-                if (environmentNameEnabled)
+                try
                 {
+                    string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
+                                        Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
                     if ((envType != null && !envType.Equals(environmentName, StringComparison.OrdinalIgnoreCase)) || (envType == null && environmentName != null))
                     {
                         _loadKeyValuesForEnvironment = false;
                     }
                 }
+                catch (SecurityException) { }
             }
-            catch (SecurityException) { }
 
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
