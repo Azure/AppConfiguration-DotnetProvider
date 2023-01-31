@@ -11,6 +11,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         AzureFunction,
 
+        ContainerApp,
+
         Kubernetes,
 
         IISExpress,
