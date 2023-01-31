@@ -11,6 +11,9 @@
 pr:
 - preview
 
+trigger:
+- none
+
 parameters: # parameters are shown up in ADO UI in a build queue time
 - name: 'debug'
   displayName: 'Enable debug output'
