@@ -99,6 +99,7 @@ jobs:
         testRunTitle: Unit Tests
 
     - task: PublishPipelineArtifact@1
+      displayName: 'Publish TestResults Artifact'
       inputs:
         targetPath: '$(Build.ArtifactStagingDirectory)\tests'
         artifact: 'drop-test'
