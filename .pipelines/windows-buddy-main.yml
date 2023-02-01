@@ -101,7 +101,7 @@ jobs:
     - task: PublishPipelineArtifact@1
       displayName: 'Publish TestResults Artifact'
       inputs:
-        targetPath: '$(Build.ArtifactStagingDirectory)\tests'
+        targetPath: '$(Build.SourcesDirectory)\tests'
         artifact: 'drop-test'
         publishLocation: 'pipeline'
 
