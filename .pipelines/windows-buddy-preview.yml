@@ -44,6 +44,8 @@ jobs:
         script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build.ps1 -RestoreOnly
         workingDirectory: '$(Build.SourcesDirectory)'
 
+    - task: CodeQL3000Init@0
+      displayName: 'Initialize CodeQL'
 
     - task: CmdLine@2
       displayName: 'Dotnet Build'
@@ -93,3 +95,5 @@ jobs:
         failTaskOnFailedTests: False
         testRunTitle: Unit Tests
 
+    - task: CodeQL3000Finalize@0
+      displayName: 'Finalize CodeQL'

@@ -45,6 +45,9 @@ jobs:
         script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd build.ps1 -RestoreOnly
         workingDirectory: '$(Build.SourcesDirectory)'
 
+    - task: CodeQL3000Init@0
+      displayName: 'Initialize CodeQL'
+
     - task: onebranch.pipeline.version@1 # generates automatic version. For other versioning options check https://aka.ms/obpipelines/versioning
       displayName: 'Setup BuildNumber'
       inputs:
@@ -152,3 +155,5 @@ jobs:
         failTaskOnFailedTests: False
         testRunTitle: Unit Tests
 
+    - task: CodeQL3000Finalize@0
+      displayName: 'Finalize CodeQL'
