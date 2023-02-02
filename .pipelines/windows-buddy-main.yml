@@ -86,7 +86,7 @@ jobs:
     - task: CopyFiles@2
       inputs:
         SourceFolder: '$(Build.SourcesDirectory)\tests'
-        Contents: '**\*.trx'
+        Contents: '**/*.trx'
         TargetFolder: '$(Build.SourcesDirectory)\out\outputs\test\_post_command__run_log_alerts_schedular_tests\_testresults'
 
     - task: PublishTestResults@2
