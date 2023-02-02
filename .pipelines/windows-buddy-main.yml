@@ -105,12 +105,6 @@ jobs:
         verbosity: 'Verbose'
         alertWarningLevel: 'High'
 
-    - task: CmdLine@2
-      displayName: 'See Files'
-      inputs:
-        script: ls
-        workingDirectory: '$(Build.ArtifactStagingDirectory)'
-
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Artifacts'
       inputs:
