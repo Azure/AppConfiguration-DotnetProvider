@@ -99,10 +99,10 @@ jobs:
         testRunTitle: Unit Tests
 
     - task: PublishPipelineArtifact@1
-      displayName: 'Publish TestResults Artifact'
+      displayName: 'Publish Artifacts'
       inputs:
-        targetPath: '$(Build.SourcesDirectory)\tests'
-        artifact: 'drop-test'
+        targetPath: '$(Build.SourcesDirectory)\out\outputs'
+        artifact: 'drop'
         publishLocation: 'pipeline'
 
     - task: CodeQL3000Finalize@0
