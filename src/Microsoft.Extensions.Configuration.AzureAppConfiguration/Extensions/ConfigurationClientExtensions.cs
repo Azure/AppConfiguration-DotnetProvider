@@ -4,7 +4,6 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -66,9 +65,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(
             this ConfigurationClient client,
             IEnumerable<ConfigurationSetting> keyValues,
-            Dictionary<KeyValueIdentifier, string> changedKeyValuesCollectionDebugLogs,
-            Dictionary<KeyValueIdentifier, string> changedKeyValuesCollectionInfoLogs,
             GetKeyValueChangeCollectionOptions options,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -117,7 +116,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                 async () =>
                 {
-                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                     {
                         if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                         {
@@ -154,7 +153,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         {
                             if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                             {
-                                KeyValueIdentifier identifier = new KeyValueIdentifier(setting.Key, options.Label.NormalizeNull());
                                 changes.Add(new KeyValueChange
                                 {
                                     ChangeType = KeyValueChangeType.Modified,
@@ -163,8 +161,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                changedKeyValuesCollectionDebugLogs[identifier] = $"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')";
-                                changedKeyValuesCollectionInfoLogs[identifier] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
+                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
+                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -173,7 +171,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
                 foreach (var kvp in eTagMap)
                 {
-                    KeyValueIdentifier identifier = new KeyValueIdentifier(kvp.Key, options.Label.NormalizeNull());
                     changes.Add(new KeyValueChange
                     {
                         ChangeType = KeyValueChangeType.Deleted,
@@ -182,8 +179,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    changedKeyValuesCollectionDebugLogs[identifier] = $"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')";
-                    changedKeyValuesCollectionInfoLogs[identifier] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
+                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
+                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
                 }
             }
 

@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
-        private Dictionary<string, ConfigurationSetting> _mappedData;
+        private Dictionary<KeyValueIdentifier, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
 
@@ -212,101 +212,100 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
                     List<KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
-                    Dictionary<KeyValueIdentifier, string> changedKeyValuesCollectionDebugLogs = new Dictionary<KeyValueIdentifier, string>();
-                    Dictionary<KeyValueIdentifier, string> changedKeyValuesCollectionInfoLogs = new Dictionary<KeyValueIdentifier, string>();
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> data = null;
                     bool refreshAll = false;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
+                    {
+                        data = null;
+                        watchedSettings = null;
+                        keyValueChanges = new List<KeyValueChange>();
+                        changedKeyValuesCollection = null;
+                        refreshAll = false;
+                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
+                        logDebugBuilder.Clear();
+                        logInfoBuilder.Clear();
+
+                        foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                         {
-                            data = null;
-                            watchedSettings = null;
-                            keyValueChanges = new List<KeyValueChange>();
-                            changedKeyValuesCollection = null;
-                            refreshAll = false;
-                            Uri endpoint = _configClientManager.GetEndpointForClient(client);
-                            logDebugBuilder.Clear();
-                            logInfoBuilder.Clear();
+                            string watchedKey = changeWatcher.Key;
+                            string watchedLabel = changeWatcher.Label;
 
-                            foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
+                            KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+
+                            KeyValueChange change = default;
+
+                            //
+                            // Find if there is a change associated with watcher
+                            if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                             {
-                                string watchedKey = changeWatcher.Key;
-                                string watchedLabel = changeWatcher.Label;
+                                await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                                    async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                // Load the key-value in case the previous load attempts had failed
 
-                                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-
-                                KeyValueChange change = default;
-
-                                //
-                                // Find if there is a change associated with watcher
-                                if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                                try
                                 {
-                                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                    await CallWithRequestTracing(
+                                        async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                 }
-                                else
+                                catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                                 {
-                                    // Load the key-value in case the previous load attempts had failed
-
-                                    try
-                                    {
-                                        await CallWithRequestTracing(
-                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                                    }
-                                    catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
-                                    {
-                                        watchedKv = null;
-                                    }
-
-                                    if (watchedKv != null)
-                                    {
-                                        change = new KeyValueChange()
-                                        {
-                                            Key = watchedKv.Key,
-                                            Label = watchedKv.Label.NormalizeNull(),
-                                            Current = watchedKv,
-                                            ChangeType = KeyValueChangeType.Modified
-                                        };
-                                    }
+                                    watchedKv = null;
                                 }
 
-                                // Check if a change has been detected in the key-value registered for refresh
-                                if (change.ChangeType != KeyValueChangeType.None)
+                                if (watchedKv != null)
                                 {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
-                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
-                                    keyValueChanges.Add(change);
-
-                                    if (changeWatcher.RefreshAll)
+                                    change = new KeyValueChange()
                                     {
-                                        refreshAll = true;
-                                        break;
-                                    }
-                                } else
-                                {
-                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueUnchanged}(key: '{change.Key}', label: '{change.Label}')");
+                                        Key = watchedKv.Key,
+                                        Label = watchedKv.Label.NormalizeNull(),
+                                        Current = watchedKv,
+                                        ChangeType = KeyValueChangeType.Modified
+                                    };
                                 }
                             }
 
-                            if (refreshAll)
+                            // Check if a change has been detected in the key-value registered for refresh
+                            if (change.ChangeType != KeyValueChangeType.None)
                             {
-                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                                logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
-                                return;
+                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
+                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
+                                keyValueChanges.Add(change);
+
+                                if (changeWatcher.RefreshAll)
+                                {
+                                    refreshAll = true;
+                                    break;
+                                }
                             }
-
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, changedKeyValuesCollectionDebugLogs, changedKeyValuesCollectionInfoLogs, endpoint, cancellationToken).ConfigureAwait(false);
-
-                            if (!changedKeyValuesCollection.Any())
+                            else
                             {
-                                logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagsUnchanged);
+                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueUnchanged}(key: '{change.Key}', label: '{change.Label}')");
                             }
-                        },
+                        }
+
+                        if (refreshAll)
+                        {
+                            // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
+                            data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+                            watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                            watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                            logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
+                            return;
+                        }
+
+                        changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+
+                        if (!changedKeyValuesCollection.Any())
+                        {
+                            logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagsUnchanged);
+                        }
+                    },
                         cancellationToken)
                         .ConfigureAwait(false);
 
@@ -319,30 +318,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             UpdateCacheExpirationTime(changeWatcher);
                         }
 
-                        foreach (KeyValueChange change in changedKeyValuesCollection)
-                        {
-                            KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
-                            if (change.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                ConfigurationSetting setting = change.Current;
-                                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                                watchedSettings[changeIdentifier] = settingCopy;
-                            }
-                        }
-
-                        Dictionary<string, string> precedenceSettings = new Dictionary<string, string>();
-
-                        foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
-                        {
-                            IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, watchedSettings.Values);
-
-                            foreach (ConfigurationSetting setting in currentKeyValues)
-                            {
-                                precedenceSettings[setting.Key] = setting.Label;
-                            }
-                        }
-
-                        foreach (KeyValueChange change in keyValueChanges)
+                        foreach (KeyValueChange change in keyValueChanges.Concat(changedKeyValuesCollection))
                         {
                             KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
                             if (change.ChangeType == KeyValueChangeType.Modified)
@@ -358,55 +334,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                 if (setting == null)
                                 {
-                                    _mappedData.Remove(change.Key);
+                                    _mappedData.Remove(changeIdentifier);
                                 }
                                 else
                                 {
-                                    _mappedData[change.Key] = setting;
+                                    _mappedData[changeIdentifier] = setting;
                                 }
                             }
                             else if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
-                                _mappedData.Remove(change.Key);
-                                watchedSettings.Remove(changeIdentifier);
-                            }
-
-                            // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
-                            foreach (IKeyValueAdapter adapter in _options.Adapters)
-                            {
-                                adapter.InvalidateCache(change.Current);
-                            }
-                        }
-
-                        foreach (KeyValueChange change in changedKeyValuesCollection)
-                        {
-                            KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
-                            if (change.ChangeType == KeyValueChangeType.Modified)
-                            {
-                                if (precedenceSettings.TryGetValue(change.Key, out string label) && label == change.Label)
-                                {
-                                    ConfigurationSetting setting = change.Current;
-
-                                    foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
-                                    {
-                                        setting = await func(setting).ConfigureAwait(false);
-                                    }
-
-                                    if (setting == null)
-                                    {
-                                        _mappedData.Remove(change.Key);
-                                    }
-                                    else
-                                    {
-                                        _mappedData[change.Key] = setting;
-                                    }
-                                    logDebugBuilder.AppendLine(changedKeyValuesCollectionDebugLogs[changeIdentifier]);
-                                    logInfoBuilder.AppendLine(changedKeyValuesCollectionInfoLogs[changeIdentifier]);
-                                }
-                            }
-                            else if (change.ChangeType == KeyValueChangeType.Deleted)
-                            {
-                                _mappedData.Remove(change.Key);
+                                _mappedData.Remove(changeIdentifier);
                                 watchedSettings.Remove(changeIdentifier);
                             }
 
@@ -437,80 +374,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || changedKeyValuesCollection?.Any() == true || keyValueChanges.Any())
                     {
-                        //Dictionary<string, string> precedenceSettings = new Dictionary<string, string>();
-
-                        //if (changedKeyValuesCollection?.Any() == true)
-                        //{
-                        //    foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
-                        //    {
-                        //        IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, watchedSettings.Values);
-
-                        //        foreach (ConfigurationSetting setting in currentKeyValues)
-                        //        {
-                        //            precedenceSettings[setting.Key] = setting.Label;
-                        //        }
-                        //    }
-
-                        //    foreach (KeyValueChange change in changedKeyValuesCollection)
-                        //    {
-                        //        KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
-                        //        if (change.ChangeType == KeyValueChangeType.Deleted)
-                        //        {
-                        //            if (precedenceSettings.TryGetValue(change.Key, out string precedenceLabel) && change.Label == precedenceLabel)
-                        //            {
-                        //                if (watchedSettings.TryGetValue(new KeyValueIdentifier(change.Key, precedenceLabel), out ConfigurationSetting setting))
-                        //                {
-                        //                    ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                        //                    watchedSettings[changeIdentifier] = settingCopy;
-
-                        //                    foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
-                        //                    {
-                        //                        setting = await func(setting).ConfigureAwait(false);
-                        //                    }
-
-                        //                    if (setting == null)
-                        //                    {
-                        //                        _mappedData.Remove(change.Key);
-                        //                    }
-                        //                    else
-                        //                    {
-                        //                        _mappedData[change.Key] = setting;
-                        //                    }
-                        //                }
-
-                        //                logDebugBuilder.AppendLine(changedKeyValuesCollectionDebugLogs[changeIdentifier]);
-                        //                logInfoBuilder.AppendLine(changedKeyValuesCollectionInfoLogs[changeIdentifier]);
-                        //            }
-                        //        }
-                        //        else if (change.ChangeType == KeyValueChangeType.Modified)
-                        //        {
-                        //            if (!precedenceSettings.TryGetValue(change.Key, out string precedenceLabel) || change.Label != precedenceLabel)
-                        //            {
-                        //                ConfigurationSetting setting = watchedSettings[new KeyValueIdentifier(change.Key, precedenceSettings[change.Key])];
-                        //                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                        //                watchedSettings[changeIdentifier] = settingCopy;
-
-                        //                foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
-                        //                {
-                        //                    setting = await func(setting).ConfigureAwait(false);
-                        //                }
-
-                        //                if (setting == null)
-                        //                {
-                        //                    _mappedData.Remove(change.Key);
-                        //                }
-                        //                else
-                        //                {
-                        //                    _mappedData[change.Key] = setting;
-                        //                }
-
-                        //logDebugBuilder.AppendLine(changedKeyValuesCollectionDebugLogs[changeIdentifier]);
-                        //logInfoBuilder.AppendLine(changedKeyValuesCollectionInfoLogs[changeIdentifier]);
-                        //            }
-                        //        }
-                        //    }
-                        //}
-
                         _watchedSettings = watchedSettings;
 
                         if (logDebugBuilder.Length > 0)
@@ -535,14 +398,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, string>> PrepareData(Dictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default)
+        private async Task<Dictionary<string, string>> PrepareData(Dictionary<KeyValueIdentifier, ConfigurationSetting> data, CancellationToken cancellationToken = default)
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var dataIdentifiers = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             // Reset old filter telemetry in order to track the filter types present in the current response from server.
             _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
+            
+            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in data)
+            {
+                dataIdentifiers[kvp.Key.Key] = kvp.Value;
+            }
 
-            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers.Concat(_options.ChangeWatchers))
+            {
+                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, data.Values);
+
+                foreach (ConfigurationSetting setting in currentKeyValues)
+                {
+                    dataIdentifiers[setting.Key] = setting;
+                }
+            }
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in dataIdentifiers)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
@@ -715,7 +594,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
+                    Dictionary<KeyValueIdentifier, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                     SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
                     _watchedSettings = watchedSettings;
                     _mappedData = mappedData;
@@ -841,8 +720,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
             IEnumerable<KeyValueWatcher> multiKeyWatchers,
             ConfigurationClient client,
-            Dictionary<KeyValueIdentifier, string> changedKeyValuesCollectionDebugLogs,
-            Dictionary<KeyValueIdentifier, string> changedKeyValuesCollectionInfoLogs,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -855,8 +734,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 keyValueChanges.AddRange(
                     await client.GetKeyValueChangeCollection(
                         currentKeyValues,
-                        changedKeyValuesCollectionDebugLogs,
-                        changedKeyValuesCollectionInfoLogs,
                         new GetKeyValueChangeCollectionOptions
                         {
                             KeyFilter = changeWatcher.Key,
@@ -864,6 +741,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             RequestTracingEnabled = _requestTracingEnabled,
                             RequestTracingOptions = _requestTracingOptions
                         },
+                        logDebugBuilder,
+                        logInfoBuilder,
                         endpoint,
                         cancellationToken)
                     .ConfigureAwait(false));
@@ -1051,9 +930,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                    rfe.Status >= (int)HttpStatusCode.InternalServerError;
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<KeyValueIdentifier, ConfigurationSetting> data)
+        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> MapConfigurationSettings(Dictionary<KeyValueIdentifier, ConfigurationSetting> data)
         {
-            Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<KeyValueIdentifier, ConfigurationSetting> mappedData = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
             foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in data)
             {
@@ -1064,21 +943,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     setting = await func(setting).ConfigureAwait(false);
                 }
 
-                data[kvp.Key] = setting;
+                mappedData[kvp.Key] = setting;
 
                 if (setting != null)
                 {
-                    mappedData[kvp.Key.Key] = setting;
-                }
-            }
-
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers.Concat(_options.ChangeWatchers))
-            {
-                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, data.Values);
-
-                foreach (ConfigurationSetting setting in currentKeyValues)
-                {
-                    mappedData[setting.Key] = setting;
+                    mappedData[kvp.Key] = setting;
                 }
             }
 

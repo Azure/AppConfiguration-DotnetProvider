@@ -921,7 +921,7 @@ namespace Tests.AzureAppConfiguration
         public void RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
-            ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label2");
             var mockClient = GetMockConfigurationClient();
             IConfigurationRefresher refresher = null;
 
