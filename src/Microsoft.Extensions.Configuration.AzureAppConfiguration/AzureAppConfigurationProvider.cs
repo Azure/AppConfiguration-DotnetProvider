@@ -218,94 +218,94 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logDebugBuilder = new StringBuilder();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
-                    {
-                        data = null;
-                        watchedSettings = null;
-                        keyValueChanges = new List<KeyValueChange>();
-                        changedKeyValuesCollection = null;
-                        refreshAll = false;
-                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
-                        logDebugBuilder.Clear();
-                        logInfoBuilder.Clear();
-
-                        foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                         {
-                            string watchedKey = changeWatcher.Key;
-                            string watchedLabel = changeWatcher.Label;
+                            data = null;
+                            watchedSettings = null;
+                            keyValueChanges = new List<KeyValueChange>();
+                            changedKeyValuesCollection = null;
+                            refreshAll = false;
+                            Uri endpoint = _configClientManager.GetEndpointForClient(client);
+                            logDebugBuilder.Clear();
+                            logInfoBuilder.Clear();
 
-                            KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-
-                            KeyValueChange change = default;
-
-                            //
-                            // Find if there is a change associated with watcher
-                            if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                            foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
-                                await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                    async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                            }
-                            else
-                            {
-                                // Load the key-value in case the previous load attempts had failed
+                                string watchedKey = changeWatcher.Key;
+                                string watchedLabel = changeWatcher.Label;
 
-                                try
-                                {
-                                    await CallWithRequestTracing(
-                                        async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                                }
-                                catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
-                                {
-                                    watchedKv = null;
-                                }
+                                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
 
-                                if (watchedKv != null)
+                                KeyValueChange change = default;
+
+                                //
+                                // Find if there is a change associated with watcher
+                                if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                                 {
-                                    change = new KeyValueChange()
+                                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    // Load the key-value in case the previous load attempts had failed
+
+                                    try
                                     {
-                                        Key = watchedKv.Key,
-                                        Label = watchedKv.Label.NormalizeNull(),
-                                        Current = watchedKv,
-                                        ChangeType = KeyValueChangeType.Modified
-                                    };
+                                        await CallWithRequestTracing(
+                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                    }
+                                    catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
+                                    {
+                                        watchedKv = null;
+                                    }
+
+                                    if (watchedKv != null)
+                                    {
+                                        change = new KeyValueChange()
+                                        {
+                                            Key = watchedKv.Key,
+                                            Label = watchedKv.Label.NormalizeNull(),
+                                            Current = watchedKv,
+                                            ChangeType = KeyValueChangeType.Modified
+                                        };
+                                    }
                                 }
-                            }
 
-                            // Check if a change has been detected in the key-value registered for refresh
-                            if (change.ChangeType != KeyValueChangeType.None)
-                            {
-                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
-                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
-                                keyValueChanges.Add(change);
-
-                                if (changeWatcher.RefreshAll)
+                                // Check if a change has been detected in the key-value registered for refresh
+                                if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    refreshAll = true;
-                                    break;
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueChanged}(key: '{change.Key}', label: '{change.Label}')");
+                                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueSettingUpdated}'{change.Key}' from endpoint {endpoint}");
+                                    keyValueChanges.Add(change);
+
+                                    if (changeWatcher.RefreshAll)
+                                    {
+                                        refreshAll = true;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueUnchanged}(key: '{change.Key}', label: '{change.Label}')");
                                 }
                             }
-                            else
+
+                            if (refreshAll)
                             {
-                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshKeyValueUnchanged}(key: '{change.Key}', label: '{change.Label}')");
+                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
+                                data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                                logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
+                                return;
                             }
-                        }
 
-                        if (refreshAll)
-                        {
-                            // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                            data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
-                            watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                            watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                            logInfoBuilder.AppendLine(LoggingConstants.RefreshConfigurationUpdatedSuccess + endpoint);
-                            return;
-                        }
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
 
-                        changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
-
-                        if (!changedKeyValuesCollection.Any())
-                        {
-                            logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagsUnchanged);
-                        }
-                    },
+                            if (!changedKeyValuesCollection.Any())
+                            {
+                                logDebugBuilder.AppendLine(LoggingConstants.RefreshFeatureFlagsUnchanged);
+                            }
+                        },
                         cancellationToken)
                         .ConfigureAwait(false);
 

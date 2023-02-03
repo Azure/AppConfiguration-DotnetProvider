@@ -86,66 +86,6 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        List<ConfigurationSetting> _featureFlagCollection2 = new List<ConfigurationSetting>
-        {
-            ConfigurationModelFactory.ConfigurationSetting(
-                key: FeatureManagementConstants.FeatureFlagMarker + "feature",
-                value: @"
-                        {
-                          ""id"": ""Feature"",
-                            ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [                        
-                                {
-                                ""name"": ""Users""
-                                }
-                            ]
-                            }
-                        }
-                        ",
-                label: "label1",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
-
-            ConfigurationModelFactory.ConfigurationSetting(
-                key: FeatureManagementConstants.FeatureFlagMarker + "feature",
-                value: @"
-                        {
-                          ""id"": ""Feature"",
-                            ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [                        
-                                {
-                                ""name"": ""Users""
-                                }
-                            ]
-                            }
-                        }
-                        ",
-                label: "label2",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
-
-            ConfigurationModelFactory.ConfigurationSetting(
-                key: FeatureManagementConstants.FeatureFlagMarker + "feature",
-                value: @"
-                        {
-                          ""id"": ""Feature"",
-                            ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [                        
-                                {
-                                ""name"": ""SuperUsers""
-                                }
-                            ]
-                            }
-                        }
-                        ",
-                label: "label3",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
-        };
-
         List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
@@ -1162,7 +1102,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
-
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
