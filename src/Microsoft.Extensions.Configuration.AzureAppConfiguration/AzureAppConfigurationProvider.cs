@@ -376,6 +376,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _watchedSettings = watchedSettings;
 
+                        Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence(_mappedData);
+
                         if (logDebugBuilder.Length > 0)
                         {
                             _logger?.LogDebug(logDebugBuilder.ToString().Trim());
@@ -388,7 +390,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await PrepareData(_mappedData, cancellationToken).ConfigureAwait(false));
+                        SetData(await PrepareData(dataIdentifiers, cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -398,30 +400,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, string>> PrepareData(Dictionary<KeyValueIdentifier, ConfigurationSetting> data, CancellationToken cancellationToken = default)
+        private async Task<Dictionary<string, string>> PrepareData(Dictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default)
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var dataIdentifiers = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             // Reset old filter telemetry in order to track the filter types present in the current response from server.
             _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
-            
-            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in data)
-            {
-                dataIdentifiers[kvp.Key.Key] = kvp.Value;
-            }
 
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers.Concat(_options.ChangeWatchers))
-            {
-                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, data.Values);
-
-                foreach (ConfigurationSetting setting in currentKeyValues)
-                {
-                    dataIdentifiers[setting.Key] = setting;
-                }
-            }
-
-            foreach (KeyValuePair<string, ConfigurationSetting> kvp in dataIdentifiers)
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
@@ -595,7 +581,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
-                    SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
+                    Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence(mappedData);
+                    SetData(await PrepareData(dataIdentifiers, cancellationToken).ConfigureAwait(false));
                     _watchedSettings = watchedSettings;
                     _mappedData = mappedData;
                 }
@@ -943,8 +930,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     setting = await func(setting).ConfigureAwait(false);
                 }
 
-                mappedData[kvp.Key] = setting;
-
                 if (setting != null)
                 {
                     mappedData[kvp.Key] = setting;
@@ -976,6 +961,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
+        }
+
+        private Dictionary<string, ConfigurationSetting> OrderDataByPrecedence(Dictionary<KeyValueIdentifier, ConfigurationSetting> data)
+        {
+            Dictionary<string, ConfigurationSetting> dataIdentifiers = new Dictionary<string, ConfigurationSetting>();
+
+            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in data)
+            {
+                dataIdentifiers[kvp.Key.Key] = kvp.Value;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers.Concat(_options.ChangeWatchers))
+            {
+                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, data.Values);
+
+                foreach (ConfigurationSetting setting in currentKeyValues)
+                {
+                    dataIdentifiers[setting.Key] = setting;
+                }
+            }
+            return dataIdentifiers;
         }
     }
 }
