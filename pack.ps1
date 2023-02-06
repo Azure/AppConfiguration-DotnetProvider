@@ -7,7 +7,7 @@ Note: build.cmd should be run before running this script.
 
 [CmdletBinding()]
 param(
-    [Parameter()]
+    [Parameter(Mandatory=$true, ParameterSetName="Release")]
     [string]$BuildConfig = "Release",
     [string]$FullVersion = "1.0.0"
 )
