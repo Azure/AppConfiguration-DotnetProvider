@@ -10,6 +10,7 @@ param(
     [Parameter()]
     [ValidateSet('Debug','Release')]
     [string]$BuildConfig = "Release"
+    [string]$version = "1.0.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,7 +35,7 @@ foreach ($project in $targetProjects)
     $projectPath = "$PSScriptRoot\src\$project\$project.csproj"
     $outputPath = "$PSScriptRoot\src\$project\$PublishRelativePath"
 
-    & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
+    & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log" -p:PackageVersion=$version
 }
 
 exit $LASTEXITCODE
