@@ -12,7 +12,7 @@ param(
     [string]$BuildConfig = "Release",
 
     [Parameter()]
-    [string]FullVersion = "1.0"
+    [string]$FullVersion = "1.0.0"
 )
 
 $ErrorActionPreference = "Stop"
