@@ -10,8 +10,9 @@ param(
     [Parameter()]
     [ValidateSet('Debug','Release')]
     [string]$BuildConfig = "Release",
+
     [Parameter()]
-    [string]FullVersion
+    [string]FullVersion = "1.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,11 +37,7 @@ foreach ($project in $targetProjects)
     $projectPath = "$PSScriptRoot\src\$project\$project.csproj"
     $outputPath = "$PSScriptRoot\src\$project\$PublishRelativePath"
 
-    if ($FullVersion) {
-        & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log" -p:PackageVersion=$FullVersion
-    } else {
-        & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
-    }
+    & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log" -p:PackageVersion=$FullVersion
 }
 
 exit $LASTEXITCODE
