@@ -216,6 +216,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     bool refreshAll = false;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
+                    Dictionary<KeyValueIdentifier, string> cachedDebugLogs = new Dictionary<KeyValueIdentifier, string>();
+                    Dictionary<KeyValueIdentifier, string> cachedInfoLogs = new Dictionary<KeyValueIdentifier, string>();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
@@ -299,7 +301,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, cachedDebugLogs, cachedInfoLogs, endpoint, cancellationToken).ConfigureAwait(false);
 
                             if (!changedKeyValuesCollection.Any())
                             {
@@ -376,7 +378,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _watchedSettings = watchedSettings;
 
-                        Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence(_mappedData);
+                        Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence(_mappedData, logDebugBuilder, logInfoBuilder, cachedDebugLogs, cachedInfoLogs);
 
                         if (logDebugBuilder.Length > 0)
                         {
@@ -707,8 +709,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
             IEnumerable<KeyValueWatcher> multiKeyWatchers,
             ConfigurationClient client,
-            StringBuilder logDebugBuilder,
-            StringBuilder logInfoBuilder,
+            Dictionary<KeyValueIdentifier, string> cachedDebugLogs,
+            Dictionary<KeyValueIdentifier, string> cachedInfoLogs,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -728,8 +730,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             RequestTracingEnabled = _requestTracingEnabled,
                             RequestTracingOptions = _requestTracingOptions
                         },
-                        logDebugBuilder,
-                        logInfoBuilder,
+                        cachedDebugLogs,
+                        cachedInfoLogs,
                         endpoint,
                         cancellationToken)
                     .ConfigureAwait(false));
@@ -963,7 +965,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private Dictionary<string, ConfigurationSetting> OrderDataByPrecedence(Dictionary<KeyValueIdentifier, ConfigurationSetting> data)
+        private Dictionary<string, ConfigurationSetting> OrderDataByPrecedence(Dictionary<KeyValueIdentifier, ConfigurationSetting> data, StringBuilder logDebugBuilder = null, StringBuilder logInfoBuilder = null, Dictionary<KeyValueIdentifier, string> cachedDebugLogs = null, Dictionary<KeyValueIdentifier, string> cachedInfoLogs = null)
         {
             Dictionary<string, ConfigurationSetting> dataIdentifiers = new Dictionary<string, ConfigurationSetting>();
 
@@ -972,7 +974,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 dataIdentifiers[kvp.Key.Key] = kvp.Value;
             }
 
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers.Concat(_options.ChangeWatchers))
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
                 IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, data.Values);
 
@@ -981,6 +983,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     dataIdentifiers[setting.Key] = setting;
                 }
             }
+
             return dataIdentifiers;
         }
     }

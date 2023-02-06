@@ -4,6 +4,7 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -66,8 +67,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             this ConfigurationClient client,
             IEnumerable<ConfigurationSetting> keyValues,
             GetKeyValueChangeCollectionOptions options,
-            StringBuilder logDebugBuilder,
-            StringBuilder logInfoBuilder,
+            Dictionary<KeyValueIdentifier, string> cachedDebugLogs,
+            Dictionary<KeyValueIdentifier, string> cachedInfoLogs,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -161,8 +162,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
-                                logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
+                                KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(key, options.Label.NormalizeNull());
+                                cachedDebugLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')";
+                                cachedInfoLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -179,8 +181,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
-                    logInfoBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}");
+                    KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(key, options.Label.NormalizeNull());
+                    cachedDebugLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')";
+                    cachedInfoLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
                 }
             }
 
