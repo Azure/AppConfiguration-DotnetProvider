@@ -9,7 +9,8 @@ Note: build.cmd should be run before running this script.
 param(
     [Parameter()]
     [ValidateSet('Debug','Release')]
-    [string]$BuildConfig = "Release"
+    [string]$BuildConfig = "Release",
+    [Parameter()]
     [string]$version = "1.0.0"
 )
 
