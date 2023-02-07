@@ -67,8 +67,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             this ConfigurationClient client,
             IEnumerable<ConfigurationSetting> keyValues,
             GetKeyValueChangeCollectionOptions options,
-            Dictionary<KeyValueIdentifier, string> cachedDebugLogs,
-            Dictionary<KeyValueIdentifier, string> cachedInfoLogs,
+            StringBuilder logDebugBuilder,
+            Dictionary<string, string> cachedInfoLogs,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -162,9 +162,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(key, options.Label.NormalizeNull());
-                                cachedDebugLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')";
-                                cachedInfoLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
+                                logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
+                                cachedInfoLogs[key] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -181,9 +180,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(key, options.Label.NormalizeNull());
-                    cachedDebugLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')";
-                    cachedInfoLogs[changeIdentifier] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
+                    logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
+                    cachedInfoLogs[key] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
                 }
             }
 
