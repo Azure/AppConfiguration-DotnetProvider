@@ -34,7 +34,7 @@ foreach ($project in $targetProjects)
     $projectPath = "$PSScriptRoot\src\$project\$project.csproj"
     $outputPath = "$PSScriptRoot\src\$project\$PublishRelativePath"
 
-    & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log" -p:PackageVersion=5.3.0
+    & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
 }
 
 exit $LASTEXITCODE
