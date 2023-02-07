@@ -53,11 +53,12 @@ jobs:
           **/*
         TargetFolder: '$(Build.SourcesDirectory)\out\outputs\build\Build Logs'
 
-    - task: CmdLine@2
+    - task: PowerShell@2
       displayName: 'Dotnet Pack'
       inputs:
-        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd pack.ps1 -FullVersion "5.3.0"
+        script: pack.ps1 
         workingDirectory: '$(Build.SourcesDirectory)'
+        arguments: -FullVersion "5.3.0" -BuildConfig "Release"
 
     - task: CopyFiles@2
       inputs:
@@ -83,11 +84,12 @@ jobs:
           */bin/Release/**/*
         TargetFolder: '$(Build.SourcesDirectory)\out\outputs\build\Binaries'
 
-    - task: CmdLine@2
+    - task: PowerShell@2
       displayName: 'Dotnet Pack'
       inputs:
-        script: $(Build.SourcesDirectory)\build\CallPowerShell.cmd pack.ps1 -FullVersion "5.3.0"
+        script: pack.ps1 
         workingDirectory: '$(Build.SourcesDirectory)'
+        arguments: -FullVersion "5.3.0" -BuildConfig "Release"
 
     - task: CopyFiles@2
       inputs:
