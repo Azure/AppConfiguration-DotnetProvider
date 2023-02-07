@@ -8,7 +8,7 @@ Note: build.cmd should be run before running this script.
 [CmdletBinding()]
 param(
     [Parameter()]
-    [ValidateSet('Debug','Release')]
+    [string]$FullVersion = "1.0.0",
     [string]$BuildConfig = "Release"
 )
 
@@ -34,7 +34,9 @@ foreach ($project in $targetProjects)
     $projectPath = "$PSScriptRoot\src\$project\$project.csproj"
     $outputPath = "$PSScriptRoot\src\$project\$PublishRelativePath"
 
-    & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log"
+    if ($BuildConfig -eq "Debug" -or $BuildConfig -eq "Release") {
+        & $dotnet pack -c $BuildConfig -o "$outputPath" "$projectPath" --no-build | Tee-Object -FilePath "$LogDirectory\build.log" -p:PackageVersion=$FullVersion
+    }
 }
 
 exit $LASTEXITCODE
