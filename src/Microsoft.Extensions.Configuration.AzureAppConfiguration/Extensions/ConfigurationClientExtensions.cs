@@ -68,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             IEnumerable<ConfigurationSetting> keyValues,
             GetKeyValueChangeCollectionOptions options,
             StringBuilder logDebugBuilder,
-            Dictionary<string, string> cachedInfoLogs,
+            Dictionary<KeyValueIdentifier, string> cachedInfoLogs,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -163,7 +163,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
                                 logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
-                                cachedInfoLogs[key] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
+                                cachedInfoLogs[new KeyValueIdentifier(setting.Key, options.Label.NormalizeNull())] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -181,7 +181,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
                     logDebugBuilder.AppendLine($"{LoggingConstants.RefreshFeatureFlagChanged}(key: '{key}', label: '{options.Label.NormalizeNull()}')");
-                    cachedInfoLogs[key] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
+                    cachedInfoLogs[new KeyValueIdentifier(kvp.Key, options.Label.NormalizeNull())] = $"{LoggingConstants.RefreshFeatureFlagValueUpdated}'{key}' from endpoint: {endpoint}";
                 }
             }
 

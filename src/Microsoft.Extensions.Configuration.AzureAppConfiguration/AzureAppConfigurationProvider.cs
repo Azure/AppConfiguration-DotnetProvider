@@ -216,7 +216,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     bool refreshAll = false;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
-                    Dictionary<string, string> cachedInfoLogs = new Dictionary<string, string>();
+                    Dictionary<KeyValueIdentifier, string> cachedInfoLogs = new Dictionary<KeyValueIdentifier, string>();
 
                     await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
@@ -377,16 +377,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _watchedSettings = watchedSettings;
 
-                        Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence(_mappedData);
+                        Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence();
 
                         foreach (KeyValuePair<string, ConfigurationSetting> kvp in dataIdentifiers)
                         {
-                            if (kvp.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+                            KeyValueIdentifier changeIdentifier = new KeyValueIdentifier();
+                            if (cachedInfoLogs.TryGetValue(kvp.Key, out string log))
                             {
-                                if (cachedInfoLogs.TryGetValue(kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length), out string log))
-                                {
-                                    logInfoBuilder.AppendLine(cachedInfoLogs[kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length)]);
-                                }
+                                logInfoBuilder.AppendLine(cachedInfoLogs[kvp.Key]);
                             }
                         }
 
@@ -593,10 +591,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
-                    Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence(mappedData);
-                    SetData(await PrepareData(dataIdentifiers, cancellationToken).ConfigureAwait(false));
                     _watchedSettings = watchedSettings;
                     _mappedData = mappedData;
+                    Dictionary<string, ConfigurationSetting> dataIdentifiers = OrderDataByPrecedence();
+                    SetData(await PrepareData(dataIdentifiers, cancellationToken).ConfigureAwait(false));
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
@@ -720,7 +718,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IEnumerable<KeyValueWatcher> multiKeyWatchers,
             ConfigurationClient client,
             StringBuilder logDebugBuilder,
-            Dictionary<string, string> cachedInfoLogs,
+            Dictionary<KeyValueIdentifier, string> cachedInfoLogs,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -975,22 +973,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private Dictionary<string, ConfigurationSetting> OrderDataByPrecedence(Dictionary<KeyValueIdentifier, ConfigurationSetting> data)
+        private Dictionary<string, ConfigurationSetting> OrderDataByPrecedence()
         {
             Dictionary<string, ConfigurationSetting> dataIdentifiers = new Dictionary<string, ConfigurationSetting>();
 
-            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in data)
+            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in _mappedData)
             {
                 dataIdentifiers[kvp.Key.Key] = kvp.Value;
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
             {
-                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, data.Values);
+                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, _watchedSettings.Values);
 
                 foreach (ConfigurationSetting setting in currentKeyValues)
                 {
-                    dataIdentifiers[setting.Key] = setting;
+                    dataIdentifiers[setting.Key] = _mappedData[new KeyValueIdentifier(setting.Key, setting.Label)];
                 }
             }
 
