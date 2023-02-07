@@ -58,7 +58,6 @@ jobs:
       inputs:
         filePath: '$(Build.SourcesDirectory)\pack.ps1'
         workingDirectory: '$(Build.SourcesDirectory)'
-        arguments: -FullVersion "5.3.0" -BuildConfig "Release"
 
     - task: CopyFiles@2
       inputs:
@@ -89,7 +88,6 @@ jobs:
       inputs:
         filePath: '$(Build.SourcesDirectory)\pack.ps1'
         workingDirectory: '$(Build.SourcesDirectory)'
-        arguments: -FullVersion "5.3.0" -BuildConfig "Release"
 
     - task: CopyFiles@2
       inputs:
