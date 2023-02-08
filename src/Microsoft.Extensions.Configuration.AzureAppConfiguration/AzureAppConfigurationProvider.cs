@@ -379,10 +379,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         Dictionary<string, ConfigurationSetting> precedenceData = OrderDataByPrecedence(out Dictionary<string, string> logIdentifiers);
 
-                        foreach (KeyValuePair<string, ConfigurationSetting> kvp in precedenceData)
+                        foreach (KeyValuePair<string, string> kvp in logIdentifiers)
                         {
-                            KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(kvp.Key, kvp.Value.Label);
-                            if (logIdentifiers.TryGetValue(kvp.Key, out string label) && cachedInfoLogs.TryGetValue(new KeyValueIdentifier(kvp.Key, label), out string log))
+                            if (cachedInfoLogs.TryGetValue(new KeyValueIdentifier(kvp.Key, kvp.Value), out string log))
                             {
                                 logInfoBuilder.AppendLine(log);
                             }
