@@ -918,6 +918,49 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void RefreshTests_RefreshAllFalseForOverwrittenSentinelDoesNotUpdateConfig()
+        {
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            var mockClient = GetMockConfigurationClient();
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
+                                      .Register("TestKeyWithMultipleLabels", "label2")
+                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
+
+            refreshRegisteredSetting.Value = "UpdatedValueForLabel1";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            refresher.RefreshAsync().Wait();
+
+            // Validate that refresh registered key-value was not updated
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
+        }
+
+        [Fact]
         public void RefreshTests_RefreshRegisteredKvOverwritesSelectedKv()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
