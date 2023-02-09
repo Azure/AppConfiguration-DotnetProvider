@@ -44,12 +44,8 @@
     <OfficialVersion>5.2.0</OfficialVersion>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
+  <PropertyGroup>
     <Version>$(OfficialVersion)</Version>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'!='Official'">
-    <Version>$(OfficialVersion)-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
   </PropertyGroup>
   
 </Project>
