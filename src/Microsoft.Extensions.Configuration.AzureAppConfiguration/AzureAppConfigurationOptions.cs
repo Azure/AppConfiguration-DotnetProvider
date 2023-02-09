@@ -70,7 +70,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
         /// </summary>
-        internal IEnumerable<IKeyValueAdapter> Adapters
+        public IEnumerable<IKeyValueAdapter> Adapters
         {
             get => _adapters;
             set => _adapters = value?.ToList();
