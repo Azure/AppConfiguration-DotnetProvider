@@ -103,5 +103,7 @@ jobs:
         artifact: 'drop'
         publishLocation: 'pipeline'
 
+    - task: nuget-security-analysis@0
+    
     - task: CodeQL3000Finalize@0
       displayName: 'Finalize CodeQL'
