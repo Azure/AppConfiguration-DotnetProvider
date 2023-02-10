@@ -39,13 +39,6 @@ jobs:
     
     - task: nuget-security-analysis@0
 
-    - task: BinSkim@4
-      inputs:
-        InputType: 'Basic'
-        Function: 'analyze'
-        TargetPattern: 'guardianGlob'
-        AnalyzeTargetGlob: '$(Build.ArtifactStagingDirectory)/**.dll;$(Build.ArtifactStagingDirectory)/**.exe;'
-
     - task: CmdLine@2
       displayName: 'Install .NET'
       inputs:
@@ -116,6 +109,13 @@ jobs:
         verbosity: 'Verbose'
         alertWarningLevel: 'High'
 
+    - task: BinSkim@4
+      inputs:
+        InputType: 'Basic'
+        Function: 'analyze'
+        TargetPattern: 'guardianGlob'
+        AnalyzeTargetGlob: '$(Build.ArtifactStagingDirectory)/**.dll;$(Build.ArtifactStagingDirectory)/**.exe;'
+    
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Artifacts'
       inputs:
