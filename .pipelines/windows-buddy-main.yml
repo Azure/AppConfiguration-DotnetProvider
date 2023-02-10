@@ -114,7 +114,7 @@ jobs:
         InputType: 'Basic'
         Function: 'analyze'
         TargetPattern: 'guardianGlob'
-        AnalyzeTargetGlob: '$(Build.SourcesDirectory)\out\outputs\**.dll;$(Build.SourcesDirectory)\out\outputs\**.exe;'
+        AnalyzeTargetGlob: '$(Build.SourcesDirectory)\**.dll;$(Build.SourcesDirectory)\**.exe;'
     
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Artifacts'
