@@ -231,6 +231,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
+            Client = null;
             Endpoint = null;
             Credential = null;
             ConnectionString = connectionString;
@@ -254,9 +255,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
+            Client = null;
             ConnectionString = null;
             Endpoint = endpoint;
             Credential = credential;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to Azure App Configuration using a given configuration client.
+        /// </summary>
+        /// <param name="client">The configuration client used to connect.</param>
+        public AzureAppConfigurationOptions Connect(ConfigurationClient client)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            Client = client;
+            ConnectionString = null;
+            Endpoint = null;
+            Credential = null;
             return this;
         }
 
