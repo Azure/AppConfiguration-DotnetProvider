@@ -109,7 +109,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3);
                 })
                 .Build();
@@ -141,7 +141,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1);
                 })
                 .Build();
@@ -169,7 +169,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Connect(new ConfigurationClient(_connectionString, clientOptions));
                     options.Select("*", null);
                 })
                 .Build();
@@ -203,7 +203,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Connect(new ConfigurationClient(_connectionString, clientOptions));
                 }).Build();
 
             MockRequest request = mockTransport.SingleRequest;
@@ -230,7 +230,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Connect(new ConfigurationClient(_connectionString, clientOptions));
                     options.Select("*", null);
                 })
                 .Build();
@@ -256,7 +256,7 @@ namespace Tests.AzureAppConfiguration
             config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(_connectionString, clientOptions);
+                    options.Connect(new ConfigurationClient(_connectionString, clientOptions));
                     options.Select("*", null);
                 })
                 .Build();

@@ -87,7 +87,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -124,7 +124,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -185,7 +185,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("SentinelKey", refreshAll: true)
@@ -219,7 +219,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -263,7 +263,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")

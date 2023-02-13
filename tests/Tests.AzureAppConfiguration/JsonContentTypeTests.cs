@@ -27,7 +27,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var appconfigSettings = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Connect(mockClient.Object))
                 .Build()
                 .AsEnumerable();
 
@@ -69,7 +69,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Connect(mockClient.Object))
                 .Build();
 
             Assert.Equal("True", config["TestKey1"]);
@@ -116,7 +116,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Connect(mockClient.Object))
                 .Build();
 
             Assert.Equal("true", config["TestKey1"]);
@@ -182,7 +182,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Connect(mockClient.Object))
                 .Build();
 
             Assert.Null(config["MyNumberList"]);
@@ -217,7 +217,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Connect(mockClient.Object))
                 .Build();
 
             Assert.Equal(compactJsonValue, config[FeatureManagementConstants.FeatureFlagMarker + "Beta"]);
@@ -238,7 +238,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = GetMockConfigurationClient(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.Client = mockClient.Object)
+                .AddAzureAppConfiguration(options => options.Connect(mockClient.Object))
                 .Build();
 
             Assert.Equal("Beta", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:id"]);
