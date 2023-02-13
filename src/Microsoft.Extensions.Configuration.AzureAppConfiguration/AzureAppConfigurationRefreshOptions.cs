@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Register the specified individual key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
         /// </summary>
-        /// <param name="key">Key of the key-value. Cannot function as a filter for a collection of key-values.</param>
+        /// <param name="key">Key of the key-value. Cannot function as a key filter for a collection of key-values.</param>
         /// <param name="refreshAll">If true, a change in the value of this key refreshes all key-values being used by the configuration provider.</param>
         public AzureAppConfigurationRefreshOptions Register(string key, bool refreshAll)
         {
@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Register the specified individual key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
         /// </summary>
-        /// <param name="key">Key of the key-value. Cannot function as a filter for a collection of key-values.</param>
+        /// <param name="key">Key of the key-value. Cannot function as a key filter for a collection of key-values.</param>
         /// <param name="label">Label of the key-value.</param>
         /// <param name="refreshAll">If true, a change in the value of this key refreshes all key-values being used by the configuration provider.</param>
         public AzureAppConfigurationRefreshOptions Register(string key, string label = LabelFilter.Null, bool refreshAll = false)
