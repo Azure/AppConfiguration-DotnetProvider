@@ -1079,7 +1079,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(1500);
 
             using var cancellationSource = new CancellationTokenSource();
-            cancellationSource.CancelAfter(TimeSpan.Zero);  
+            cancellationSource.Cancel();  
             Action action = () => refresher.RefreshAsync(cancellationSource.Token).Wait();
             var exception =  Assert.Throws<AggregateException>(action);
             Assert.IsType<TaskCanceledException>(exception.InnerException);
