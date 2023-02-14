@@ -96,7 +96,7 @@ jobs:
         testResultsFormat: 'vstest'
         testResultsFiles: '**/*.trx'
         searchFolder: ''
-        failTaskOnFailedTests: False
+        failTaskOnFailedTests: True
         testRunTitle: Unit Tests
 
     - task: ComponentGovernanceComponentDetection@0
