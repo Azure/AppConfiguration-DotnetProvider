@@ -11,9 +11,6 @@ parameters: # parameters are shown up in ADO UI in a build queue time
   type: boolean
   default: false
 
-variables:
-  Codeql.Enabled: true
-
 jobs:
 - job: main
   pool:
