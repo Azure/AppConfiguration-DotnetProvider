@@ -270,11 +270,5 @@ namespace Tests.AzureAppConfiguration
             // Delete the azure function environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
         }
-
-        [Fact]
-        public void FailingTest()
-        {
-            Assert.True(false);
-        }
     }
 }
