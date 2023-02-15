@@ -942,16 +942,16 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key:'myFeature1' Label:''", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagUpdated + " Key:'myFeature1'", informationalInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagRead + " Key:'myFeature1' Label:''", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagUpdated + " Key:'myFeature1'", informationalInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
         }
 
         [Fact]
@@ -1003,7 +1003,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
-            Assert.Contains(LoggingConstants.RefreshFeatureFlagsUnchanged, verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
         }
 
         [Fact]

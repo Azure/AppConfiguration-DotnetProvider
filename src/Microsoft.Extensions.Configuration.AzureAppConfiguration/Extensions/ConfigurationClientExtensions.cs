@@ -161,8 +161,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                logDebugBuilder.AppendLine(Logger.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                                logInfoBuilder.AppendLine(Logger.BuildFeatureFlagUpdatedMessage(key));
+                                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
+                                logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -179,8 +179,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    logDebugBuilder.AppendLine(Logger.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                    logInfoBuilder.AppendLine(Logger.BuildFeatureFlagUpdatedMessage(key));
+                    logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
+                    logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
                 }
             }
 

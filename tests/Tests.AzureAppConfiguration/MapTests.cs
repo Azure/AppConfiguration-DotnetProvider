@@ -512,8 +512,8 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
             Assert.Equal("newValue2", config["TestKey2"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'Modified' Key:'TestKey1' Label:'label'", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key:'TestKey1'", informationalInvocation);
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, _kvCollection[0].Key, _kvCollection[0].Label, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildKeyValueSettingUpdatedMessage(_kvCollection[0].Key), informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

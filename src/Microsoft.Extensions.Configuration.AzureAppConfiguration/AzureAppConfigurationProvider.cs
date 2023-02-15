@@ -277,8 +277,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
-                                    logDebugBuilder.AppendLine(Logger.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
-                                    logInfoBuilder.AppendLine(Logger.BuildKeyValueSettingUpdatedMessage(change.Key));
+                                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+                                    logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
                                     keyValueChanges.Add(change);
 
                                     if (changeWatcher.RefreshAll)
@@ -288,7 +288,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 } else
                                 {
-                                    logDebugBuilder.AppendLine(Logger.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+                                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                                 }
                             }
 
@@ -298,7 +298,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                                logInfoBuilder.AppendLine(Logger.BuildConfigurationUpdatedMessage());
+                                logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
                             }
 
@@ -306,7 +306,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (!changedKeyValuesCollection.Any())
                             {
-                                logDebugBuilder.AppendLine(Logger.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
+                                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
                             }
                         },
                         cancellationToken)

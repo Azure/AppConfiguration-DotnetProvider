@@ -286,7 +286,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LoggingConstants.RefreshConfigurationUpdatedSuccess, invocation);
+            Assert.Contains(LogHelper.BuildConfigurationUpdatedMessage(), invocation);
         }
 
         [Fact]
@@ -335,7 +335,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             // We should see the second client's endpoint logged since the first client is backed off
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'Modified' Key:'TestKey1' Label:'label' Endpoint:'" + TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/') + "'", invocation);
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, _kvCollection[0].Key, _kvCollection[0].Label, TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/')), invocation);
         }
 
         [Fact]
@@ -382,9 +382,9 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'Modified' Key:'TestKey1' Label:'label'", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueSettingUpdated + " Key:'TestKey1'", informationalInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyValueRead + " Change:'None' Key:'TestKey2' Label:''", verboseInvocation);
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, _kvCollection[0].Key, _kvCollection[0].Label, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildKeyValueSettingUpdatedMessage(FirstKeyValue.Key), informationalInvocation);
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.None, _kvCollection[1].Key, _kvCollection[1].Label, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
         }
 
         [Fact]
@@ -443,8 +443,8 @@ namespace Tests.AzureAppConfiguration
                    ";
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSecretRead + " Key:'TestKey3' Label:'label3'", verboseInvocation);
-            Assert.Contains(LoggingConstants.RefreshKeyVaultSettingUpdated + " Key:'TestKey3'", informationalInvocation);
+            Assert.Contains(LogHelper.BuildKeyVaultSecretReadMessage(_kvr.Key, _kvr.Label), verboseInvocation);
+            Assert.Contains(LogHelper.BuildKeyVaultSettingUpdatedMessage(_kvr.Key), informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
