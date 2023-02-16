@@ -26,7 +26,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.Connect(mockClient.Object);
                 });
 
             // Act
@@ -52,6 +52,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    //options.Connect(mockClient.Object);
                     options.Connect(new Uri("https://test"), mockTokenCredential.Object);
                     options.Connect("invalid_connection_string");
                 }, configurationClientFactory);

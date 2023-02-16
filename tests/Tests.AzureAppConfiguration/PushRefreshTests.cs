@@ -198,7 +198,7 @@ namespace Tests.AzureAppConfiguration
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.Client = mockClient.Object;
+					options.Connect(mockClient.Object);
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -233,7 +233,7 @@ namespace Tests.AzureAppConfiguration
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.Client = mockClient.Object;
+					options.Connect(mockClient.Object);
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
@@ -266,7 +266,7 @@ namespace Tests.AzureAppConfiguration
 			var config = new ConfigurationBuilder()
 				.AddAzureAppConfiguration(options =>
 				{
-					options.Client = mockClient.Object;
+					options.Connect(mockClient.Object);
 					options.Select("*");
 					options.ConfigureRefresh(refreshOptions =>
 					{
