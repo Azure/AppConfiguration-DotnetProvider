@@ -30,21 +30,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            try
+            if (_environmentName != null)
             {
-                string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
-                                    Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
-                if (_environmentName != null && !envType.Equals(_environmentName, StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    return new EmptyConfigurationProvider();
+                    string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
+                                        Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
+                    if (!envType.Equals(_environmentName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new EmptyConfigurationProvider();
+                    }
                 }
-            }
-            catch (SecurityException)
-            {
-                // Can't read environment variables - assume production environment
-                if (!_environmentName.Equals(Environments.Production, StringComparison.OrdinalIgnoreCase))
+                catch (SecurityException)
                 {
-                    return new EmptyConfigurationProvider();
+                    // Can't read environment variables - assume production environment
+                    if (!_environmentName.Equals(Environments.Production, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return new EmptyConfigurationProvider();
+                    }
                 }
             }
 
