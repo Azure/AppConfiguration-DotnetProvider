@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Security;
 
@@ -13,7 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
         private readonly IConfigurationClientFactory _configurationClientFactory;
         private readonly string _environmentName;
-        private readonly bool _environmentNameEnabled;
 
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, string environmentName = null, bool optional = false, IConfigurationClientFactory configurationClientFactory = null)
         {
@@ -30,6 +30,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
+            try
+            {
+                string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
+                                    Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
+                if (_environmentName != null && !envType.Equals(_environmentName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new EmptyConfigurationProvider();
+                }
+            }
+            catch (SecurityException)
+            {
+                // Can't read environment variables - assume production environment
+                if (!_environmentName.Equals(Environments.Production, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new EmptyConfigurationProvider();
+                }
+            }
+
             IConfigurationProvider provider = null;
 
             try
@@ -54,16 +72,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                try
-                {
-                    string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
-                                        Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
-                    if (envType.Equals(_environmentName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        provider = new AzureAppConfigurationProvider(client, options, _environmentName, _optional);
-                    }
-                }
-                catch (SecurityException) { }
+                provider = new AzureAppConfigurationProvider(client, options, _optional);
             }
             catch (InvalidOperationException e)
             {

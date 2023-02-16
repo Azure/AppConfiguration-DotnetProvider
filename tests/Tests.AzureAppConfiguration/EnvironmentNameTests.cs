@@ -32,7 +32,7 @@ namespace Tests.AzureAppConfiguration
         };
 
         [Fact]
-        public void PreventLoadingKeyValuesWithEnvironmentNameAfterStartup()
+        public void CreateEmptyProviderForIncorrectEnvironmentName()
         {
             var mockClient = GetMockConfigurationClientSelectKeyLabel();
             IConfigurationRefresher refresher = null;
@@ -59,16 +59,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey1"]);
             Assert.Null(config["TestKey2"]);
 
-            Environment.SetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable, "Staging");
-
-            Thread.Sleep(cacheExpirationTime);
-            refresher.TryRefreshAsync();
-
-            Assert.Equal("Staging", Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable));
-
-            // Regardless of changes to environment variables at runtime, the behavior established at startup will be used
-            Assert.Null(config["TestKey1"]);
-            Assert.Null(config["TestKey2"]);
+            Assert.Null(refresher);
         }
 
         [Fact]
