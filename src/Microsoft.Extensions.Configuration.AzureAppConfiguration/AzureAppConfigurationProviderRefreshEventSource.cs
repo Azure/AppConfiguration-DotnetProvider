@@ -1,4 +1,7 @@
-﻿using Azure.Core.Diagnostics;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Core.Diagnostics;
 using System.Diagnostics.Tracing;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
