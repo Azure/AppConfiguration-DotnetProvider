@@ -55,14 +55,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return _options.Endpoints.First();
                 }
 
-                if (_options.ConnectionString != null)
+                if (_options.ConnectionStrings != null)
                 {
                     // Use try-catch block to avoid throwing exceptions from property getter.
                     // https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/property
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
                     }
                     catch (FormatException) { }
                 }

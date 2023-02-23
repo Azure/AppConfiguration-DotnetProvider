@@ -24,16 +24,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
 
-        public ConfigurationClientManager(string connectionString, ConfigurationClientOptions clientOptions)
+        public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions)
         {
-            if (string.IsNullOrEmpty(connectionString))
+            if (connectionStrings == null || !connectionStrings.Any())
             {
-                throw new ArgumentNullException(nameof(connectionString));
+                throw new ArgumentNullException(nameof(connectionStrings));
             }
 
-            var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
-            var configurationClientWrapper = new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
-            _clients = new List<ConfigurationClientWrapper> { configurationClientWrapper };
+            _clients = connectionStrings.Select(connectionString => 
+            {
+                var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
+                return new ConfigurationClientWrapper(new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection)), new ConfigurationClient(connectionString, clientOptions));
+            }).ToList();
         }
 
         public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security;
 using System.Threading.Tasks;
 
@@ -39,9 +40,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
+        /// The list of connection strings used to connect to Azure App Configuration.
         /// </summary>
-        internal string ConnectionString { get; private set; }
+        internal IEnumerable<string> ConnectionStrings { get; private set; }
 
         /// <summary>
         /// The list of endpoints of an Azure App Configuration store.
@@ -269,9 +270,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
+            return Connect(new List<string> { connectionString });
+        }
+
+        /// <summary>
+        /// Connect the provider to Azure App Configuration store via a list of connection strings.
+        /// </summary>
+        /// <param name="connectionStrings">
+        /// Used to authenticate with Azure App Configuration.
+        /// </param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
+        {
+            if (connectionStrings == null || !connectionStrings.Any())
+            {
+                throw new ArgumentNullException(nameof(connectionStrings));
+            }
+
+            if (connectionStrings.Distinct().Count() != connectionStrings.Count())
+            {
+                throw new ArgumentException($"All values in '{nameof(connectionStrings)}' must be unique.");
+            }
+
             Endpoints = null;
             Credential = null;
-            ConnectionString = connectionString;
+            ConnectionStrings = connectionStrings;
             return this;
         }
 
@@ -315,7 +337,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
 
             Endpoints = endpoints;
-            ConnectionString = null;
+            ConnectionStrings = null;
             return this;
         }
 
