@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Security;
 using System.Threading.Tasks;
 
@@ -274,7 +273,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Connect the provider to Azure App Configuration store via a list of connection strings.
+        /// Connect the provider to an Azure App Configuration store and its replicas via a list of connection strings.
         /// </summary>
         /// <param name="connectionStrings">
         /// Used to authenticate with Azure App Configuration.
