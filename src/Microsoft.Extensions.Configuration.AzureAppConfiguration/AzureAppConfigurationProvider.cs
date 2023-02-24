@@ -55,7 +55,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return _options.Endpoints.First();
                 }
 
-                if (_options.ConnectionStrings != null)
+                if (_options.ConnectionStrings != null && _options.ConnectionStrings.Any())
                 {
                     // Use try-catch block to avoid throwing exceptions from property getter.
                     // https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/property
