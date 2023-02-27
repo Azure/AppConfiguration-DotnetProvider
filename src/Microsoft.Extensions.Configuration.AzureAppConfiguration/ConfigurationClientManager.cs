@@ -34,7 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = connectionStrings.Select(connectionString => 
             {
                 var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
-                return new ConfigurationClientWrapper(new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection)), new ConfigurationClient(connectionString, clientOptions));
+                return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
             }).ToList();
         }
 
