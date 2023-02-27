@@ -5,11 +5,14 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationRefresherProvider : IConfigurationRefresherProvider
     {
+        private static readonly PropertyInfo _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
         public AzureAppConfigurationRefresherProvider(IConfiguration configuration, ILoggerFactory _loggerFactory)
@@ -17,22 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var configurationRoot = configuration as IConfigurationRoot;
             var refreshers = new List<IConfigurationRefresher>();
 
-            if (configurationRoot != null)
-            {
-                foreach (IConfigurationProvider provider in configurationRoot.Providers)
-                {
-                    if (provider is IConfigurationRefresher refresher)
-                    {
-                        // Use _loggerFactory only if LoggerFactory hasn't been set in AzureAppConfigurationOptions
-                        if (refresher.LoggerFactory == null)
-                        {
-                            refresher.LoggerFactory = _loggerFactory;
-                        }
-
-                        refreshers.Add(refresher);
-                    }
-                }
-            }
+            FindRefreshers(configurationRoot, _loggerFactory, refreshers);
 
             if (!refreshers.Any())
             {
@@ -40,6 +28,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             Refreshers = refreshers;
+        }
+
+        private void FindRefreshers(IConfigurationRoot configurationRoot, ILoggerFactory loggerFactory, List<IConfigurationRefresher> refreshers)
+        {
+            if (configurationRoot != null)
+            {
+                foreach (IConfigurationProvider provider in configurationRoot.Providers)
+                {
+                    if (provider is IConfigurationRefresher refresher)
+                    {
+                        refresher.LoggerFactory = loggerFactory;
+                        refreshers.Add(refresher);
+                    }
+                    else if (provider is ChainedConfigurationProvider chainedProvider)
+                    {
+                        if (_propertyInfo != null)
+                        {
+                            var chainedProviderConfigurationRoot = _propertyInfo.GetValue(chainedProvider) as IConfigurationRoot;
+                            FindRefreshers(chainedProviderConfigurationRoot, loggerFactory, refreshers);
+                        }
+                    }
+                }
+            }
         }
     }
 }
