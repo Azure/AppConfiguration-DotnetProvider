@@ -55,14 +55,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return _options.Endpoints.First();
                 }
 
-                if (_options.ConnectionString != null)
+                if (_options.ConnectionStrings != null && _options.ConnectionStrings.Any() && _options.ConnectionStrings.First() != null)
                 {
                     // Use try-catch block to avoid throwing exceptions from property getter.
                     // https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/property
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionString, ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
                     }
                     catch (FormatException) { }
                 }
@@ -614,24 +614,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-            foreach (var loadOption in _options.KeyValueSelectors)
-            {
-                if ((useDefaultQuery && LabelFilter.Null.Equals(loadOption.LabelFilter)) ||
-                    _options.KeyValueSelectors.Any(s => s != loadOption &&
-                       string.Equals(s.KeyFilter, KeyFilter.Any) &&
-                       string.Equals(s.LabelFilter, loadOption.LabelFilter)))
+                foreach (var loadOption in _options.KeyValueSelectors)
                 {
-                    // This selection was already encapsulated by a wildcard query
-                    // Or would select kvs obtained by a different selector
-                    // We skip it to prevent unnecessary requests
-                    continue;
-                }
-
-                var selector = new SettingSelector
-                {
-                    KeyFilter = loadOption.KeyFilter,
-                    LabelFilter = loadOption.LabelFilter
-                };
+                    var selector = new SettingSelector
+                    {
+                        KeyFilter = loadOption.KeyFilter,
+                        LabelFilter = loadOption.LabelFilter
+                    };
 
                 await CallWithRequestTracing(async () =>
                 {
