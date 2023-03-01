@@ -434,6 +434,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
+        /// <summary>
+        /// Specify a snapshot and include its captured key-values in the configuration provider.
+        /// </summary>
+        /// <param name="name">The name of the snapshot to be selected.</param>
+        public AzureAppConfigurationOptions SelectSnapshot(string name)
+        {
+
+
+            return this;
+        }
+
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
             var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
