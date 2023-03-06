@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly IConfigurationClientFactory _configurationClientFactory;
         private readonly string _environmentName;
 
-        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, string environmentName = null, bool optional = false, IConfigurationClientFactory configurationClientFactory = null)
+        public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, string environmentName, bool optional, IConfigurationClientFactory configurationClientFactory = null)
         {
             _optionsProvider = () => {
                 var options = new AzureAppConfigurationOptions();
@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            if (_environmentName != null)
+            if (!string.IsNullOrEmpty(_environmentName))
             {
                 try
                 {

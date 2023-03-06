@@ -61,7 +61,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: optional));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, null, optional));
         }
 
         /// <summary>
@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             IConfigurationClientFactory configurationClientFactory)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory: configurationClientFactory));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, null, false, configurationClientFactory));
         }
     }
 }
