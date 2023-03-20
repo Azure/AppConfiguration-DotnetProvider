@@ -475,21 +475,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        private void SetDirty(TimeSpan? maxDelay)
-        {
-            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
-
-            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
-            {
-                changeWatcher.CacheExpires = cacheExpires;
-            }
-
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
-            {
-                changeWatcher.CacheExpires = cacheExpires;
-            }
-        }
-
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
             if (pushNotification == null)
@@ -525,6 +510,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 _logger.LogWarning($"Ignoring the push notification received for the unregistered endpoint '{pushNotification.ResourceUri}'");
+            }
+        }
+
+        private void SetDirty(TimeSpan? maxDelay)
+        {
+            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
+
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+            {
+                changeWatcher.CacheExpires = cacheExpires;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                changeWatcher.CacheExpires = cacheExpires;
             }
         }
 
