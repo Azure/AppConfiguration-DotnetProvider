@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -13,6 +14,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public Logger(ILogger logger)
         {
+            if (logger == null)
+            {
+                throw new ArgumentNullException(nameof(logger));
+            }
+
             _logger = logger;
         }
 

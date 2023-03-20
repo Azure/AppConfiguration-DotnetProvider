@@ -195,7 +195,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (!availableClients.Any())
                     {
-                        _logger.LogDebug(LoggingConstants.RefreshSkippedNoClientAvailable);
+                        _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
                         return;
                     }
 
@@ -443,11 +443,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (IsAuthenticationError(e))
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError + "\n" + e.Message);
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
                 }
                 else
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedError + "\n" + e.Message);
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 }
 
                 return false;
@@ -456,23 +456,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (IsAuthenticationError(e))
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedDueToAuthenticationError + "\n" + e.Message);
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
                 }
                 else
                 {
-                    _logger.LogWarning(LoggingConstants.RefreshFailedError + "\n" + e.Message);
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 }
 
                 return false;
             }
             catch (KeyVaultReferenceException e)
             {
-                _logger.LogWarning(LoggingConstants.RefreshFailedDueToKeyVaultError + "\n" + e.Message);
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(e.Message));
                 return false;
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning(LoggingConstants.RefreshCanceledError);
+                _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
                 return false;
             }
 
@@ -528,7 +528,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                _logger.LogWarning(LoggingConstants.PushNotificationUnregisteredEndpoint + pushNotification.ResourceUri + ".");
+                _logger.LogWarning(LogHelper.BuildPushNotificationUnregisteredEndpointMessage(pushNotification.ResourceUri.ToString()));
             }
         }
 
