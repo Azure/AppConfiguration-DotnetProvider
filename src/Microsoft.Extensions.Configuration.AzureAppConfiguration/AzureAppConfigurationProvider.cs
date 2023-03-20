@@ -475,7 +475,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        public void SetDirty(TimeSpan? maxDelay)
+        private void SetDirty(TimeSpan? maxDelay)
         {
             DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
 
