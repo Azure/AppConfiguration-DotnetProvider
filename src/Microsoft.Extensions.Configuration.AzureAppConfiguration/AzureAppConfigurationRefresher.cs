@@ -56,12 +56,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _provider.ProcessPushNotification(pushNotification, maxDelay);
         }
 
-        public void SetDirty(TimeSpan? maxDelay)
-        {
-            ThrowIfNullProvider(nameof(SetDirty));
-            _provider.SetDirty(maxDelay);
-        }
-
         private void ThrowIfNullProvider(string operation)
         {
             if (_provider == null)
