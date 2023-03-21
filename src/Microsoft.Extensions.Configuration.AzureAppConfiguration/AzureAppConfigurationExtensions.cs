@@ -3,6 +3,7 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 
 namespace Microsoft.Extensions.Configuration
@@ -37,16 +38,22 @@ namespace Microsoft.Extensions.Configuration
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            string environmentName,
+            string enabledForEnvironment,
+            string currentEnvironment,
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            if (environmentName == null)
+            if (enabledForEnvironment == null)
             {
-                throw new ArgumentNullException(nameof(environmentName));
+                throw new ArgumentNullException(nameof(enabledForEnvironment));
             }
 
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, environmentName, optional));
+            if (currentEnvironment == null)
+            {
+                throw new ArgumentNullException(nameof(currentEnvironment));
+            }
+
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, enabledForEnvironment, currentEnvironment, optional));
         }
 
         /// <summary>
