@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class RequestTracingOptions

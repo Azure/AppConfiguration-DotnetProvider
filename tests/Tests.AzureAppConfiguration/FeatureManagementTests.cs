@@ -938,7 +938,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
@@ -1032,7 +1032,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             IConfigurationRefresher refresher = null;
@@ -1062,7 +1062,7 @@ namespace Tests.AzureAppConfiguration
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
                     options.Map((setting) =>
                     {
-                        if (setting.ContentType == FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
+                        if (setting.ContentType == FeatureManagementConstants.ContentType + ";charset=utf-8")
                         {
                             setting.Value = @"
                                 {
@@ -1111,7 +1111,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
