@@ -401,38 +401,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, string>> PrepareData(Dictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default)
-        {
-            var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            // Reset old filter telemetry in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
-
-            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
-            {
-                IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
-                keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
-
-                foreach (KeyValuePair<string, string> kv in keyValuePairs)
-                {
-                    string key = kv.Key;
-
-                    foreach (string prefix in _options.KeyPrefixes)
-                    {
-                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        {
-                            key = key.Substring(prefix.Length);
-                            break;
-                        }
-                    }
-
-                    applicationData[key] = kv.Value;
-                }
-            }
-
-            return applicationData;
-        }
-
         public async Task<bool> TryRefreshAsync(CancellationToken cancellationToken)
         {
             try
@@ -479,21 +447,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        public void SetDirty(TimeSpan? maxDelay)
-        {
-            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
-
-            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
-            {
-                changeWatcher.CacheExpires = cacheExpires;
-            }
-
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
-            {
-                changeWatcher.CacheExpires = cacheExpires;
-            }
-        }
-
         public void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay)
         {
             if (pushNotification == null)
@@ -530,6 +483,53 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _logger.LogWarning(LogHelper.BuildPushNotificationUnregisteredEndpointMessage(pushNotification.ResourceUri.ToString()));
             }
+        }
+
+        private void SetDirty(TimeSpan? maxDelay)
+        {
+            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
+
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
+            {
+                changeWatcher.CacheExpires = cacheExpires;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            {
+                changeWatcher.CacheExpires = cacheExpires;
+            }
+        }
+
+        private async Task<Dictionary<string, string>> PrepareData(Dictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default)
+        {
+            var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // Reset old filter telemetry in order to track the filter types present in the current response from server.
+            _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+            {
+                IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+                keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
+
+                foreach (KeyValuePair<string, string> kv in keyValuePairs)
+                {
+                    string key = kv.Key;
+
+                    foreach (string prefix in _options.KeyPrefixes)
+                    {
+                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            key = key.Substring(prefix.Length);
+                            break;
+                        }
+                    }
+
+                    applicationData[key] = kv.Value;
+                }
+            }
+
+            return applicationData;
         }
 
         private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
