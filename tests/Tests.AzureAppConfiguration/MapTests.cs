@@ -12,7 +12,8 @@ using Moq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Extensions.Logging;
+using Azure.Core.Diagnostics;
+using System.Diagnostics.Tracing;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -456,9 +457,20 @@ namespace Tests.AzureAppConfiguration
 
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
-            var mockLogger = new Mock<ILogger>();
-            var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+            string informationalInvocation = "";
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Informational)
+                    {
+                        informationalInvocation += s;
+                    }
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -496,13 +508,12 @@ namespace Tests.AzureAppConfiguration
             _kvCollection.Last().Value = "newValue2";
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
             Assert.Equal("newValue2", config["TestKey2"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueChanged + "(key: 'TestKey1', label: 'label')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshKeyValueSettingUpdated + "'TestKey1'", LogLevel.Information));
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, _kvCollection[0].Key, _kvCollection[0].Label, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildKeyValueSettingUpdatedMessage(_kvCollection[0].Key), informationalInvocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

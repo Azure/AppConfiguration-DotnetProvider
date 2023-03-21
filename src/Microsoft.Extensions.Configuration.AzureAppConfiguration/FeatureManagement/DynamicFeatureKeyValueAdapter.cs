@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -16,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private static readonly string DynamicFeatureSectionPrefix =
             $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.DynamicFeatureSectionName}";
                                                                     
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, ILogger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
             DynamicFeature dynamicFeature;
 
