@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -25,6 +26,21 @@ namespace Microsoft.Extensions.Configuration
             bool optional = false)
         {
             return configurationBuilder.AddAzureAppConfiguration(options => options.Connect(connectionString), optional);
+        }
+
+        /// <summary>
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// </summary>
+        /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
+        /// <param name="connectionStrings">The list of connection strings used to connect to the configuration store and its replicas.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
+        /// <returns>The provided configuration builder.</returns>
+        public static IConfigurationBuilder AddAzureAppConfiguration(
+            this IConfigurationBuilder configurationBuilder,
+            IEnumerable<string> connectionStrings,
+            bool optional = false)
+        {
+            return configurationBuilder.AddAzureAppConfiguration(options => options.Connect(connectionStrings), optional);
         }
 
         /// <summary>
@@ -57,14 +73,6 @@ namespace Microsoft.Extensions.Configuration
             services.AddLogging();
             services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
             return services;
-        }
-
-        internal static IConfigurationBuilder AddAzureAppConfiguration(
-            this IConfigurationBuilder configurationBuilder,
-            Action<AzureAppConfigurationOptions> action,
-            IConfigurationClientFactory configurationClientFactory)
-        {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional: false, configurationClientFactory));
         }
     }
 }

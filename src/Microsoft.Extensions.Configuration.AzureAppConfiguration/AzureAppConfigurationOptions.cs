@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -28,6 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
             new JsonKeyValueAdapter() 
         };
+        private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
@@ -36,19 +38,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
+        /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
-        internal string ConnectionString { get; private set; }
+        internal IEnumerable<string> ConnectionStrings { get; private set; }
 
         /// <summary>
-        /// The endpoint of the Azure App Configuration.
+        /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal Uri Endpoint { get; private set; }
+        internal IEnumerable<Uri> Endpoints { get; private set; }
 
         /// <summary>
-        /// The connection string to use to connect to Azure App Configuration.
-        /// If this property is set, the <see cref="Endpoint"/> property also needs to be set.
+        /// The credential used to connect to the Azure App Configuration.
+        /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
         internal TokenCredential Credential { get; private set; }
 
@@ -77,14 +79,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
+        /// A collection of user defined functions that transform each <see cref="ConfigurationSetting"/>.
+        /// </summary>
+        internal IEnumerable<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> Mappers => _mappers;
+
+        /// <summary>
         /// A collection of key prefixes to be trimmed.
         /// </summary>
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional client that can be used to communicate with Azure App Configuration. If provided, the connection string property will be ignored.
+        /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClient Client { get; set; }
+        /// <remarks>This property is used only for unit testing.</remarks>
+        internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
@@ -212,7 +220,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter(FeatureFilterTelemetry));
+                _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
             return this;
@@ -231,9 +239,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            Endpoint = null;
+            return Connect(new List<string> { connectionString });
+        }
+
+        /// <summary>
+        /// Connect the provider to an Azure App Configuration store and its replicas via a list of connection strings.
+        /// </summary>
+        /// <param name="connectionStrings">
+        /// Used to authenticate with Azure App Configuration.
+        /// </param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
+        {
+            if (connectionStrings == null || !connectionStrings.Any())
+            {
+                throw new ArgumentNullException(nameof(connectionStrings));
+            }
+
+            if (connectionStrings.Distinct().Count() != connectionStrings.Count())
+            {
+                throw new ArgumentException($"All values in '{nameof(connectionStrings)}' must be unique.");
+            }
+
+            Endpoints = null;
             Credential = null;
-            ConnectionString = connectionString;
+            ConnectionStrings = connectionStrings;
             return this;
         }
 
@@ -254,9 +283,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            ConnectionString = null;
-            Endpoint = endpoint;
-            Credential = credential;
+            return Connect(new List<Uri>() { endpoint }, credential);
+        }
+
+        /// <summary>
+        /// Connect the provider to an Azure App Configuration store and its replicas using a list of endpoints and a token credential.
+        /// </summary>
+        /// <param name="endpoints">The list of endpoints of an Azure App Configuration store and its replicas to connect to.</param>
+        /// <param name="credential">Token credential to use to connect.</param>
+        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
+        {
+            if (endpoints == null || !endpoints.Any())
+            {
+                throw new ArgumentNullException(nameof(endpoints));
+            }
+
+            if (endpoints.Distinct(new EndpointComparer()).Count() != endpoints.Count())
+            {
+                throw new ArgumentException($"All values in '{nameof(endpoints)}' must be unique.");
+            }
+
+            Credential = credential ?? throw new ArgumentNullException(nameof(credential));
+
+            Endpoints = endpoints;
+            ConnectionStrings = null;
             return this;
         }
 
@@ -336,6 +386,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IsKeyVaultRefreshConfigured = keyVaultOptions.IsKeyVaultRefreshConfigured;
             IsKeyVaultConfigured = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Provides a way to transform settings retrieved from App Configuration before they are processed by the configuration provider.
+        /// </summary>
+        /// <param name="mapper">A callback registered by the user to transform each configuration setting.</param>
+        public AzureAppConfigurationOptions Map(Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> mapper)
+        {
+            if (mapper == null)
+            {
+                throw new ArgumentNullException(nameof(mapper));
+            }
+
+            _mappers.Add(mapper);
             return this;
         }
 
