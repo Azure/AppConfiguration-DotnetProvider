@@ -18,8 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[] 
         {
-            FeatureManagementConstants.FeatureFlagContentType,
-            FeatureManagementConstants.DynamicFeatureContentType,
+            FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
         };
 

@@ -212,7 +212,7 @@ namespace Tests.AzureAppConfiguration
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
                     value: compactJsonValue,
-                    contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8")
             };
 
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
@@ -257,20 +257,7 @@ namespace Tests.AzureAppConfiguration
             ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "Beta",
                 value: compactJsonValue,
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8");
-
-            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
-            Assert.False(jsonKeyValueAdapter.CanProcess(setting));
-        }
-
-        [Fact]
-        public void JsonContentTypeTests_JsonKeyValueAdapterCannotProcessDynamicFeatures()
-        {
-            var compactJsonValue = "{\"id\":\"ShoppingCart\",\"description\":\"\",\"client_assigner\":\"Microsoft.Targeting\",\"variants\":[{\"default\":true,\"name\":\"Big\",\"configuration_reference\":\"ShoppingCart:Big\",\"assignment_parameters\":{\"Audience\":{\"Users\":[\"Alec\"],\"Groups\":[]}}},{\"name\":\"Small\",\"configuration_reference\":\"ShoppingCart:Small\",\"assignment_parameters\":{\"Audience\":{\"Users\":[],\"Groups\":[{\"Name\":\"Ring1\",\"RolloutPercentage\":50}],\"DefaultRolloutPercentage\":30}}}]}";
-            ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
-                key: FeatureManagementConstants.FeatureFlagMarker + "ShoppingCart",
-                value: compactJsonValue,
-                contentType: FeatureManagementConstants.DynamicFeatureContentType + ";charset=utf-8");
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8");
 
             var jsonKeyValueAdapter = new JsonKeyValueAdapter();
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
