@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
@@ -31,24 +32,45 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return interval;
             }
 
-            if (attempts == 1)
+            max = TimeSpan.FromTicks(Math.Min(interval.Ticks, max.Ticks));
+
+            return min.CalculateBackoffDuration(max, attempts);
+        }
+
+        /// <summary>
+        /// This method calculates the randomized exponential backoff duration for the configuration store after a failure
+        /// which lies between <paramref name="minDuration"/> and <paramref name="maxDuration"/>.
+        /// </summary>
+        /// <param name="minDuration">The minimum duration to retry after.</param>
+        /// <param name="maxDuration">The maximum duration to retry after.</param>
+        /// <param name="attempts">The number of attempts made to the configuration store.</param>
+        /// <returns>The backoff duration before retrying a request to the configuration store or replica again.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// An exception is thrown when <paramref name="attempts"/> is less than 1.
+        /// </exception>
+        public static TimeSpan CalculateBackoffDuration(this TimeSpan minDuration, TimeSpan maxDuration, int attempts)
+        {
+            if (attempts < 1)
             {
-                return min;
+                throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
             }
 
-            max = TimeSpan.FromTicks(Math.Min(interval.Ticks, max.Ticks));
+            if (attempts == 1)
+            {
+                return minDuration;
+            }
 
             //
             // IMPORTANT: This can overflow
-            double maxMilliseconds = Math.Max(1, min.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
+            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
 
-            if (maxMilliseconds > max.TotalMilliseconds ||
-                    maxMilliseconds <= 0 /*overflow*/)
+            if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
+                    calculatedMilliseconds <= 0 /*overflow*/)
             {
-                maxMilliseconds = max.TotalMilliseconds;
+                calculatedMilliseconds = maxDuration.TotalMilliseconds;
             }
 
-            return TimeSpan.FromMilliseconds(min.TotalMilliseconds + new Random().NextDouble() * (maxMilliseconds - min.TotalMilliseconds));
+            return TimeSpan.FromMilliseconds(minDuration.TotalMilliseconds + new Random().NextDouble() * (calculatedMilliseconds - minDuration.TotalMilliseconds));
         }
     }
 }

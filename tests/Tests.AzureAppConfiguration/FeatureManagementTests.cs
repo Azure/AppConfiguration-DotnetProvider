@@ -2,17 +2,21 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -174,11 +178,20 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
         };
 
+        ConfigurationSetting FirstKeyValue = ConfigurationModelFactory.ConfigurationSetting(
+                key: "TestKey1",
+                label: "label",
+                value: "TestValue1",
+                eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
+                contentType: "text");
+
+        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+
         [Fact]
         public void UsesFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -190,7 +203,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = testClient;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags();
                 })
                 .Build();
@@ -213,7 +226,7 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
@@ -223,7 +236,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
                     refresher = options.GetRefresher();
@@ -284,7 +297,7 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
@@ -293,7 +306,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(10));
 
                     refresher = options.GetRefresher();
@@ -355,15 +368,14 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
+            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
 
             var builder = new ConfigurationBuilder();
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
+                options.ClientManager = clientManager;
                 options.UseFeatureFlags();
             }).Build();
 
@@ -384,15 +396,13 @@ namespace Tests.AzureAppConfiguration
                 return response;
             });
 
-            var clientOptions = new ConfigurationClientOptions
-            {
-                Transport = mockTransport
-            };
-
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
+            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = new ConfigurationClient(TestHelpers.CreateMockEndpointString(), clientOptions);
+                    options.ClientManager = clientManager;
                     options.UseFeatureFlags(o => o.Label = "myLabel");
                 })
                 .Build();
@@ -416,7 +426,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
                     refresher = options.GetRefresher();
@@ -434,7 +444,7 @@ namespace Tests.AzureAppConfiguration
         public void SelectFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var featureFlagPrefix = "App1";
             var labelFilter = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);
@@ -447,7 +457,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = testClient;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.CacheExpirationInterval = cacheExpiration;
@@ -471,7 +481,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleSelectsInSameUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -490,7 +500,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = testClient;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(prefix1 + "*", label1);
@@ -546,7 +556,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleCallsToUseFeatureFlags()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -555,7 +565,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    return new MockAsyncPageable(_featureFlagCollection.Where(s => 
+                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) || 
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
                 });
@@ -565,7 +575,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = testClient;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(prefix1 + "*", label1);
@@ -590,7 +600,7 @@ namespace Tests.AzureAppConfiguration
         public void MultipleCallsToUseFeatureFlagsWithSelectAndLabel()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var label1 = "App1_Label";
             var label2 = "App2_Label";
@@ -608,7 +618,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = testClient;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select(prefix1 + "*", label1);
@@ -634,7 +644,7 @@ namespace Tests.AzureAppConfiguration
         public void DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -655,7 +665,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.CacheExpirationInterval = cacheExpiration1;
@@ -734,7 +744,7 @@ namespace Tests.AzureAppConfiguration
         public void OverwrittenCacheExpirationForSameFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var cacheExpiration1 = TimeSpan.FromSeconds(1);
             var cacheExpiration2 = TimeSpan.FromSeconds(60);
             IConfigurationRefresher refresher = null;
@@ -746,7 +756,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select("*", "App1_Label");
@@ -809,7 +819,7 @@ namespace Tests.AzureAppConfiguration
         public void SelectAndRefreshSingleFeatureFlag()
         {
             var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict, TestHelpers.CreateMockEndpointString());
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "Feature1";
             var label1 = "App1_Label";
             var cacheExpiration = TimeSpan.FromSeconds(1);
@@ -826,7 +836,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
                         ff.CacheExpirationInterval = cacheExpiration;
@@ -869,6 +879,255 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Browser", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
             Assert.Equal("Edge", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+        }
+
+        [Fact]
+        public void ValidateCorrectFeatureFlagLoggedIfModifiedOrRemovedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var featureFlags = new List<ConfigurationSetting> { _kv2 };
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            string informationalInvocation = "";
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Informational)
+                    {
+                        informationalInvocation += s;
+                    }
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
+            value: @"
+                    {
+                      ""id"": ""MyFeature"",
+                      ""description"": ""The new beta version of our web site."",
+                      ""display_name"": ""Beta Feature"",
+                      ""enabled"": true,
+                      ""conditions"": {
+                        ""client_filters"": [                        
+                          {
+                            ""name"": ""AllUsers""
+                          }
+                        ]
+                      }
+                    }
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
+
+            featureFlags.RemoveAt(0);
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
+        }
+
+        [Fact]
+        public void ValidateFeatureFlagsUnchangedLogged()
+        {
+            IConfigurationRefresher refresher = null;
+            var featureFlags = new List<ConfigurationSetting> { _kv2 };
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+        }
+
+        [Fact]
+        public void MapTransformFeatureFlagWithRefresh()
+        {
+            ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            value: @"
+                                {
+                                    ""id"": ""MyFeature"",
+                                    ""description"": ""The new beta version of our web site."",
+                                    ""display_name"": ""Beta Feature"",
+                                    ""enabled"": true,
+                                    ""conditions"": {
+                                    ""client_filters"": [
+                                        {
+                                        ""name"": ""AllUsers""
+                                        }, 
+                                        {
+                                        ""name"": ""SuperUsers""
+                                        }
+                                    ]
+                                    }
+                                }
+                                ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+            IConfigurationRefresher refresher = null;
+            var featureFlags = new List<ConfigurationSetting> { _kv };
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            .Returns(new MockAsyncPageable(featureFlags));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true)
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    options.Map((setting) =>
+                    {
+                        if (setting.ContentType == FeatureManagementConstants.ContentType + ";charset=utf-8")
+                        {
+                            setting.Value = @"
+                                {
+                                    ""id"": ""MyFeature"",
+                                    ""description"": ""The new beta version of our web site."",
+                                    ""display_name"": ""Beta Feature"",
+                                    ""enabled"": true,
+                                    ""conditions"": {
+                                    ""client_filters"": [
+                                        {
+                                        ""name"": ""NoUsers""
+                                        }, 
+                                        {
+                                        ""name"": ""SuperUsers""
+                                        }
+                                    ]
+                                    }
+                                }
+                                ";
+                        }
+                        return new ValueTask<ConfigurationSetting>(setting);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            FirstKeyValue.Value = "newValue1";
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+            value: @"
+                                {
+                                  ""id"": ""MyFeature"",
+                                  ""description"": ""The new beta version of our web site."",
+                                  ""display_name"": ""Beta Feature"",
+                                  ""enabled"": true,
+                                  ""conditions"": {
+                                    ""client_filters"": [                        
+                                      {
+                                        ""name"": ""SuperUsers""
+                                      }
+                                    ]
+                                  }
+                                }
+                                ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+        }
+        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(FirstKeyValue, new MockResponse(200));
+        }
+
+        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
         }
     }
 }

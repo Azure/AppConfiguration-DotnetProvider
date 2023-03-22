@@ -28,6 +28,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsDevEnvironment { get; set; } = false;
 
         /// <summary>
+        /// This value indicates number of replicas configured.
+        /// </summary>
+        public int ReplicaCount { get; set; } = 0;
+
+        /// <summary>
         /// Type of feature filters used by the application.
         /// </summary>
         public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
