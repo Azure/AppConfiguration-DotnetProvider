@@ -34,7 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, string key, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, string key, string label, Logger logger, CancellationToken cancellationToken)
         {
             string secretValue = null;
 
@@ -58,6 +58,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 if (client != null)
                 {
                     KeyVaultSecret secret = await client.GetSecretAsync(secretIdentifier.Name, secretIdentifier.Version, cancellationToken).ConfigureAwait(false);
+                    logger.LogDebug(LogHelper.BuildKeyVaultSecretReadMessage(key, label));
+                    logger.LogInformation(LogHelper.BuildKeyVaultSettingUpdatedMessage(key));
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)

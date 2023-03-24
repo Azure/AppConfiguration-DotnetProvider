@@ -3,8 +3,8 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -32,28 +32,36 @@ namespace Microsoft.Extensions.Configuration
         /// Adds key-value data from an Azure App Configuration store to a configuration builder.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
-        /// <param name="environmentName">The name of the environment for which the Azure App Configuration options are applicable.</param>
+        /// <param name="connectionStrings">The list of connection strings used to connect to the configuration store and its replicas.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
+        /// <returns>The provided configuration builder.</returns>
+        public static IConfigurationBuilder AddAzureAppConfiguration(
+            this IConfigurationBuilder configurationBuilder,
+            IEnumerable<string> connectionStrings,
+            bool optional = false)
+        {
+            return configurationBuilder.AddAzureAppConfiguration(options => options.Connect(connectionStrings), optional);
+        }
+
+        /// <summary>
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// </summary>
+        /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="action">A callback used to configure Azure App Configuration options.</param>
         /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
-            string enabledForEnvironment,
-            string currentEnvironment,
+            string environmentName,
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            if (enabledForEnvironment == null)
+            if (environmentName == null)
             {
-                throw new ArgumentNullException(nameof(enabledForEnvironment));
+                throw new ArgumentNullException(nameof(environmentName));
             }
 
-            if (currentEnvironment == null)
-            {
-                throw new ArgumentNullException(nameof(currentEnvironment));
-            }
-
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, enabledForEnvironment, currentEnvironment, optional));
+            return configurationBuilder.Add(new AzureAppConfigurationSource(action, environmentName, optional));
         }
 
         /// <summary>
@@ -86,14 +94,6 @@ namespace Microsoft.Extensions.Configuration
             services.AddLogging();
             services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
             return services;
-        }
-
-        internal static IConfigurationBuilder AddAzureAppConfiguration(
-            this IConfigurationBuilder configurationBuilder,
-            Action<AzureAppConfigurationOptions> action,
-            IConfigurationClientFactory configurationClientFactory)
-        {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, null, false, configurationClientFactory));
         }
     }
 }

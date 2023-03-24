@@ -7,6 +7,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class ConnectionStringParser
     {
+        public const string EndpointSection = "Endpoint";
+
         public static string Parse(string connectionString, string token)
         {
             if (connectionString == null)
@@ -23,7 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var startIndex = connectionString.IndexOf(parseToken);
             if (startIndex < 0)
             {
-                throw new ArgumentException("Invalid connection string format.");
+                throw new FormatException("Invalid connection string format.");
             }
 
             var endIndex = connectionString.IndexOf(";", startIndex + parseToken.Length);

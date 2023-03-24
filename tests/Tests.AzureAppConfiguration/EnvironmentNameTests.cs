@@ -44,7 +44,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: "Staging", options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label").Register("TestKey2", "label").SetCacheExpiration(cacheExpirationTime);
@@ -73,7 +73,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: "Production", options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey1", "label");
                     options.Select("TestKey2", "label");
                 })
@@ -98,7 +98,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: "Development", options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey1", "label");
                     options.Select("TestKey2", "label");
                 })
@@ -123,12 +123,12 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: "Production", options =>
                 {
-                    options.Client = mockClientProd.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClientProd.Object);
                     options.Select("TestKey1", "label");
                 })
                 .AddAzureAppConfiguration(environmentName: "Development", options =>
                 {
-                    options.Client = mockClientDev.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClientDev.Object);
                     options.Select("TestKey2", "label");
                 })
                 .Build();
@@ -150,7 +150,7 @@ namespace Tests.AzureAppConfiguration
             void action() => new ConfigurationBuilder()
                 .AddAzureAppConfiguration(environmentName: null, options =>
                 {
-                    options.Client = mockClient.Object;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey1", "label");
                     options.Select("TestKey2", "label");
                 })
