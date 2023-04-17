@@ -287,8 +287,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         refreshAll = true;
                                         break;
                                     }
-                                }
-                                else
+                                } else
                                 {
                                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                                 }
