@@ -548,7 +548,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             Dictionary<KeyValueIdentifier, ConfigurationSetting> data = null;
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
-
+            
             try
             {
                 await ExecuteWithFailOverPolicyAsync(
