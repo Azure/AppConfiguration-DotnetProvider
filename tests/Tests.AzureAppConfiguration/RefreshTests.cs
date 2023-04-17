@@ -882,7 +882,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
+        public void RefreshTests_RefreshAllFalseForOverwrittenSentinelDoesNotUpdateConfig()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
@@ -917,11 +917,11 @@ namespace Tests.AzureAppConfiguration
 
             refresher.RefreshAsync().Wait();
 
-            // Validate that refresh registered key-value was updated
+            // Validate that refresh registered key-value was not updated
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
-            Assert.Equal("UpdatedValueForLabel1", config["TestKeyWithMultipleLabels"]);
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
         }
 
         [Fact]
