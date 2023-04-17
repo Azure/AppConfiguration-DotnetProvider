@@ -3,7 +3,6 @@
 //
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,10 +35,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(Uri secretUri, string key, string label, ILogger logger, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, string key, string label, Logger logger, CancellationToken cancellationToken)
         {
-            string secretName = secretUri?.Segments?.ElementAtOrDefault(2)?.TrimEnd('/');
-            string secretVersion = secretUri?.Segments?.ElementAtOrDefault(3)?.TrimEnd('/');
             string secretValue = null;
 
             if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
@@ -48,7 +45,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return cachedSecret.SecretValue;
             }
 
-            SecretClient client = GetSecretClient(secretUri);
+            SecretClient client = GetSecretClient(secretIdentifier.SourceId);
 
             if (client == null && _keyVaultOptions.SecretResolver == null)
             {
@@ -61,14 +58,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 if (client != null)
                 {
-                    KeyVaultSecret secret = await client.GetSecretAsync(secretName, secretVersion, cancellationToken).ConfigureAwait(false);
-                    logger?.LogDebug($"{LoggingConstants.RefreshKeyVaultSecretChanged}(key: '{key}', label: '{label}')");
-                    logger?.LogInformation($"{LoggingConstants.RefreshKeyVaultSettingUpdated}'{key}'");
+                    KeyVaultSecret secret = await client.GetSecretAsync(secretIdentifier.Name, secretIdentifier.Version, cancellationToken).ConfigureAwait(false);
+                    logger.LogDebug(LogHelper.BuildKeyVaultSecretReadMessage(key, label));
+                    logger.LogInformation(LogHelper.BuildKeyVaultSettingUpdatedMessage(key));
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)
                 {
-                    secretValue = await _keyVaultOptions.SecretResolver(secretUri).ConfigureAwait(false);
+                    secretValue = await _keyVaultOptions.SecretResolver(secretIdentifier.SourceId).ConfigureAwait(false);
                 }
 
                 cachedSecret = new CachedKeyVaultSecret(secretValue);

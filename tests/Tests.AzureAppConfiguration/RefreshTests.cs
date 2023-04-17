@@ -770,42 +770,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_SetDirtyForcesNextRefresh()
-        {
-            IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromDays(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
-
-            refresher.RefreshAsync().Wait();
-            Assert.Equal("TestValue1", config["TestKey1"]);
-
-            refresher.SetDirty(TimeSpan.FromSeconds(1));
-
-            // Wait for the cache to expire based on the randomized delay in SetDirty()
-            Thread.Sleep(1200);
-
-            refresher.RefreshAsync().Wait();
-            Assert.Equal("newValue", config["TestKey1"]);
-        }
-
-        [Fact]
         public void RefreshTests_SentinelKeyNotUpdatedOnRefreshAllFailure()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
@@ -1090,6 +1054,36 @@ namespace Tests.AzureAppConfiguration
             var exception =  Assert.Throws<AggregateException>(action);
             Assert.IsType<TaskCanceledException>(exception.InnerException);
             Assert.Equal("TestValue1", config["TestKey1"]);
+        }
+
+#if NET7_0
+        [Fact]
+        public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
+        {
+            var mockClient = GetMockConfigurationClient();
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                })
+                .Build();
+
+            IConfiguration loadPrevConfig = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .Build();
+
+            IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(loadPrevConfig, NullLoggerFactory.Instance);
+
+            Assert.Single(refresherProvider.Refreshers);
+            Assert.NotNull(refresherProvider);
+        }
+#endif
+
+        private void optionsInitializer(AzureAppConfigurationOptions options)
+        {
+            options.Connect(TestHelpers.CreateMockEndpointString());
+            options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
         }
 
         private void WaitAndRefresh(IConfigurationRefresher refresher, int millisecondsDelay)

@@ -27,6 +27,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     hostType = HostType.AzureWebApp;
                 }
+                else if (Environment.GetEnvironmentVariable(RequestTracingConstants.ContainerAppEnvironmentVariable) != null)
+                {
+                    hostType = HostType.ContainerApp;
+                }
                 else if (Environment.GetEnvironmentVariable(RequestTracingConstants.KubernetesEnvironmentVariable) != null)
                 {
                     hostType = HostType.Kubernetes;
@@ -118,11 +122,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.IsDevEnvironment)
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
-            }
-
-            if (!string.IsNullOrWhiteSpace(requestTracingOptions.FeatureManagementSchemaVersion))
-            {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementSchemaVersionTag, requestTracingOptions.FeatureManagementSchemaVersion));
             }
 
             if (requestTracingOptions.FilterTelemetry.UsesAnyFeatureFilter())

@@ -5,13 +5,12 @@ using Azure.Data.AppConfiguration;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IKeyValueAdapter
     {
-        Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, ILogger logger, CancellationToken cancellationToken);
+        Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken);
 
         bool CanProcess(ConfigurationSetting setting);
 

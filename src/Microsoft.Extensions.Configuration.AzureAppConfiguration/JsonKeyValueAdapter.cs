@@ -4,7 +4,6 @@
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,12 +18,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[] 
         {
-            FeatureManagementConstants.FeatureFlagContentType,
-            FeatureManagementConstants.DynamicFeatureContentType,
+            FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
         };
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, ILogger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
