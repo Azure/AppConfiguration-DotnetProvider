@@ -410,6 +410,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="name">The name of the snapshot to be selected.</param>
         public AzureAppConfigurationOptions SelectSnapshot(string name)
         {
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
 
 
             return this;
