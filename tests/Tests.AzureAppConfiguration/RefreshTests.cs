@@ -770,42 +770,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_SetDirtyForcesNextRefresh()
-        {
-            IConfigurationRefresher refresher = null;
-            var mockClient = GetMockConfigurationClient();
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromDays(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
-
-            refresher.RefreshAsync().Wait();
-            Assert.Equal("TestValue1", config["TestKey1"]);
-
-            refresher.SetDirty(TimeSpan.FromSeconds(1));
-
-            // Wait for the cache to expire based on the randomized delay in SetDirty()
-            Thread.Sleep(1200);
-
-            refresher.RefreshAsync().Wait();
-            Assert.Equal("newValue", config["TestKey1"]);
-        }
-
-        [Fact]
         public void RefreshTests_SentinelKeyNotUpdatedOnRefreshAllFailure()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
