@@ -161,6 +161,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Specify a snapshot and include its captured key-values in the configuration provider.
+        /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
+        /// </summary>
+        /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
+        public AzureAppConfigurationOptions SelectSnapshot(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            if (!_kvSelectors.Any(s => s.SnapshotName.Equals(name)))
+            {
+                _kvSelectors.Add(new KeyValueSelector
+                {
+                    SnapshotName = name
+                });
+            }
+
+            return this;
+        }
+
+        /// <summary>
         /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
@@ -401,22 +424,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _mappers.Add(mapper);
-            return this;
-        }
-
-        /// <summary>
-        /// Specify a snapshot and include its captured key-values in the configuration provider.
-        /// </summary>
-        /// <param name="name">The name of the snapshot to be selected.</param>
-        public AzureAppConfigurationOptions SelectSnapshot(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
-
-
-
             return this;
         }
 

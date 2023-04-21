@@ -618,7 +618,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-                foreach (var loadOption in _options.KeyValueSelectors)
+            foreach (var loadOption in _options.KeyValueSelectors)
+            {
+                if (string.IsNullOrEmpty(loadOption.SnapshotName))
                 {
                     var selector = new SettingSelector
                     {
@@ -626,13 +628,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
-                await CallWithRequestTracing(async () =>
-                {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    await CallWithRequestTracing(async () =>
                     {
-                        serverData[setting.Key] = setting;
-                    }
-                }).ConfigureAwait(false);
+                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                        {
+                            serverData[setting.Key] = setting;
+                        }
+                    }).ConfigureAwait(false);
+                }
+                else
+                {
+                    await CallWithRequestTracing(async () =>
+                    {
+                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsForSnapshotAsync(loadOption.SnapshotName, cancellationToken).ConfigureAwait(false))
+                        {
+                            serverData[setting.Key] = setting;
+                        }
+                    }).ConfigureAwait(false);
+                }
             }
 
             return serverData;
