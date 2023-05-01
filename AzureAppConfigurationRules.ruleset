@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <RuleSet Name="Default" ToolsVersion="17.0">
   <Rules AnalyzerId="Microsoft.CodeAnalysis.NetAnalyzers" RuleNamespace="Microsoft.CodeAnalysis.NetAnalyzers">
-    <Rule Id="CA2007" Action="Warning" />
+    <Rule Id="CA2007" Action="Error" />
   </Rules>
 </RuleSet>
