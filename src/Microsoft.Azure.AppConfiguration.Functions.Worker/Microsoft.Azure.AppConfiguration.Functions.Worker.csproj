@@ -35,4 +35,9 @@
     <Version>$(OfficialVersion)-$(CDP_PATCH_NUMBER)-$(Revision)</Version>
   </PropertyGroup>
 
+  <PropertyGroup>
+	<CodeAnalysisRuleSet>..\..\AzureAppConfigurationRules.ruleset</CodeAnalysisRuleSet>
+	<EnableNETAnalyzers>True</EnableNETAnalyzers>
+  </PropertyGroup>
+
 </Project>
