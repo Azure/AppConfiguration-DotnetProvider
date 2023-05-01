@@ -871,10 +871,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
-                await funcToExecute(client);
+                await funcToExecute(client).ConfigureAwait(false);
                 return null;
 
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         private bool IsFailOverable(AggregateException ex)
