@@ -40,8 +40,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-	<CodeAnalysisRuleSet>..\..\AzureAppConfigurationRules.ruleset</CodeAnalysisRuleSet>
-	<EnableNETAnalyzers>True</EnableNETAnalyzers>
+    <CodeAnalysisRuleSet>..\..\AzureAppConfigurationRules.ruleset</CodeAnalysisRuleSet>
+    <EnableNETAnalyzers>True</EnableNETAnalyzers>
   </PropertyGroup>
 
 </Project>
