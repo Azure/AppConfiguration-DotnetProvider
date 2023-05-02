@@ -19,12 +19,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.AppConfigur
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests.AzureAppConfiguration.Functions.Worker", "tests\Tests.AzureAppConfiguration.Functions.Worker\Tests.AzureAppConfiguration.Functions.Worker.csproj", "{A9287214-6689-479F-A9F8-D0C02DE433F0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleAppWithFailOver", "examples\ConsoleAppWithFailOver\ConsoleAppWithFailOver.csproj", "{A6C611F1-D687-4262-8904-828C239CF2E5}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Properties", "Properties", "{4EC40BFD-526B-474E-8A7E-EF463FB2D55A}"
-	ProjectSection(SolutionItems) = preProject
-		AzureAppConfigurationRules.ruleset = AzureAppConfigurationRules.ruleset
-	EndProjectSection
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleAppWithFailOver", "examples\ConsoleAppWithFailOver\ConsoleAppWithFailOver.csproj", "{A6C611F1-D687-4262-8904-828C239CF2E5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
