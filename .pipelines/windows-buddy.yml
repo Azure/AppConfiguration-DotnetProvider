@@ -85,7 +85,6 @@ jobs:
         script: '$(Build.SourcesDirectory)\build/CallPowerShell.cmd test.ps1|| exit /b 0'
         workingDirectory: '$(Build.SourcesDirectory)'
 
-
     - task: CopyFiles@2
       inputs:
         SourceFolder: '$(Build.SourcesDirectory)\tests'
