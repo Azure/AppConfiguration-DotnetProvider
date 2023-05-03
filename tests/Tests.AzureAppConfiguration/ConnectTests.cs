@@ -27,6 +27,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 });
 
@@ -60,6 +61,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, mockTokenCredential.Object);
                     options.Connect("Invalid connection string");
                 });
@@ -75,6 +77,7 @@ namespace Tests.AzureAppConfiguration
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.Connect("invalid_connection_string");
                     options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, mockTokenCredential.Object);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);

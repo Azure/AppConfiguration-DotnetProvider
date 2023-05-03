@@ -56,7 +56,11 @@ namespace Tests.AzureAppConfiguration
                 .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object))
+                .AddAzureAppConfiguration(options => 
+                {
+                    options.Select("*");
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                })
                 .Build();
 
             Assert.True(config["TestKey1"] == "TestValue1");
@@ -107,6 +111,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.TrimKeyPrefix(keyPrefix1).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix3);
                 })
@@ -139,6 +144,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.TrimKeyPrefix(keyPrefix3).TrimKeyPrefix(keyPrefix2).TrimKeyPrefix(keyPrefix1);
                 })
@@ -200,6 +206,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = clientManager;
                 }).Build();
 

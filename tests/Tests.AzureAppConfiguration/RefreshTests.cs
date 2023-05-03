@@ -485,6 +485,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureRefresh(refreshOptions =>
                     {

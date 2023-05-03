@@ -64,6 +64,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.Map((setting) =>
                     {
@@ -109,6 +110,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                     options.Map((setting) =>
@@ -140,6 +142,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -193,6 +196,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -243,6 +247,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -291,6 +296,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -339,6 +345,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -394,6 +401,7 @@ namespace Tests.AzureAppConfiguration
                 var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
                     options.Map((setting) =>
@@ -430,6 +438,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
             .AddAzureAppConfiguration(options =>
             {
+                options.Select("*");
                 options.ClientManager = mockClientManager;
                 options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
                 options.Map(async (setting) =>
@@ -475,6 +484,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = mockClientManager;
                     options.ConfigureRefresh(refreshOptions =>
                     {

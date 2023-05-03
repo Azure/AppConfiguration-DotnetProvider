@@ -25,6 +25,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                     defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
@@ -45,6 +46,7 @@ namespace Tests.AzureAppConfiguration
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = maxRetries);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);

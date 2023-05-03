@@ -597,34 +597,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
-            // Use default query if there are no key-values specified for use other than the feature flags
-            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
-
-            if (useDefaultQuery)
+            foreach (var loadOption in _options.KeyValueSelectors)
             {
-                // Load all key-values with the null label.
                 var selector = new SettingSelector
                 {
-                    KeyFilter = KeyFilter.Any,
-                    LabelFilter = LabelFilter.Null
+                    KeyFilter = loadOption.KeyFilter,
+                    LabelFilter = loadOption.LabelFilter
                 };
-
-                await CallWithRequestTracing(async () =>
-                {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
-                    {
-                        serverData[setting.Key] = setting;
-                    }
-                }).ConfigureAwait(false);
-            }
-
-                foreach (var loadOption in _options.KeyValueSelectors)
-                {
-                    var selector = new SettingSelector
-                    {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter
-                    };
 
                 await CallWithRequestTracing(async () =>
                 {

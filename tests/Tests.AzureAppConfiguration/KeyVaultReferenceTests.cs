@@ -100,6 +100,7 @@ namespace Tests.AzureAppConfiguration
             {
                 configuration = builder.AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 }).Build();
@@ -126,6 +127,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
@@ -151,6 +153,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
@@ -176,6 +179,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 }).Build();
@@ -201,6 +205,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 }).Build();
@@ -248,6 +253,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
@@ -274,6 +280,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
@@ -299,6 +306,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
@@ -328,6 +336,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient1.Object)
                                                       .Register(mockSecretClient2.Object));
@@ -351,6 +360,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.SetCredential(new DefaultAzureCredential()));
                 })
@@ -379,6 +389,7 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient1.Object).Register(mockSecretClient2.Object));
                 })
@@ -402,6 +413,7 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                 })
                 .Build();
@@ -442,6 +454,7 @@ namespace Tests.AzureAppConfiguration
             IConfiguration config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {
@@ -519,6 +532,7 @@ namespace Tests.AzureAppConfiguration
             IConfiguration config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {
@@ -554,6 +568,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {
@@ -631,6 +646,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
 
                     options.ConfigureKeyVault(kv =>
@@ -704,6 +720,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {
@@ -757,6 +774,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {
@@ -800,6 +818,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {
@@ -846,6 +865,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv =>
                     {

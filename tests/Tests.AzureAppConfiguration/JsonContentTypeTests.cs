@@ -27,7 +27,11 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var appconfigSettings = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("*");
+                    options.ClientManager = mockClientManager;
+                })
                 .Build()
                 .AsEnumerable();
 
@@ -70,7 +74,11 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("*");
+                    options.ClientManager = mockClientManager;
+                })
                 .Build();
 
             Assert.Equal("True", config["TestKey1"]);
@@ -117,7 +125,11 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("*");
+                    options.ClientManager = mockClientManager;
+                })
                 .Build();
 
             Assert.Equal("true", config["TestKey1"]);
@@ -183,7 +195,11 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("*");
+                    options.ClientManager = mockClientManager;
+                })
                 .Build();
 
             Assert.Null(config["MyNumberList"]);
@@ -218,7 +234,11 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("*");
+                    options.ClientManager = mockClientManager;
+                })
                 .Build();
 
             Assert.Equal(compactJsonValue, config[FeatureManagementConstants.FeatureFlagMarker + "Beta"]);
@@ -239,7 +259,11 @@ namespace Tests.AzureAppConfiguration
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("*");
+                    options.ClientManager = mockClientManager;
+                })
                 .Build();
 
             Assert.Equal("Beta", config[FeatureManagementConstants.FeatureFlagMarker + "Beta:id"]);

@@ -375,6 +375,7 @@ namespace Tests.AzureAppConfiguration
             var builder = new ConfigurationBuilder();
             builder.AddAzureAppConfiguration(options =>
             {
+                options.Select("*");
                 options.ClientManager = clientManager;
                 options.UseFeatureFlags();
             }).Build();
@@ -402,6 +403,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = clientManager;
                     options.UseFeatureFlags(o => o.Label = "myLabel");
                 })
@@ -426,6 +428,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Select("*");
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
 
