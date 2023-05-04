@@ -10,5 +10,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         [JsonPropertyName("client_filters")]
         public List<ClientFilter> ClientFilters { get; set; } = new List<ClientFilter>();
+
+        [JsonPropertyName("requirement_type")]
+        public RequirementType RequirementType { get; set; } = RequirementType.Any;
     }
 }

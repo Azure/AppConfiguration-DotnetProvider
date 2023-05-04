@@ -38,6 +38,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
                 else
                 {
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}", featureFlag.Conditions.RequirementType.ToString()));
+
                     //
                     // Conditionally on based on feature filters
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
