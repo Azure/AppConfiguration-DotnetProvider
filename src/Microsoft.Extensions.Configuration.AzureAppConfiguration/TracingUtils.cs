@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -108,6 +107,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IList<string> correlationContextTags = new List<string>();
             
             correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
+
+            if (!string.IsNullOrEmpty(requestTracingOptions.ClientId))
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ClientId, requestTracingOptions.ReplicaCount.ToString()));
+            }
 
             if (requestTracingOptions.ReplicaCount > 0)
             {

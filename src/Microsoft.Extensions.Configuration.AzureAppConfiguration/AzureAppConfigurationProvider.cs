@@ -770,6 +770,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             _requestTracingOptions = new RequestTracingOptions
             {
+                ClientId = _options.ClientId,
                 HostType = TracingUtils.GetHostType(),
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,

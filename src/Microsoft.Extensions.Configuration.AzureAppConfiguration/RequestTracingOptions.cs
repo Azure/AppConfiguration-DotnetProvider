@@ -36,5 +36,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Type of feature filters used by the application.
         /// </summary>
         public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+
+        /// <summary>
+        /// User-specified host name.
+        /// </summary>
+        public string ClientId { get; set; } = string.Empty;
     }
 }

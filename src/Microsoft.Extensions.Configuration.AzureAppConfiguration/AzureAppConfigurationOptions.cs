@@ -110,6 +110,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
+        /// User-specified host name used to determine the source of a request in the Correlation-Context header.
+        /// </summary>
+        internal string ClientId { get; private set; } = string.Empty;
+
+        /// <summary>
         /// Indicates all types of feature filters used by the application.
         /// </summary>
         internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
