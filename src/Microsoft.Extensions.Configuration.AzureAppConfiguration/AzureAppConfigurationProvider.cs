@@ -640,6 +640,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await CallWithRequestTracing(async () =>
                     {
+                        ConfigurationSettingsSnapshot test = new ConfigurationSettingsSnapshot(new List<SnapshotSettingFilter> { new SnapshotSettingFilter("*") });
+                        await client.CreateSnapshotAsync(WaitUntil.Completed, "test1", test);
+                        ConfigurationSettingsSnapshot snappy = await client.GetSnapshotAsync("test1");
                         await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsForSnapshotAsync(loadOption.SnapshotName, cancellationToken).ConfigureAwait(false))
                         {
                             serverData[setting.Key] = setting;
