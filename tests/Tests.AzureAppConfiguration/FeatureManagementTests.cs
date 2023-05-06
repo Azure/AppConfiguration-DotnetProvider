@@ -1148,12 +1148,24 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void WithRequirementType()
         {
-
+            var emptyFilters = "[]";
+            var nonEmptyFilters = @"[
+                {
+                    ""name"": ""FilterA"",
+                    ""parameters"": {
+                        ""Foo"": ""Bar""
+                    }
+                },
+                {
+                    ""name"": ""FilterB""
+                }
+            ]";
             var featureFlags = new List<ConfigurationSetting>()
             {
                 _kv2,
-                featureWithRequirementType("All"),
-                featureWithRequirementType("Any")
+                featureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
+                featureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
+                featureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
             };
 
             var mockResponse = new Mock<Response>();
@@ -1170,16 +1182,14 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            // default to Any if not specified
-            Assert.Equal("Any", config["FeatureManagement:MyFeature2:RequirementType"]);
-
-            Assert.Equal("All", config["FeatureManagement:Feature_All:RequirementType"]);
-            Assert.Equal("Any", config["FeatureManagement:Feature_Any:RequirementType"]);
+            Assert.Null(config["FeatureManagement:MyFeature2:RequirementType"]);
+            Assert.Null(config["FeatureManagement:Feature_NoFilters:RequirementType"]);
+            Assert.Equal("All", config["FeatureManagement:Feature_RequireAll:RequirementType"]);
+            Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
         }
 
-        private ConfigurationSetting featureWithRequirementType(string requirementType)
+        private ConfigurationSetting featureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
         {
-            string featureId = "Feature_" + requirementType;
             return ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + featureId,
                 value: $@"
@@ -1188,17 +1198,7 @@ namespace Tests.AzureAppConfiguration
                           ""enabled"": true,
                           ""conditions"": {{
                             ""requirement_type"": ""{requirementType}"",
-                            ""client_filters"": [
-                              {{
-                                ""name"": ""FilterA"",
-                                ""parameters"": {{
-                                  ""ParamA"": [ ""Value1"", ""Value2"" ]
-                                }}
-                              }},
-                              {{
-                                ""name"": ""FilterB""
-                              }}
-                            ]
+                            ""client_filters"": {clientFiltersJsonString}
                           }}
                         }}
                         ",
