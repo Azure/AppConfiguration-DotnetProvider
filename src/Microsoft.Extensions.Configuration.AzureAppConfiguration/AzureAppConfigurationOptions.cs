@@ -153,7 +153,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _kvSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = keyFilter,
-                    LabelFilter = labelFilter
+                    LabelFilter = labelFilter,
+                    SnapshotName = string.Empty
                 });
             }
 
