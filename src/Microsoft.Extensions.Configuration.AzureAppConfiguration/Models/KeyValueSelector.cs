@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string LabelFilter { get; set; }
 
         /// <summary>
-        /// The name of the snapshot to use when selecting key-values for the configuration provider.
+        /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.
         /// </summary>
         public string SnapshotName { get; set; }
     }
