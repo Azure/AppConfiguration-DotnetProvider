@@ -51,6 +51,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
                         }
                     }
+
+                    //
+                    // process RequirementType only when filters are not empty
+                    if (featureFlag.Conditions.RequirementType != null)
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>(
+                            $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}", 
+                            featureFlag.Conditions.RequirementType));
+                    }
                 }
             }
             else
