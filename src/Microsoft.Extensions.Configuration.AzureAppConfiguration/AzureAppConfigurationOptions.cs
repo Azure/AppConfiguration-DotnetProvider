@@ -112,7 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// User-specified host name used to determine the source of a request in the Correlation-Context header.
         /// </summary>
-        internal string ClientId { get; private set; } = string.Empty;
+        internal string ClientId { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates all types of feature filters used by the application.

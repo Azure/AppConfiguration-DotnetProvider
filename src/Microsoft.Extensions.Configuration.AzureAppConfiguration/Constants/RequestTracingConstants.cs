@@ -33,5 +33,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
         public const string UserAgentHeader = "User-Agent";
+        public const string ClientIdHeader = "Correlation-ID";
     }
 }

@@ -77,10 +77,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Func<Task> clientCall)
         {
             string correlationContextHeader = "";
+            string correlationIdHeader = "";
 
             if (tracingEnabled && requestTracingOptions != null)
             {
                 correlationContextHeader = CreateCorrelationContextHeader(requestType, requestTracingOptions);
+                if (!string.IsNullOrEmpty(requestTracingOptions.ClientId))
+                {
+                    correlationIdHeader = requestTracingOptions.ClientId;
+                }
             }
 
             var activity = new Activity(RequestTracingConstants.DiagnosticHeaderActivityName);
@@ -91,6 +96,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (!string.IsNullOrWhiteSpace(correlationContextHeader))
                 {
                     activity.AddTag(RequestTracingConstants.CorrelationContextHeader, correlationContextHeader);
+                }
+
+                if (!string.IsNullOrWhiteSpace(correlationIdHeader))
+                {
+                    activity.AddTag(RequestTracingConstants.ClientIdHeader, correlationIdHeader);
                 }
 
                 await clientCall().ConfigureAwait(false);
@@ -107,11 +117,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IList<string> correlationContextTags = new List<string>();
             
             correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
-
-            if (!string.IsNullOrEmpty(requestTracingOptions.ClientId))
-            {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ClientId, requestTracingOptions.ReplicaCount.ToString()));
-            }
 
             if (requestTracingOptions.ReplicaCount > 0)
             {
