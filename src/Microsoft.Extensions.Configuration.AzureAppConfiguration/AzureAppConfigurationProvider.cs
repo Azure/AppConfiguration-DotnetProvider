@@ -598,7 +598,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             // Use default query if there are no key-values specified for use other than the feature flags
-            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
+            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !string.IsNullOrEmpty(selector.KeyFilter) && !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
 
             if (useDefaultQuery)
             {
@@ -618,34 +618,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-            foreach (var loadOption in _options.KeyValueSelectors)
+            foreach (KeyValueSelector loadOption in _options.KeyValueSelectors)
             {
+                IAsyncEnumerable<ConfigurationSetting> settingsEnumerable;
+
                 if (string.IsNullOrEmpty(loadOption.SnapshotName))
                 {
-                    var selector = new SettingSelector
-                    {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter
-                    };
-
-                    await CallWithRequestTracing(async () =>
-                    {
-                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    settingsEnumerable = client.GetConfigurationSettingsAsync(
+                        new SettingSelector
                         {
-                            serverData[setting.Key] = setting;
-                        }
-                    }).ConfigureAwait(false);
+                            KeyFilter = loadOption.KeyFilter,
+                            LabelFilter = loadOption.LabelFilter
+                        },
+                        cancellationToken);
                 }
                 else
                 {
-                    await CallWithRequestTracing(async () =>
-                    {
-                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsForSnapshotAsync(loadOption.SnapshotName, cancellationToken).ConfigureAwait(false))
-                        {
-                            serverData[setting.Key] = setting;
-                        }
-                    }).ConfigureAwait(false);
+                    settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
+                        loadOption.SnapshotName,
+                        cancellationToken);
                 }
+
+                await CallWithRequestTracing(async () =>
+                {
+                    await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
+                    {
+                        serverData[setting.Key] = setting;
+                    }
+                })
+                .ConfigureAwait(false);
             }
 
             return serverData;
