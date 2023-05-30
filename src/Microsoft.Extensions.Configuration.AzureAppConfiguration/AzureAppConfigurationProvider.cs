@@ -598,7 +598,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             // Use default query if there are no key-values specified for use other than the feature flags
-            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !string.IsNullOrEmpty(selector.KeyFilter) && !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
+            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => (!string.IsNullOrEmpty(selector.KeyFilter) && !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)) || !string.IsNullOrEmpty(selector.SnapshotName));
 
             if (useDefaultQuery)
             {
@@ -634,6 +634,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
+                    ConfigurationSettingsSnapshot snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName);
+
+                    if (snapshot != null)
+                    {
+                        if (snapshot.CompositionType == null || !snapshot.CompositionType.ToString().Equals("key"))
+                        {
+                            throw new ArgumentException($"{nameof(snapshot.CompositionType)} for the selected snapshot must be 'key', found '{snapshot.CompositionType}'.");
+                        }
+                    }
+
                     settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
                         loadOption.SnapshotName,
                         cancellationToken);

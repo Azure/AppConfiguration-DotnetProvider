@@ -161,7 +161,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Specify a snapshot and include its captured key-values in the configuration provider.
+        /// Specify a snapshot and include its contained key-values in the configuration provider.
         /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
         /// </summary>
         /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
