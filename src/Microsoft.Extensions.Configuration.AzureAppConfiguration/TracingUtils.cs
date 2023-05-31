@@ -124,11 +124,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
-            if (!string.IsNullOrWhiteSpace(requestTracingOptions.FeatureManagementSchemaVersion))
-            {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementSchemaVersionTag, requestTracingOptions.FeatureManagementSchemaVersion));
-            }
-
             if (requestTracingOptions.FilterTelemetry.UsesAnyFeatureFilter())
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTelemetry.ToString()));

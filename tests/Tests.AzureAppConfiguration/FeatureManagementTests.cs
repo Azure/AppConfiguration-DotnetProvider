@@ -2,17 +2,18 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,9 +21,6 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    // This attribute ensures that feature management v1 and v2 tests are never run in parallel.
-    // Since feature flag behavior is controlled by an environment variable, running them in parallel has side effects.
-    [Collection("Feature Management Test Collection")]
     public class FeatureManagementTests
     {
         private ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
@@ -63,7 +61,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         private ConfigurationSetting _kv2 = ConfigurationModelFactory.ConfigurationSetting(
@@ -84,7 +82,7 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
@@ -101,7 +99,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -116,7 +114,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -131,7 +129,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -146,7 +144,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -161,7 +159,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
             ConfigurationModelFactory.ConfigurationSetting(
@@ -176,7 +174,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
         };
 
@@ -186,6 +184,21 @@ namespace Tests.AzureAppConfiguration
                 value: "TestValue1",
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
+
+        readonly ConfigurationSetting Feature_RequirementTypeAll = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "Feature_All",
+                value: @"
+                        {
+                          ""id"": ""Feature_All"",
+                          ""enabled"": true,
+                          ""conditions"": {
+                            ""requirement_type"": ""All"",
+                            ""client_filters"": []
+                          }
+                        }
+                        ",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
@@ -277,7 +290,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: default,
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             featureFlags.Add(_kv2);
@@ -347,7 +360,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: default,
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             featureFlags.Add(_kv2);
@@ -708,7 +721,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             // add new feature flag with label2
@@ -724,7 +737,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App2_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f")));
 
             // Sleep to let the cache for feature flag with label1 expire
@@ -802,7 +815,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(cacheExpiration1);
@@ -871,7 +884,7 @@ namespace Tests.AzureAppConfiguration
                         }
                         ",
                 label: "App1_Label",
-                contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             // Sleep to let the cache for feature flag with label1 expire
@@ -894,9 +907,20 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
-            var mockLogger = new Mock<ILogger>();
-            var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+            string informationalInvocation = "";
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Informational)
+                    {
+                        informationalInvocation += s;
+                    }
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
 
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
@@ -929,23 +953,22 @@ namespace Tests.AzureAppConfiguration
                     }
                     ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: 'myFeature1', label: '')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature1'", LogLevel.Information));
+            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagChanged + "(key: 'myFeature1', label: '')", LogLevel.Debug));
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagValueUpdated + "'myFeature1'", LogLevel.Information));
+            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
         }
 
         [Fact]
@@ -965,9 +988,15 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
-            var mockLogger = new Mock<ILogger>();
-            var mockLoggerFactory = new Mock<ILoggerFactory>();
-            mockLoggerFactory.Setup(mlf => mlf.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory)).Returns(mockLogger.Object);
+            string verboseInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Verbose)
+                    {
+                        verboseInvocation += s;
+                    }
+                }, EventLevel.Verbose);
 
             var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
@@ -989,10 +1018,9 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.LoggerFactory = mockLoggerFactory.Object;
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
-            Assert.True(TestHelpers.ValidateLog(mockLogger, LoggingConstants.RefreshFeatureFlagsUnchanged, LogLevel.Debug));
+            Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
         }
 
         [Fact]
@@ -1019,7 +1047,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             IConfigurationRefresher refresher = null;
@@ -1049,7 +1077,7 @@ namespace Tests.AzureAppConfiguration
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
                     options.Map((setting) =>
                     {
-                        if (setting.ContentType == FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8")
+                        if (setting.ContentType == FeatureManagementConstants.ContentType + ";charset=utf-8")
                         {
                             setting.Value = @"
                                 {
@@ -1098,7 +1126,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ",
             label: default,
-            contentType: FeatureManagementConstants.FeatureFlagContentType + ";charset=utf-8",
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
@@ -1115,6 +1143,67 @@ namespace Tests.AzureAppConfiguration
         Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
         {
             return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
+        }
+
+        [Fact]
+        public void WithRequirementType()
+        {
+            var emptyFilters = "[]";
+            var nonEmptyFilters = @"[
+                {
+                    ""name"": ""FilterA"",
+                    ""parameters"": {
+                        ""Foo"": ""Bar""
+                    }
+                },
+                {
+                    ""name"": ""FilterB""
+                }
+            ]";
+            var featureFlags = new List<ConfigurationSetting>()
+            {
+                _kv2,
+                featureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
+                featureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
+                featureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
+            };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Null(config["FeatureManagement:MyFeature2:RequirementType"]);
+            Assert.Null(config["FeatureManagement:Feature_NoFilters:RequirementType"]);
+            Assert.Equal("All", config["FeatureManagement:Feature_RequireAll:RequirementType"]);
+            Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
+        }
+
+        private ConfigurationSetting featureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
+        {
+            return ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + featureId,
+                value: $@"
+                        {{
+                          ""id"": ""{featureId}"",
+                          ""enabled"": true,
+                          ""conditions"": {{
+                            ""requirement_type"": ""{requirementType}"",
+                            ""client_filters"": {clientFiltersJsonString}
+                          }}
+                        }}
+                        ",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
         }
     }
 }

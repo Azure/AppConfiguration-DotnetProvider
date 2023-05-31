@@ -4,7 +4,6 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// <summary> Uses the Azure Key Vault secret provider to resolve Key Vault references retrieved from Azure App Configuration. </summary>
         /// <param KeyValue ="IKeyValue">  inputs the IKeyValue </param>
         /// returns the keyname and actual value
-        public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, ILogger logger, CancellationToken cancellationToken)
+        public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
             KeyVaultSecretReference secretRef;
 
@@ -39,13 +38,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (JsonException e)
             {
-                throw CreateKeyVaultReferenceException("Invalid Key Vault reference", setting, e, null);
+                throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
             }
 
             // Uri validation
             if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
             {
-                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier", setting, null, secretRef);
+                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRef);
             }
 
             string secret;
@@ -60,7 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
-                throw CreateKeyVaultReferenceException("Key vault error", setting, e, secretRef);
+                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRef);
             }
 
             return new KeyValuePair<string, string>[]

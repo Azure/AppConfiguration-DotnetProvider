@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,19 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationProvider _provider = null;
 
         public Uri AppConfigurationEndpoint { get; private set; } = null;
-   
-        public ILoggerFactory LoggerFactory { 
-            get 
-            {
-                ThrowIfNullProvider(nameof(LoggerFactory));
-                return _provider.LoggerFactory;
-            }
-            set 
-            { 
-                ThrowIfNullProvider(nameof(LoggerFactory)); 
-                _provider.LoggerFactory = value;
-            } 
-        }
 
         public void SetProvider(AzureAppConfigurationProvider provider)
         {
@@ -54,12 +40,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ThrowIfNullProvider(nameof(ProcessPushNotification));
 
             _provider.ProcessPushNotification(pushNotification, maxDelay);
-        }
-
-        public void SetDirty(TimeSpan? maxDelay)
-        {
-            ThrowIfNullProvider(nameof(SetDirty));
-            _provider.SetDirty(maxDelay);
         }
 
         private void ThrowIfNullProvider(string operation)
