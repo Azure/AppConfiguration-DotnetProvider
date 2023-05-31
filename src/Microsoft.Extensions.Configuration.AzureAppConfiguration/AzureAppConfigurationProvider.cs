@@ -660,7 +660,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 ConfigurationSetting watchedKv = null;
                 try
                 {
-                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken)).ConfigureAwait(false);
+                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
@@ -871,10 +871,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
-                await funcToExecute(client);
+                await funcToExecute(client).ConfigureAwait(false);
                 return null;
 
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         private bool IsFailOverable(AggregateException ex)
