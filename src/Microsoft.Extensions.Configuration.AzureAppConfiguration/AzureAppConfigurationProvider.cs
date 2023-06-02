@@ -636,12 +636,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     ConfigurationSettingsSnapshot snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName);
 
-                    if (snapshot != null)
+                    if (snapshot.CompositionType != CompositionType.Key)
                     {
-                        if (snapshot.CompositionType == null || !snapshot.CompositionType.ToString().Equals("key"))
-                        {
-                            throw new ArgumentException($"{nameof(snapshot.CompositionType)} for the selected snapshot must be 'key', found '{snapshot.CompositionType}'.");
-                        }
+                        throw new ArgumentException($"{nameof(snapshot.CompositionType)} for the selected snapshot must be 'key', found '{snapshot.CompositionType}'.");
                     }
 
                     settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
