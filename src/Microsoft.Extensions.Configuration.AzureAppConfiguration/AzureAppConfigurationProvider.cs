@@ -652,8 +652,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         serverData[setting.Key] = setting;
                     }
-                })
-                .ConfigureAwait(false);
+                }).ConfigureAwait(false);
             }
 
             return serverData;
