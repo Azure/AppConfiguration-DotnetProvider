@@ -634,7 +634,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    ConfigurationSettingsSnapshot snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName);
+                    ConfigurationSettingsSnapshot snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
 
                     if (snapshot.CompositionType != CompositionType.Key)
                     {
