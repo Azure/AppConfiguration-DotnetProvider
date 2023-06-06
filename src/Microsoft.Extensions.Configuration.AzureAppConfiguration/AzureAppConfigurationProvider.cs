@@ -562,7 +562,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                                             exception is OperationCanceledException))
+                                             exception is OperationCanceledException ||
+                                             exception is InvalidOperationException))
             { }
 
             // Update the cache expiration time for all refresh registered settings and feature flags
@@ -634,7 +635,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    ConfigurationSettingsSnapshot snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
+                    ConfigurationSettingsSnapshot snapshot;
+                    try
+                    {
+                        snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
+                    }
+                    catch (RequestFailedException)
+                    {
+                        throw new InvalidOperationException($"Could not load snapshot with name '{loadOption.SnapshotName}'");
+                    }
 
                     if (snapshot.CompositionType != CompositionType.Key)
                     {
