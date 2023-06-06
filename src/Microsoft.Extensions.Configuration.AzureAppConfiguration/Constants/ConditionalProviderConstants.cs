@@ -6,6 +6,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
 {
     internal class ConditionalProviderConstants
     {
-        public static readonly string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
+        public const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
     }
 }
