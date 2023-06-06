@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -9,7 +10,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private readonly bool _optional;
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
-        private const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
 
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            if (Environment.GetEnvironmentVariable(DisableProviderEnvironmentVariable).Equals("true"))
+            if (Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable) == "true")
             {
                 return new EmptyConfigurationProvider();
             }
