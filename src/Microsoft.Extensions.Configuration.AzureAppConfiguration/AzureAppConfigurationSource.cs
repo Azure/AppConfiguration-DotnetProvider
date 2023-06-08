@@ -3,6 +3,7 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
+using System.Security;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -24,10 +25,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            if (Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable) == "true")
+            try
             {
-                return new EmptyConfigurationProvider();
+                if (Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable) == "true")
+                {
+                    return new EmptyConfigurationProvider();
+                }
             }
+            catch (SecurityException)
+            {
+                // ignore
+            }
+
 
             IConfigurationProvider provider = null;
 
