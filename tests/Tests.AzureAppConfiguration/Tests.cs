@@ -2,13 +2,11 @@
 // Licensed under the MIT license.
 //
 using Azure;
-using Azure.Core;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -274,7 +272,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
-            Environment.SetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable, "true");
+            Environment.SetEnvironmentVariable(AzureAppConfigurationSource.DisableProviderEnvironmentVariable, "true");
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -285,7 +283,7 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Null(config["TestKey1"]);
 
-            Environment.SetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable, null);
+            Environment.SetEnvironmentVariable(AzureAppConfigurationSource.DisableProviderEnvironmentVariable, null);
 
             config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
