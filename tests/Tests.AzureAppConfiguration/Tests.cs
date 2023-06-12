@@ -262,37 +262,5 @@ namespace Tests.AzureAppConfiguration
             // Delete the azure function environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
         }
-
-        [Fact]
-        public void DisableProviderWithEnvironmentVariable()
-        {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
-
-            Environment.SetEnvironmentVariable(AzureAppConfigurationSource.DisableProviderEnvironmentVariable, "true");
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                })
-                .Build();
-
-            Assert.Null(config["TestKey1"]);
-
-            Environment.SetEnvironmentVariable(AzureAppConfigurationSource.DisableProviderEnvironmentVariable, null);
-
-            config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                })
-                .Build();
-
-            Assert.Equal("TestValue1", config["TestKey1"]);
-        }
     }
 }
