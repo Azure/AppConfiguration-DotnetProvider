@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private readonly bool _optional;
         private readonly Func<AzureAppConfigurationOptions> _optionsProvider;
-        public const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
+        private const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
 
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
@@ -25,18 +25,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            string providerDisabled = null;
             try
             {
-                providerDisabled = Environment.GetEnvironmentVariable(DisableProviderEnvironmentVariable);
+                // Disable the provider if the environment variable evaluates to true
+                if (bool.TryParse(Environment.GetEnvironmentVariable(DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false)
+                {
+                    return new EmptyConfigurationProvider();
+                }
             }
             catch (SecurityException) { }
-            
-            // Disable the provider if the environment variable evaluates to true
-            if (bool.TryParse(providerDisabled, out bool disabled) ? disabled : false)
-            {
-                return new EmptyConfigurationProvider();
-            }
 
             IConfigurationProvider provider = null;
 
