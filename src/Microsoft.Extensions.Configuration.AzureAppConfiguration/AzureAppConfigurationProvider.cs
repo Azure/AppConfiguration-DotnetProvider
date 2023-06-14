@@ -647,7 +647,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (snapshot.CompositionType != CompositionType.Key)
                     {
-                        throw new InvalidOperationException($"{nameof(snapshot.CompositionType)} for the selected snapshot must be 'key', found '{snapshot.CompositionType}'.");
+                        throw new InvalidOperationException($"{nameof(snapshot.CompositionType)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.CompositionType}'.");
                     }
 
                     settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
