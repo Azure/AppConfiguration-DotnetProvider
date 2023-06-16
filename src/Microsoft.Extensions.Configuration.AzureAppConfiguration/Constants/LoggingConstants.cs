@@ -29,5 +29,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         // Other
         public const string RefreshSkippedNoClientAvailable = "Refresh skipped because no endpoint is accessible.";
+        public const string RefreshFailoverToDifferentEndpoint = "Completed failover to a different endpoint.";
     }
 }

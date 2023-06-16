@@ -861,6 +861,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     else
                     {
+                        if (!success)
+                        {
+                            _logger.LogWarning(LogHelper.BuildFailoverToDifferentEndpointMessage(_configClientManager.GetEndpointForClient(currentClient).ToString()));
+                        }
                         _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
