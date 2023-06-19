@@ -27,7 +27,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
         { 
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-            new JsonKeyValueAdapter() 
+            new JsonKeyValueAdapter(),
+            new FeatureManagementKeyValueAdapter()
         };
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();

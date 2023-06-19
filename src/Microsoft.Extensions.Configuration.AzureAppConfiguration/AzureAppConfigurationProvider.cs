@@ -636,6 +636,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else
                 {
                     ConfigurationSettingsSnapshot snapshot;
+
                     try
                     {
                         snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
