@@ -813,6 +813,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientEnumerator.MoveNext();
 
             ConfigurationClient currentClient;
+            bool failureOccurred = false;
 
             while (true)
             {
@@ -826,6 +827,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
+
+                    if (failureOccurred)
+                    {
+                        _logger.LogWarning(LogHelper.BuildFailoverToDifferentEndpointMessage(_configClientManager.GetEndpointForClient(currentClient).ToString()));
+                    }
 
                     return result;
                 }
@@ -849,6 +855,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 finally
                 {
+                    failureOccurred = !success;
+
                     if (!success && backoffAllClients)
                     {
                         do
@@ -861,10 +869,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     else
                     {
-                        if (!success)
-                        {
-                            _logger.LogWarning(LogHelper.BuildFailoverToDifferentEndpointMessage(_configClientManager.GetEndpointForClient(currentClient).ToString()));
-                        }
                         _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
