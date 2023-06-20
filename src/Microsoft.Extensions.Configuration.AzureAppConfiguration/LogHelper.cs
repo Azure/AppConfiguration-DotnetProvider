@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Net;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class LogHelper
@@ -75,9 +77,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.PushNotificationUnregisteredEndpoint} '{resourceUri}'.";
         }
 
-        public static string BuildFailoverToDifferentEndpointMessage(string endpoint)
+        public static string BuildFailoverToDifferentEndpointMessage(string originalEndpoint, string currentEndpoint)
         {
-            return $"{LoggingConstants.RefreshFailoverToDifferentEndpoint} Endpoint:'{endpoint.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshFailoverToDifferentEndpoint} Original Endpoint:'{originalEndpoint.TrimEnd('/')}' Current Endpoint:'{currentEndpoint.TrimEnd('/')}'";
         }
     }
 }

@@ -299,7 +299,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LogHelper.BuildFailoverToDifferentEndpointMessage(TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
+            Assert.Contains(LogHelper.BuildFailoverToDifferentEndpointMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString(), TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
         }
 
         [Fact]
