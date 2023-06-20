@@ -77,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildFailoverToDifferentEndpointMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshFailoverToDifferentEndpoint} Endpoint:'{endpoint.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshFailoverToDifferentEndpoint} Current Endpoint:'{endpoint.TrimEnd('/')}'";
         }
     }
 }
