@@ -405,7 +405,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             try
             {
-                await RefreshAsync(cancellationToken).ConfigureAwait(false);
+                using (var flowControl = ExecutionContext.SuppressFlow())
+                {
+                    await RefreshAsync(cancellationToken).ConfigureAwait(false);
+
+                    flowControl.Undo();
+                }
             }
             catch (RequestFailedException e)
             {
