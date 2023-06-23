@@ -3,7 +3,9 @@
 //
 using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
+using System.Security;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -23,14 +25,27 @@ namespace Microsoft.AspNetCore.Builder
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
-            // We use the IConfigurationRefresherProvider to make sure if the required services were added.
-            if (builder.ApplicationServices.GetService(typeof(IConfigurationRefresherProvider)) == null)
+            bool providerDisabled = false;
+
+            try
             {
-                throw new InvalidOperationException("Unable to find the required services. Please add all the required services by calling 'IServiceCollection.AddAzureAppConfiguration' inside the call to 'ConfigureServices(...)' in the application startup code.");
+                providerDisabled = bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
+            }
+            catch (SecurityException) { }
+
+            if (!providerDisabled)
+            {
+                // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
+                // We use the IConfigurationRefresherProvider to make sure if the required services were added.
+                if (builder.ApplicationServices.GetService(typeof(IConfigurationRefresherProvider)) == null)
+                {
+                    throw new InvalidOperationException("Unable to find the required services. Please add all the required services by calling 'IServiceCollection.AddAzureAppConfiguration' inside the call to 'ConfigureServices(...)' in the application startup code.");
+                }
+
+                builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
             }
 
-            return builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
+            return builder;
         }
     }
 }

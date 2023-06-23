@@ -2,9 +2,11 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Security;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -55,7 +57,20 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
+            bool providerDisabled = false;
+
+            try
+            {
+                providerDisabled = bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
+            }
+            catch (SecurityException) { }
+
+            if (!providerDisabled)
+            {
+                configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
+            }
+
+            return configurationBuilder;
         }
 
         /// <summary>
@@ -70,8 +85,20 @@ namespace Microsoft.Extensions.Configuration
                 throw new ArgumentNullException(nameof(services));
             }
 
-            services.AddLogging();
-            services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
+            bool providerDisabled = false;
+
+            try
+            {
+                providerDisabled = bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
+            }
+            catch (SecurityException) { }
+
+            if (!providerDisabled)
+            {
+                services.AddLogging();
+                services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
+            }
+
             return services;
         }
     }
