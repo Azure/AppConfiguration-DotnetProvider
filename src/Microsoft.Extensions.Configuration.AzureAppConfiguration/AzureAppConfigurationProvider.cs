@@ -812,7 +812,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             clientEnumerator.MoveNext();
 
-            Uri originalEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
             bool failureOccurred = false;
 
@@ -826,15 +826,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
-                    success = true;
-
                     Uri currentEndpoint = _configClientManager.GetEndpointForClient(currentClient);
 
-                    if (failureOccurred && originalEndpoint != currentEndpoint)
+                    if (failureOccurred && previousEndpoint != currentEndpoint)
                     {
-                        _logger.LogWarning(LogHelper.BuildFailoverToDifferentEndpointMessage(originalEndpoint.ToString(), currentEndpoint.ToString()));
+                        _logger.LogWarning(LogHelper.BuildFailoverToDifferentEndpointMessage(previousEndpoint.ToString(), currentEndpoint.ToString()));
                     }
+
+                    previousEndpoint = currentEndpoint;
+
+                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
+                    success = true;
 
                     return result;
                 }
