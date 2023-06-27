@@ -27,16 +27,12 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
         {
             using (var flowControl = ExecutionContext.SuppressFlow())
             {
-                foreach (var refresher in Refreshers)
+                foreach (IConfigurationRefresher refresher in Refreshers)
                 {
-                    await Task.Run(() =>
-                    {
-                        _ = refresher.TryRefreshAsync();
-                    })
-                    .ConfigureAwait(false);
+                    _ = Task.Run(() => refresher.TryRefreshAsync());
                 }
             }
-            
+
             // Call the next delegate/middleware in the pipeline
             await _next(context).ConfigureAwait(false);
         }

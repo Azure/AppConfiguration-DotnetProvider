@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
@@ -29,11 +28,7 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
             {
                 foreach (IConfigurationRefresher refresher in Refreshers)
                 {
-                    await Task.Run(() =>
-                    {
-                        _ = refresher.TryRefreshAsync();
-                    })
-                    .ConfigureAwait(false);
+                    _ = Task.Run(() => refresher.TryRefreshAsync());
                 }
             }
 
