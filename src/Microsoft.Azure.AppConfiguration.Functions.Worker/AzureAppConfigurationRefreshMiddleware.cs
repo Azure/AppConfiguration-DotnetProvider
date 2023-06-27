@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.AppConfiguration.Functions.Worker
@@ -24,9 +25,16 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
 
         public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
         {
-            foreach (IConfigurationRefresher refresher in Refreshers)
+            using (var flowControl = ExecutionContext.SuppressFlow())
             {
-                _ = refresher.TryRefreshAsync();
+                foreach (IConfigurationRefresher refresher in Refreshers)
+                {
+                    await Task.Run(() =>
+                    {
+                        _ = refresher.TryRefreshAsync();
+                    })
+                    .ConfigureAwait(false);
+                }
             }
 
             await next(context).ConfigureAwait(false);
