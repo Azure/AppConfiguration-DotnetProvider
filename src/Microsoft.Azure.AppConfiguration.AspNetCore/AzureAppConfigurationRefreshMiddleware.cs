@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.AppConfiguration.AspNetCore
@@ -24,11 +25,18 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
 
         public async Task InvokeAsync(HttpContext context)
         {
-            foreach (var refresher in Refreshers)
+            using (var flowControl = ExecutionContext.SuppressFlow())
             {
-                _ = refresher.TryRefreshAsync();
+                foreach (var refresher in Refreshers)
+                {
+                    await Task.Run(() =>
+                    {
+                        _ = refresher.TryRefreshAsync();
+                    })
+                    .ConfigureAwait(false);
+                }
             }
-
+            
             // Call the next delegate/middleware in the pipeline
             await _next(context).ConfigureAwait(false);
         }
