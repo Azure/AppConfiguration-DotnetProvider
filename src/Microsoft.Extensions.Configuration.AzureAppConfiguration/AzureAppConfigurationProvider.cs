@@ -646,7 +646,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (rfe.Status == (int)HttpStatusCode.NotFound)
                         {
-                            throw new InvalidOperationException($"Could not load snapshot with name '{loadOption.SnapshotName}'");
+                            throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.");
                         }
 
                         throw;
