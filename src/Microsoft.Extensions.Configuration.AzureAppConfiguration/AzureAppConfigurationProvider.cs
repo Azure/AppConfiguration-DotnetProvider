@@ -599,7 +599,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             // Use default query if there are no key-values specified for use other than the feature flags
-            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => (!string.IsNullOrEmpty(selector.KeyFilter) && !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)) || !string.IsNullOrEmpty(selector.SnapshotName));
+            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => selector.KeyFilter == null ||
+                !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
 
             if (useDefaultQuery)
             {
@@ -641,9 +642,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
                     }
-                    catch (RequestFailedException)
+                    catch (RequestFailedException rfe)
                     {
-                        throw new InvalidOperationException($"Could not load snapshot with name '{loadOption.SnapshotName}'");
+                        if (rfe.Status == (int)HttpStatusCode.NotFound)
+                        {
+                            throw new InvalidOperationException($"Could not load snapshot with name '{loadOption.SnapshotName}'");
+                        }
+
+                        throw;
                     }
 
                     if (snapshot.CompositionType != CompositionType.Key)
