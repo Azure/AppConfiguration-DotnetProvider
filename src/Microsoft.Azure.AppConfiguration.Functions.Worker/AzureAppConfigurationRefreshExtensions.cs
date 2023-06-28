@@ -6,11 +6,9 @@ using Microsoft.Azure.AppConfiguration.Functions.Worker;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
-using System.Security;
 
 namespace Microsoft.Extensions.Hosting
 {
@@ -25,23 +23,15 @@ namespace Microsoft.Extensions.Hosting
         /// <param name="builder">An instance of <see cref="IFunctionsWorkerApplicationBuilder"/></param>
         public static IFunctionsWorkerApplicationBuilder UseAzureAppConfiguration(this IFunctionsWorkerApplicationBuilder builder)
         {
-            bool providerDisabled = false;
-
-            try
+            // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
+            // We use the IConfigurationRefresherProvider to make sure if the required services were added.
+            if (!builder.Services.Any(service => service.ServiceType == typeof(IConfigurationRefresherProvider)))
             {
-                providerDisabled = bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
+                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' inside the call to 'ConfigureServices(...)' in the application startup code.");
             }
-            catch (SecurityException) { }
 
-            if (!providerDisabled)
+            if (!builder.Services.Any(service => service.ServiceType == typeof(EmptyRefresherProvider)))
             {
-                // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
-                // We use the IConfigurationRefresherProvider to make sure if the required services were added.
-                if (!builder.Services.Any(service => service.ServiceType == typeof(IConfigurationRefresherProvider)))
-                {
-                    throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' inside the call to 'ConfigureServices(...)' in the application startup code.");
-                }
-
                 builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
             }
 

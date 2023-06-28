@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -15,6 +14,20 @@ namespace Microsoft.Extensions.Configuration
     /// </summary>
     public static class AzureAppConfigurationExtensions
     {
+        private const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
+        private static readonly bool _providerDisabled = IsProviderDisabled();
+
+        private static bool IsProviderDisabled()
+        {
+            try
+            {
+                return bool.TryParse(Environment.GetEnvironmentVariable(DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
+            }
+            catch (SecurityException) { }
+
+            return false;
+        }
+
         /// <summary>
         /// Adds key-value data from an Azure App Configuration store to a configuration builder.
         /// </summary>
@@ -57,15 +70,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            bool providerDisabled = false;
-
-            try
-            {
-                providerDisabled = bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
-            }
-            catch (SecurityException) { }
-
-            if (!providerDisabled)
+            if (!_providerDisabled)
             {
                 configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
             }
@@ -85,18 +90,14 @@ namespace Microsoft.Extensions.Configuration
                 throw new ArgumentNullException(nameof(services));
             }
 
-            bool providerDisabled = false;
-
-            try
-            {
-                providerDisabled = bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
-            }
-            catch (SecurityException) { }
-
-            if (!providerDisabled)
+            if (!_providerDisabled)
             {
                 services.AddLogging();
                 services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
+            }
+            else
+            {
+                services.AddSingleton<IConfigurationRefresherProvider, EmptyRefresherProvider>();
             }
 
             return services;

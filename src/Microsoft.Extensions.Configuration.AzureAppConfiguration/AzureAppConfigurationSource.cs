@@ -1,9 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
-using System.Security;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -25,16 +23,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            try
-            {
-                // Disable the provider if the environment variable evaluates to true
-                if (bool.TryParse(Environment.GetEnvironmentVariable(ConditionalProviderConstants.DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false)
-                {
-                    return new EmptyConfigurationProvider();
-                }
-            }
-            catch (SecurityException) { }
-
             IConfigurationProvider provider = null;
 
             try
