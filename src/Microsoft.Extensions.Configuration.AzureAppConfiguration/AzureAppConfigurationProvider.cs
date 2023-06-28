@@ -642,14 +642,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
                     }
-                    catch (RequestFailedException rfe)
+                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
                     {
-                        if (rfe.Status == (int)HttpStatusCode.NotFound)
-                        {
-                            throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.");
-                        }
-
-                        throw;
+                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.");
                     }
 
                     if (snapshot.CompositionType != CompositionType.Key)
