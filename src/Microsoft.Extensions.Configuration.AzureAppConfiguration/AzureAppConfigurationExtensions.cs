@@ -97,7 +97,7 @@ namespace Microsoft.Extensions.Configuration
             }
             else
             {
-                services.AddSingleton<IConfigurationRefresherProvider, EmptyRefresherProvider>();
+                services.AddSingleton<IConfigurationRefresherProvider, EmptyConfigurationRefresherProvider>();
             }
 
             return services;

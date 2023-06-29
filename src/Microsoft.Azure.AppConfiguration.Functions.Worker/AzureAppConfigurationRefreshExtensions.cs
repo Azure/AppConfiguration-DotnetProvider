@@ -23,14 +23,17 @@ namespace Microsoft.Extensions.Hosting
         /// <param name="builder">An instance of <see cref="IFunctionsWorkerApplicationBuilder"/></param>
         public static IFunctionsWorkerApplicationBuilder UseAzureAppConfiguration(this IFunctionsWorkerApplicationBuilder builder)
         {
+            IServiceProvider serviceProvider = builder.Services.BuildServiceProvider();
+            IConfigurationRefresherProvider refresherProvider = serviceProvider.GetService<IConfigurationRefresherProvider>();
+
             // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
             // We use the IConfigurationRefresherProvider to make sure if the required services were added.
-            if (!builder.Services.Any(service => service.ServiceType == typeof(IConfigurationRefresherProvider)))
+            if (refresherProvider == null)
             {
                 throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' inside the call to 'ConfigureServices(...)' in the application startup code.");
             }
 
-            if (!builder.Services.Any(service => service.ServiceType == typeof(EmptyRefresherProvider)))
+            if (refresherProvider.Refreshers.Count() != 0)
             {
                 builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
             }

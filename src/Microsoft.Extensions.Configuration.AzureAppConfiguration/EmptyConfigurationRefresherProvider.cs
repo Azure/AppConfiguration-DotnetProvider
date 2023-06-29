@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// <summary>
     /// A dummy class used to show that <see cref="AzureAppConfigurationRefresherProvider"/> is not available.
     /// </summary>
-    public class EmptyRefresherProvider : IConfigurationRefresherProvider
+    public class EmptyConfigurationRefresherProvider : IConfigurationRefresherProvider
     {
         /// <summary>
         /// A dummy variable to implement the interface <see cref="IConfigurationRefresherProvider"/>.
