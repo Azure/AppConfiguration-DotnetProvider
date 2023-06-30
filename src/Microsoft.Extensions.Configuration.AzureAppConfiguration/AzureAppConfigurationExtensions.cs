@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration
     public static class AzureAppConfigurationExtensions
     {
         private const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
-        private static readonly bool _providerDisabled = IsProviderDisabled();
+        private static readonly bool _isProviderDisabled = IsProviderDisabled();
 
         private static bool IsProviderDisabled()
         {
@@ -70,7 +70,7 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            if (!_providerDisabled)
+            if (!_isProviderDisabled)
             {
                 configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
             }
@@ -90,7 +90,7 @@ namespace Microsoft.Extensions.Configuration
                 throw new ArgumentNullException(nameof(services));
             }
 
-            if (!_providerDisabled)
+            if (!_isProviderDisabled)
             {
                 services.AddLogging();
                 services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();

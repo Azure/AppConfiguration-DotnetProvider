@@ -30,10 +30,10 @@ namespace Microsoft.Extensions.Hosting
             // We use the IConfigurationRefresherProvider to make sure if the required services were added.
             if (refresherProvider == null)
             {
-                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' inside the call to 'ConfigureServices(...)' in the application startup code.");
+                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' in the application startup code.");
             }
 
-            if (refresherProvider.Refreshers.Count() != 0)
+            if (refresherProvider.Refreshers?.Count() != 0)
             {
                 builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
             }
