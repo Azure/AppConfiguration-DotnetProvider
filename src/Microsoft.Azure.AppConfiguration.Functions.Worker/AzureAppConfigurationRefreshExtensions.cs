@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Hosting
                 throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' in the application startup code.");
             }
 
-            if (refresherProvider.Refreshers?.Count() != 0)
+            if (refresherProvider.Refreshers?.Count() > 0)
             {
                 builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
             }
