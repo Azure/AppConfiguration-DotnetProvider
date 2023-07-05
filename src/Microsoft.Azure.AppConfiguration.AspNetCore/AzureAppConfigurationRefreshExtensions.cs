@@ -3,6 +3,7 @@
 //
 using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 
@@ -30,7 +31,7 @@ namespace Microsoft.AspNetCore.Builder
             // We use the IConfigurationRefresherProvider to make sure if the required services were added.
             if (refresherProvider == null)
             {
-                throw new InvalidOperationException("Unable to find the required services. Please add all the required services by calling 'IServiceCollection.AddAzureAppConfiguration' in the application startup code.");
+                throw new InvalidOperationException($"Unable to find the required services. Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(Microsoft.Extensions.Configuration.AzureAppConfigurationExtensions.AddAzureAppConfiguration)}()' in the application startup code.");
             }
 
             if (refresherProvider.Refreshers?.Count() > 0)
