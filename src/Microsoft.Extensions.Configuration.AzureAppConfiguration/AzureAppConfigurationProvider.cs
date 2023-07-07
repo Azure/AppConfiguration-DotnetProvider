@@ -420,7 +420,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 return false;
             }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false)
             {
                 if (IsAuthenticationError(e))
                 {
