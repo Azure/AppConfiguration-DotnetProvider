@@ -27,7 +27,7 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
             //
             // Configuration refresh is meant to execute as an isolated background task.
             // To prevent access of request-based resources, such as HttpContext, we suppress the execution context within the refresh operation.
-            using (var flowControl = ExecutionContext.SuppressFlow())
+            using (AsyncFlowControl flowControl = ExecutionContext.SuppressFlow())
             {
                 foreach (IConfigurationRefresher refresher in Refreshers)
                 {
