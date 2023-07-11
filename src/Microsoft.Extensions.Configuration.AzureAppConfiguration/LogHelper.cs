@@ -74,5 +74,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return $"{LoggingConstants.PushNotificationUnregisteredEndpoint} '{resourceUri}'.";
         }
+
+        public static string BuildRefreshFailedDueToInvalidOperationMessage(string exceptionMessage)
+        {
+            return $"{LoggingConstants.RefreshFailedDueToInvalidOperation}\n{exceptionMessage}";
+        }
     }
 }

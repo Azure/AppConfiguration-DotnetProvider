@@ -443,6 +443,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
                 return false;
             }
+            catch (InvalidOperationException e)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToInvalidOperationMessage(e.Message));
+                return false;
+            }
 
             return true;
         }
@@ -644,7 +649,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
                     {
-                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.");
+                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
                     }
 
                     if (snapshot.CompositionType != CompositionType.Key)
