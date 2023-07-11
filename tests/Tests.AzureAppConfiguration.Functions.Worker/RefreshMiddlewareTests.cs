@@ -79,7 +79,6 @@ namespace Tests.AzureAppConfiguration.Functions.Worker
 
             // Assert
             mockRefresher.Verify(refresher => refresher.TryRefreshAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
-
         }
     }
 }
