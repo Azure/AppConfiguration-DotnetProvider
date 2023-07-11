@@ -445,7 +445,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (InvalidOperationException e)
             {
-                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToInvalidOperationMessage(e.Message));
+                _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 return false;
             }
 

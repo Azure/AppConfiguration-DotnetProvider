@@ -178,7 +178,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
-            Assert.Contains(LoggingConstants.RefreshFailedDueToInvalidOperation, warningInvocation);
+            Assert.Contains(LoggingConstants.RefreshFailedError, warningInvocation);
         }
 
         [Fact]
