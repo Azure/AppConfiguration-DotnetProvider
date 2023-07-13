@@ -430,7 +430,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2022_11_01_Preview);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
