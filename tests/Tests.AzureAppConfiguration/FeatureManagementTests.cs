@@ -394,7 +394,7 @@ namespace Tests.AzureAppConfiguration
                 options.UseFeatureFlags();
             }).Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -422,7 +422,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
