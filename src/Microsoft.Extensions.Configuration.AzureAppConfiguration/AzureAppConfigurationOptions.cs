@@ -27,8 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
         { 
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-            new JsonKeyValueAdapter(),
-            new FeatureManagementKeyValueAdapter()
+            new JsonKeyValueAdapter() 
         };
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
@@ -149,35 +148,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            if (!_kvSelectors.Any(s => string.Equals(s.KeyFilter, keyFilter) && string.Equals(s.LabelFilter, labelFilter)))
+            if (!_kvSelectors.Any(s => s.KeyFilter.Equals(keyFilter) && s.LabelFilter.Equals(labelFilter)))
             {
                 _kvSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = keyFilter,
                     LabelFilter = labelFilter
-                });
-            }
-
-            return this;
-        }
-
-        /// <summary>
-        /// Specify a snapshot and include its contained key-values in the configuration provider.
-        /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
-        /// </summary>
-        /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
-        public AzureAppConfigurationOptions SelectSnapshot(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
-
-            if (!_kvSelectors.Any(s => string.Equals(s.SnapshotName, name)))
-            {
-                _kvSelectors.Add(new KeyValueSelector
-                {
-                    SnapshotName = name
                 });
             }
 
@@ -430,7 +406,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2022_11_01_Preview);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;

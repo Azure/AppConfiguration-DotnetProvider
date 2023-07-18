@@ -15,13 +15,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string KeyFilter { get; set; }
 
         /// <summary>
-        /// A filter that determines what label to use when selecting key-values for the the configuration provider.
+        /// A filter that determines what label to use when selecting key-values for the the configuration provider
         /// </summary>
         public string LabelFilter { get; set; }
-
-        /// <summary>
-        /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.
-        /// </summary>
-        public string SnapshotName { get; set; }
     }
 }
