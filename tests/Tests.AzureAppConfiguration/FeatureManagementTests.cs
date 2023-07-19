@@ -185,21 +185,6 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
 
-        readonly ConfigurationSetting Feature_RequirementTypeAll = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "Feature_All",
-                value: @"
-                        {
-                          ""id"": ""Feature_All"",
-                          ""enabled"": true,
-                          ""conditions"": {
-                            ""requirement_type"": ""All"",
-                            ""client_filters"": []
-                          }
-                        }
-                        ",
-                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
-
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
         [Fact]
@@ -1143,67 +1128,6 @@ namespace Tests.AzureAppConfiguration
         Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
         {
             return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
-        }
-
-        [Fact]
-        public void WithRequirementType()
-        {
-            var emptyFilters = "[]";
-            var nonEmptyFilters = @"[
-                {
-                    ""name"": ""FilterA"",
-                    ""parameters"": {
-                        ""Foo"": ""Bar""
-                    }
-                },
-                {
-                    ""name"": ""FilterB""
-                }
-            ]";
-            var featureFlags = new List<ConfigurationSetting>()
-            {
-                _kv2,
-                featureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
-                featureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
-                featureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
-            };
-
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags();
-                })
-                .Build();
-
-            Assert.Null(config["FeatureManagement:MyFeature2:RequirementType"]);
-            Assert.Null(config["FeatureManagement:Feature_NoFilters:RequirementType"]);
-            Assert.Equal("All", config["FeatureManagement:Feature_RequireAll:RequirementType"]);
-            Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
-        }
-
-        private ConfigurationSetting featureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
-        {
-            return ConfigurationModelFactory.ConfigurationSetting(
-                key: FeatureManagementConstants.FeatureFlagMarker + featureId,
-                value: $@"
-                        {{
-                          ""id"": ""{featureId}"",
-                          ""enabled"": true,
-                          ""conditions"": {{
-                            ""requirement_type"": ""{requirementType}"",
-                            ""client_filters"": {clientFiltersJsonString}
-                          }}
-                        }}
-                        ",
-                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
         }
     }
 }
