@@ -312,7 +312,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Contains(LogHelper.BuildAllEndpointsFailedMessage(), warningInvocation);
+            Assert.Contains(LogHelper.BuildLastEndpointFailedMessage(TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
         }
 
         [Fact]
