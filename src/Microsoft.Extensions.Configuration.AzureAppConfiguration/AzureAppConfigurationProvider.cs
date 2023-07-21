@@ -420,7 +420,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 return false;
             }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false)
             {
                 if (IsAuthenticationError(e))
                 {
@@ -431,11 +431,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 }
 
-                return false;
-            }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false)
-            {
-                _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 return false;
             }
             catch (KeyVaultReferenceException e)
@@ -566,7 +561,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
-                                             ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
+                                             ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false) ||
                                              exception is OperationCanceledException))
             { }
 
@@ -886,9 +881,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
 
-            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
+            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException || ex is OperationCanceledException))
             {
-                return IsFailOverable((RequestFailedException)innerExceptions.Last());
+                return IsFailOverable((RequestFailedException)innerExceptions.Last(ex => ex is RequestFailedException));
             }
 
             return false;
