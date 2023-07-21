@@ -295,7 +295,6 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
-
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -308,7 +307,6 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "TestValue1";
 
             Thread.Sleep(CacheExpirationTime);
-
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
