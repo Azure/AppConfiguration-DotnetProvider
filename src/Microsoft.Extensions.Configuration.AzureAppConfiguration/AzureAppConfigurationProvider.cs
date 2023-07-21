@@ -420,7 +420,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 return false;
             }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false)
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
             {
                 if (IsAuthenticationError(e))
                 {
@@ -431,6 +431,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 }
 
+                return false;
+            }
+            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
                 return false;
             }
             catch (KeyVaultReferenceException e)
