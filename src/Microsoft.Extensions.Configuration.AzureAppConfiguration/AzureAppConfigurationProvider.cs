@@ -454,6 +454,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
                 return false;
             }
+            catch (InvalidOperationException e)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
+                return false;
+            }
 
             return true;
         }
@@ -573,7 +578,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
                                              ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                                             exception is OperationCanceledException))
+                                             exception is OperationCanceledException ||
+                                             exception is InvalidOperationException))
             { }
 
             // Update the cache expiration time for all refresh registered settings and feature flags
@@ -610,7 +616,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var serverData = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
             // Use default query if there are no key-values specified for use other than the feature flags
-            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
+            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => selector.KeyFilter == null ||
+                !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
 
             if (useDefaultQuery)
             {
@@ -630,17 +637,46 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-            foreach (var loadOption in _options.KeyValueSelectors)
+            foreach (KeyValueSelector loadOption in _options.KeyValueSelectors)
             {
-                var selector = new SettingSelector
+                IAsyncEnumerable<ConfigurationSetting> settingsEnumerable;
+
+                if (string.IsNullOrEmpty(loadOption.SnapshotName))
                 {
-                    KeyFilter = loadOption.KeyFilter,
-                    LabelFilter = loadOption.LabelFilter
-                };
+                    settingsEnumerable = client.GetConfigurationSettingsAsync(
+                        new SettingSelector
+                        {
+                            KeyFilter = loadOption.KeyFilter,
+                            LabelFilter = loadOption.LabelFilter
+                        },
+                        cancellationToken);
+                }
+                else
+                {
+                    ConfigurationSettingsSnapshot snapshot;
+
+                    try
+                    {
+                        snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
+                    }
+                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
+                    {
+                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
+                    }
+
+                    if (snapshot.CompositionType != CompositionType.Key)
+                    {
+                        throw new InvalidOperationException($"{nameof(snapshot.CompositionType)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.CompositionType}'.");
+                    }
+
+                    settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
+                        loadOption.SnapshotName,
+                        cancellationToken);
+                }
 
                 await CallWithRequestTracing(async () =>
                 {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
                     {
                         serverData[new KeyValueIdentifier(setting.Key, setting.Label)] = setting;
                     }
@@ -672,7 +708,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 ConfigurationSetting watchedKv = null;
                 try
                 {
-                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken)).ConfigureAwait(false);
+                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
@@ -883,10 +919,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
-                await funcToExecute(client);
+                await funcToExecute(client).ConfigureAwait(false);
                 return null;
 
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         private bool IsFailOverable(AggregateException ex)

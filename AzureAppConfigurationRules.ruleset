@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- This rule is to enforce calling ConfigureAwait() when awaiting a Task, preventing thread issues. -->
+<RuleSet Name="Default" ToolsVersion="17.0">
+  <Rules AnalyzerId="Microsoft.CodeAnalysis.NetAnalyzers" RuleNamespace="Microsoft.CodeAnalysis.NetAnalyzers">
+    <Rule Id="CA2007" Action="Error" />
+  </Rules>
+</RuleSet>

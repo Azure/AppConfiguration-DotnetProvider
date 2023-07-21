@@ -1,6 +1,8 @@
 
 pr:
+- main
 - preview
+- release/*
 
 trigger:
 - none
@@ -82,7 +84,6 @@ jobs:
       inputs:
         script: '$(Build.SourcesDirectory)\build/CallPowerShell.cmd test.ps1|| exit /b 0'
         workingDirectory: '$(Build.SourcesDirectory)'
-
 
     - task: CopyFiles@2
       inputs:
