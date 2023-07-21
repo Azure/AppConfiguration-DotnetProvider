@@ -79,5 +79,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{originalEndpoint.TrimEnd('/')}'. {LoggingConstants.RefreshTryingToReadFromEndpoint} '{currentEndpoint.TrimEnd('/')}'";
         }
+
+        public static string BuildAllEndpointsFailedMessage()
+        {
+            return LoggingConstants.RefreshAllEndpointsFailed;
+        }
     }
 }
