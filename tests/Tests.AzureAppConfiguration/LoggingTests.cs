@@ -300,6 +300,19 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Contains(LogHelper.BuildFailoverToDifferentEndpointMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString(), TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
+
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException(HttpStatusCodes.TooManyRequests, "Too many requests"));
+            mockClient2.Setup(c => c.ToString()).Returns("client");
+
+            FirstKeyValue.Value = "TestValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Contains(LogHelper.BuildAllEndpointsFailedMessage(), warningInvocation);
         }
 
         [Fact]
