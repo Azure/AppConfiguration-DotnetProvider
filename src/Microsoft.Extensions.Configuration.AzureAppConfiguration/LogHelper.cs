@@ -82,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildLastEndpointFailedMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint.TrimEnd('/')}.'";
+            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint.TrimEnd('/')}'.";
         }
     }
 }
