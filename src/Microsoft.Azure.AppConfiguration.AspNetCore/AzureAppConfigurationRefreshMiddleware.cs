@@ -29,11 +29,9 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
 
         public async Task InvokeAsync(HttpContext context)
         {
-            long utcNow = DateTimeOffset.UtcNow.Ticks;
-
             long refreshReadyTime = Interlocked.Read(ref _refreshReadyTime);
 
-            if (refreshReadyTime <= utcNow && 
+            if (refreshReadyTime <= DateTimeOffset.UtcNow.Ticks && 
                 Interlocked.CompareExchange(ref _refreshReadyTime, refreshReadyTime + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
             {
                 //

@@ -27,11 +27,9 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
 
         public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
         {
-            long utcNow = DateTimeOffset.UtcNow.Ticks;
-
             long refreshReadyTime = Interlocked.Read(ref _refreshReadyTime);
 
-            if (refreshReadyTime <= utcNow &&
+            if (refreshReadyTime <= DateTimeOffset.UtcNow.Ticks &&
                 Interlocked.CompareExchange(ref _refreshReadyTime, refreshReadyTime + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
             {
                 //
