@@ -16,6 +16,7 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
     /// </summary>
     internal class AzureAppConfigurationRefreshMiddleware : IFunctionsWorkerMiddleware
     {
+        // The minimum refresh interval on the configuration provider is 1 second, so refreshing more often is unnecessary
         private static readonly long MinimumRefreshInterval = TimeSpan.FromSeconds(1).Ticks;
         private long _refreshReadyTime = DateTimeOffset.UtcNow.Ticks;
 
