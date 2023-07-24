@@ -3,6 +3,7 @@
 //
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +17,7 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
     {
         private readonly RequestDelegate _next;
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
+        private DateTimeOffset refreshReadyTime = DateTimeOffset.UtcNow;
 
         public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfigurationRefresherProvider refresherProvider)
         {
@@ -25,15 +27,20 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
 
         public async Task InvokeAsync(HttpContext context)
         {
-            //
-            // Configuration refresh is meant to execute as an isolated background task.
-            // To prevent access of request-based resources, such as HttpContext, we suppress the execution context within the refresh operation.
-            using (AsyncFlowControl flowControl = ExecutionContext.SuppressFlow())
+            if (refreshReadyTime <= DateTimeOffset.UtcNow)
             {
-                foreach (IConfigurationRefresher refresher in Refreshers)
+                //
+                // Configuration refresh is meant to execute as an isolated background task.
+                // To prevent access of request-based resources, such as HttpContext, we suppress the execution context within the refresh operation.
+                using (AsyncFlowControl flowControl = ExecutionContext.SuppressFlow())
                 {
-                    _ = Task.Run(() => refresher.TryRefreshAsync());
+                    foreach (IConfigurationRefresher refresher in Refreshers)
+                    {
+                        _ = Task.Run(() => refresher.TryRefreshAsync());
+                    }
                 }
+
+                refreshReadyTime = DateTimeOffset.UtcNow.Add(TimeSpan.FromSeconds(1));
             }
 
             // Call the next delegate/middleware in the pipeline
