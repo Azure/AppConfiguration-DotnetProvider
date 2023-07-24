@@ -19,6 +19,7 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
         private static readonly long MinimumRefreshInterval = TimeSpan.FromSeconds(1).Ticks;
         private readonly RequestDelegate _next;
         private long _refreshReadyTime = DateTimeOffset.UtcNow.Ticks;
+
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
         public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfigurationRefresherProvider refresherProvider)
@@ -29,10 +30,12 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
 
         public async Task InvokeAsync(HttpContext context)
         {
+            long utcNow = DateTimeOffset.UtcNow.Ticks;
+
             long refreshReadyTime = Interlocked.Read(ref _refreshReadyTime);
 
-            if (refreshReadyTime <= DateTimeOffset.UtcNow.Ticks && 
-                Interlocked.CompareExchange(ref _refreshReadyTime, refreshReadyTime + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
+            if (refreshReadyTime <= utcNow &&
+                Interlocked.CompareExchange(ref _refreshReadyTime, utcNow + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
             {
                 //
                 // Configuration refresh is meant to execute as an isolated background task.
