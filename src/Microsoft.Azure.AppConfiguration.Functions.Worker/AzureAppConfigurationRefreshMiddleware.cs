@@ -16,8 +16,9 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
     /// </summary>
     internal class AzureAppConfigurationRefreshMiddleware : IFunctionsWorkerMiddleware
     {
+        private static readonly long MinimumRefreshInterval = TimeSpan.FromSeconds(1).Ticks;
         private IEnumerable<IConfigurationRefresher> Refreshers { get; }
-        private DateTimeOffset refreshReadyTime = DateTimeOffset.UtcNow;
+        private long _refreshReadyTime = DateTimeOffset.UtcNow.Ticks;
 
         public AzureAppConfigurationRefreshMiddleware(IConfigurationRefresherProvider refresherProvider)
         {
@@ -26,7 +27,12 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
 
         public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
         {
-            if (refreshReadyTime <= DateTimeOffset.UtcNow)
+            long utcNow = DateTimeOffset.UtcNow.Ticks;
+
+            long refreshReadyTime = Interlocked.Read(ref _refreshReadyTime);
+
+            if (refreshReadyTime <= utcNow &&
+                Interlocked.CompareExchange(ref _refreshReadyTime, refreshReadyTime + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
             {
                 //
                 // Configuration refresh is meant to execute as an isolated background task.
@@ -38,8 +44,6 @@ namespace Microsoft.Azure.AppConfiguration.Functions.Worker
                         _ = Task.Run(() => refresher.TryRefreshAsync());
                     }
                 }
-
-                refreshReadyTime = DateTimeOffset.UtcNow.Add(TimeSpan.FromSeconds(1));
             }
 
             await next(context).ConfigureAwait(false);

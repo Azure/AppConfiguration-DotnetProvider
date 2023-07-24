@@ -15,9 +15,11 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
     /// </summary>
     internal class AzureAppConfigurationRefreshMiddleware
     {
+        // The minimum refresh interval on the configuration provider is 1 second, so refreshing more often is unnecessary
+        private static readonly long MinimumRefreshInterval = TimeSpan.FromSeconds(1).Ticks;
         private readonly RequestDelegate _next;
+        private long _refreshReadyTime = DateTimeOffset.UtcNow.Ticks;
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
-        private DateTimeOffset refreshReadyTime = DateTimeOffset.UtcNow;
 
         public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfigurationRefresherProvider refresherProvider)
         {
@@ -27,7 +29,12 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
 
         public async Task InvokeAsync(HttpContext context)
         {
-            if (refreshReadyTime <= DateTimeOffset.UtcNow)
+            long utcNow = DateTimeOffset.UtcNow.Ticks;
+
+            long refreshReadyTime = Interlocked.Read(ref _refreshReadyTime);
+
+            if (refreshReadyTime <= utcNow && 
+                Interlocked.CompareExchange(ref _refreshReadyTime, refreshReadyTime + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
             {
                 //
                 // Configuration refresh is meant to execute as an isolated background task.
@@ -39,8 +46,6 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
                         _ = Task.Run(() => refresher.TryRefreshAsync());
                     }
                 }
-
-                refreshReadyTime = DateTimeOffset.UtcNow.Add(TimeSpan.FromSeconds(1));
             }
 
             // Call the next delegate/middleware in the pipeline
