@@ -185,10 +185,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
+        /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
-        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        public AzureAppConfigurationOptions ConfigureFeatureFlags(Action<FeatureFlagOptions> configure = null)
         {
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
@@ -240,11 +240,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
                 }
-            }
-
-            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
-            {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
             return this;
