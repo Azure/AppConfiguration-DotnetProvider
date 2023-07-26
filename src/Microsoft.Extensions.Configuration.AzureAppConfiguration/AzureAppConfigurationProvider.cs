@@ -890,14 +890,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
-            IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
+            RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
-            if (innerExceptions != null && innerExceptions.Any(ex => ex is RequestFailedException))
-            {
-                return IsFailOverable((RequestFailedException)innerExceptions.Last(ex => ex is RequestFailedException));
-            }
-
-            return false;
+            return rfe != null ? IsFailOverable(rfe) : false;
         }
 
         private bool IsFailOverable(RequestFailedException rfe)
