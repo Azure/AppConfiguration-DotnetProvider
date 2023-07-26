@@ -407,40 +407,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (RequestFailedException e)
+            catch (RequestFailedException rfe)
             {
-                if (IsAuthenticationError(e))
+                if (IsAuthenticationError(rfe))
                 {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(rfe.Message));
                 }
                 else
                 {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(rfe.Message));
                 }
 
                 return false;
             }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false)
+            catch (KeyVaultReferenceException kvre)
             {
-                if (IsAuthenticationError(e))
-                {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
-                }
-                else
-                {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
-                }
-
-                return false;
-            }
-            catch (KeyVaultReferenceException e)
-            {
-                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(e.Message));
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(kvre.Message));
                 return false;
             }
             catch (OperationCanceledException)
             {
                 _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
+                return false;
+            }
+            catch (AggregateException ae)
+            {
+                if (ae.InnerExceptions?.Any(e => e is RequestFailedException) ?? false)
+                {
+                    if (IsAuthenticationError(ae))
+                    {
+                        _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(ae.Message));
+                    }
+                    else
+                    {
+                        _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(ae.Message));
+                    }
+                }
+                else if (ae.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
+                {
+                    _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
+                }
+                else
+                {
+                    throw;
+                }
+
                 return false;
             }
 
@@ -881,7 +892,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
 
-            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException || ex is OperationCanceledException))
+            if (innerExceptions != null && innerExceptions.Any(ex => ex is RequestFailedException))
             {
                 return IsFailOverable((RequestFailedException)innerExceptions.Last(ex => ex is RequestFailedException));
             }
