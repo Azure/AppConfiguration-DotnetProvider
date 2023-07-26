@@ -572,8 +572,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (Exception exception) when (ignoreFailures &&
                                              (exception is RequestFailedException ||
-                                             ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException || e is OperationCanceledException) ?? false) ||
-                                             exception is OperationCanceledException))
+                                             (exception is OperationCanceledException) ||
+                                             ((exception as AggregateException)?.InnerExceptions?.Any(e => e is RequestFailedException || e is OperationCanceledException) ?? false)))
             { }
 
             // Update the cache expiration time for all refresh registered settings and feature flags
@@ -840,18 +840,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     return result;
                 }
-                catch (AggregateException ae)
+                catch (RequestFailedException rfe)
                 {
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
                         throw;
                     }
                 }
-                catch (RequestFailedException rfe)
+                catch (AggregateException ae)
                 {
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
