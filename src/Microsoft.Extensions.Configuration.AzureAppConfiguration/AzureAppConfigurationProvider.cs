@@ -570,10 +570,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     cancellationToken)
                     .ConfigureAwait(false);
             }
-            catch (Exception exception) when (ignoreFailures &&
-                                             (exception is RequestFailedException ||
-                                             (exception is OperationCanceledException) ||
-                                             ((exception as AggregateException)?.InnerExceptions?.Any(e => e is RequestFailedException || e is OperationCanceledException) ?? false)))
+            catch (Exception exception) when (
+                ignoreFailures &&
+                (exception is RequestFailedException ||
+                exception is OperationCanceledException ||
+                ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                    e is RequestFailedException ||
+                    e is OperationCanceledException) ?? false)))
             { }
 
             // Update the cache expiration time for all refresh registered settings and feature flags
