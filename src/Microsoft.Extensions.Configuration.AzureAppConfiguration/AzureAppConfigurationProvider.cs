@@ -904,7 +904,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
 
             // The InnerException could be SocketException or WebException when endpoint is invalid and IOException if it is network issue.
-            if (rfe != null && rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+            if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
             {
                 return hre.InnerException is WebException ||
                        hre.InnerException is SocketException ||
