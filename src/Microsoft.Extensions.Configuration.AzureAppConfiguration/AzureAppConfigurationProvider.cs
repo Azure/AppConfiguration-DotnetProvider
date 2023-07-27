@@ -861,7 +861,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
-                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(_configClientManager.GetEndpointForClient(currentClient).ToString()));
+                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint.ToString()));
 
                         do
                         {
