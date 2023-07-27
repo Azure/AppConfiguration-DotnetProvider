@@ -205,6 +205,48 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ValidateAggregateExceptionWithInnerOperationCanceledExceptionLoggedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Throws(new AggregateException("Retry failed.", new List<Exception> { new OperationCanceledException(), new RequestFailedException("Request failed.") }));
+
+            string warningInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Warning)
+                    {
+                        warningInvocation += s;
+                    }
+                }, EventLevel.Verbose);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.NotEqual("newValue1", config["TestKey1"]);
+            Assert.Contains(LoggingConstants.RefreshFailedError, warningInvocation);
+        }
+
+        [Fact]
         public void ValidateOperationCanceledExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
