@@ -983,12 +983,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RefreshTests_AzureAppConfigurationRefresherProviderReturnsRefreshers()
         {
-            static void optionsInitializer(AzureAppConfigurationOptions options)
-            {
-                options.Connect(TestHelpers.CreateMockEndpointString());
-                options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
-            }
-
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
                 .AddAzureAppConfiguration(optionsInitializer, optional: true)
