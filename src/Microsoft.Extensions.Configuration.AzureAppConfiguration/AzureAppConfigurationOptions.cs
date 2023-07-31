@@ -122,8 +122,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The key filter to apply when querying Azure App Configuration for key-values.
         /// An asterisk (*) can be added to the end to return all key-values whose key begins with the key filter.
         /// e.g. key filter `abc*` returns all key-values whose key starts with `abc`.
+        /// A comma (,) can be used to select multiple key-values. Comma separated filters must exactly match a key to select it.
+        /// Using asterisk to select key-values that begin with a key filter while simultaneously using comma separated key filters is not supported.
+        /// E.g. the key filter `abc*,def` is not supported. The key filters `abc*` and `abc,def` are supported.
+        /// Selecting comma separated keys cannot be done when using an asterisk to select all key-values whose key begins with a certain expression.
         /// For all other cases the characters: asterisk (*), comma (,), and backslash (\) are reserved. Reserved characters must be escaped using a backslash (\).
-        /// e.g. key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
+        /// e.g. the key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
         /// Built-in key filter options: <see cref="KeyFilter"/>.
         /// </param>
         /// <param name="labelFilter">
