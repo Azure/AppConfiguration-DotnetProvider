@@ -40,7 +40,6 @@ namespace Tests.AzureAppConfiguration
 
             // Arrange
             int maxRetries = defaultMaxRetries + 1;
-            mockTransport = new MockTransport(new MockResponse(429), new MockResponse(429), new MockResponse(429), new MockResponse(429));
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
