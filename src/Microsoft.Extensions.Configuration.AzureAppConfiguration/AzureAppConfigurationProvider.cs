@@ -973,7 +973,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     catch (Exception ex) when (ex is RequestFailedException ||
                                                ex is AggregateException)
                     {
-                        if (!IsFailOverable(ex) || !clientEnumerator.MoveNext())
+                        if (!IsFailOverable(ex))
+                        {
+                            backoffAllClients = true;
+                            throw;
+                        }
+                        else if (!clientEnumerator.MoveNext())
                         {
                             if (_options.IsAutoFailover)
                             {
