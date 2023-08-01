@@ -62,7 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringUtils.Parse(_options.ConnectionStrings.First(), ConnectionStringUtils.EndpointSection));
                     }
                     catch (FormatException) { }
                 }
@@ -945,74 +945,89 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
+            IEnumerator<ConfigurationClient> clientEnumerator = null;
 
-            clientEnumerator.MoveNext();
-
-            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
-            ConfigurationClient currentClient;
-
-            while (true)
+            try
             {
-                bool success = false;
-                bool backoffAllClients = false;
+                clientEnumerator = clients.GetEnumerator();
+                clientEnumerator.MoveNext();
 
-                cancellationToken.ThrowIfCancellationRequested();
-                currentClient = clientEnumerator.Current;
+                Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+                ConfigurationClient currentClient;
 
-                try
+                while (true)
                 {
-                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
-                    success = true;
+                    bool success = false;
+                    bool backoffAllClients = false;
 
-                    return result;
-                }
-                catch (RequestFailedException rfe)
-                {
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    cancellationToken.ThrowIfCancellationRequested();
+                    currentClient = clientEnumerator.Current;
+
+                    try
                     {
-                        backoffAllClients = true;
+                        T result = await funcToExecute(currentClient).ConfigureAwait(false);
+                        success = true;
 
-                        throw;
+                        return result;
                     }
-                }
-                catch (AggregateException ae)
-                {
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    catch (Exception ex) when (ex is RequestFailedException ||
+                                               ex is AggregateException)
                     {
-                        backoffAllClients = true;
+                        if (!IsFailOverable(ex) || !clientEnumerator.MoveNext())
+                        {
+                            if (_options.IsAutoFailover)
+                            {
+                                IEnumerable<ConfigurationClient> dynamicConfigClients = await _configClientManager.GetAutoFailoverClients(cancellationToken).ConfigureAwait(false);
 
-                        throw;
+                                if (dynamicConfigClients != null && dynamicConfigClients.Any())
+                                {
+                                    clientEnumerator = dynamicConfigClients.GetEnumerator();
+                                    clientEnumerator.MoveNext();
+                                }
+                                else
+                                {
+                                    backoffAllClients = true;
+                                    throw;
+                                }
+                            }
+                            else
+                            {
+                                backoffAllClients = true;
+                                throw;
+                            }
+                        }
                     }
-                }
-                finally
-                {
-                    if (!success && backoffAllClients)
+                    finally
                     {
-                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
-
-                        do
+                        if (!success && backoffAllClients)
+                        {
+                            do
+                            {
+                                _configClientManager.UpdateClientStatus(currentClient, success);
+                                clientEnumerator.MoveNext();
+                                currentClient = clientEnumerator.Current;
+                            }
+                            while (currentClient != null);
+                        }
+                        else
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
-                            clientEnumerator.MoveNext();
-                            currentClient = clientEnumerator.Current;
                         }
-                        while (currentClient != null);
                     }
-                    else
+
+                    Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                    if (previousEndpoint != currentEndpoint)
                     {
-                        _configClientManager.UpdateClientStatus(currentClient, success);
+                        _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
                     }
+
+                    previousEndpoint = currentEndpoint;
                 }
-
-                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
-
-                if (previousEndpoint != currentEndpoint)
-                {
-                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
-                }
-
-                previousEndpoint = currentEndpoint;
+            }
+            finally
+            {
+                clientEnumerator.Dispose();
             }
         }
 
@@ -1029,7 +1044,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }, cancellationToken).ConfigureAwait(false);
         }
 
-        private bool IsFailOverable(AggregateException ex)
+        private bool IsFailOverable<TException>(TException ex) where TException : Exception
         {
             RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
