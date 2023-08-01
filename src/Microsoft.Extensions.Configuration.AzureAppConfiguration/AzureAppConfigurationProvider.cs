@@ -62,7 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringUtils.Parse(_options.ConnectionStrings.First(), ConnectionStringUtils.EndpointSection));
                     }
                     catch (FormatException) { }
                 }
@@ -844,62 +844,79 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(IEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
+            IEnumerator<ConfigurationClient> clientEnumerator = null;
 
-            clientEnumerator.MoveNext();
-
-            ConfigurationClient currentClient;
-
-            while (true)
+            try
             {
-                bool success = false;
-                bool backoffAllClients = false;
+                clientEnumerator = clients.GetEnumerator();
+                clientEnumerator.MoveNext();
 
-                cancellationToken.ThrowIfCancellationRequested();
-                currentClient = clientEnumerator.Current;
+                ConfigurationClient currentClient;
 
-                try
+                while (true)
                 {
-                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
-                    success = true;
+                    bool success = false;
+                    bool backoffAllClients = false;
 
-                    return result;
-                }
-                catch (AggregateException ae)
-                {
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    cancellationToken.ThrowIfCancellationRequested();
+                    currentClient = clientEnumerator.Current;
+
+                    try
                     {
-                        backoffAllClients = true;
+                        T result = await funcToExecute(currentClient).ConfigureAwait(false);
+                        success = true;
 
-                        throw;
+                        return result;
                     }
-                }
-                catch (RequestFailedException rfe)
-                {
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    catch (Exception ex) when (ex is RequestFailedException ||
+                                               ex is AggregateException)
                     {
-                        backoffAllClients = true;
+                        if (!IsFailOverable(ex) || !clientEnumerator.MoveNext())
+                        {
+                            if (_options.IsAutoFailover)
+                            {
+                                IEnumerable<ConfigurationClient> dynamicConfigClients = await _configClientManager.GetAutoFailoverClients(cancellationToken).ConfigureAwait(false);
 
-                        throw;
+                                if (dynamicConfigClients != null && dynamicConfigClients.Any())
+                                {
+                                    clientEnumerator = dynamicConfigClients.GetEnumerator();
+                                    clientEnumerator.MoveNext();
+                                }
+                                else
+                                {
+                                    backoffAllClients = true;
+                                    throw;
+                                }
+                            }
+                            else
+                            {
+                                backoffAllClients = true;
+                                throw;
+                            }
+                        }
                     }
-                }
-                finally
-                {
-                    if (!success && backoffAllClients)
+                    finally
                     {
-                        do
+                        if (!success && backoffAllClients)
+                        {
+                            do
+                            {
+                                _configClientManager.UpdateClientStatus(currentClient, success);
+                                clientEnumerator.MoveNext();
+                                currentClient = clientEnumerator.Current;
+                            }
+                            while (currentClient != null);
+                        }
+                        else
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
-                            clientEnumerator.MoveNext();
-                            currentClient = clientEnumerator.Current;
                         }
-                        while (currentClient != null);
-                    }
-                    else
-                    {
-                        _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
+            }
+            finally
+            {
+                clientEnumerator.Dispose();
             }
         }
 
@@ -913,32 +930,34 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }, cancellationToken).ConfigureAwait(false);
         }
 
-        private bool IsFailOverable(AggregateException ex)
+        private bool IsFailOverable<TException>(TException ex) where TException : Exception
         {
-            IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
-
-            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
+            if (ex is RequestFailedException rfe)
             {
-                return IsFailOverable((RequestFailedException)innerExceptions.Last());
+                if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+                {
+                    return hre.InnerException is WebException ||
+                           hre.InnerException is SocketException ||
+                           hre.InnerException is IOException;
+                }
+
+                return rfe.Status == HttpStatusCodes.TooManyRequests ||
+                       rfe.Status == (int)HttpStatusCode.RequestTimeout ||
+                       rfe.Status >= (int)HttpStatusCode.InternalServerError;
+            }
+            else if (ex is AggregateException ae)
+            {
+                IReadOnlyCollection<Exception> innerExceptions = ae.InnerExceptions;
+
+                if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
+                {
+                    return IsFailOverable((RequestFailedException)innerExceptions.Last());
+                }
+
+                return false;
             }
 
             return false;
-        }
-
-        private bool IsFailOverable(RequestFailedException rfe)
-        {
-
-            // The InnerException could be SocketException or WebException when endpoint is invalid and IOException if it is network issue.
-            if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
-            {
-                return hre.InnerException is WebException ||
-                       hre.InnerException is SocketException ||
-                       hre.InnerException is IOException;
-            }
-
-            return rfe.Status == HttpStatusCodes.TooManyRequests ||
-                   rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                   rfe.Status >= (int)HttpStatusCode.InternalServerError;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)

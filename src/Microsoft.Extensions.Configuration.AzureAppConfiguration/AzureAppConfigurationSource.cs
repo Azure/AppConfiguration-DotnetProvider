@@ -34,13 +34,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     clientManager = options.ClientManager;
                 }
-                else if (options.ConnectionStrings != null)
+                else if (options.ConnectionStrings != null || (options.Endpoints != null && options.Credential != null))
                 {
-                    clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
-                }
-                else if (options.Endpoints != null && options.Credential != null)
-                {
-                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options);
                 }
                 else
                 {

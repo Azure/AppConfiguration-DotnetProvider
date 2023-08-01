@@ -5,11 +5,15 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -22,7 +26,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </remarks>
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
-        private readonly IList<ConfigurationClientWrapper> _clients;
+        private IList<ConfigurationClientWrapper> _clients;
+
+        private IEnumerable<string> _connectionStrings;
+        private IEnumerable<Uri> _endpoints;
+        private TokenCredential _credential;
+        private ConfigurationClientOptions _clientOptions;
 
         public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions)
         {
@@ -33,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             _clients = connectionStrings.Select(connectionString => 
             {
-                var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
+                var endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
                 return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
             }).ToList();
         }
@@ -48,6 +57,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
         }
 
+        public ConfigurationClientManager(AzureAppConfigurationOptions options)
+        {
+            _connectionStrings = options.ConnectionStrings;
+            _endpoints = options.Endpoints;
+            _credential = options.Credential;
+            _clientOptions = options.ClientOptions;
+
+            if (_connectionStrings != null && _connectionStrings.Any())
+            {
+                _clients = _connectionStrings.Select(connectionString =>
+                {
+                    var endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
+                    return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, _clientOptions));
+                }).ToList();
+            }
+            else if (_endpoints != null && _endpoints.Any())
+            {
+                _clients = _endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions))).ToList();
+            }
+            else
+            {
+                throw new ArgumentNullException(nameof(_endpoints));
+            }
+        }
+
         /// <summary>
         /// Internal constructor; Only used for unit testing.
         /// </summary>
@@ -60,6 +94,64 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
         {
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
+        }
+
+        public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken)
+        {
+            var isUsingConnectionString = _connectionStrings != null && _connectionStrings.Any();
+
+            Uri endpoint = null;
+            var secret = string.Empty;
+            var id = string.Empty;
+
+            if (isUsingConnectionString)
+            {
+                var connectionString = _connectionStrings.First();
+
+                endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
+                secret = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection);
+                id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
+            }
+            else
+            {
+                endpoint = _endpoints.FirstOrDefault();
+            }
+
+            var lookup = new SrvLookupClient();
+
+            IReadOnlyCollection<SrvRecord> results = await lookup.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            
+            var autoFailoverClients = new List<ConfigurationClient>();
+
+            // shuffle the results to ensure hosts can be picked in random order.
+            IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target}").Shuffle();
+
+            foreach (string host in srvTargetHosts)
+            {
+                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var targetEndpoint = new Uri($"https://{host}");
+
+                    var configClient = isUsingConnectionString? 
+                        new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, id, secret), _clientOptions):
+                        new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
+
+                    _clients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
+
+                    autoFailoverClients.Add(configClient);
+                }
+            }
+
+            // clean up clients in case the corresponding replicas are removed.
+            foreach (var client in _clients)
+            {
+                if (IsEligiableToRemove(srvTargetHosts, client))
+                {
+                    _clients.Remove(client);
+                }
+            }
+
+            return autoFailoverClients;
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -117,6 +209,34 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
             
             return currentClient?.Endpoint;
+        }
+
+        private bool IsEligiableToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
+        {
+            if (_connectionStrings != null && _connectionStrings.Any(c => GetHostFromConnectionString(c).Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
+
+            if (srvEndpointHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
+
+            if (_endpoints != null && _endpoints.Any(e => e.Host.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private string GetHostFromConnectionString(string connectionString)
+        {
+            var endpointString = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection);
+            var endpoint = new Uri(endpointString);
+
+            return endpoint.Host;
         }
     }
 }
