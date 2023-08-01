@@ -5,9 +5,13 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal static class ConnectionStringParser
+    internal static class ConnectionStringUtils
     {
         public const string EndpointSection = "Endpoint";
+
+        public const string SecretSection = "Secret";
+
+        public const string IdSection = "Id";
 
         public static string Parse(string connectionString, string token)
         {
@@ -35,6 +39,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return connectionString.Substring(startIndex + parseToken.Length, endIndex - startIndex - parseToken.Length);
+        }
+
+        public static string Build(Uri endpoint, string id, string secret)
+        {
+            return $"{EndpointSection}={endpoint.AbsoluteUri.Trim('/')};{IdSection}={id};{SecretSection}={secret}";
         }
     }
 }

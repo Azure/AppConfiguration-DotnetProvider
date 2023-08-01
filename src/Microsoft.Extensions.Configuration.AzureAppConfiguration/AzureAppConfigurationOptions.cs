@@ -39,6 +39,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
+        /// Flag to indicate whether failover to replicas automatically.
+        /// </summary>
+        public bool IsAutoFailover { get; set; }
+
+        /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
         internal IEnumerable<string> ConnectionStrings { get; private set; }
@@ -287,6 +292,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Endpoints = null;
             Credential = null;
             ConnectionStrings = connectionStrings;
+            IsAutoFailover = true;
             return this;
         }
 
@@ -331,6 +337,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Endpoints = endpoints;
             ConnectionStrings = null;
+            IsAutoFailover = true;
             return this;
         }
 

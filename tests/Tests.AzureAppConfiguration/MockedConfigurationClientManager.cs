@@ -7,12 +7,15 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
     internal class MockedConfigurationClientManager : IConfigurationClientManager
     {
         IList<ConfigurationClientWrapper> _clients;
+        IList<ConfigurationClientWrapper> _autoFailoverClients;
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
@@ -20,6 +23,13 @@ namespace Tests.AzureAppConfiguration
 
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
         {
+            this._clients = clients.ToList();
+            this._autoFailoverClients = new List<ConfigurationClientWrapper>();
+        }
+
+        public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients, IEnumerable<ConfigurationClientWrapper> autoFailoverClients)
+        {
+            this._autoFailoverClients = autoFailoverClients.ToList();
             this._clients = clients.ToList();
         }
 
@@ -51,6 +61,11 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
             return currentClient?.Endpoint;
+        }
+
+        public Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(this._autoFailoverClients.Select(cw => cw.Client));
         }
     }
 }

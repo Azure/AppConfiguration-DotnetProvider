@@ -5,6 +5,8 @@
 using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -17,5 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         bool UpdateSyncToken(Uri endpoint, String syncToken);
 
         Uri GetEndpointForClient(ConfigurationClient client);
+
+        Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken);
     }
 }
