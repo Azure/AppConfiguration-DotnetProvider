@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Security;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -13,6 +14,20 @@ namespace Microsoft.Extensions.Configuration
     /// </summary>
     public static class AzureAppConfigurationExtensions
     {
+        private const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
+        private static readonly bool _isProviderDisabled = IsProviderDisabled();
+
+        private static bool IsProviderDisabled()
+        {
+            try
+            {
+                return bool.TryParse(Environment.GetEnvironmentVariable(DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
+            }
+            catch (SecurityException) { }
+
+            return false;
+        }
+
         /// <summary>
         /// Adds key-value data from an Azure App Configuration store to a configuration builder.
         /// </summary>
@@ -55,7 +70,12 @@ namespace Microsoft.Extensions.Configuration
             Action<AzureAppConfigurationOptions> action,
             bool optional = false)
         {
-            return configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
+            if (!_isProviderDisabled)
+            {
+                configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
+            }
+
+            return configurationBuilder;
         }
 
         /// <summary>
@@ -70,8 +90,16 @@ namespace Microsoft.Extensions.Configuration
                 throw new ArgumentNullException(nameof(services));
             }
 
-            services.AddLogging();
-            services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
+            if (!_isProviderDisabled)
+            {
+                services.AddLogging();
+                services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
+            }
+            else
+            {
+                services.AddSingleton<IConfigurationRefresherProvider, EmptyConfigurationRefresherProvider>();
+            }
+
             return services;
         }
     }
