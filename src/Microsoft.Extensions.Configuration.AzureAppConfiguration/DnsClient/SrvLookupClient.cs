@@ -1,4 +1,5 @@
 ﻿using Azure.Core;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,11 +12,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 {
     internal class SrvLookupClient
     {
-        private readonly DnsProcessor dnsProcessor;
+        private readonly DnsProcessor _dnsProcessor;
+        private readonly Logger _logger;
 
-        public SrvLookupClient()
+        public SrvLookupClient(Logger logger)
         {
-            dnsProcessor = new DnsProcessor();
+            _dnsProcessor = new DnsProcessor();
+            _logger = logger;
         }
 
         public async Task<IReadOnlyCollection<SrvRecord>> QueryAsync(string query, CancellationToken cancellationToken)
@@ -23,11 +26,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             try
             {
                 var nameServers = NameServer.ResolveNameServers();
-                return await ResolveQueryAsync(nameServers, dnsProcessor, query, cancellationToken).ConfigureAwait(false);
+
+                return await ResolveQueryAsync(nameServers, _dnsProcessor, query, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                //TODO: log exception
+                _logger.LogWarning(LogHelper.QuerySrvDnsFailedErrorMessage(ex.Message));
+
                 return Enumerable.Empty<SrvRecord>().ToArray();
             }
         }
@@ -51,6 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
                 throw new ArgumentNullException(nameof(query));
             }
 
+            int index = 0;
             foreach (var server in servers)
             {
                 try
@@ -64,12 +70,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
                 }
                 catch (Exception)
                 {
-                    // TODO: Log exception
+                    if(index == servers.Count - 1)
+                    {
+                        throw;
+                    }
+                    index++; 
+
                     continue;
                 }
             }
-
-            return Enumerable.Empty<SrvRecord>().ToArray(); 
+            
+            return Enumerable.Empty<SrvRecord>().ToArray();
         }
     }
 }
