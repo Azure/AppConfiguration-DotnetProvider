@@ -430,6 +430,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
                 return false;
             }
+            catch (InvalidOperationException e)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
+                return false;
+            }
             catch (AggregateException ae)
             {
                 if (ae.InnerExceptions?.Any(e => e is RequestFailedException) ?? false)
@@ -574,6 +579,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 ignoreFailures &&
                 (exception is RequestFailedException ||
                 exception is OperationCanceledException ||
+                exception is InvalidOperationException ||
                 ((exception as AggregateException)?.InnerExceptions?.Any(e =>
                     e is RequestFailedException ||
                     e is OperationCanceledException) ?? false)))
@@ -612,7 +618,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
 
             // Use default query if there are no key-values specified for use other than the feature flags
-            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
+            bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => selector.KeyFilter == null ||
+                !selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker));
 
             if (useDefaultQuery)
             {
@@ -632,17 +639,46 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-                foreach (var loadOption in _options.KeyValueSelectors)
+            foreach (KeyValueSelector loadOption in _options.KeyValueSelectors)
+            {
+                IAsyncEnumerable<ConfigurationSetting> settingsEnumerable;
+
+                if (string.IsNullOrEmpty(loadOption.SnapshotName))
                 {
-                    var selector = new SettingSelector
+                    settingsEnumerable = client.GetConfigurationSettingsAsync(
+                        new SettingSelector
+                        {
+                            KeyFilter = loadOption.KeyFilter,
+                            LabelFilter = loadOption.LabelFilter
+                        },
+                        cancellationToken);
+                }
+                else
+                {
+                    ConfigurationSettingsSnapshot snapshot;
+
+                    try
                     {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter
-                    };
+                        snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
+                    }
+                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
+                    {
+                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
+                    }
+
+                    if (snapshot.CompositionType != CompositionType.Key)
+                    {
+                        throw new InvalidOperationException($"{nameof(snapshot.CompositionType)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.CompositionType}'.");
+                    }
+
+                    settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
+                        loadOption.SnapshotName,
+                        cancellationToken);
+                }
 
                 await CallWithRequestTracing(async () =>
                 {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
                     {
                         serverData[setting.Key] = setting;
                     }
