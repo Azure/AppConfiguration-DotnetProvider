@@ -7,7 +7,6 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -96,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
-        public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken)
+        public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)
         {
             var isUsingConnectionString = _connectionStrings != null && _connectionStrings.Any();
 
@@ -117,7 +116,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 endpoint = _endpoints.FirstOrDefault();
             }
 
-            var lookup = new SrvLookupClient();
+            var lookup = new SrvLookupClient(logger);
 
             IReadOnlyCollection<SrvRecord> results = await lookup.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
             
