@@ -1051,7 +1051,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }, cancellationToken).ConfigureAwait(false);
         }
 
-        private bool IsFailOverable<TException>(TException ex) where TException : Exception
+        private bool IsFailOverable(Exception ex)
         {
             RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
