@@ -19,8 +19,8 @@ namespace Tests.AzureAppConfiguration
 {
     class TestHelpers
     {
-        public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://xxxxx.azconfig.io");
-        public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://xxxxx---wus.azconfig.io");
+        public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://azure.azconfig.io");
+        public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://azure---wus.azconfig.io");
 
         static public ConfigurationClient CreateMockConfigurationClient(Uri endpoint, AzureAppConfigurationOptions options = null)
         {
@@ -63,7 +63,7 @@ namespace Tests.AzureAppConfiguration
             return provider;
         }
 
-        static public string CreateMockEndpointString(string endpoint = "https://xxxxx.azconfig.io")
+        static public string CreateMockEndpointString(string endpoint = "https://azure.azconfig.io")
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
