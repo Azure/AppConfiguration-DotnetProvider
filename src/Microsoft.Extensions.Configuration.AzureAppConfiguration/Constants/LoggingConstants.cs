@@ -14,12 +14,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshCanceledError = "A refresh operation was canceled.";
         public const string RefreshFailedDueToKeyVaultError = "A refresh operation failed while resolving a Key Vault reference.";
         public const string PushNotificationUnregisteredEndpoint = "Ignoring the push notification received for the unregistered endpoint";
+        public const string QuerySrvDnsFailedError = "Query Srv type Dns failed.";
 
         // Successful update, debug log level
         public const string RefreshKeyValueRead = "Key-value read from App Configuration.";
         public const string RefreshKeyVaultSecretRead = "Secret read from Key Vault for key-value.";
         public const string RefreshFeatureFlagRead = "Feature flag read from App Configuration.";
         public const string RefreshFeatureFlagsUnchanged = "Feature flags read from App Configuration. Change:'None'";
+        public const string AutoFailoverClientCount = "Get automatic failover client Count";
 
         // Successful update, information log level
         public const string RefreshConfigurationUpdatedSuccess = "Configuration reloaded.";
