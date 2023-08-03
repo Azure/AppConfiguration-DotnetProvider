@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         public static string BuildKeyValueReadMessage(KeyValueChangeType changeType, string key, string label, string endpoint)
         {
-            return $"{LoggingConstants.RefreshKeyValueRead} Change:'{changeType}' Key:'{key}' Label:'{label}' Endpoint:'{endpoint.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshKeyValueRead} Change:'{changeType}' Key:'{key}' Label:'{label}' Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
         public static string BuildKeyValueSettingUpdatedMessage(string key)
@@ -22,12 +22,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildFeatureFlagsUnchangedMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshFeatureFlagsUnchanged} Endpoint:'{endpoint.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshFeatureFlagsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
         public static string BuildFeatureFlagReadMessage(string key, string label, string endpoint)
         {
-            return $"{LoggingConstants.RefreshFeatureFlagRead} Key:'{key}' Label:'{label}' Endpoint:'{endpoint.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshFeatureFlagRead} Key:'{key}' Label:'{label}' Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
         public static string BuildFeatureFlagUpdatedMessage(string key)
@@ -77,12 +77,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildFailoverMessage(string originalEndpoint, string currentEndpoint)
         {
-            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{originalEndpoint.TrimEnd('/')}'. {LoggingConstants.FailingOverToEndpoint} '{currentEndpoint.TrimEnd('/')}'.";
+            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{originalEndpoint?.TrimEnd('/')}'. {LoggingConstants.FailingOverToEndpoint} '{currentEndpoint?.TrimEnd('/')}'.";
         }
 
         public static string BuildLastEndpointFailedMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint.TrimEnd('/')}'.";
+            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint?.TrimEnd('/')}'.";
         }
     }
 }
