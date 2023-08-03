@@ -839,15 +839,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    Uri currentEndpoint = _configClientManager.GetEndpointForClient(currentClient);
-
-                    if (previousEndpoint != currentEndpoint)
-                    {
-                        _logger.LogWarning(LogHelper.BuildFailoverToDifferentEndpointMessage(previousEndpoint.ToString(), currentEndpoint.ToString()));
-                    }
-
-                    previousEndpoint = currentEndpoint;
-
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
@@ -890,6 +881,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
+
+                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                if (previousEndpoint != currentEndpoint)
+                {
+                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint.ToString(), currentEndpoint.ToString()));
+                }
+
+                previousEndpoint = currentEndpoint;
             }
         }
 
