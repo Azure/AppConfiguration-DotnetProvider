@@ -32,30 +32,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private TokenCredential _credential;
         private ConfigurationClientOptions _clientOptions;
 
-        public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions)
-        {
-            if (connectionStrings == null || !connectionStrings.Any())
-            {
-                throw new ArgumentNullException(nameof(connectionStrings));
-            }
-
-            _clients = connectionStrings.Select(connectionString => 
-            {
-                var endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
-                return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
-            }).ToList();
-        }
-
-        public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
-        {
-            if (endpoints == null || !endpoints.Any())
-            {
-                throw new ArgumentNullException(nameof(endpoints));
-            }
-
-            _clients = endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
-        }
-
         public ConfigurationClientManager(AzureAppConfigurationOptions options)
         {
             _connectionStrings = options.ConnectionStrings;
@@ -144,7 +120,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // clean up clients in case the corresponding replicas are removed.
             foreach (var client in _clients)
             {
-                if (IsEligiableToRemove(srvTargetHosts, client))
+                if (IsEligibleToRemove(srvTargetHosts, client))
                 {
                     _clients.Remove(client);
                 }
@@ -210,7 +186,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        private bool IsEligiableToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
+        private bool IsEligibleToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
         {
             if (_connectionStrings != null && _connectionStrings.Any(c => GetHostFromConnectionString(c).Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
             {
