@@ -866,7 +866,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
-                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint.ToString()));
+                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
 
                         do
                         {
@@ -886,7 +886,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (previousEndpoint != currentEndpoint)
                 {
-                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint.ToString(), currentEndpoint.ToString()));
+                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
                 }
 
                 previousEndpoint = currentEndpoint;
