@@ -276,4 +276,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             ResponseXid = responseXid;
         }
     }
+
+    internal class DnsResponseTruncatedException : DnsResponseException
+    {
+        public DnsResponseTruncatedException()
+            : base("Response is truncated")
+        {
+
+        }
+    }
 }

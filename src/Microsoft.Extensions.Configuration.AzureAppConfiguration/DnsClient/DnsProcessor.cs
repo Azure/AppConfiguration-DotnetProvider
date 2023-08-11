@@ -11,136 +11,21 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 {
-    internal class DnsProcessor
+    internal abstract class DnsProcessor
     {
-        private const ushort SrvType = 33;  // SRV DNS type code
-        private const ushort InClass = 1;  // IN DNS class code
-        private const ushort OptRrType = 41;  // OPT DNS type code
-        private const int RetryAttempt = 3;
+        protected const ushort SrvType = 33;  // SRV DNS type code
+        protected const ushort InClass = 1;  // IN DNS class code
+        protected const ushort OptRrType = 41;  // OPT DNS type code
+        protected const int RetryAttempt = 3;
 
-        private const string OriginSrvPrefix = "_origin._tcp";
-        private string AlternativeSrvPrefix(ushort index) => $"_alt{index}._tcp";
+        protected const string OriginSrvPrefix = "_origin._tcp";
+        protected string AlternativeSrvPrefix(ushort index) => $"_alt{index}._tcp";
 
-        public async Task<IReadOnlyCollection<SrvRecord>> QueryAsync(IPEndPoint endpoint, string query, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var udpClient = new UdpClient(endpoint.AddressFamily);
-
-            var resultRecords = new List<SrvRecord>();
-
-            try
-            {
-                using var callback = cancellationToken.Register(() =>
-                {
-#if !NET45
-                    udpClient.Dispose();
-#else
-                    udpClient.Close();
-#endif
-                });
-
-                var originRecords = await QueryAsyncInternal(endpoint, $"{OriginSrvPrefix}.{query}", udpClient, cancellationToken).ConfigureAwait(false);
-                string originHost = query;
-                if (originRecords != null && originRecords.Count > 0)
-                {
-                    originHost = originRecords.First().Target;
-                }
-                else
-                {
-                    // If can't get any records from _origin query, we should return;
-                    return resultRecords;
-                }
-
-                IReadOnlyCollection<SrvRecord> altRecords = null;
-                ushort index = 0;
-
-                while (true)
-                {
-                    altRecords = await QueryAsyncInternal(endpoint, $"{AlternativeSrvPrefix(index)}.{originHost}", udpClient, cancellationToken).ConfigureAwait(false);
-
-                    if (altRecords == null || altRecords.Count == 0)
-                    {
-                        break;
-                    }
-
-                    resultRecords.AddRange(altRecords);
-
-                    index++;
-                }
-
-                return resultRecords;
-            }
-            catch (SocketException se) when (se.SocketErrorCode == SocketError.OperationAborted)
-            {
-                throw new TimeoutException();
-            }
-            catch (ObjectDisposedException)
-            {
-                // we disposed it in case of a timeout request, just indicate it actually timed out.
-                throw new TimeoutException();
-            }
-            catch (DnsResponseException)
-            {
-                return resultRecords;
-            }
-            finally
-            {
-                try
-                {
-#if !NET45
-                    udpClient.Dispose();
-#else
-                    udpClient.Close();
-#endif
-                }
-                catch { }
-            }
-        }
-
-        private async Task<IReadOnlyCollection<SrvRecord>> QueryAsyncInternal(IPEndPoint endpoint, string query, UdpClient udpClient, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            ushort requestId = GetRandomRequestId();
-            var srvRequset = BuildDnsQueryMessage(query, requestId);
-
-            int retry = 0;
-            while (true)
-            {
-                try
-                {
-                    await udpClient.SendAsync(srvRequset, srvRequset.Length, endpoint).ConfigureAwait(false);
-
-#if NET6_0_OR_GREATER
-                    UdpReceiveResult received = await udpClient.ReceiveAsync(cancellationToken).ConfigureAwait(false);
-#else
-                    UdpReceiveResult received = await udpClient.ReceiveAsync().ConfigureAwait(false);
-
-                    var response = ProcessDnsResponse(received.Buffer, requestId);
-#endif
-
-                    return response;
-                }
-                catch (DnsResponseException)
-                {
-                    // No need to retry with DnsResponseException
-                    throw;
-                }
-                catch
-                {
-                    if (retry == RetryAttempt)
-                    {
-                        throw;
-                    }
-                    retry++;
-                }
-            }
-        }
+        public abstract Task<IReadOnlyCollection<SrvRecord>> QueryAsync(IPEndPoint endpoint, string query, CancellationToken cancellationToken);
 
         //
         // See RFC1035, RFC2782 and RFC6891
-        private byte[] BuildDnsQueryMessage(string query, ushort requestId)
+        protected byte[] BuildDnsQueryMessage(string query, ushort requestId)
         {
             using MemoryStream memoryStream = new MemoryStream();
 
@@ -220,7 +105,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 
         //
         // See RFC1035, RFC2782 and RFC6891
-        private IReadOnlyCollection<SrvRecord> ProcessDnsResponse(byte[] responseBuffer, ushort requestId)
+        protected IReadOnlyCollection<SrvRecord> ProcessDnsResponse(byte[] responseBuffer, ushort requestId)
         {
             var srvRecords = new List<SrvRecord>();
 
@@ -264,6 +149,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             if (rcode != 0)
             {
                 throw new DnsResponseException((DnsResponseCode)rcode);
+            }
+
+            var isTruncated = (flags & 0x0200) != 0; // 7th bit of the flags field
+            if (isTruncated)
+            {
+                throw new DnsResponseTruncatedException();
             }
 
             // Check if the response contains answers
@@ -351,7 +242,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             return srvRecords;
         }
 
-        private string ExtractHostname(byte[] responseBuffer, int currentPosition)
+        protected string ExtractHostname(byte[] responseBuffer, int currentPosition)
         {
             var labels = new List<string>();
 
@@ -372,17 +263,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             return string.Join(".", labels);
         }
 
-        private ushort ConverToHostOrder(ushort value)
+        protected ushort ConverToHostOrder(ushort value)
         {
             return (ushort)(value << 8 | value >> 8);
         }
 
-        private ushort ConvertToNetworkOrder(ushort value)
+        protected ushort ConvertToNetworkOrder(ushort value)
         {
             return (ushort)(IPAddress.HostToNetworkOrder(value) >> 16);
         }
 
-        private ushort GetRandomRequestId()
+        protected ushort GetRandomRequestId()
         {
             return (ushort)new Random().Next(0, ushort.MaxValue);
         }
