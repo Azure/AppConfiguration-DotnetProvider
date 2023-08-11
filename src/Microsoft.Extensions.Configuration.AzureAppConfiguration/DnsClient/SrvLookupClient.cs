@@ -12,22 +12,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 {
     internal class SrvLookupClient
     {
-        private readonly DnsProcessor _dnsProcessor;
+        private readonly DnsProcessor _tcpProcessor;
+        private readonly DnsProcessor _udpProcessor;
         private readonly Logger _logger;
 
         public SrvLookupClient(Logger logger)
         {
-            _dnsProcessor = new DnsProcessor();
+            _udpProcessor = new DnsUdpProcessor();
+            _tcpProcessor = new DnsTcpProcessor();
             _logger = logger;
         }
 
         public async Task<IReadOnlyCollection<SrvRecord>> QueryAsync(string query, CancellationToken cancellationToken)
         {
+            IReadOnlyCollection<NameServer> nameServers = null;
             try
             {
-                var nameServers = NameServer.ResolveNameServers();
+                nameServers = NameServer.ResolveNameServers();
 
-                return await ResolveQueryAsync(nameServers, _dnsProcessor, query, cancellationToken).ConfigureAwait(false);
+                return await ResolveQueryAsync(nameServers, _udpProcessor, query, cancellationToken).ConfigureAwait(false);
+            }
+            catch (DnsResponseTruncatedException)
+            {
+                // Failover to TCP if UDP response is truncated
+                try
+                {
+                    return await ResolveQueryAsync(nameServers, _tcpProcessor, query, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(LogHelper.QuerySrvDnsFailedErrorMessage(ex.Message));
+
+                    return Enumerable.Empty<SrvRecord>().ToArray();
+                }
             }
             catch (Exception ex)
             {
@@ -56,28 +73,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
                 throw new ArgumentNullException(nameof(query));
             }
 
-            int index = 0;
             foreach (var server in servers)
             {
-                try
-                {
-                    var srvRecords = await processor.QueryAsync(
-                                       server.IPEndPoint,
-                                       query,
-                                       cancellationToken).ConfigureAwait(false);
-
-                    return srvRecords;
-                }
-                catch (Exception)
-                {
-                    if(index == servers.Count - 1)
-                    {
-                        throw;
-                    }
-                    index++; 
-
-                    continue;
-                }
+                return await processor.QueryAsync(
+                     server.IPEndPoint,
+                     query,
+                     cancellationToken).ConfigureAwait(false);
             }
             
             return Enumerable.Empty<SrvRecord>().ToArray();
