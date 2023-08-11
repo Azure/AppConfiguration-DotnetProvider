@@ -862,6 +862,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             clientEnumerator.MoveNext();
 
+            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
             while (true)
@@ -901,6 +902,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
+                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
+
                         do
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
@@ -914,6 +917,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
+
+                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                if (previousEndpoint != currentEndpoint)
+                {
+                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
+                }
+
+                previousEndpoint = currentEndpoint;
             }
         }
 

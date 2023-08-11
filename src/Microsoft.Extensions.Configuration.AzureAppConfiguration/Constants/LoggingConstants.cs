@@ -29,5 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         // Other
         public const string RefreshSkippedNoClientAvailable = "Refresh skipped because no endpoint is accessible.";
+        public const string RefreshFailedToGetSettingsFromEndpoint = "Failed to get configuration settings from endpoint";
+        public const string FailingOverToEndpoint = "Failing over to endpoint";
     }
 }
