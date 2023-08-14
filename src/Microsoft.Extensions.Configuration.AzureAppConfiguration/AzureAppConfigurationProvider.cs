@@ -218,7 +218,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> data = null;
                     bool refreshAll = false;
-                    StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
                     Dictionary<KeyValueIdentifier, string> cachedInfoLogs = new Dictionary<KeyValueIdentifier, string>();
 
@@ -231,7 +230,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
                             logDebugBuilder.Clear();
-                            logInfoBuilder.Clear();
 
                             foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
                             {
@@ -278,13 +276,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Check if a change has been detected in the key-value registered for refresh
                                 if (change.ChangeType != KeyValueChangeType.None)
                                 {
+                                    KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
                                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
-                                    logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
+                                    cachedInfoLogs[changeIdentifier] = LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key);
                                     keyValueChanges.Add(change);
 
                                     if (changeWatcher.RefreshAll)
                                     {
                                         refreshAll = true;
+                                        cachedInfoLogs[changeIdentifier] += $"{Environment.NewLine}{LogHelper.BuildConfigurationUpdatedMessage()}";
                                         break;
                                     }
                                 } else
@@ -299,7 +299,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                                logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
                             }
 
@@ -380,29 +379,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _watchedSettings = watchedSettings;
 
-                        Dictionary<string, ConfigurationSetting> precedenceData = OrderDataByPrecedence(out Dictionary<string, string> logIdentifiers);
-
-                        foreach (KeyValuePair<string, string> kvp in logIdentifiers)
-                        {
-                            if (cachedInfoLogs.TryGetValue(new KeyValueIdentifier(kvp.Key, kvp.Value), out string log))
-                            {
-                                logInfoBuilder.AppendLine(log);
-                            }
-                        }
-
                         if (logDebugBuilder.Length > 0)
                         {
                             _logger.LogDebug(logDebugBuilder.ToString().Trim());
                         }
-
-                        if (logInfoBuilder.Length > 0)
-                        {
-                            _logger.LogInformation(logInfoBuilder.ToString().Trim());
-                        }
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await PrepareData(precedenceData, cancellationToken).ConfigureAwait(false));
+                        SetData(await PrepareData(cachedInfoLogs, cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -516,14 +500,50 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, string>> PrepareData(Dictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken = default)
+        private async Task<Dictionary<string, string>> PrepareData(Dictionary<KeyValueIdentifier, string> cachedInfoLogs, CancellationToken cancellationToken = default)
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, ConfigurationSetting> precedenceData = new Dictionary<string, ConfigurationSetting>();
+            Dictionary<string, string> logIdentifiers = new Dictionary<string, string>();
 
             // Reset old filter telemetry in order to track the filter types present in the current response from server.
             _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
 
-            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in _mappedData)
+            {
+                precedenceData[kvp.Key.Key] = kvp.Value;
+            }
+
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
+            {
+                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, _watchedSettings.Values);
+
+                foreach (ConfigurationSetting setting in currentKeyValues)
+                {
+                    precedenceData[setting.Key] = _mappedData[new KeyValueIdentifier(setting.Key, setting.Label)];
+                    logIdentifiers[setting.Key] = setting.Label;
+                }
+            }
+
+            if (cachedInfoLogs != null)
+            {
+                StringBuilder logInfoBuilder = new StringBuilder();
+
+                foreach (KeyValuePair<string, string> kvp in logIdentifiers)
+                {
+                    if (cachedInfoLogs.TryGetValue(new KeyValueIdentifier(kvp.Key, kvp.Value), out string log))
+                    {
+                        logInfoBuilder.AppendLine(log);
+                    }
+                }
+
+                if (logInfoBuilder.Length > 0)
+                {
+                    _logger.LogInformation(logInfoBuilder.ToString().Trim());
+                }
+            }
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in precedenceData)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
@@ -601,8 +621,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                     _watchedSettings = watchedSettings;
                     _mappedData = mappedData;
-                    Dictionary<string, ConfigurationSetting> precedenceData = OrderDataByPrecedence(out Dictionary<string, string> logIdentifiers);
-                    SetData(await PrepareData(precedenceData, cancellationToken).ConfigureAwait(false));
+                    SetData(await PrepareData(null, cancellationToken).ConfigureAwait(false));
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
@@ -997,30 +1016,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
-        }
-
-        private Dictionary<string, ConfigurationSetting> OrderDataByPrecedence(out Dictionary<string, string> logIdentifiers)
-        {
-            Dictionary<string, ConfigurationSetting> precedenceData = new Dictionary<string, ConfigurationSetting>();
-            logIdentifiers = new Dictionary<string, string>();
-
-            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in _mappedData)
-            {
-                precedenceData[kvp.Key.Key] = kvp.Value;
-            }
-
-            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
-            {
-                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, _watchedSettings.Values);
-
-                foreach (ConfigurationSetting setting in currentKeyValues)
-                {
-                    precedenceData[setting.Key] = _mappedData[new KeyValueIdentifier(setting.Key, setting.Label)];
-                    logIdentifiers[setting.Key] = setting.Label;
-                }
-            }
-
-            return precedenceData;
         }
     }
 }

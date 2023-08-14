@@ -243,7 +243,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
-            Assert.Contains(LoggingConstants.RefreshFailedDueToKeyVaultError + "\nNo key vault credential or secret resolver callback configured, and no matching secret client could be found.", warningInvocation);
+            Assert.Contains(LoggingConstants.RefreshFailedDueToKeyVaultError + Environment.NewLine + "No key vault credential or secret resolver callback configured, and no matching secret client could be found.", warningInvocation);
         }
 
         [Fact]
