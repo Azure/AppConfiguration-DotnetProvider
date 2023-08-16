@@ -68,7 +68,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<ArgumentException>(configBuilder.Build);
 
             // Arrange
-            MockTransport mockTransport = new MockTransport(new MockResponse(429), new MockResponse(429), new MockResponse(429));
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
             int defaultMaxRetries = 0;
 

@@ -404,35 +404,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (RequestFailedException e)
+            catch (RequestFailedException rfe)
             {
-                if (IsAuthenticationError(e))
+                if (IsAuthenticationError(rfe))
                 {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(rfe.Message));
                 }
                 else
                 {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(rfe.Message));
                 }
 
                 return false;
             }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            catch (KeyVaultReferenceException kvre)
             {
-                if (IsAuthenticationError(e))
-                {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
-                }
-                else
-                {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
-                }
-
-                return false;
-            }
-            catch (KeyVaultReferenceException e)
-            {
-                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(e.Message));
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(kvre.Message));
                 return false;
             }
             catch (OperationCanceledException)
@@ -443,6 +430,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             catch (InvalidOperationException e)
             {
                 _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
+                return false;
+            }
+            catch (AggregateException ae)
+            {
+                if (ae.InnerExceptions?.Any(e => e is RequestFailedException) ?? false)
+                {
+                    if (IsAuthenticationError(ae))
+                    {
+                        _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(ae.Message));
+                    }
+                    else
+                    {
+                        _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(ae.Message));
+                    }
+                }
+                else if (ae.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
+                {
+                    _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
+                }
+                else
+                {
+                    throw;
+                }
+
                 return false;
             }
 
@@ -603,11 +614,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     cancellationToken)
                     .ConfigureAwait(false);
             }
-            catch (Exception exception) when (ignoreFailures &&
-                                             (exception is RequestFailedException ||
-                                             ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                                             exception is OperationCanceledException ||
-                                             exception is InvalidOperationException))
+            catch (Exception exception) when (
+                ignoreFailures &&
+                (exception is RequestFailedException ||
+                exception is OperationCanceledException ||
+                exception is InvalidOperationException ||
+                ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                    e is RequestFailedException ||
+                    e is OperationCanceledException) ?? false)))
             { }
 
             // Update the cache expiration time for all refresh registered settings and feature flags
@@ -903,6 +917,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             clientEnumerator.MoveNext();
 
+            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
             while (true)
@@ -920,18 +935,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     return result;
                 }
-                catch (AggregateException ae)
+                catch (RequestFailedException rfe)
                 {
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
                         throw;
                     }
                 }
-                catch (RequestFailedException rfe)
+                catch (AggregateException ae)
                 {
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
@@ -942,6 +957,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
+                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
+
                         do
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
@@ -955,6 +972,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
+
+                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                if (previousEndpoint != currentEndpoint)
+                {
+                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
+                }
+
+                previousEndpoint = currentEndpoint;
             }
         }
 
@@ -970,14 +996,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
-            IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
+            RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
-            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
-            {
-                return IsFailOverable((RequestFailedException)innerExceptions.Last());
-            }
-
-            return false;
+            return rfe != null ? IsFailOverable(rfe) : false;
         }
 
         private bool IsFailOverable(RequestFailedException rfe)
