@@ -18,7 +18,6 @@ namespace Tests.AzureAppConfiguration
         public void ClientOptionsTests_OverridesDefaultClientOptions()
         {
             // Arrange
-            MockTransport mockTransport = new MockTransport(new MockResponse(429), new MockResponse(429), new MockResponse(429));
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
             int defaultMaxRetries = 0;
 
@@ -40,7 +39,6 @@ namespace Tests.AzureAppConfiguration
 
             // Arrange
             int maxRetries = defaultMaxRetries + 1;
-            mockTransport = new MockTransport(new MockResponse(429), new MockResponse(429), new MockResponse(429), new MockResponse(429));
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
