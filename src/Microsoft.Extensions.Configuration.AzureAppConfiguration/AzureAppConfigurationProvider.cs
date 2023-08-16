@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await ReorderAndPrepareData(cachedInfoLogs, cancellationToken).ConfigureAwait(false));
+                        SetData(await PrepareData(ReorderData(cachedInfoLogs), cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -534,7 +534,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return applicationData;
         }
 
-        private async Task<Dictionary<string, string>> ReorderAndPrepareData(Dictionary<KeyValueIdentifier, string> cachedInfoLogs, CancellationToken cancellationToken = default)
+        private Dictionary<string, ConfigurationSetting> ReorderData(Dictionary<KeyValueIdentifier, string> cachedInfoLogs = default)
         {
             Dictionary<string, ConfigurationSetting> orderedData = new Dictionary<string, ConfigurationSetting>();
             Dictionary<string, string> logIdentifiers = new Dictionary<string, string>();
@@ -573,7 +573,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            return await PrepareData(orderedData, cancellationToken).ConfigureAwait(false);
+            return orderedData;
         }
 
         private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
@@ -628,24 +628,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                     _watchedSettings = watchedSettings;
-                    Dictionary<string, ConfigurationSetting> orderedData = new Dictionary<string, ConfigurationSetting>();
-
-                    foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in _mappedData)
-                    {
-                        orderedData[kvp.Key.Key] = kvp.Value;
-                    }
-
-                    foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
-                    {
-                        IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, _watchedSettings.Values);
-
-                        foreach (ConfigurationSetting setting in currentKeyValues)
-                        {
-                            orderedData[setting.Key] = _mappedData[new KeyValueIdentifier(setting.Key, setting.Label)];
-                        }
-                    }
-
-                    SetData(await PrepareData(orderedData, cancellationToken).ConfigureAwait(false));
+                    SetData(await PrepareData(ReorderData(), cancellationToken).ConfigureAwait(false));
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
