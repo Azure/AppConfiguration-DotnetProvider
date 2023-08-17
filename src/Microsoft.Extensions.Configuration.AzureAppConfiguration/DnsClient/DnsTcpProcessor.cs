@@ -98,60 +98,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 
             srvRequest.CopyTo(lengthPrefixedBytes, 2);
 
-            int retry = 0;
-            while (true)
+            await stream.WriteAsync(lengthPrefixedBytes, 0, lengthPrefixedBytes.Length, cancellationToken).ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!stream.CanRead)
             {
-                try 
-                {
-                    await stream.WriteAsync(lengthPrefixedBytes, 0, lengthPrefixedBytes.Length, cancellationToken).ConfigureAwait(false);
-                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-
-                    if (!stream.CanRead)
-                    {
-                        // might retry
-                        throw new TimeoutException();
-                    }
-
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var lengthBuffer = new byte[2];
-                    int bytesReceived = 0;
-                    _ = await stream.ReadAsync(lengthBuffer, bytesReceived, 2, cancellationToken).ConfigureAwait(false);
-
-                    var length = lengthBuffer[0] << 8 | lengthBuffer[1];
-
-                    if (length <= 0)
-                    {
-                        // server signals close/disconnecting, might retry
-                        throw new TimeoutException();
-                    }
-
-                    var contentBuffer = new byte[length];
-
-                    var recievedLength = await stream.ReadAsync(contentBuffer, bytesReceived, length, cancellationToken).ConfigureAwait(false);
-
-                    if (recievedLength <= 0)
-                    {
-                        // disconnected
-                        throw new TimeoutException();
-                    }
-
-                    return ProcessDnsResponse(contentBuffer, requestId);
-                }
-                catch (DnsResponseException)
-                {
-                    // No need to retry with DnsResponseException
-                    throw;
-                }
-                catch (Exception)
-                {
-                    if (retry == RetryAttempt)
-                    {
-                        throw;
-                    }
-                    retry++;
-                }
+                // might retry
+                throw new TimeoutException();
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var lengthBuffer = new byte[2];
+            int bytesReceived = 0;
+            _ = await stream.ReadAsync(lengthBuffer, bytesReceived, 2, cancellationToken).ConfigureAwait(false);
+
+            var length = lengthBuffer[0] << 8 | lengthBuffer[1];
+
+            if (length <= 0)
+            {
+                // server signals close/disconnecting, might retry
+                throw new TimeoutException();
+            }
+
+            var contentBuffer = new byte[length];
+
+            var recievedLength = await stream.ReadAsync(contentBuffer, bytesReceived, length, cancellationToken).ConfigureAwait(false);
+
+            if (recievedLength <= 0)
+            {
+                // disconnected
+                throw new TimeoutException();
+            }
+
+            return ProcessDnsResponse(contentBuffer, requestId);
         }
     }
 }

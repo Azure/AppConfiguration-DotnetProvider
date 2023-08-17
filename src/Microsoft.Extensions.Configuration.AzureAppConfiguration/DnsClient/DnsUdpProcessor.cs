@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,7 +27,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 #endif
                 });
 
-                var originRecords = await QueryAsyncInternal(endpoint, $"{OriginSrvPrefix}.{query}", udpClient, cancellationToken).ConfigureAwait(false);
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+                var originRecords = await QueryAsyncInternal(endpoint, $"{OriginSrvPrefix}.{query}", udpClient, cts.Token).ConfigureAwait(false);
                 string originHost = query;
                 if (originRecords != null && originRecords.Count > 0)
                 {
@@ -47,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 
                 while (true)
                 {
-                    altRecords = await QueryAsyncInternal(endpoint, $"{AlternativeSrvPrefix(index)}.{originHost}", udpClient, cancellationToken).ConfigureAwait(false);
+                    altRecords = await QueryAsyncInternal(endpoint, $"{AlternativeSrvPrefix(index)}.{originHost}", udpClient, cts.Token).ConfigureAwait(false);
 
                     if (altRecords == null || altRecords.Count == 0)
                     {
@@ -68,6 +68,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             catch (ObjectDisposedException)
             {
                 // we disposed it in case of a timeout request, just indicate it actually timed out.
+                throw new TimeoutException();
+            }
+            catch (OperationCanceledException)
+            {
                 throw new TimeoutException();
             }
             catch (DnsResponseException)
@@ -92,39 +96,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
         {
             ushort requestId = GetRandomRequestId();
             var srvRequset = BuildDnsQueryMessage(query, requestId);
-
-            int retry = 0;
-            while (true)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    await udpClient.SendAsync(srvRequset, srvRequset.Length, endpoint).ConfigureAwait(false);
-
+           
+            cancellationToken.ThrowIfCancellationRequested();
+                
 #if NET6_0_OR_GREATER
-                    UdpReceiveResult received = await udpClient.ReceiveAsync(cancellationToken).ConfigureAwait(false);
-#else
-                    UdpReceiveResult received = await udpClient.ReceiveAsync().ConfigureAwait(false);
-#endif
-                    var response = ProcessDnsResponse(received.Buffer, requestId);
+            await udpClient.SendAsync(srvRequset, srvRequset.Length, endpoint, cancellationToken).ConfigureAwait(false);
 
-                    return response;
-                }
-                catch (DnsResponseException)
-                {
-                    // No need to retry with DnsResponseException
-                    throw;
-                }
-                catch (Exception)
-                {
-                    if (retry == RetryAttempt)
-                    {
-                        throw;
-                    }
-                    retry++;
-                }
-            }
+            UdpReceiveResult received = await udpClient.ReceiveAsync(cancellationToken).ConfigureAwait(false);
+#else
+            await udpClient.SendAsync(srvRequset, srvRequset.Length, endpoint).ConfigureAwait(false);
+
+            UdpReceiveResult received = await udpClient.ReceiveAsync().ConfigureAwait(false);
+#endif
+            var response = ProcessDnsResponse(received.Buffer, requestId);
+
+            return response;
         }
     }
 }

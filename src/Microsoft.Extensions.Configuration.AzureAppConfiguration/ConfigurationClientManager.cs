@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -98,8 +97,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             
             var autoFailoverClients = new List<ConfigurationClient>();
 
-            // shuffle the results to ensure hosts can be picked in random order.
-            IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target}").Shuffle();
+            // shuffle the results to ensure hosts can be picked randomly.
+            IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target}").Shuffle().ToList();
 
             foreach (string host in srvTargetHosts)
             {
@@ -191,6 +190,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
+
+        // Only remove the client if it is not in the user passed connection string or endpoints, as well as not in returned SRV records.
         private bool IsEligibleToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
         {
             if (_connectionStrings != null && _connectionStrings.Any(c => GetHostFromConnectionString(c).Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
@@ -198,12 +199,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return false;
             }
 
-            if (srvEndpointHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+            if (_endpoints != null && _endpoints.Any(e => e.Host.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
             {
                 return false;
             }
 
-            if (_endpoints != null && _endpoints.Any(e => e.Host.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+            if (srvEndpointHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
             {
                 return false;
             }

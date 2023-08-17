@@ -982,11 +982,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (_options.IsAutoFailover)
                             {
-                                var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-                                linkedCancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(30));
-
-                                IEnumerable<ConfigurationClient> dynamicConfigClients = await _configClientManager.GetAutoFailoverClients(_logger, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+                                IEnumerable<ConfigurationClient> dynamicConfigClients = await _configClientManager.GetAutoFailoverClients(_logger, cancellationToken).ConfigureAwait(false);
 
                                 _logger.LogDebug(LogHelper.AutoFailoverClientCount(dynamicConfigClients?.Count() ?? 0));
 
