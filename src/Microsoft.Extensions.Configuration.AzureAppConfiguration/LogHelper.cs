@@ -80,6 +80,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.QuerySrvDnsFailedError}\n{exceptionMessage}";
         }
 
+        public static string FailoverDnsLookupToTcp(string exceptionMessage)
+        {
+            return $"{LoggingConstants.FailoverDnsLookupToTcpMessage}\n{exceptionMessage}";
+        }
+
         public static string AutoFailoverClientCount(int count)
         {
             return $"{LoggingConstants.AutoFailoverClientCount}: {count}";
