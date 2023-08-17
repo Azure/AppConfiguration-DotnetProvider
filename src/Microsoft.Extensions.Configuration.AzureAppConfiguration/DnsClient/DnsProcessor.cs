@@ -16,7 +16,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
         protected const ushort SrvType = 33;  // SRV DNS type code
         protected const ushort InClass = 1;  // IN DNS class code
         protected const ushort OptRrType = 41;  // OPT DNS type code
-        protected const int RetryAttempt = 3;
 
         protected const string OriginSrvPrefix = "_origin._tcp";
         protected string AlternativeSrvPrefix(ushort index) => $"_alt{index}._tcp";
