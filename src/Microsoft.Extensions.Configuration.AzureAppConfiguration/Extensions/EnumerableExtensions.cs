@@ -8,12 +8,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     {
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> values)
         {
-            var rng = new Random();
+            var rdm = new Random();
             T[] elements = values.ToArray();
 
             for (int i = elements.Length - 1; i >= 0; i--)
             {
-                int swapIndex = rng.Next(i + 1);
+                int swapIndex = rdm.Next(i + 1);
 
                 yield return elements[swapIndex];
 

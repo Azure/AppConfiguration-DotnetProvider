@@ -1,10 +1,6 @@
-﻿using Azure.Core;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -32,16 +28,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 
                 return await ResolveQueryAsync(nameServers, _udpProcessor, query, cancellationToken).ConfigureAwait(false);
             }
-            catch (DnsResponseTruncatedException)
+            catch (Exception ex) when (ex is TimeoutException || ex is DnsResponseTruncatedException)
             {
                 // Failover to TCP if UDP response is truncated
+                _logger.LogDebug(LogHelper.FailoverDnsLookupToTcp(ex.Message));
+
                 try
                 {
                     return await ResolveQueryAsync(nameServers, _tcpProcessor, query, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    _logger.LogWarning(LogHelper.QuerySrvDnsFailedErrorMessage(ex.Message));
+                    _logger.LogWarning(LogHelper.QuerySrvDnsFailedErrorMessage(e.Message));
 
                     return Enumerable.Empty<SrvRecord>().ToArray();
                 }
@@ -72,16 +70,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             {
                 throw new ArgumentNullException(nameof(query));
             }
-
-            foreach (var server in servers)
+            if (servers.Count == 0)
             {
-                return await processor.QueryAsync(
-                     server.IPEndPoint,
-                     query,
-                     cancellationToken).ConfigureAwait(false);
+                throw new ArgumentOutOfRangeException(nameof(servers));
             }
-            
-            return Enumerable.Empty<SrvRecord>().ToArray();
+
+            var enumerator = servers.GetEnumerator();
+            enumerator.MoveNext();
+
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    return await processor.QueryAsync(
+                         enumerator.Current.IPEndPoint,
+                         query,
+                         cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (!enumerator.MoveNext())
+                    {
+                        throw;
+                    }
+                }
+            }
         }
     }
 }
