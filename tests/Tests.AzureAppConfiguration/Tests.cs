@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure;
-using Azure.Core;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;

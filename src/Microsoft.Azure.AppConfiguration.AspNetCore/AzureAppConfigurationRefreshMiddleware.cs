@@ -3,7 +3,9 @@
 //
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.AppConfiguration.AspNetCore
@@ -13,7 +15,11 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
     /// </summary>
     internal class AzureAppConfigurationRefreshMiddleware
     {
+        // The minimum refresh interval on the configuration provider is 1 second, so refreshing more often is unnecessary
+        private static readonly long MinimumRefreshInterval = TimeSpan.FromSeconds(1).Ticks;
         private readonly RequestDelegate _next;
+        private long _refreshReadyTime = DateTimeOffset.UtcNow.Ticks;
+
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
         public AzureAppConfigurationRefreshMiddleware(RequestDelegate next, IConfigurationRefresherProvider refresherProvider)
@@ -24,9 +30,23 @@ namespace Microsoft.Azure.AppConfiguration.AspNetCore
 
         public async Task InvokeAsync(HttpContext context)
         {
-            foreach (var refresher in Refreshers)
+            long utcNow = DateTimeOffset.UtcNow.Ticks;
+
+            long refreshReadyTime = Interlocked.Read(ref _refreshReadyTime);
+
+            if (refreshReadyTime <= utcNow &&
+                Interlocked.CompareExchange(ref _refreshReadyTime, utcNow + MinimumRefreshInterval, refreshReadyTime) == refreshReadyTime)
             {
-                _ = refresher.TryRefreshAsync();
+                //
+                // Configuration refresh is meant to execute as an isolated background task.
+                // To prevent access of request-based resources, such as HttpContext, we suppress the execution context within the refresh operation.
+                using (AsyncFlowControl flowControl = ExecutionContext.SuppressFlow())
+                {
+                    foreach (IConfigurationRefresher refresher in Refreshers)
+                    {
+                        _ = Task.Run(() => refresher.TryRefreshAsync());
+                    }
+                }
             }
 
             // Call the next delegate/middleware in the pipeline
