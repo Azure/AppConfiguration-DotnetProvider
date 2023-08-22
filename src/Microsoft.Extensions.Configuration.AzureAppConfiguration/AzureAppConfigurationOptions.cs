@@ -190,7 +190,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
         /// If no feature flags are selected, all feature flags with the label set in options, or null label if not set, are included in the configuration.
-        /// Sets up individual feature flag refresh for any feature flags included using the configured options.
+        /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
         public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
