@@ -123,8 +123,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The key filter to apply when querying Azure App Configuration for key-values.
         /// An asterisk (*) can be added to the end to return all key-values whose key begins with the key filter.
         /// e.g. key filter `abc*` returns all key-values whose key starts with `abc`.
+        /// A comma (,) can be used to select multiple key-values. Comma separated filters must exactly match a key to select it.
+        /// Using asterisk to select key-values that begin with a key filter while simultaneously using comma separated key filters is not supported.
+        /// E.g. the key filter `abc*,def` is not supported. The key filters `abc*` and `abc,def` are supported.
         /// For all other cases the characters: asterisk (*), comma (,), and backslash (\) are reserved. Reserved characters must be escaped using a backslash (\).
-        /// e.g. key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
+        /// e.g. the key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
         /// Built-in key filter options: <see cref="KeyFilter"/>.
         /// </param>
         /// <param name="labelFilter">
@@ -185,7 +188,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Enables Azure App Configuration feature flags to be parsed and transformed into feature management configuration.
+        /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
+        /// If no filtering is specified via the <cref="FeatureFlagOptions"> then all feature flags with no label are loaded.
+        /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
         public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
@@ -240,11 +245,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
                 }
-            }
-
-            if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
-            {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
             }
 
             return this;
