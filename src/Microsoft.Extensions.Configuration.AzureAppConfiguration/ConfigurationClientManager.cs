@@ -33,6 +33,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public ConfigurationClientManager(AzureAppConfigurationOptions options)
         {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            if (options.ClientOptions == null)
+            {
+                throw new ArgumentNullException(nameof(options.ClientOptions));
+            }
+
             _connectionStrings = options.ConnectionStrings;
             _endpoints = options.Endpoints;
             _credential = options.Credential;
@@ -40,19 +50,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_connectionStrings != null && _connectionStrings.Any())
             {
-                _clients = _connectionStrings.Select(connectionString =>
-                {
-                    var endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
-                    return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, _clientOptions));
-                }).ToList();
+                _clients = _connectionStrings
+                    .Select(connectionString =>
+                        {
+                            var endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
+                            return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, _clientOptions));
+                        })
+                    .ToList();
             }
             else if (_endpoints != null && _endpoints.Any())
             {
-                _clients = _endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions))).ToList();
+                if (_credential == null)
+                {
+                    throw new ArgumentNullException(nameof(options.Credential));
+                }
+
+                _clients = _endpoints
+                    .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
+                    .ToList();
             }
             else
             {
-                throw new ArgumentNullException(nameof(_endpoints));
+                throw new ArgumentNullException(nameof(_clients));
             }
         }
 
@@ -88,7 +107,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                endpoint = _endpoints.FirstOrDefault();
+                endpoint = _endpoints.First();
             }
 
             var lookup = new SrvLookupClient(logger);

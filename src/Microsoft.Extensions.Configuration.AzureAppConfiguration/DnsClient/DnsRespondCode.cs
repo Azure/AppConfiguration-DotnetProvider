@@ -189,7 +189,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
         internal const string YXDomain = "Name Exists when it should not";
         internal const string YXRRSet = "RR Set Exists when it should not";
 
-        private static readonly Dictionary<DnsResponseCode, string> s_errors = new Dictionary<DnsResponseCode, string>()
+        private static readonly Dictionary<DnsResponseCode, string> responseErrors = new Dictionary<DnsResponseCode, string>()
         {
             { DnsResponseCode.NoError, NoError },
             { DnsResponseCode.FormatError, FormErr },
@@ -214,12 +214,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 
         public static string GetErrorText(DnsResponseCode code)
         {
-            if (!s_errors.ContainsKey(code))
+            if (!responseErrors.ContainsKey(code))
             {
                 return Unassigned;
             }
 
-            return s_errors[code];
+            return responseErrors[code];
         }
     }
 }

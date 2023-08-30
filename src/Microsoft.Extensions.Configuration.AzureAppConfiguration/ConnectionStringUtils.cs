@@ -43,6 +43,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string Build(Uri endpoint, string id, string secret)
         {
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if (string.IsNullOrEmpty(id))
+            {
+                throw new ArgumentNullException(nameof(id));
+            }
+
+            if (string.IsNullOrEmpty(secret))
+            {
+                throw new ArgumentNullException(nameof(secret));
+            }
+
             return $"{EndpointSection}={endpoint.AbsoluteUri.Trim('/')};{IdSection}={id};{SecretSection}={secret}";
         }
     }

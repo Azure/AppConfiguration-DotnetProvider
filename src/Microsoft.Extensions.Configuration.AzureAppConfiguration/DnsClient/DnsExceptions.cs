@@ -4,17 +4,17 @@ using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 {
-    internal class DnsXidMismatchException : Exception
+    internal class DnsRequestIdMismatchException : Exception
     {
-        public int RequestXid { get; }
+        public int RequestId { get; }
 
-        public int ResponseXid { get; }
+        public int ResponseId { get; }
 
-        public DnsXidMismatchException(int requestXid, int responseXid)
+        public DnsRequestIdMismatchException(int requestId, int responseId)
             : base()
         {
-            RequestXid = requestXid;
-            ResponseXid = responseXid;
+            RequestId = requestId;
+            ResponseId = responseId;
         }
     }
 
