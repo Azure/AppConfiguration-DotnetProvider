@@ -18,7 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
         /// Initializes a new instance of the <see cref="NameServer"/> class.
         /// </summary>
         /// <param name="endPoint">The name server endpoint.</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="endPoint"/>is <c>null</c>.</exception>
         internal NameServer(IPEndPoint endPoint)
         {
             IPEndPoint = endPoint ?? throw new ArgumentNullException(nameof(endPoint));
@@ -31,7 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
         /// <param name="endPoint">The name server endpoint.</param>
         /// <param name="port">The name server port.</param>
         /// <param name="dnsSuffix">An optional DNS suffix (can be null).</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="endPoint"/>is <c>null</c>.</exception>
         internal NameServer(IPAddress endPoint, int port, string dnsSuffix)
             : this(new IPEndPoint(endPoint, port), dnsSuffix)
         {
@@ -42,7 +40,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
         /// </summary>
         /// <param name="endPoint">The name server endpoint.</param>
         /// <param name="dnsSuffix">An optional DNS suffix (can be null).</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="endPoint"/>is <c>null</c>.</exception>
         internal NameServer(IPEndPoint endPoint, string dnsSuffix)
             : this(endPoint)
         {
