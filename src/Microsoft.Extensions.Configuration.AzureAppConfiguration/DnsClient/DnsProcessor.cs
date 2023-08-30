@@ -133,15 +133,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
                 +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
              */
-            ushort responseId = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, 0));
+            ushort responseId = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, 0));
 
             if (responseId != requestId)
             {
-                throw new DnsXidMismatchException(requestId, responseId);
+                throw new DnsRequestIdMismatchException(requestId, responseId);
             }
 
-            ushort flags = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, 2));
-            ushort answerCount = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, 6));
+            ushort flags = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, 2));
+            ushort answerCount = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, 6));
 
             // Check if the response is an error
             var rcode = flags & 0x000f; // Last 4 bits of the flags field
@@ -200,10 +200,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
 
             for (int i = 0; i < answerCount; i++)
             {
-                currentPosition += 2;// Skip the name, see rfc1035 4.1.4
+                // Skip the name, see rfc1035 4.1.4
+                currentPosition += 2;
+
                 // Extract the answer type and class
-                ushort answerType = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
-                ushort answerClass = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition + 2));
+                ushort answerType = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
+                ushort answerClass = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition + 2));
 
                 // Check if the answer is an SRV record (type 33) in the IN class (class 1)
                 if (answerType == SrvType && answerClass == InClass)
@@ -212,15 +214,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
                     currentPosition += 8;
 
                     // Extract the data length
-                    ushort dataLength = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
+                    ushort dataLength = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
 
                     // Move to the start of the data section
                     currentPosition += 2;
 
                     // Extract the priority, weight, port, and target information
-                    ushort priority = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
-                    ushort weight = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition + 2));
-                    ushort port = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition + 4));
+                    ushort priority = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
+                    ushort weight = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition + 2));
+                    ushort port = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition + 4));
                     // Extract the target hostname
                     string target = ExtractHostname(responseBuffer, currentPosition + 6); // Skip the priority, weight, and port fields to get to the target hostname
 
@@ -233,7 +235,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
                 {
                     // Skip the answer if it's not an SRV record
                     currentPosition += 10; // Skip the type, class, and TTL fields
-                    ushort dataLength = ConverToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
+                    ushort dataLength = ConvertToHostOrder(BitConverter.ToUInt16(responseBuffer, currentPosition));
                     currentPosition += 2 + dataLength; // Skip the data length and data section
                 }
             }
@@ -262,7 +264,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient
             return string.Join(".", labels);
         }
 
-        protected ushort ConverToHostOrder(ushort value)
+        protected ushort ConvertToHostOrder(ushort value)
         {
             return (ushort)(value << 8 | value >> 8);
         }
