@@ -880,13 +880,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (_options.IsAutoFailover)
                             {
-                                IEnumerable<ConfigurationClient> dynamicConfigClients = await _configClientManager.GetAutoFailoverClients(_logger, cancellationToken).ConfigureAwait(false);
+                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(_logger, cancellationToken).ConfigureAwait(false);
 
-                                _logger.LogDebug(LogHelper.AutoFailoverClientCount(dynamicConfigClients?.Count() ?? 0));
+                                _logger.LogDebug(LogHelper.AutoFailoverClientCount(autoFailoverClients?.Count() ?? 0));
 
-                                if (dynamicConfigClients != null && dynamicConfigClients.Any())
+                                if (autoFailoverClients != null && autoFailoverClients.Any())
                                 {
-                                    clientEnumerator = dynamicConfigClients.GetEnumerator();
+                                    clientEnumerator = autoFailoverClients.GetEnumerator();
                                     clientEnumerator.MoveNext();
                                 }
                                 else
