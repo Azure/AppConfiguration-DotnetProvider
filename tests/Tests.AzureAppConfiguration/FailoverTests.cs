@@ -286,7 +286,6 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = mockedConfigClientManager;
                     options.Select("TestKey*");
-                    options.IsAutoFailover = true;
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
