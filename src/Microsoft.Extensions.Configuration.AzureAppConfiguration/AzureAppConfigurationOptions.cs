@@ -103,7 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether failover to replicas automatically.
         /// </summary>
-        internal bool IsAutoFailover { get; private set; } = true;
+        internal bool IsAutoFailover { get; private set; } = false;
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
