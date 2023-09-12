@@ -122,7 +122,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
-
+                    options.IsAutoFailover = false;
                     refresher = options.GetRefresher();
                 });
 
