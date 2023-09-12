@@ -4,8 +4,9 @@
 
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using DnsClient;
+using DnsClient.Protocol;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
@@ -110,14 +111,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 endpoint = _endpoints.First();
             }
 
-            var lookup = new SrvLookupClient(logger);
+            var lookup = new LookupClient();
 
-            IReadOnlyCollection<SrvRecord> results = await lookup.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            var dnsReponse = await lookup.QueryAsync(endpoint.DnsSafeHost, QueryType.SRV, QueryClass.IN, cancellationToken).ConfigureAwait(false);
+
+            var results = dnsReponse.Answers;
             
             var autoFailoverClients = new List<ConfigurationClient>();
 
             // shuffle the results to ensure hosts can be picked randomly.
-            IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target}").Shuffle().ToList();
+            IEnumerable<string> srvTargetHosts = results.Select(r => (r as SrvRecord).Target.Value).Shuffle().ToList();
 
             foreach (string host in srvTargetHosts)
             {
