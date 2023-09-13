@@ -63,11 +63,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     //
                     // process RequirementType only when filters are not empty
-                    if (featureFlag.Conditions.RequirementType != null)
+                    if (featureFlag.RequirementType != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>(
                             $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}", 
-                            featureFlag.Conditions.RequirementType));
+                            featureFlag.RequirementType));
                     }
                 }
             }

@@ -15,5 +15,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         [JsonPropertyName("conditions")]
         public FeatureConditions Conditions { get; set; }
+
+        [JsonPropertyName("requirement_type")]
+        public string RequirementType { get; set; }
     }
 }
