@@ -102,6 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
 
         /// <summary>
+        /// The initial delay between retry attempts when connecting to Azure App Configuration on startup.
+        /// </summary>
+        internal TimeSpan StartupDelay { get; set; } = TimeSpan.FromSeconds(15);
+
+        /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
         /// </summary>
         internal bool IsKeyVaultConfigured { get; private set; } = false;

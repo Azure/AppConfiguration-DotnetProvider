@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Data.AppConfiguration;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -29,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
                 IConfigurationClientManager clientManager;
+                IConfigurationClientManager startupClientManager;
 
                 if (options.ClientManager != null)
                 {
@@ -37,10 +39,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else if (options.ConnectionStrings != null)
                 {
                     clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+
+                    var startupClientOptions = options.ClientOptions;
+                    startupClientOptions.Retry.Delay = options.StartupDelay;
+
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, startupClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+
+                    var startupClientOptions = options.ClientOptions;
+                    startupClientOptions.Retry.Delay = options.StartupDelay;
+
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, startupClientOptions);
                 }
                 else
                 {

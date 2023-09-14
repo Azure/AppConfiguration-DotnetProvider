@@ -28,6 +28,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
+        private readonly IConfigurationClientManager _startupConfigClientManager;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -88,9 +89,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(IConfigurationClientManager clientManager, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(IConfigurationClientManager clientManager, IConfigurationClientManager startupClientManager, AzureAppConfigurationOptions options, bool optional)
         {
             _configClientManager = clientManager ?? throw new ArgumentNullException(nameof(clientManager));
+            _startupConfigClientManager = startupClientManager ?? throw new ArgumentNullException(nameof(startupClientManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
@@ -130,7 +132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var loadStartTime = DateTimeOffset.UtcNow;
 
             // Guaranteed to have atleast one available client since it is a application startup path.
-            IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(loadStartTime);
+            IEnumerable<ConfigurationClient> availableClients = _startupConfigClientManager.GetAvailableClients(loadStartTime);
 
             try
             {
@@ -205,7 +207,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         if (InitializationCacheExpires < utcNow)
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
-                            await InitializeAsync(ignoreFailures: false, availableClients, cancellationToken).ConfigureAwait(false);
+                            await InitializeAsync(ignoreFailures: false, _startupConfigClientManager.GetAvailableClients(utcNow), cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
