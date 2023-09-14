@@ -756,19 +756,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                if (!adapter.CanProcess(setting))
+                if (adapter.CanProcess(setting))
                 {
-                    continue;
+                    IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, _logger, cancellationToken).ConfigureAwait(false);
+
+                    if (kvs != null)
+                    {
+                        keyValues = keyValues ?? new List<KeyValuePair<string, string>>();
+
+                        keyValues.AddRange(kvs);
+                    }
+
+                    // Ensure a setting is processed by one adpater at most.
+                    break;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, _logger, cancellationToken).ConfigureAwait(false);
-
-                if (kvs != null)
-                {
-                    keyValues = keyValues ?? new List<KeyValuePair<string, string>>();
-
-                    keyValues.AddRange(kvs);
-                }
             }
 
             return keyValues ?? Enumerable.Repeat(new KeyValuePair<string, string>(setting.Key, setting.Value), 1);
