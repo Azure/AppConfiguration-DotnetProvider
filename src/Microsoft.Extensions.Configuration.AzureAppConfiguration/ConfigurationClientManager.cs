@@ -89,7 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return _clients
                 .Where(client => !client.IsAutoFailoverClient && 
                     client.BackoffEndTime <= time)
-                .Select(c => c.Client).ToList();
+                .Select(c => c.Client);
         }
 
         public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)

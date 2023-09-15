@@ -1053,35 +1053,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(Exception ex)
         {
-            RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
-
-            return rfe != null ? IsFailOverable(rfe) : false;
-        }
-
-        private bool IsFailOverable(RequestFailedException rfe)
-        {
-            if (rfe.Status == HttpStatusCodes.TooManyRequests ||
-                rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                rfe.Status >= (int)HttpStatusCode.InternalServerError)
+            if (ex is RequestFailedException rfe)
             {
-                return true;
+                if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+                {
+                    return hre.InnerException is WebException ||
+                           hre.InnerException is SocketException ||
+                           hre.InnerException is IOException;
+                }
+
+                return rfe.Status == HttpStatusCodes.TooManyRequests ||
+                       rfe.Status == (int)HttpStatusCode.RequestTimeout ||
+                       rfe.Status >= (int)HttpStatusCode.InternalServerError;
+            }
+            else if (ex is AggregateException ae)
+            {
+                IReadOnlyCollection<Exception> innerExceptions = ae.InnerExceptions;
+
+                if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
+                {
+                    return IsFailOverable((RequestFailedException)innerExceptions.Last());
+                }
+
+                return false;
             }
 
-            Exception innerException;
-
-            if (rfe.InnerException is HttpRequestException hre)
-            {
-                innerException = hre.InnerException;
-            }
-            else
-            {
-                innerException = rfe.InnerException;
-            }
-
-            // The InnerException could be SocketException or WebException when an endpoint is invalid and IOException if it's a network issue.
-            return innerException is WebException ||
-                   innerException is SocketException ||
-                   innerException is IOException;
+            return false;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
