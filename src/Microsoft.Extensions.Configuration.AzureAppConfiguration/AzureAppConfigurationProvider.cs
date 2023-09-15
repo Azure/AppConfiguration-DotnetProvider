@@ -963,25 +963,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(Exception ex)
         {
-            RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
-
-            return rfe != null ? IsFailOverable(rfe) : false;
-        }
-
-        private bool IsFailOverable(RequestFailedException rfe)
-        {
-
-            // The InnerException could be SocketException or WebException when endpoint is invalid and IOException if it is network issue.
-            if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+            if (ex is RequestFailedException rfe)
             {
-                return hre.InnerException is WebException ||
-                       hre.InnerException is SocketException ||
-                       hre.InnerException is IOException;
+                if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+                {
+                    return hre.InnerException is WebException ||
+                           hre.InnerException is SocketException ||
+                           hre.InnerException is IOException;
+                }
+
+                return rfe.Status == HttpStatusCodes.TooManyRequests ||
+                       rfe.Status == (int)HttpStatusCode.RequestTimeout ||
+                       rfe.Status >= (int)HttpStatusCode.InternalServerError;
+            }
+            else if (ex is AggregateException ae)
+            {
+                IReadOnlyCollection<Exception> innerExceptions = ae.InnerExceptions;
+
+                if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
+                {
+                    return IsFailOverable((RequestFailedException)innerExceptions.Last());
+                }
+
+                return false;
             }
 
-            return rfe.Status == HttpStatusCodes.TooManyRequests ||
-                   rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                   rfe.Status >= (int)HttpStatusCode.InternalServerError;
+            return false;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
