@@ -897,7 +897,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(_logger, cancellationToken).ConfigureAwait(false);
 
-                                _logger.LogDebug(LogHelper.AutoFailoverClientCount(autoFailoverClients?.Count() ?? 0));
+                                _logger.LogDebug(LogHelper.BuildAutoFailoverClientCountMessage(autoFailoverClients?.Count() ?? 0));
 
                                 if (autoFailoverClients != null && autoFailoverClients.Any())
                                 {
