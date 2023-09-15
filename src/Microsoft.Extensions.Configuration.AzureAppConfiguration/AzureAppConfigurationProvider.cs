@@ -868,6 +868,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
                 ConfigurationClient currentClient;
 
+                bool autoFailovered = false;
+
                 while (true)
                 {
                     bool success = false;
@@ -893,9 +895,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else if (!clientEnumerator.MoveNext())
                         {
-                            if (_options.IsAutoFailover)
+                            if (_options.IsAutoFailover && !autoFailovered)
                             {
                                 IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(_logger, cancellationToken).ConfigureAwait(false);
+                                autoFailovered = true;
 
                                 _logger.LogDebug(LogHelper.BuildAutoFailoverClientCountMessage(autoFailoverClients?.Count() ?? 0));
 
