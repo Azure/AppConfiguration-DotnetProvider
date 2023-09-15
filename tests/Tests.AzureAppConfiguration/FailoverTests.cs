@@ -117,7 +117,8 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
-                    });
+                    }).EnableAutoFailover(false);
+                   
                     refresher = options.GetRefresher();
                 });
 
@@ -290,7 +291,6 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
-
                     refresher = options.GetRefresher();
                 })
                 .Build();
