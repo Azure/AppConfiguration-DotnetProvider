@@ -4,8 +4,8 @@
 
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using DnsClient.Protocol;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.DnsClient;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
@@ -40,7 +40,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (options.ClientOptions == null)
             {
-                throw new ArgumentNullException(nameof(options.ClientOptions));
+                throw new ArgumentException(nameof(options.ClientOptions));
             }
 
             _connectionStrings = options.ConnectionStrings;
@@ -86,11 +86,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
         {
-            return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
+            return _clients
+                .Where(client => !client.IsAutoFailoverClient && 
+                    client.BackoffEndTime <= time)
+                .Select(c => c.Client).ToList();
         }
 
         public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)
         {
+            IEnumerable<ConfigurationClient> avaliableAutoFailoverClients = _clients
+                .Where(client => client.IsAutoFailoverClient && 
+                    client.BackoffEndTime <= DateTimeOffset.UtcNow)
+                .Select(c => c.Client);
+
+            if (avaliableAutoFailoverClients.Any())
+            {
+                return avaliableAutoFailoverClients;
+            }
+
             var isUsingConnectionString = _connectionStrings != null && _connectionStrings.Any();
 
             Uri endpoint = null;
@@ -112,12 +125,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var lookup = new SrvLookupClient(logger);
 
-            IReadOnlyCollection<SrvRecord> results = await lookup.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
-            
-            var autoFailoverClients = new List<ConfigurationClient>();
+            IEnumerable<SrvRecord> results = await lookup.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
 
             // shuffle the results to ensure hosts can be picked randomly.
-            IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target}").Shuffle().ToList();
+            IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target.Value.Trim('.')}").Shuffle().ToList();
+
+            // clean up clients in case the corresponding replicas are removed.
+            foreach (var client in _clients)
+            {
+                if (IsEligibleToRemove(srvTargetHosts, client))
+                {
+                    _clients.Remove(client);
+                }
+            }
 
             foreach (string host in srvTargetHosts)
             {
@@ -129,22 +149,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, id, secret), _clientOptions):
                         new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
 
-                    _clients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
-
-                    autoFailoverClients.Add(configClient);
+                    _clients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient, true));
                 }
             }
 
-            // clean up clients in case the corresponding replicas are removed.
-            foreach (var client in _clients)
-            {
-                if (IsEligibleToRemove(srvTargetHosts, client))
-                {
-                    _clients.Remove(client);
-                }
-            }
-
-            return autoFailoverClients;
+            return _clients
+                .Where(client => client.IsAutoFailoverClient && 
+                    client.BackoffEndTime <= DateTimeOffset.UtcNow)
+                .Select(cw => cw.Client);
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -154,7 +166,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(client));
             }
 
-            ConfigurationClientWrapper clientWrapper = _clients.First(c => c.Client.Equals(client));
+            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client.Equals(client));
 
             if (successful)
             {
@@ -204,16 +216,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-
-        // Only remove the client if it is not in the user passed connection string or endpoints, as well as not in returned SRV records.
+        // Only remove the client if it is auto failover, as well as not in returned SRV records.
         private bool IsEligibleToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
         {
-            if (_connectionStrings != null && _connectionStrings.Any(c => GetHostFromConnectionString(c).Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
-            {
-                return false;
-            }
-
-            if (_endpoints != null && _endpoints.Any(e => e.Host.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+            if (!client.IsAutoFailoverClient)
             {
                 return false;
             }
@@ -224,14 +230,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return true;
-        }
-
-        private string GetHostFromConnectionString(string connectionString)
-        {
-            var endpointString = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection);
-            var endpoint = new Uri(endpointString);
-
-            return endpoint.Host;
         }
     }
 }
