@@ -104,7 +104,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether failover to replicas automatically.
         /// </summary>
-        internal bool IsAutoFailover { get; private set; } = false;
+        internal bool IsAutoFailover { get; private set; } = true;
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -265,27 +265,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Connect the provider to the Azure App Configuration service via a connection string.
         /// </summary>
         /// <param name="connectionString">
-        /// <param name="isAutoFailover">
         /// Used to authenticate with Azure App Configuration.
         /// </param>
-        public AzureAppConfigurationOptions Connect(string connectionString, bool isAutoFailover = true)
+        public AzureAppConfigurationOptions Connect(string connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            return Connect(new List<string> { connectionString }, isAutoFailover);
+            return Connect(new List<string> { connectionString });
         }
 
         /// <summary>
         /// Connect the provider to an Azure App Configuration store and its replicas via a list of connection strings.
         /// </summary>
         /// <param name="connectionStrings">
-        /// <param name="isAutoFailover">
         /// Used to authenticate with Azure App Configuration.
         /// </param>
-        public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings, bool isAutoFailover = true)
+        public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
@@ -300,7 +298,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Endpoints = null;
             Credential = null;
             ConnectionStrings = connectionStrings;
-            IsAutoFailover = isAutoFailover;
             return this;
         }
 
@@ -309,8 +306,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="endpoint">The endpoint of the Azure App Configuration to connect to.</param>
         /// <param name="credential">Token credentials to use to connect.</param>
-        /// <param name="isAutoFailover">Whether auto failover is enabled</param>
-        public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential, bool isAutoFailover = true)
+        public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
         {
             if (endpoint == null)
             {
@@ -322,7 +318,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            return Connect(new List<Uri>() { endpoint }, credential, isAutoFailover);
+            return Connect(new List<Uri>() { endpoint }, credential);
         }
 
         /// <summary>
@@ -330,8 +326,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="endpoints">The list of endpoints of an Azure App Configuration store and its replicas to connect to.</param>
         /// <param name="credential">Token credential to use to connect.</param>
-        /// <param name="isAutoFailover">Whether auto failover is enabled</param>
-        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential, bool isAutoFailover = true)
+        public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -347,7 +342,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Endpoints = endpoints;
             ConnectionStrings = null;
-            IsAutoFailover = isAutoFailover;
             return this;
         }
 
@@ -452,6 +446,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions ConfigureStartupOptions(Action<StartupOptions> configure)
         {
             configure?.Invoke(Startup);
+            return this;
+        }
+
+        /// <summary>
+        /// Configure automatic http failover for Azure App Configuration.
+        /// </summary>
+        /// <param name="enabled">Enable automatic Http failover or not</param>
+        public AzureAppConfigurationOptions EnableAutoFailover(bool enabled)
+        {
+            IsAutoFailover = enabled;
+
             return this;
         }
 
