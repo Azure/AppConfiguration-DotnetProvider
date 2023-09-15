@@ -118,6 +118,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
+        /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with null label are included in the configuration provider.
         /// </summary>
         /// <param name="keyFilter">
         /// The key filter to apply when querying Azure App Configuration for key-values.
@@ -167,6 +168,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Specify a snapshot and include its contained key-values in the configuration provider.
         /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
+        /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with null label are included in the configuration provider.
         /// </summary>
         /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
         public AzureAppConfigurationOptions SelectSnapshot(string name)
@@ -189,7 +191,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
-        /// If no filtering is specified via the <cref="FeatureFlagOptions"> then all feature flags with no label are loaded.
+        /// If no filtering is specified via the <see cref="FeatureFlagOptions"/> then all feature flags with no label are loaded.
         /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
