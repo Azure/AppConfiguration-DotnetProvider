@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Data.AppConfiguration;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -35,31 +34,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (options.ClientManager != null)
                 {
                     clientManager = options.ClientManager;
+
+                    startupClientManager = options.ClientManager;
                 }
                 else if (options.ConnectionStrings != null)
                 {
                     clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    var startupClientOptions = options.ClientOptions;
-                    startupClientOptions.Retry.Delay = options.StartupDelay;
-
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, startupClientOptions);
+                    options.ClientOptions.Retry.Delay = options.StartupDelay;
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    var startupClientOptions = options.ClientOptions;
-                    startupClientOptions.Retry.Delay = options.StartupDelay;
-
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, startupClientOptions);
+                    options.ClientOptions.Retry.Delay = options.StartupDelay;
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
+                provider = new AzureAppConfigurationProvider(clientManager, startupClientManager, options, _optional);
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {

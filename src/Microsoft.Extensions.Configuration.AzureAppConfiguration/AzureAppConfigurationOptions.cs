@@ -104,7 +104,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The initial delay between retry attempts when connecting to Azure App Configuration on startup.
         /// </summary>
-        internal TimeSpan StartupDelay { get; set; } = TimeSpan.FromSeconds(15);
+        internal TimeSpan StartupDelay { get; private set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -359,8 +359,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Configure the client used to communicate with Azure App Configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
-        public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
+        /// <param name="startupDelay">The minimum delay between retries when initially loading the configuration provider.</param>
+        public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure, TimeSpan? startupDelay = null)
         {
+            if (startupDelay.HasValue)
+            {
+                StartupDelay = startupDelay.Value;
+            }
+
             configure?.Invoke(ClientOptions);
             return this;
         }
