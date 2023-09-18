@@ -86,24 +86,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
         {
-            return _clients
-                .Where(client => !client.IsAutoFailoverClient && 
-                    client.BackoffEndTime <= time)
-                .Select(c => c.Client);
+            return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
         public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)
         {
-            IEnumerable<ConfigurationClient> avaliableAutoFailoverClients = _clients
-                .Where(client => client.IsAutoFailoverClient && 
-                    client.BackoffEndTime <= DateTimeOffset.UtcNow)
-                .Select(c => c.Client);
-
-            if (avaliableAutoFailoverClients.Any())
-            {
-                return avaliableAutoFailoverClients;
-            }
-
             var isUsingConnectionString = _connectionStrings != null && _connectionStrings.Any();
 
             Uri endpoint = null;
