@@ -40,16 +40,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else if (options.ConnectionStrings != null)
                 {
                     clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
-
-                    options.ClientOptions.Retry.Delay = options.StartupDelay;
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.StartupClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
-
-                    options.ClientOptions.Retry.Delay = options.StartupDelay;
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.StartupClientOptions);
                 }
                 else
                 {

@@ -22,6 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan StartupRetryDelay = TimeSpan.FromSeconds(30);
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
@@ -102,9 +103,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
 
         /// <summary>
-        /// The initial delay between retry attempts when connecting to Azure App Configuration on startup.
+        /// Options used to configure the client used to communicate with Azure App Configuration when initially loading data.
+        /// Used instead of <see cref="ClientOptions"/> on startup.
         /// </summary>
-        internal TimeSpan StartupDelay { get; private set; } = TimeSpan.FromSeconds(30);
+        internal ConfigurationClientOptions StartupClientOptions { get; } = GetDefaultStartupClientOptions();
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -359,15 +361,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Configure the client used to communicate with Azure App Configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
-        /// <param name="startupDelay">The minimum delay between retries when initially loading the configuration provider.</param>
-        public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure, TimeSpan? startupDelay = null)
+        public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
         {
-            if (startupDelay.HasValue)
-            {
-                StartupDelay = startupDelay.Value;
-            }
-
             configure?.Invoke(ClientOptions);
+            return this;
+        }
+
+        /// <summary>
+        /// Configure the client used to communicate with Azure App Configuration and overrides when initially loading data.
+        /// </summary>
+        /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
+        public AzureAppConfigurationOptions ConfigureStartupClientOptions(Action<ConfigurationClientOptions> configure)
+        {
+            configure?.Invoke(StartupClientOptions);
             return this;
         }
 
@@ -444,6 +450,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2022_11_01_Preview);
             clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.MaxDelay = MaxRetryDelay;
+            clientOptions.Retry.Mode = RetryMode.Exponential;
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
+
+            return clientOptions;
+        }
+
+        private static ConfigurationClientOptions GetDefaultStartupClientOptions()
+        {
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
+            clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.Delay = StartupRetryDelay;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
