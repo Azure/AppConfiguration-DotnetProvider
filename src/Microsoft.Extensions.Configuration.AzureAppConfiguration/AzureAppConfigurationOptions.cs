@@ -103,12 +103,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
 
         /// <summary>
-        /// Options used to configure the client used to communicate with Azure App Configuration when initially loading data.
-        /// Used instead of <see cref="ClientOptions"/> on startup.
-        /// </summary>
-        internal ConfigurationClientOptions StartupClientOptions { get; } = GetDefaultStartupClientOptions();
-
-        /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
         /// </summary>
         internal bool IsKeyVaultConfigured { get; private set; } = false;
@@ -122,6 +116,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Indicates all types of feature filters used by the application.
         /// </summary>
         internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+
+        /// <summary>
+        /// Options used for provider startup.
+        /// </summary>
+        public StartupOptions Startup { get; }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -450,18 +449,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2022_11_01_Preview);
             clientOptions.Retry.MaxRetries = MaxRetries;
-            clientOptions.Retry.MaxDelay = MaxRetryDelay;
-            clientOptions.Retry.Mode = RetryMode.Exponential;
-            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
-
-            return clientOptions;
-        }
-
-        private static ConfigurationClientOptions GetDefaultStartupClientOptions()
-        {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
-            clientOptions.Retry.MaxRetries = MaxRetries;
-            clientOptions.Retry.Delay = StartupRetryDelay;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
