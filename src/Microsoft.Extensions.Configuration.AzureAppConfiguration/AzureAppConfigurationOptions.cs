@@ -118,7 +118,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
 
         /// <summary>
-        /// Options used for provider startup.
+        /// Options used to configure provider startup.
         /// </summary>
         public StartupOptions Startup { get; }
 
