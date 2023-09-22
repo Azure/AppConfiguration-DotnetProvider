@@ -41,14 +41,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    options.ClientOptions.Retry.Delay = options.Startup.Timeout;
+                    options.ClientOptions.Retry.NetworkTimeout = options.Startup.Timeout;
                     startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    options.ClientOptions.Retry.Delay = options.Startup.Timeout;
+                    options.ClientOptions.Retry.NetworkTimeout = options.Startup.Timeout;
                     startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else

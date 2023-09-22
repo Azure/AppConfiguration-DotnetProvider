@@ -11,8 +11,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class StartupOptions
     {
         /// <summary>
-        /// The minimum delay between retries when communicating with Azure App Configuration on startup.
+        /// The maximum time to wait before timing out when communicating with Azure App Configuration on startup.
         /// </summary>
-        public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(1);
+        public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1);
     }
 }

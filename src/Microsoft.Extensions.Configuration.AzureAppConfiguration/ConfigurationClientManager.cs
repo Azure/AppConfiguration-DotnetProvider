@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
