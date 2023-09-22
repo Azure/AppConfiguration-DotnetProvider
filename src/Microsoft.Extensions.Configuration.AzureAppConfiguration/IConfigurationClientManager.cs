@@ -20,6 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         Uri GetEndpointForClient(ConfigurationClient client);
 
-        Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken);
+        Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken);
     }
 }

@@ -40,6 +40,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
+        /// Flag to indicate whether discover the replicas automatically.
+        /// </summary>
+        public bool AutoDiscoverReplica { get; set; } = true;
+
+        /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
         internal IEnumerable<string> ConnectionStrings { get; private set; }
@@ -100,11 +105,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
-
-        /// <summary>
-        /// Flag to indicate whether failover to replicas automatically.
-        /// </summary>
-        internal bool IsAutoFailover { get; private set; } = true;
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -431,17 +431,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _mappers.Add(mapper);
-            return this;
-        }
-
-        /// <summary>
-        /// Configure automatic http failover for Azure App Configuration.
-        /// </summary>
-        /// <param name="enabled">Enable automatic Http failover or not</param>
-        public AzureAppConfigurationOptions EnableAutoFailover(bool enabled)
-        {
-            IsAutoFailover = enabled;
-
             return this;
         }
 
