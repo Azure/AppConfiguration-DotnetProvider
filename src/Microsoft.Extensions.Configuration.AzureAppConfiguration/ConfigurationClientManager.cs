@@ -30,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private IEnumerable<Uri> _endpoints;
         private TokenCredential _credential;
         private ConfigurationClientOptions _clientOptions;
+        private Lazy<SrvLookupClient> _srvLookupClient;
 
         public ConfigurationClientManager(AzureAppConfigurationOptions options)
         {
@@ -47,6 +48,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _endpoints = options.Endpoints;
             _credential = options.Credential;
             _clientOptions = options.ClientOptions;
+
+            _srvLookupClient = new Lazy<SrvLookupClient>();
 
             if (_connectionStrings != null && _connectionStrings.Any())
             {
@@ -89,7 +92,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
-        public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)
+        public async Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken)
         {
             var isUsingConnectionString = _connectionStrings != null && _connectionStrings.Any();
 
@@ -110,9 +113,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 endpoint = _endpoints.First();
             }
 
-            var lookup = new SrvLookupClient(logger);
-
-            IEnumerable<SrvRecord> results = await lookup.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            IEnumerable<SrvRecord> results = await _srvLookupClient.Value.QueryAsync(endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
 
             // shuffle the results to ensure hosts can be picked randomly.
             IEnumerable<string> srvTargetHosts = results.Select(r => $"{r.Target.Value.Trim('.')}").Shuffle().ToList();
@@ -208,9 +209,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        // Only remove the client if it is auto failover, as well as not in returned SRV records.
         private bool IsEligibleToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
         {
+            // Only remove the client if it is auto failover, as well as not in returned SRV records.
             if (!client.IsAutoFailoverClient)
             {
                 return false;

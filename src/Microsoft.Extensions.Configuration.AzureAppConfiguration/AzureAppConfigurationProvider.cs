@@ -955,7 +955,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
                 ConfigurationClient currentClient;
 
-                bool autoFailovered = false;
+                bool autoDiscovered = false;
 
                 while (true)
                 {
@@ -982,10 +982,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else if (!clientEnumerator.MoveNext())
                         {
-                            if (_options.IsAutoFailover && !autoFailovered)
+                            if (_options.AutoDiscoverReplica && !autoDiscovered)
                             {
-                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(_logger, cancellationToken).ConfigureAwait(false);
-                                autoFailovered = true;
+                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(cancellationToken).ConfigureAwait(false);
+                                autoDiscovered = true;
 
                                 _logger.LogDebug(LogHelper.BuildAutoFailoverClientCountMessage(autoFailoverClients?.Count() ?? 0));
 
@@ -1011,6 +1011,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (!success && backoffAllClients)
                         {
+                            _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
+
                             do
                             {
                                 _configClientManager.UpdateClientStatus(currentClient, success);

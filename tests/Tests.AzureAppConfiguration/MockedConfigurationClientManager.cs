@@ -65,7 +65,7 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken)
         {
             return Task.FromResult(this._autoFailoverClients.Select(cw => cw.Client));
         }
