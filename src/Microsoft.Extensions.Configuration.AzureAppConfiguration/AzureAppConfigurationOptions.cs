@@ -367,16 +367,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the client used to communicate with Azure App Configuration and overrides when initially loading data.
-        /// </summary>
-        /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
-        public AzureAppConfigurationOptions ConfigureStartupClientOptions(Action<ConfigurationClientOptions> configure)
-        {
-            configure?.Invoke(StartupClientOptions);
-            return this;
-        }
-
-        /// <summary>
         /// Configure refresh for key-values in the configuration provider.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration refresh options.</param>
