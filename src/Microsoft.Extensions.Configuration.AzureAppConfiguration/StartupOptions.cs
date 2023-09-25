@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -11,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class StartupOptions
     {
         /// <summary>
-        /// The maximum time to wait before timing out when communicating with Azure App Configuration on startup.
+        /// The maximum delay before timing out when communicating with Azure App Configuration on startup.
         /// </summary>
         public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1);
     }

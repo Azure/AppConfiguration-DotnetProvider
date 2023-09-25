@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Core;
+using Azure.Data.AppConfiguration;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -41,15 +43,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    options.ClientOptions.Retry.NetworkTimeout = options.Startup.Timeout;
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    var startupOptions = GetStartupClientOptions(options.Startup.Timeout);
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, startupOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    options.ClientOptions.Retry.NetworkTimeout = options.Startup.Timeout;
-                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    var startupOptions = GetStartupClientOptions(options.Startup.Timeout);
+                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, startupOptions);
                 }
                 else
                 {
@@ -74,6 +76,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return provider ?? new EmptyConfigurationProvider();
+        }
+
+        private static ConfigurationClientOptions GetStartupClientOptions(TimeSpan timeout)
+        {
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
+            clientOptions.Retry.MaxRetries = MaxRetries;
+            clientOptions.Retry.MaxDelay = MaxRetryDelay;
+            clientOptions.Retry.Mode = RetryMode.Exponential;
+            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
+
+            return clientOptions;
         }
     }
 }

@@ -120,7 +120,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure provider startup.
         /// </summary>
-        public StartupOptions Startup { get; }
+        public StartupOptions Startup { get; set; }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
