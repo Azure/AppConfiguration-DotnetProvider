@@ -127,10 +127,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var watch = Stopwatch.StartNew();
 
-            var loadStartTime = DateTimeOffset.UtcNow;
-
             // Guaranteed to have atleast one available client since it is a application startup path.
-            IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(loadStartTime);
+            IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
 
             try
             {
@@ -191,7 +189,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
 
                     if (!availableClients.Any())
                     {
@@ -895,9 +893,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else if (!clientEnumerator.MoveNext())
                         {
-                            if (_options.AutoDiscoverReplica && !autoDiscovered)
+                            if (_options.EnableReplicaDiscovery && !autoDiscovered)
                             {
-                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(cancellationToken).ConfigureAwait(false);
+                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoDiscoveredClients(cancellationToken).ConfigureAwait(false);
                                 autoDiscovered = true;
 
                                 _logger.LogDebug(LogHelper.BuildAutoFailoverClientCountMessage(autoFailoverClients?.Count() ?? 0));

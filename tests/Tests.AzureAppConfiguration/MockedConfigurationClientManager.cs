@@ -33,7 +33,7 @@ namespace Tests.AzureAppConfiguration
             this._clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
+        public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
             return this._clients.Select(cw => cw.Client);
         }
@@ -63,7 +63,7 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(CancellationToken cancellationToken)
+        public Task<IEnumerable<ConfigurationClient>> GetAutoDiscoveredClients(CancellationToken cancellationToken)
         {
             return Task.FromResult(this._autoFailoverClients.Select(cw => cw.Client));
         }
