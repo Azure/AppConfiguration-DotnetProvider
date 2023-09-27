@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class StartupOptions
     {
         /// <summary>
-        /// The maximum delay before timing out when communicating with Azure App Configuration on startup.
+        /// The maximum delay before timing out when loading data from Azure App Configuration on startup.
         /// </summary>
         public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1);
     }

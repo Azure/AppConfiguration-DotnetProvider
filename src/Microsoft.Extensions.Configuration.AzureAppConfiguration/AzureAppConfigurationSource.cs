@@ -30,35 +30,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                IConfigurationClientManager clientManager;
+                IConfigurationClientManager refreshClientManager;
                 IConfigurationClientManager startupClientManager;
 
                 if (options.ClientManager != null)
                 {
-                    clientManager = options.ClientManager;
+                    refreshClientManager = options.ClientManager;
 
                     startupClientManager = options.ClientManager;
                 }
                 else if (options.ConnectionStrings != null)
                 {
-                    clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    var startupOptions = GetStartupClientOptions(options.Startup.Timeout);
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, startupOptions);
+                    options.ClientOptions.Retry.MaxRetries = GetStartupMaxRetries(options.ClientOptions.Retry, options.Startup.Timeout);
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    var startupOptions = GetStartupClientOptions(options.Startup.Timeout);
-                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, startupOptions);
+                    options.ClientOptions.Retry.MaxRetries = GetStartupMaxRetries(options.ClientOptions.Retry, options.Startup.Timeout);
+                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(clientManager, startupClientManager, options, _optional);
+                provider = new AzureAppConfigurationProvider(refreshClientManager, startupClientManager, options, _optional);
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {
@@ -78,15 +78,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return provider ?? new EmptyConfigurationProvider();
         }
 
-        private static ConfigurationClientOptions GetStartupClientOptions(TimeSpan timeout)
+        private int GetStartupMaxRetries(RetryOptions retryOptions, TimeSpan timeout)
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V1_0);
-            clientOptions.Retry.MaxRetries = MaxRetries;
-            clientOptions.Retry.MaxDelay = MaxRetryDelay;
-            clientOptions.Retry.Mode = RetryMode.Exponential;
-            clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
+            if (retryOptions.Delay.TotalSeconds == 0)
+            {
+                return retryOptions.MaxRetries;
+            }
 
-            return clientOptions;
+            // Get a number of retries that will be at least enough to continue retrying until the timeout ends
+            // This is the number of retries needed for fixed mode to retry until timeout, which is more than enough for exponential mode
+            int maxRetries = (int)(timeout.TotalSeconds / retryOptions.Delay.TotalSeconds);
+
+            return maxRetries < 0 ? int.MaxValue : maxRetries;
         }
     }
 }
