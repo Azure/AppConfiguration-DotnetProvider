@@ -107,7 +107,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<IEnumerable<SrvRecord>> InternalQueryAsync(string srvDns, CancellationToken cancellationToken)
         {
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(FailOverConstants.UdpSrvQueryTimeout);
 
             IDnsQueryResponse dnsResponse;
@@ -116,10 +116,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 dnsResponse = await _udpLookupClient.QueryAsync(srvDns, QueryType.SRV, QueryClass.IN, cts.Token).ConfigureAwait(false);
             }
-            catch (Exception e) when
-                (e is DnsResponseException ||
-                (e is OperationCanceledException &&
-                    !cancellationToken.IsCancellationRequested))
+            catch (DnsResponseException) 
+            {
+                dnsResponse = await _tcpLookupClient.QueryAsync(srvDns, QueryType.SRV, QueryClass.IN, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 dnsResponse = await _tcpLookupClient.QueryAsync(srvDns, QueryType.SRV, QueryClass.IN, cancellationToken).ConfigureAwait(false);
             }

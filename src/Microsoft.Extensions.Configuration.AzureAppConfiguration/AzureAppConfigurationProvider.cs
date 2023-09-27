@@ -188,7 +188,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
 
                     if (!availableClients.Any())
                     {
@@ -982,9 +982,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else if (!clientEnumerator.MoveNext())
                         {
-                            if (_options.AutoDiscoverReplica && !autoDiscovered)
+                            if (_options.EnableReplicaDiscovery && !autoDiscovered)
                             {
-                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoFailoverClients(cancellationToken).ConfigureAwait(false);
+                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoDiscoveredClients(cancellationToken).ConfigureAwait(false);
                                 autoDiscovered = true;
 
                                 _logger.LogDebug(LogHelper.BuildAutoFailoverClientCountMessage(autoFailoverClients?.Count() ?? 0));

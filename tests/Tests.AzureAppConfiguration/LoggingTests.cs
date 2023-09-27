@@ -373,7 +373,7 @@ namespace Tests.AzureAppConfiguration
 
                     refresher = options.GetRefresher();
 
-                    options.AutoDiscoverReplica = false;
+                    options.EnableReplicaDiscovery = false;
                 })
                 .Build();
 

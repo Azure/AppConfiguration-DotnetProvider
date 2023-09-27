@@ -53,7 +53,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -71,7 +71,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // The client enumerator should return just 1 client since one client is in the backoff state.
-            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
+            Assert.Single(configClientManager.GetAvailableClients());
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -123,7 +123,7 @@ namespace Tests.AzureAppConfiguration
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
 
-                    options.AutoDiscoverReplica = false;
+                    options.EnableReplicaDiscovery = false;
                    
                     refresher = options.GetRefresher();
                 });
@@ -138,7 +138,7 @@ namespace Tests.AzureAppConfiguration
             Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
 
             // The client manager should return no clients since all clients are in the back-off state.
-            Assert.False(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Any());
+            Assert.False(configClientManager.GetAvailableClients().Any());
         }
 
         [Fact]
@@ -173,7 +173,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -232,7 +232,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -249,7 +249,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // The client enumerator should return just 1 client for the second time.
-            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
+            Assert.Single(configClientManager.GetAvailableClients());
 
             // Sleep for backoff-time to pass.
             Thread.Sleep(TimeSpan.FromSeconds(31));
@@ -257,7 +257,7 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // The client enumerator should return 2 clients for the third time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
         }
 
         [Fact]
