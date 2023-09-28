@@ -4,6 +4,7 @@
 using Azure.Core;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -15,40 +16,40 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int defaultMaxRetries = 0;
+            int startupTimeout = 10;
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
-                    defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
+                    options.Startup.Timeout = TimeSpan.FromSeconds(startupTimeout);
                 });
 
             // Act - Build
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            Assert.Throws<TaskCanceledException>(configBuilder.Build);
 
-            // Assert defaultMaxRetries + 1 original request = totalRequestCount
-            Assert.Equal(defaultMaxRetries + 1, requestCountPolicy.RequestCount);
+            // Calculate expected number of retries based on options.Startup.Timeout
+            Assert.Equal((int)Math.Floor(Math.Log(startupTimeout, 2)) + 1, requestCountPolicy.RequestCount);
 
             requestCountPolicy.ResetRequestCount();
 
-            // Arrange
-            int maxRetries = defaultMaxRetries + 1;
+            var defaultDelay = 0.0;
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(TestHelpers.CreateMockEndpointString());
-                    options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = maxRetries);
+                    options.ConfigureClientOptions(clientOptions => clientOptions.Retry.Mode = RetryMode.Fixed);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
+                    options.Startup.Timeout = TimeSpan.FromSeconds(startupTimeout);
                 });
 
             // Act - Build
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            Assert.Throws<TaskCanceledException>(configBuilder.Build);
 
-            // Assert maxRetries + 1 original request = totalRequestCount.
-            Assert.Equal(maxRetries + 1, requestCountPolicy.RequestCount);
+            // Calculate expected number of retries based on options.Startup.Timeout with RetryMode.Fixed
+            Assert.Equal((int)Math.Floor(startupTimeout / defaultDelay) + 1, requestCountPolicy.RequestCount);
         }
     }
 }
