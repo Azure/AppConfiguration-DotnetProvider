@@ -43,14 +43,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    options.ClientOptions.Retry.MaxRetries = GetStartupMaxRetries(options.ClientOptions.Retry, options.Startup.Timeout);
+                    options.ClientOptions.Retry.MaxRetries = int.MaxValue;
                     startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    options.ClientOptions.Retry.MaxRetries = GetStartupMaxRetries(options.ClientOptions.Retry, options.Startup.Timeout);
+                    options.ClientOptions.Retry.MaxRetries = int.MaxValue;
                     startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else
@@ -76,20 +76,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return provider ?? new EmptyConfigurationProvider();
-        }
-
-        private int GetStartupMaxRetries(RetryOptions retryOptions, TimeSpan timeout)
-        {
-            if (retryOptions.Delay.TotalSeconds == 0)
-            {
-                return retryOptions.MaxRetries;
-            }
-
-            // Get a number of retries that will be at least enough to continue retrying until the timeout ends
-            // This is the number of retries needed for fixed mode to retry until timeout, which is more than enough for exponential mode
-            int maxRetries = (int)(timeout.TotalSeconds / retryOptions.Delay.TotalSeconds);
-
-            return maxRetries < 0 ? int.MaxValue : maxRetries;
         }
     }
 }

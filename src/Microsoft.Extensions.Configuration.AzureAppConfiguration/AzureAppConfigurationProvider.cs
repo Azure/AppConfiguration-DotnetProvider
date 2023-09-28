@@ -209,8 +209,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         if (InitializationCacheExpires < utcNow)
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
+
                             var startupCts = new CancellationTokenSource(_options.Startup.Timeout);
+
                             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, startupCts.Token);
+
                             await InitializeAsync(ignoreFailures: false, _startupConfigClientManager.GetAvailableClients(utcNow), linkedCts.Token).ConfigureAwait(false);
                         }
 
