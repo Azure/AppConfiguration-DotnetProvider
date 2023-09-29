@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// Options used to configure the behavior of an Azure App Configuration provider.
+    /// Options used to configure the behavior of an Azure App Configuration provider.         
+    /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with null label are included in the configuration provider.
     /// </summary>
     public class AzureAppConfigurationOptions
     {
@@ -118,7 +119,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
-        /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with null label are included in the configuration provider.
         /// </summary>
         /// <param name="keyFilter">
         /// The key filter to apply when querying Azure App Configuration for key-values.
@@ -168,7 +168,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Specify a snapshot and include its contained key-values in the configuration provider.
         /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
-        /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with null label are included in the configuration provider.
         /// </summary>
         /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
         public AzureAppConfigurationOptions SelectSnapshot(string name)
