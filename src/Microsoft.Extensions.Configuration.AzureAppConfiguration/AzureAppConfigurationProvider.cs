@@ -872,7 +872,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
+            IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
 
@@ -896,7 +896,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    if (IsFailOverable(rfe))
+                    {
+                        if (!clientEnumerator.MoveNext())
+                        {
+                            if (isStartup)
+                            {
+                                clientEnumerator.Dispose();
+                                clientEnumerator = clients.GetEnumerator();
+                                clientEnumerator.MoveNext();
+                            }
+                            else
+                            {
+                                backoffAllClients = true;
+
+                                throw;
+                            }
+                        }
+                    }
+                    else if (!clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
@@ -905,7 +923,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    if (IsFailOverable(ae))
+                    {
+                        if (!clientEnumerator.MoveNext())
+                        {
+                            if (isStartup)
+                            {
+                                clientEnumerator.Dispose();
+                                clientEnumerator = clients.GetEnumerator();
+                                clientEnumerator.MoveNext();
+                            }
+                            else
+                            {
+                                backoffAllClients = true;
+
+                                throw;
+                            }
+                        }
+                    }
+                    else if (!clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 

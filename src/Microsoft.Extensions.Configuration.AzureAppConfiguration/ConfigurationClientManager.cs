@@ -22,8 +22,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
+        private readonly bool _isStartup;
 
-        public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions)
+        public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions, bool isStartup = false)
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
@@ -35,9 +36,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
                 return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
             }).ToList();
+
+            _isStartup = isStartup;
         }
 
-        public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
+        public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions, bool isStartup = false)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -45,6 +48,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _clients = endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
+
+            _isStartup = isStartup;
         }
 
         /// <summary>
@@ -78,7 +83,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 clientWrapper.FailedAttempts++;
-                TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
+                TimeSpan backoffDuration = _isStartup ? 
+                    FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts) :
+                    TimeSpan.FromSeconds(0);
                 clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }
         }

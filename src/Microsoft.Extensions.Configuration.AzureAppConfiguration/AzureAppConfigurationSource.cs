@@ -41,13 +41,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions, true);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions, true);
                 }
                 else
                 {
