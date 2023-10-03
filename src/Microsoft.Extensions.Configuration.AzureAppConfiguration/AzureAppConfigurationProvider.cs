@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -33,7 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
 
-        private List<KeyValueWatcher> _updatedWatchers = new List<KeyValueWatcher>();
+        private ConcurrentDictionary<KeyValueIdentifier, KeyValueWatcher> _updatedWatchers = new ConcurrentDictionary<KeyValueIdentifier, KeyValueWatcher>();
         private readonly TimeSpan MinCacheExpirationInterval;
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
@@ -180,14 +181,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     var utcNow = DateTimeOffset.UtcNow;
-                    IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
+                    IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Concat(_updatedWatchers.Values).Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters cache is expired.
                     if (_mappedData != null &&
                         !cacheExpiredWatchers.Any() &&
                         !cacheExpiredMultiKeyWatchers.Any() &&
-                        !_updatedWatchers.Any() &&
                         !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
                     {
                         return;
@@ -461,7 +461,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        public void ProcessKeyValueNotification(KeyValueNotification keyValueNotification)
+        public void ProcessKeyValueNotification(KeyValueNotification keyValueNotification, TimeSpan? maxDelay)
         {
             if (keyValueNotification == null)
             {
@@ -496,15 +496,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(keyValueNotification)}.{nameof(keyValueNotification.Key)}");
             }
 
-
-            if (_configClientManager.UpdateSyncToken(keyValueNotification.ResourceUri, keyValueNotification.SyncToken))
+            if (keyValueNotification.Label == null)
             {
-                _updatedWatchers.Add(new KeyValueWatcher()
-                {
-                    Key = keyValueNotification.Key,
-                    Label = keyValueNotification.Label,
-                    CacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, TimeSpan.Zero)
-                });
+                throw new ArgumentException(
+                    "Label required.",
+                    $"{nameof(keyValueNotification)}.{nameof(keyValueNotification.Label)}");
+            }
+
+
+            if (_configClientManager.UpdateSyncToken(keyValueNotification.ResourceUri, keyValueNotification.SyncToken) &&
+                _options.KeyValueSelectors.Any(k => keyValueNotification.Key.StartsWith(k.KeyFilter) && keyValueNotification.Label == k.LabelFilter))
+            {
+                var watcher = _updatedWatchers.GetOrAdd(
+                    new KeyValueIdentifier()
+                    {
+                        Key = keyValueNotification.Key,
+                        Label = keyValueNotification.Label,
+                    },
+                    k => new KeyValueWatcher()
+                    {
+                        Key = k.Key,
+                        Label = k.Label
+                    });
+
+                watcher.CacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
             }
             else
             {
