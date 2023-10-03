@@ -41,14 +41,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
-                    options.ClientOptions.Retry.MaxRetries = int.MaxValue;
                     startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
-                    options.ClientOptions.Retry.MaxRetries = int.MaxValue;
                     startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else
