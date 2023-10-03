@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
     /// <summary>
     /// An Object containing the details of a push Notification received from the Azure App Configuration service specificaly for the KeyValueModified and KeyValueDeleted event type.
     /// </summary>
-    public class KeyValueNotification : PushNotification
+    public class KeyValuePushNotification : PushNotification
     {
         /// <summary>
         /// Key within the data sent by the eventgrid

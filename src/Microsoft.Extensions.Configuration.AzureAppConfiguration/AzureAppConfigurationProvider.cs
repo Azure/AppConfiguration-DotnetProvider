@@ -461,7 +461,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        public void ProcessKeyValueNotification(KeyValueNotification keyValueNotification, TimeSpan? maxDelay)
+        public void ProcessKeyValuePushNotification(KeyValuePushNotification keyValueNotification, TimeSpan? maxDelay)
         {
             if (keyValueNotification == null)
             {
@@ -505,7 +505,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
 
             if (_configClientManager.UpdateSyncToken(keyValueNotification.ResourceUri, keyValueNotification.SyncToken) &&
-                _options.KeyValueSelectors.Any(k => keyValueNotification.Key.StartsWith(k.KeyFilter) && keyValueNotification.Label == k.LabelFilter))
+                _options.KeyValueSelectors.Any(k => keyValueNotification.Label == k.LabelFilter && k.KeyFilter == KeyFilter.Any ||
+                k.KeyFilter.Contains(KeyFilter.Any) ? keyValueNotification.Key.StartsWith(k.KeyFilter.Split('*').First()) : keyValueNotification.Key.StartsWith(k.KeyFilter)))
             {
                 var watcher = _updatedWatchers.GetOrAdd(
                     new KeyValueIdentifier()

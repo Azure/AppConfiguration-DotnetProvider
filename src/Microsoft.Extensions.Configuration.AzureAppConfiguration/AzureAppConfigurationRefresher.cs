@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,6 +41,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ThrowIfNullProvider(nameof(ProcessPushNotification));
 
             _provider.ProcessPushNotification(pushNotification, maxDelay);
+        }
+
+        public void ProcessKeyValuePushNotification(KeyValuePushNotification keyValuePushNotification, TimeSpan? maxDelay)
+        {
+            ThrowIfNullProvider(nameof(ProcessKeyValuePushNotification));
+
+            _provider.ProcessKeyValuePushNotification(keyValuePushNotification, maxDelay);
         }
 
         private void ThrowIfNullProvider(string operation)
