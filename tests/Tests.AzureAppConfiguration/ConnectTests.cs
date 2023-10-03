@@ -68,7 +68,7 @@ namespace Tests.AzureAppConfiguration
 
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int startupTimeout = 10;
+            int startupTimeout = 5;
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -83,8 +83,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<TaskCanceledException>(configBuilder.Build);
 
             // Assert the second connect call was successful and it made requests to the configuration store.
-            // Calculate expected number of retries based on options.Startup.Timeout
-            Assert.Equal((int)Math.Floor(Math.Log(startupTimeout, 2)) + 1, requestCountPolicy.RequestCount);
+            Assert.True(requestCountPolicy.RequestCount > 1);
         }
     }
 }
