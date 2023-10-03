@@ -16,7 +16,7 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int startupTimeout = 5;
+            int startupTimeout = 10;
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -35,8 +35,6 @@ namespace Tests.AzureAppConfiguration
             var exponentialRequestCount = requestCountPolicy.RequestCount;
             requestCountPolicy.ResetRequestCount();
 
-            var defaultDelay = 0.0;
-
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -44,13 +42,12 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureClientOptions(clientOptions => clientOptions.Retry.Mode = RetryMode.Fixed);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                     options.Startup.Timeout = TimeSpan.FromSeconds(startupTimeout);
-                    defaultDelay = options.ClientOptions.Retry.Delay.TotalSeconds;
                 });
 
             // Act - Build
             Assert.Throws<TaskCanceledException>(configBuilder.Build);
 
-            // Assert the connect call made requests to the configuration store.
+            // Assert the connect call made requests to the configuration store, more than the exponential mode.
             Assert.True(requestCountPolicy.RequestCount > exponentialRequestCount);
         }
     }

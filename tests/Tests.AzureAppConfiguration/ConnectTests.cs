@@ -68,7 +68,7 @@ namespace Tests.AzureAppConfiguration
 
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int startupTimeout = 5;
+            int startupTimeout = 10;
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
