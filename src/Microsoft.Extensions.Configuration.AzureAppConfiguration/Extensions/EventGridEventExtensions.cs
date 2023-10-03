@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Messaging.EventGrid;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Text.Json;
 
@@ -13,6 +14,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     public static class EventGridEventExtensions
     {
         private const string SyncTokenPropertyName = "syncToken";
+        private const string KeyPropertyName = "key";
+        private const string LabelPropertyName = "label";
+        private const string EtagPropertyName = "etag";
 
         /// <summary>
         /// Tries to create the <see cref="PushNotification"/> object from the details in <see cref="EventGridEvent"/> object. Return value indicates whether the operation succeeded or failed.
@@ -43,17 +47,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 }
 
                 if (eventGridEventData.ValueKind == JsonValueKind.Object &&
-                    eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
-                    syncTokenJson.ValueKind == JsonValueKind.String)
-                {
-                    pushNotification = new PushNotification()
+                if (eventGridEvent.EventType == "KeyValueModified" || eventGridEvent.EventType == "KeyValueDeleted")
                     {
-                        SyncToken = syncTokenJson.GetString(),
-                        EventType = eventGridEvent.EventType,
-                        ResourceUri = resourceUri
-                    };
-                    return true;
-                }
+                        if (eventGridEventData.ValueKind == JsonValueKind.Object && eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncToken) && syncToken.ValueKind == JsonValueKind.String &&
+                        eventGridEventData.TryGetProperty(KeyPropertyName, out JsonElement key) && key.ValueKind == JsonValueKind.String &&
+                        eventGridEventData.TryGetProperty(LabelPropertyName, out JsonElement label) && label.ValueKind == JsonValueKind.String &&
+                        eventGridEventData.TryGetProperty(EtagPropertyName, out JsonElement etag) && etag.ValueKind == JsonValueKind.String)
+                        {
+                            pushNotification = new KeyValueNotification()
+                            {
+                                Key = key.ToString(),
+                                Label = label.ToString(),
+                                Etag = etag.ToString(),
+                                SyncToken = syncToken.GetString(),
+                                EventType = eventGridEvent.EventType,
+                                ResourceUri = resourceUri
+                            };
+                            return true;
+                        }
+                    }
+                    else if (eventGridEventData.ValueKind == JsonValueKind.Object &&
+                        eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
+                        syncTokenJson.ValueKind == JsonValueKind.String)
+                    {
+                        pushNotification = new PushNotification()
+                        {
+                            SyncToken = syncTokenJson.GetString(),
+                            EventType = eventGridEvent.EventType,
+                            ResourceUri = resourceUri
+                        };
+                        return true;
+                    }
             }
 
             return false;
