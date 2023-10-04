@@ -564,26 +564,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             
             try
             {
-                await ExecuteWithFailOverPolicyAsync(
-                    availableClients,
-                    _startupConfigClientManager,
-                    async (client) =>
+                while (true)
+                {
+                    try
                     {
-                        data = await LoadSelectedKeyValues(
-                            client,
+                        await ExecuteWithFailOverPolicyAsync(
+                            availableClients,
+                            _startupConfigClientManager,
+                            async (client) =>
+                            {
+                                data = await LoadSelectedKeyValues(
+                                    client,
+                                    cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                                    client,
+                                    data,
+                                    cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                            },
                             cancellationToken)
                             .ConfigureAwait(false);
-
-                        watchedSettings = await LoadKeyValuesRegisteredForRefresh(
-                            client,
-                            data,
-                            cancellationToken)
-                            .ConfigureAwait(false);
-
-                        watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                    },
-                    cancellationToken)
-                    .ConfigureAwait(false);
+                    }
+                    catch (Exception exception) when (exception is OperationCanceledException ||
+                        ((exception as AggregateException)?.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false))
+                    {
+                        throw;
+                    }
+                    catch
+                    {
+                        // Continue retrying until startup times out through cancellationToken
+                    }
+                }
             }
             catch (Exception exception) when (
                 ignoreFailures &&
@@ -872,7 +887,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
+            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
 
@@ -896,25 +911,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    if (IsFailOverable(rfe))
-                    {
-                        if (!clientEnumerator.MoveNext())
-                        {
-                            if (isStartup)
-                            {
-                                clientEnumerator.Dispose();
-                                clientEnumerator = clients.GetEnumerator();
-                                clientEnumerator.MoveNext();
-                            }
-                            else
-                            {
-                                backoffAllClients = true;
-
-                                throw;
-                            }
-                        }
-                    }
-                    else if (!clientEnumerator.MoveNext())
+                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
@@ -923,25 +920,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    if (IsFailOverable(ae))
-                    {
-                        if (!clientEnumerator.MoveNext())
-                        {
-                            if (isStartup)
-                            {
-                                clientEnumerator.Dispose();
-                                clientEnumerator = clients.GetEnumerator();
-                                clientEnumerator.MoveNext();
-                            }
-                            else
-                            {
-                                backoffAllClients = true;
-
-                                throw;
-                            }
-                        }
-                    }
-                    else if (!clientEnumerator.MoveNext())
+                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
