@@ -222,35 +222,35 @@ namespace Tests.AzureAppConfiguration
         Dictionary<(string, string, string), EventGridEvent> _eventGridEvents = new Dictionary<(string, string, string), EventGridEvent>
         {
             {
-                ("sn;Vxujfidne", "searchQuery1", "\\0"),
+                ("sn;Vxujfidne", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store1.resource.io/kv/searchQuery1",
                 "Microsoft.AppConfiguration.KeyValueModified", "2",
-                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\":\"\\\\0\", \"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
+                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
                 )
             },
             {
-                ("sn;AxRty78B", "searchQuery1", "\\0"),
+                ("sn;AxRty78B", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store2.resource.io/kv/searchQuery1",
                 "Microsoft.AppConfiguration.KeyValueDeleted", "2",
-                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\":\"\\\\0\", \"etag\":\"etagValue1\",\"syncToken\":\"sn;AxRty78B\"}")
+                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;AxRty78B\"}")
                 )
             },
             {
-                ("sn;Ttylmable", "searchQuery1", "\\0"),
+                ("sn;Ttylmable", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store1.resource.io/kv/searchQuery2",
                 "Microsoft.AppConfiguration.KeyValueDeleted", "2",
-                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\":\"\\\\0\", \"etag\":\"etagValue1\",\"syncToken\":\"sn;Ttylmable\"}")
+                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;Ttylmable\"}")
                 )
             },
             {
-                ("sn;CRAle3342", "searchQuery1", "\\0"),
+                ("sn;CRAle3342", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store2.resource.io/kv/searchQuery2",
                 "Microsoft.AppConfiguration.KeyValueModified", "2",
-                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\":\"\\\\0\", \"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
+                BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
                 )
             }
         };
@@ -303,7 +303,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("*");
+                    options.Select(KeyFilter.Any);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.RegisterUpdatesOnly()
@@ -337,7 +337,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("*");
+                    options.Select(KeyFilter.Any);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")

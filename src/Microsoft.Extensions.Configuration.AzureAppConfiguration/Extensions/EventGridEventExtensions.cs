@@ -94,14 +94,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 }
 
                 if (eventGridEventData.ValueKind == JsonValueKind.Object && eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncToken) && syncToken.ValueKind == JsonValueKind.String &&
-                    eventGridEventData.TryGetProperty(KeyPropertyName, out JsonElement key) && key.ValueKind == JsonValueKind.String &&
-                    eventGridEventData.TryGetProperty(LabelPropertyName, out JsonElement label) && label.ValueKind == JsonValueKind.String &&
-                    eventGridEventData.TryGetProperty(EtagPropertyName, out JsonElement etag) && etag.ValueKind == JsonValueKind.String)
+                    eventGridEventData.TryGetProperty(KeyPropertyName, out JsonElement key) && key.ValueKind == JsonValueKind.String &&                    
+                    eventGridEventData.TryGetProperty(EtagPropertyName, out JsonElement etag) && etag.ValueKind == JsonValueKind.String &&
+                    eventGridEventData.TryGetProperty(LabelPropertyName, out JsonElement label) && 
+                    (label.ValueKind == JsonValueKind.String || label.ValueKind == JsonValueKind.Null))
                 {
                     keyValuePushNotification = new KeyValuePushNotification()
                     {
                         Key = key.ToString(),
-                        Label = label.ToString(),
+                        Label = label.ValueKind == JsonValueKind.Null ? LabelFilter.Null : label.ToString(),
                         Etag = etag.ToString(),
                         SyncToken = syncToken.GetString(),
                         EventType = eventGridEvent.EventType,
