@@ -505,8 +505,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
 
             if (_configClientManager.UpdateSyncToken(keyValueNotification.ResourceUri, keyValueNotification.SyncToken) &&
-                _options.KeyValueSelectors.Any(k => keyValueNotification.Label == k.LabelFilter && k.KeyFilter == KeyFilter.Any ||
-                k.KeyFilter.Contains(KeyFilter.Any) ? keyValueNotification.Key.StartsWith(k.KeyFilter.Split('*').First()) : keyValueNotification.Key.StartsWith(k.KeyFilter)))
+                _options.KeyValueSelectors.Any(k => keyValueNotification.Label == k.LabelFilter && (k.KeyFilter == KeyFilter.Any ||
+                k.KeyFilter.Contains(KeyFilter.Any) ? keyValueNotification.Key.StartsWith(k.KeyFilter.Split('*').First()) : keyValueNotification.Key.StartsWith(k.KeyFilter))))
             {
                 var watcher = _updatedWatchers.GetOrAdd(
                     new KeyValueIdentifier()

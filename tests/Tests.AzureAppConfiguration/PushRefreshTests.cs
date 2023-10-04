@@ -62,7 +62,7 @@ namespace Tests.AzureAppConfiguration
 
             ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey6",
-                label: "\\0",
+                label: LabelFilter.Null,
                 value: "TestValue6",
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text"),
@@ -119,7 +119,7 @@ namespace Tests.AzureAppConfiguration
                                     EventType = "eventType.KeyValueModified",
                                     SyncToken = "SyncToken1;sn=001",
                                     Key = "TestKey6",
-                                    Label = "\\0"
+                                    Label = LabelFilter.Null
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = SecondaryResourceUri,
@@ -127,6 +127,13 @@ namespace Tests.AzureAppConfiguration
                                     SyncToken = "SyncToken1",
                                     Key = "TestKey3",
                                     Label = "label"
+                                    },
+              new KeyValuePushNotification  {
+                                    ResourceUri = SecondaryResourceUri,
+                                    EventType = "eventType.KeyValueModified",
+                                    SyncToken = "SyncToken1",
+                                    Key = "TestKeyWithMultipleLabels",
+                                    Label = "label1"
                                     },
             };
 
@@ -447,17 +454,22 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
             Assert.Equal("TestValue6", config["TestKey6"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
+            // Test a value that is not in our label. Should not be reloaded.
+            _kvCollection[3].Value = "TestValueForLabel1NoChange";
             // Third Value
             _kvCollection[2].Value = "newValue3";
             // Sixth value
             _kvCollection[5].Value = "newValue6";
             refresher.ProcessKeyValuePushNotification(_keyValuePushNotificationList[0], TimeSpan.Zero);
             refresher.ProcessKeyValuePushNotification(_keyValuePushNotificationList[1], TimeSpan.Zero);
+            refresher.ProcessKeyValuePushNotification(_keyValuePushNotificationList[2], TimeSpan.Zero);
             refresher.RefreshAsync().Wait();
 
+            Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
             Assert.Equal("newValue6", config["TestKey6"]);
             Assert.Equal("newValue3", config["TestKey3"]);
         }
