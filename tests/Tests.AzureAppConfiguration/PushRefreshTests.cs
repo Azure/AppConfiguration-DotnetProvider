@@ -72,42 +72,42 @@ namespace Tests.AzureAppConfiguration
             {
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1;sn=001",
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken2",
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = "SyncToken1;sn=001",
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = "SyncToken2",
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1",
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken2",
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType =  RefreshConstants.KeyValueDeleted,
                                     SyncToken = "SyncToken1",
                                     },
               new PushNotification  {
                                     ResourceUri = SecondaryResourceUri,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = "SyncToken2",
                                     }
             };
@@ -116,21 +116,21 @@ namespace Tests.AzureAppConfiguration
             {
               new KeyValuePushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1;sn=001",
                                     Key = "TestKey6",
                                     Label = LabelFilter.Null
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = SecondaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1",
                                     Key = "TestKey3",
                                     Label = "label"
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = SecondaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1",
                                     Key = "TestKeyWithMultipleLabels",
                                     Label = "label1"
@@ -141,7 +141,7 @@ namespace Tests.AzureAppConfiguration
             {
               new PushNotification  {
                                     ResourceUri = null,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1;sn=001"
                                     },
               new PushNotification  {
@@ -151,12 +151,12 @@ namespace Tests.AzureAppConfiguration
                                     },
               new PushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = null
                                     },
               new PushNotification  {
                                     ResourceUri = null,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = null
                                     },
               new PushNotification  {
@@ -170,7 +170,7 @@ namespace Tests.AzureAppConfiguration
             {
               new KeyValuePushNotification  {
                                     ResourceUri = null,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken1;sn=001",
                                     Key = null,
                                     Label = null
@@ -184,14 +184,14 @@ namespace Tests.AzureAppConfiguration
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = null,
                                     Key = null,
                                     Label = null
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = null,
-                                    EventType = "eventType.KeyValueDeleted",
+                                    EventType = RefreshConstants.KeyValueDeleted,
                                     SyncToken = null,
                                     Key = null,
                                     Label = null
@@ -205,14 +205,14 @@ namespace Tests.AzureAppConfiguration
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken3;sn=003",
                                     Key = "Key1",
                                     Label = null
                                     },
               new KeyValuePushNotification  {
                                     ResourceUri = PrimaryResourceUri,
-                                    EventType = "eventType.KeyValueModified",
+                                    EventType = RefreshConstants.KeyValueModified,
                                     SyncToken = "SyncToken4;sn=004",
                                     Key = null,
                                     Label = "Label1"
@@ -225,7 +225,7 @@ namespace Tests.AzureAppConfiguration
                 ("sn;Vxujfidne", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store1.resource.io/kv/searchQuery1",
-                "Microsoft.AppConfiguration.KeyValueModified", "2",
+                RefreshConstants.KeyValueModified, "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
                 )
             },
@@ -233,7 +233,7 @@ namespace Tests.AzureAppConfiguration
                 ("sn;AxRty78B", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store2.resource.io/kv/searchQuery1",
-                "Microsoft.AppConfiguration.KeyValueDeleted", "2",
+                RefreshConstants.KeyValueDeleted, "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;AxRty78B\"}")
                 )
             },
@@ -241,7 +241,7 @@ namespace Tests.AzureAppConfiguration
                 ("sn;Ttylmable", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store1.resource.io/kv/searchQuery2",
-                "Microsoft.AppConfiguration.KeyValueDeleted", "2",
+                RefreshConstants.KeyValueDeleted, "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;Ttylmable\"}")
                 )
             },
@@ -249,7 +249,7 @@ namespace Tests.AzureAppConfiguration
                 ("sn;CRAle3342", "searchQuery1", LabelFilter.Null),
             new EventGridEvent(
                 "https://store2.resource.io/kv/searchQuery2",
-                "Microsoft.AppConfiguration.KeyValueModified", "2",
+                RefreshConstants.KeyValueModified, "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\", \"label\": null, \"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
                 )
             }

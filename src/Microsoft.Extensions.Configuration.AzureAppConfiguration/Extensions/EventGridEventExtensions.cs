@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         {
             keyValuePushNotification = null;
 
-            if (eventGridEvent.Data == null || (!eventGridEvent.EventType.EndsWith("KeyValueModified") && !eventGridEvent.EventType.EndsWith("KeyValueDeleted")) || 
+            if (eventGridEvent.Data == null || (eventGridEvent.EventType != RefreshConstants.KeyValueModified && eventGridEvent.EventType != RefreshConstants.KeyValueDeleted) || 
                 eventGridEvent.Subject == null)
             {
                 return false;

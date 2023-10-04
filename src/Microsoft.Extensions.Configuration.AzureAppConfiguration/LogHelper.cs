@@ -75,6 +75,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.PushNotificationUnregisteredEndpoint} '{resourceUri}'.";
         }
 
+        public static string BuildKeyValuePushNotificationMatchFailedMessage(string key, string label)
+        {
+            return string.Format(LoggingConstants.KeyValueMatchFailed, key, label);
+        }
+
         public static string BuildFailoverMessage(string originalEndpoint, string currentEndpoint)
         {
             return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{originalEndpoint?.TrimEnd('/')}'. {LoggingConstants.FailingOverToEndpoint} '{currentEndpoint?.TrimEnd('/')}'.";

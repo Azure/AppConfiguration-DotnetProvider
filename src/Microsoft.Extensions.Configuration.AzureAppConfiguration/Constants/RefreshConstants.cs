@@ -21,5 +21,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Backoff during refresh failures
         public static readonly TimeSpan DefaultMinBackoff = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan DefaultMaxBackoff = TimeSpan.FromMinutes(10);
+
+        // Event Types
+        public static readonly string KeyValueModified = "Microsoft.AppConfiguration.KeyValueModified";
+        public static readonly string KeyValueDeleted = "Microsoft.AppConfiguration.KeyValueDeleted";
     }
 }

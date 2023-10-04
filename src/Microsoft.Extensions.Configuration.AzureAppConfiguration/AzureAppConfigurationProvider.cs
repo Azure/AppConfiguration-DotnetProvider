@@ -504,23 +504,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
 
-            if (_configClientManager.UpdateSyncToken(keyValueNotification.ResourceUri, keyValueNotification.SyncToken) &&
-                _options.KeyValueSelectors.Any(k => keyValueNotification.Label == k.LabelFilter && (k.KeyFilter == KeyFilter.Any ||
-                k.KeyFilter.Contains(KeyFilter.Any) ? keyValueNotification.Key.StartsWith(k.KeyFilter.Split('*').First()) : keyValueNotification.Key.StartsWith(k.KeyFilter))))
+            if (_configClientManager.UpdateSyncToken(keyValueNotification.ResourceUri, keyValueNotification.SyncToken))
             {
-                var watcher = _updatedWatchers.GetOrAdd(
-                    new KeyValueIdentifier()
-                    {
-                        Key = keyValueNotification.Key,
-                        Label = keyValueNotification.Label,
-                    },
-                    k => new KeyValueWatcher()
-                    {
-                        Key = k.Key,
-                        Label = k.Label
-                    });
+                if (_options.KeyValueSelectors.Any(k => keyValueNotification.Label == k.LabelFilter &&
+                (k.KeyFilter == KeyFilter.Any || k.KeyFilter.Contains(KeyFilter.Any) ?
+                    keyValueNotification.Key.StartsWith(k.KeyFilter.Split('*').First()) : keyValueNotification.Key.StartsWith(k.KeyFilter))))
+                {
+                    var watcher = _updatedWatchers.GetOrAdd(
+                        new KeyValueIdentifier()
+                        {
+                            Key = keyValueNotification.Key,
+                            Label = keyValueNotification.Label,
+                        },
+                        k => new KeyValueWatcher()
+                        {
+                            Key = k.Key,
+                            Label = k.Label
+                        });
 
-                watcher.CacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
+                    watcher.CacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
+                }
+                else
+                {
+                    _logger.LogDebug(LogHelper.BuildKeyValuePushNotificationMatchFailedMessage(keyValueNotification.Key, keyValueNotification.Label));
+                }
             }
             else
             {
