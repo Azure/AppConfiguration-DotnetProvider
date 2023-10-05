@@ -5,13 +5,13 @@ using System.Text.Json.Serialization;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class FeatureVariants
+    internal class FeatureVariant
     {
         [JsonPropertyName("name")]
         public string Name { get; set; }
 
         [JsonPropertyName("configuration_value")]
-        public IConfigurationSection ConfigurationValue { get; set; }
+        public string ConfigurationValue { get; set; }
 
         [JsonPropertyName("configuration_reference")]
         public string ConfigurationReference { get; set; }

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
@@ -17,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public FeatureConditions Conditions { get; set; }
 
         [JsonPropertyName("variants")]
-        public FeatureVariants Variants { get; set; }
+        public List<FeatureVariant> Variants { get; set; }
 
         [JsonPropertyName("allocation")]
         public FeatureAllocation Allocation { get; set; }

@@ -9,5 +9,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string ContentType = "application/vnd.microsoft.appconfig.ff+json";
         public const string SectionName = "FeatureManagement";
         public const string EnabledFor = "EnabledFor";
+        public const string Variants = "Variants";
+        public const string Allocation = "Allocation";
+        public const string User = "User";
+        public const string Group = "User";
+        public const string Percentile = "User";
     }
 }

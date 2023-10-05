@@ -15,13 +15,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string DefaultWhenEnabled { get; set; }
 
         [JsonPropertyName("user")]
-        public List<UserAllocation> User { get; set; }
+        public List<FeatureUserAllocation> User { get; set; }
 
         [JsonPropertyName("user")]
-        public List<GroupAllocation> Group { get; set; }
+        public List<FeatureGroupAllocation> Group { get; set; }
 
         [JsonPropertyName("user")]
-        public List<PercentileAllocation> Percentile { get; set; }
+        public List<FeaturePercentileAllocation> Percentile { get; set; }
 
         [JsonPropertyName("seed")]
         public string Seed { get; set; }
