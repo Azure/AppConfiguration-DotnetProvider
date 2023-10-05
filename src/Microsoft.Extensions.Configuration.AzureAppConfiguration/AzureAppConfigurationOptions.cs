@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
     /// Options used to configure the behavior of an Azure App Configuration provider.         
-    /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with null label are included in the configuration provider.
+    /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with no label are included in the configuration provider.
     /// </summary>
     public class AzureAppConfigurationOptions
     {
