@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             Endpoint = endpoint;
             Client = configurationClient;
-            BackoffEndTime = DateTimeOffset.UtcNow;
+            BackoffEndTime = default;
             FailedAttempts = 0;
             IsDiscoveredClient = isDiscovered;
         }

@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientManager
     {
-        IEnumerable<ConfigurationClient> GetAvailableClients();
+        Task<IEnumerable<ConfigurationClient>> GetAvailableClients(DateTimeOffset time, CancellationToken cancellationToken);
 
         IEnumerable<ConfigurationClient> GetAllClients();
 
@@ -21,7 +21,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         bool UpdateSyncToken(Uri endpoint, String syncToken);
 
         Uri GetEndpointForClient(ConfigurationClient client);
-
-        Task<IEnumerable<ConfigurationClient>> GetAutoDiscoveredClients(CancellationToken cancellationToken);
     }
 }
