@@ -33,9 +33,9 @@ namespace Tests.AzureAppConfiguration
             this._clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public Task<IEnumerable<ConfigurationClient>> GetAvailableClients(DateTimeOffset time, CancellationToken cancellationToken)
         {
-            return this._clients.Select(cw => cw.Client);
+            return Task.FromResult(this._clients.Concat(_autoFailoverClients).Select(cw => cw.Client));
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -61,11 +61,6 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
             return currentClient?.Endpoint;
-        }
-
-        public Task<IEnumerable<ConfigurationClient>> GetAutoDiscoveredClients(CancellationToken cancellationToken)
-        {
-            return Task.FromResult(this._autoFailoverClients.Select(cw => cw.Client));
         }
     }
 }

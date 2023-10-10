@@ -127,11 +127,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var watch = Stopwatch.StartNew();
 
-            // Guaranteed to have atleast one available client since it is a application startup path.
-            IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+            var loadStartTime = DateTimeOffset.UtcNow;
 
             try
             {
+                // Guaranteed to have atleast one available client since it is a application startup path.
+                IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(loadStartTime, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
                 InitializeAsync(_optional, availableClients, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
@@ -189,7 +191,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+                    IEnumerable<ConfigurationClient> availableClients = await _configClientManager.GetAvailableClients(utcNow, cancellationToken).ConfigureAwait(false);
 
                     if (!availableClients.Any())
                     {
@@ -856,101 +858,74 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(IEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
-            IEnumerator<ConfigurationClient> clientEnumerator = null;
+            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
-            try
+            clientEnumerator.MoveNext();
+
+            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+            ConfigurationClient currentClient;
+
+            while (true)
             {
-                clientEnumerator = clients.GetEnumerator();
-                clientEnumerator.MoveNext();
+                bool success = false;
+                bool backoffAllClients = false;
 
-                Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
-                ConfigurationClient currentClient;
+                cancellationToken.ThrowIfCancellationRequested();
+                currentClient = clientEnumerator.Current;
 
-                bool autoDiscovered = false;
-
-                while (true)
+                try
                 {
-                    bool success = false;
-                    bool backoffAllClients = false;
+                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
+                    success = true;
 
-                    cancellationToken.ThrowIfCancellationRequested();
-                    currentClient = clientEnumerator.Current;
-
-                    try
+                    return result;
+                }
+                catch (RequestFailedException rfe)
+                {
+                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
-                        T result = await funcToExecute(currentClient).ConfigureAwait(false);
-                        success = true;
+                        backoffAllClients = true;
 
-                        return result;
+                        throw;
                     }
-                    catch (Exception ex) when (ex is RequestFailedException ||
-                                               ex is AggregateException)
+                }
+                catch (AggregateException ae)
+                {
+                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
-                        if (!IsFailOverable(ex))
-                        {
-                            backoffAllClients = true;
-                            throw;
-                        }
-                        else if (!clientEnumerator.MoveNext())
-                        {
-                            if (_options.EnableReplicaDiscovery && !autoDiscovered)
-                            {
-                                IEnumerable<ConfigurationClient> autoFailoverClients = await _configClientManager.GetAutoDiscoveredClients(cancellationToken).ConfigureAwait(false);
-                                autoDiscovered = true;
+                        backoffAllClients = true;
 
-                                _logger.LogDebug(LogHelper.BuildAutoFailoverClientCountMessage(autoFailoverClients?.Count() ?? 0));
-
-                                if (autoFailoverClients != null && autoFailoverClients.Any())
-                                {
-                                    clientEnumerator = autoFailoverClients.GetEnumerator();
-                                    clientEnumerator.MoveNext();
-                                }
-                                else
-                                {
-                                    backoffAllClients = true;
-                                    throw;
-                                }
-                            }
-                            else
-                            {
-                                backoffAllClients = true;
-                                throw;
-                            }
-                        }
+                        throw;
                     }
-                    finally
+                }
+                finally
+                {
+                    if (!success && backoffAllClients)
                     {
-                        if (!success && backoffAllClients)
-                        {
-                            _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
+                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
 
-                            do
-                            {
-                                _configClientManager.UpdateClientStatus(currentClient, success);
-                                clientEnumerator.MoveNext();
-                                currentClient = clientEnumerator.Current;
-                            }
-                            while (currentClient != null);
-                        }
-                        else
+                        do
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
+                            clientEnumerator.MoveNext();
+                            currentClient = clientEnumerator.Current;
                         }
+                        while (currentClient != null);
                     }
-
-                    Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
-
-                    if (previousEndpoint != currentEndpoint)
+                    else
                     {
-                        _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
+                        _configClientManager.UpdateClientStatus(currentClient, success);
                     }
-
-                    previousEndpoint = currentEndpoint;
                 }
-            }
-            finally
-            {
-                clientEnumerator.Dispose();
+
+                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                if (previousEndpoint != currentEndpoint)
+                {
+                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
+                }
+
+                previousEndpoint = currentEndpoint;
             }
         }
 
@@ -964,34 +939,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }, cancellationToken).ConfigureAwait(false);
         }
 
-        private bool IsFailOverable(Exception ex)
+        private bool IsFailOverable(AggregateException ex)
         {
-            if (ex is RequestFailedException rfe)
+            RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
+
+            return rfe != null ? IsFailOverable(rfe) : false;
+        }
+
+        private bool IsFailOverable(RequestFailedException rfe)
+        {
+
+            // The InnerException could be SocketException or WebException when endpoint is invalid and IOException if it is network issue.
+            if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
             {
-                if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
-                {
-                    return hre.InnerException is WebException ||
-                           hre.InnerException is SocketException ||
-                           hre.InnerException is IOException;
-                }
-
-                return rfe.Status == HttpStatusCodes.TooManyRequests ||
-                       rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                       rfe.Status >= (int)HttpStatusCode.InternalServerError;
-            }
-            else if (ex is AggregateException ae)
-            {
-                IReadOnlyCollection<Exception> innerExceptions = ae.InnerExceptions;
-
-                if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
-                {
-                    return IsFailOverable((RequestFailedException)innerExceptions.Last());
-                }
-
-                return false;
+                return hre.InnerException is WebException ||
+                       hre.InnerException is SocketException ||
+                       hre.InnerException is IOException;
             }
 
-            return false;
+            return rfe.Status == HttpStatusCodes.TooManyRequests ||
+                   rfe.Status == (int)HttpStatusCode.RequestTimeout ||
+                   rfe.Status >= (int)HttpStatusCode.InternalServerError;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
