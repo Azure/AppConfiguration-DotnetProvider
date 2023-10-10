@@ -20,7 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshKeyVaultSecretRead = "Secret read from Key Vault for key-value.";
         public const string RefreshFeatureFlagRead = "Feature flag read from App Configuration.";
         public const string RefreshFeatureFlagsUnchanged = "Feature flags read from App Configuration. Change:'None'";
-        public const string AutoFailoverClientCount = "Get automatic failover client Count.";
 
         // Successful update, information log level
         public const string RefreshConfigurationUpdatedSuccess = "Configuration reloaded.";
