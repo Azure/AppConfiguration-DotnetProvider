@@ -84,10 +84,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint?.TrimEnd('/')}'.";
         }
-
-        public static string BuildAutoFailoverClientCountMessage(int count)
-        {
-            return $"{LoggingConstants.AutoFailoverClientCount}: {count}";
-        }
     }
 }
