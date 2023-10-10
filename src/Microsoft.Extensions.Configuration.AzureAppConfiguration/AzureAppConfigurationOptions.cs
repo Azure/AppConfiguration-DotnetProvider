@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
-        public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
