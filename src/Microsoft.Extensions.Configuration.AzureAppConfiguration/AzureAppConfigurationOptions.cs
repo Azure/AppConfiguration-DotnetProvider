@@ -41,7 +41,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether enable replica discovery.
         /// </summary>
-        public bool EnableReplicaDiscovery { get; set; } = true;
+        public bool ReplicaDiscoveryEnabled { get; set; } = true;
 
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
