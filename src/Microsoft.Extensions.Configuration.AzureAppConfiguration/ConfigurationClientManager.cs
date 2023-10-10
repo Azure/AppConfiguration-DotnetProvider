@@ -229,6 +229,38 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
+        private async Task RefreshFallbackClients(CancellationToken cancellationToken)
+        {
+            IEnumerable<SrvRecord> results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+
+            // Shuffle the results to ensure hosts can be picked randomly.
+            // Srv lookup may retrieve trailing dot in the host name, just trim it.
+            IEnumerable<string> srvTargetHosts = results.Shuffle().Select(r => $"{r.Target.Value.Trim('.')}").ToList();
+
+            // clean up clients in case the corresponding replicas are removed.
+            foreach (ConfigurationClientWrapper client in _clients)
+            {
+                if (IsEligibleToRemove(srvTargetHosts, client))
+                {
+                    _clients.Remove(client);
+                }
+            }
+
+            foreach (string host in srvTargetHosts)
+            {
+                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var targetEndpoint = new Uri($"https://{host}");
+
+                    var configClient = _isUsingConnetionString ?
+                        new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions) :
+                        new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
+
+                    _clients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient, true));
+                }
+            }
+        }
+
         private bool IsEligibleToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
         {
             // Only remove the client if it is discovered, as well as not in returned SRV records.
