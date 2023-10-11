@@ -127,7 +127,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.ReplicaCount > 0)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ReplicaCount, requestTracingOptions.ReplicaCount.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ReplicaCountKey, requestTracingOptions.ReplicaCount.ToString()));
             }
 
             if (requestTracingOptions.HostType != HostType.Unidentified)
