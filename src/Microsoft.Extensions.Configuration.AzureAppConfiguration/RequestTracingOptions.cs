@@ -38,12 +38,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
 
         /// <summary>
-        /// Version of the Microsoft.FeatureManagement assembly being used.
+        /// Version of the Microsoft.FeatureManagement assembly that is present in the application.
         /// </summary>
         public string FeatureManagementVersion { get; set; }
 
         /// <summary>
-        /// Version of the Microsoft.FeatureManagement.AspNetCore assembly being used.
+        /// Version of the Microsoft.FeatureManagement.AspNetCore assembly that is present in the application.
         /// </summary>
         public string FeatureManagementAspNetCoreVersion { get; set; }
     }
