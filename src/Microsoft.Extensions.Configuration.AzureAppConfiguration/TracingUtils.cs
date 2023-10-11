@@ -147,12 +147,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureManagementVersion != null)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementVersionKey, requestTracingOptions.FeatureManagementVersion.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementVersionKey, requestTracingOptions.FeatureManagementVersion));
             }
 
             if (requestTracingOptions.FeatureManagementAspNetCoreVersion != null)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)

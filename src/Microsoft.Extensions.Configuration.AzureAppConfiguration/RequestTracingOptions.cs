@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
