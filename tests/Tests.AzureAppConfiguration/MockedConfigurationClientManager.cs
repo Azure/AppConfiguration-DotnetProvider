@@ -33,7 +33,7 @@ namespace Tests.AzureAppConfiguration
             this._clients = clients.ToList();
         }
 
-        public Task<IEnumerable<ConfigurationClient>> GetAvailableClients(DateTimeOffset time, CancellationToken cancellationToken)
+        public Task<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
         {
             return Task.FromResult(this._clients.Concat(_autoFailoverClients).Select(cw => cw.Client));
         }

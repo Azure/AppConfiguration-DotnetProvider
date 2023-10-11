@@ -127,12 +127,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var watch = Stopwatch.StartNew();
 
-            var loadStartTime = DateTimeOffset.UtcNow;
-
             try
             {
                 // Guaranteed to have atleast one available client since it is a application startup path.
-                IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(loadStartTime, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
 
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
@@ -191,7 +189,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = await _configClientManager.GetAvailableClients(utcNow, cancellationToken).ConfigureAwait(false);
+                    IEnumerable<ConfigurationClient> availableClients = await _configClientManager.GetAvailableClients(cancellationToken).ConfigureAwait(false);
 
                     if (!availableClients.Any())
                     {
