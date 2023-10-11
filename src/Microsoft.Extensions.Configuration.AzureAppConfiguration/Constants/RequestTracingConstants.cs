@@ -24,6 +24,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string HostTypeKey = "Host";
         public const string FilterTypeKey = "Filter";
         public const string EnvironmentKey = "Env";
+        public const string FeatureManagementVersionKey = "FeatureManagementVersion";
+        public const string FeatureManagementAspNetCoreVersionKey = "FeatureManagementAspNetCoreVersion";
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
@@ -32,5 +34,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
         public const string UserAgentHeader = "User-Agent";
+
+        public const string FeatureManagementPackageName = "Microsoft.FeatureManagement";
+        public const string FeatureManagementAspNetCorePackageName = "Microsoft.FeatureManagement.AspNetCore";
     }
 }

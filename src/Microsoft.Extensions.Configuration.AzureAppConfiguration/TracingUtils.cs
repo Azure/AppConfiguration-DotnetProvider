@@ -1,10 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,6 +76,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
+        public static string GetAssemblyVersion(string assemblyName)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(assemblyName))
+                {
+                    // Return the version using only the first 3 fields and remove opening and closing curly braces
+                    return Assembly.Load(assemblyName).GetName().Version.ToString(3).Trim('{', '}');
+                }
+            }
+            catch (Exception exception) when (exception is BadImageFormatException || exception is FileNotFoundException || exception is FileLoadException) { }
+
+            return null;
+        }
+
         public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Func<Task> clientCall)
         {
             string correlationContextHeader = "";
@@ -127,6 +143,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.FilterTelemetry.UsesAnyFeatureFilter())
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTelemetry.ToString()));
+            }
+
+            if (requestTracingOptions.FeatureManagementVersion != null)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementVersionKey, requestTracingOptions.FeatureManagementVersion.ToString()));
+            }
+
+            if (requestTracingOptions.FeatureManagementAspNetCoreVersion != null)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion.ToString()));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)

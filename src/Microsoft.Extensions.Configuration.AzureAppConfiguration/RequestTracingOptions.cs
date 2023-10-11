@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -36,5 +37,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Type of feature filters used by the application.
         /// </summary>
         public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+
+        /// <summary>
+        /// Version of the Microsoft.FeatureManagement assembly being used.
+        /// </summary>
+        public string FeatureManagementVersion { get; set; }
+
+        /// <summary>
+        /// Version of the Microsoft.FeatureManagement.AspNetCore assembly being used.
+        /// </summary>
+        public string FeatureManagementAspNetCoreVersion { get; set; }
     }
 }
