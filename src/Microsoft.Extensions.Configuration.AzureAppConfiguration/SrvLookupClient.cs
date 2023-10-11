@@ -26,10 +26,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly LookupClient _tcpLookupClient;
         private readonly LookupClient _udpLookupClient;
 
-        const string TcpOrigin = "_origin._tcp";
-        const string TCP = "_tcp";
-        const string Alt = "_alt";
-        const int MaxSrvRecordCountPerRecordSet = 20;
+        private const string TcpOrigin = "_origin._tcp";
+        private const string TCP = "_tcp";
+        private const string Alt = "_alt";
+        private const int MaxSrvRecordCountPerRecordSet = 20;
+
+        private static readonly TimeSpan OriginHostResultCacheExpiration = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan UdpSrvQueryTimeout = TimeSpan.FromSeconds(5);
 
         public SrvLookupClient()
         {
@@ -67,7 +70,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     originHost = new OriginHostCacheItem()
                     {
                         OriginHost = records.First().Target.Value.Trim('.'),
-                        CacheExpires = DateTimeOffset.UtcNow.Add(FailOverConstants.OriginHostResultCacheExpiration)
+                        CacheExpires = DateTimeOffset.UtcNow.Add(OriginHostResultCacheExpiration)
                     };
 
                     _cachedOriginHosts[originSrvDns] = originHost;
@@ -75,7 +78,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else
                 {
                     originHost.OriginHost = records.First().Target.Value.Trim('.');
-                    originHost.CacheExpires = DateTimeOffset.UtcNow.Add(FailOverConstants.OriginHostResultCacheExpiration);
+                    originHost.CacheExpires = DateTimeOffset.UtcNow.Add(OriginHostResultCacheExpiration);
                 }
             }
 
@@ -91,6 +94,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     break;
                 }
+
                 resultRecords = resultRecords.Concat(records);
 
                 // If we get less than 20 records from _alt{i} SRV, we have reached the end of _alt* list
@@ -108,7 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<IEnumerable<SrvRecord>> InternalQueryAsync(string srvDns, CancellationToken cancellationToken)
         {
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(FailOverConstants.UdpSrvQueryTimeout);
+            cts.CancelAfter(UdpSrvQueryTimeout);
 
             IDnsQueryResponse dnsResponse;
 

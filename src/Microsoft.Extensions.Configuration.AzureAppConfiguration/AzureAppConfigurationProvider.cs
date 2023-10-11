@@ -188,7 +188,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = await _configClientManager.GetAvailableClients(utcNow, cancellationToken).ConfigureAwait(false);
+                    IEnumerable<ConfigurationClient> availableClients = await _configClientManager.GetAvailableClients(cancellationToken).ConfigureAwait(false);
 
                     if (!availableClients.Any())
                     {
