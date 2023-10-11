@@ -4,12 +4,14 @@
 
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using DnsClient;
 using DnsClient.Protocol;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,10 +27,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private IList<ConfigurationClientWrapper> _clients;
-
-        private IEnumerable<string> _connectionStrings;
-        private IEnumerable<Uri> _endpoints;
-        private TokenCredential _credential;
         private ConfigurationClientOptions _clientOptions;
         private Lazy<SrvLookupClient> _srvLookupClient;
         private DateTimeOffset _lastFallbackClientRefresh = default;
@@ -37,10 +35,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly Uri _endpoint;
         private readonly string _secret;
         private readonly string _id;
-        private readonly bool _isUsingConnetionString;
+        private readonly TokenCredential _credential;
         private readonly bool _replicaDiscoveryEnabled;
 
-        private readonly static TimeSpan _fallbackClientRefreshInterval = TimeSpan.FromMinutes(5);
+        private readonly static TimeSpan _fallbackClientRefreshInterval = TimeSpan.FromSeconds(30);
 
         public ConfigurationClientManager(AzureAppConfigurationOptions options)
         {
@@ -54,41 +52,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException(nameof(options.ClientOptions));
             }
 
-            _connectionStrings = options.ConnectionStrings;
-            _endpoints = options.Endpoints;
+            IEnumerable<string> connectionStrings = options.ConnectionStrings;
+            IEnumerable<Uri> endpoints = options.Endpoints;
             _credential = options.Credential;
             _clientOptions = options.ClientOptions;
             _replicaDiscoveryEnabled = options.ReplicaDiscoveryEnabled;
 
             _srvLookupClient = new Lazy<SrvLookupClient>();
 
-            if (_connectionStrings != null && _connectionStrings.Any())
+            if (connectionStrings != null && connectionStrings.Any())
             {
-                _isUsingConnetionString = true;
-
-                var connectionString = _connectionStrings.First();
+                string connectionString = connectionStrings.First();
                 _endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
                 _secret = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection);
                 _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
 
-                _clients = _connectionStrings
-                    .Select(connectionString =>
+                _clients = connectionStrings
+                    .Select(cs =>
                         {
-                            var endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
-                            return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, _clientOptions));
+                            var endpoint = new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection));
+                            return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
                         })
                     .ToList();
             }
-            else if (_endpoints != null && _endpoints.Any())
+            else if (endpoints != null && endpoints.Any())
             {
                 if (_credential == null)
                 {
                     throw new ArgumentException(nameof(options.Credential));
                 }
 
-                _endpoint = _endpoints.First();
+                _endpoint = endpoints.First();
 
-                _clients = _endpoints
+                _clients = endpoints
                     .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
                     .ToList();
             }
@@ -107,11 +103,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public async Task<IEnumerable<ConfigurationClient>> GetAvailableClients(DateTimeOffset time, CancellationToken cancellationToken)
+        public async Task<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
         {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
             if (_replicaDiscoveryEnabled)
             {
-                // The source of truth whether there's avaliable client in the list.
+                // The source of truth whether there's available client in the list.
                 int successfulClientsCount = _clients.Where(client => client.FailedAttempts == 0).Count();
 
                 // Refresh fallback clients if:
@@ -122,17 +120,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if ((_lastFallbackClientRefresh == default ||
                     successfulClientsCount == 0) &&
                     !_allClientFailed ||
-                    time >= _lastFallbackClientRefresh + _fallbackClientRefreshInterval)
+                    now >= _lastFallbackClientRefresh + _fallbackClientRefreshInterval)
                 {
                     await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
 
-                    _lastFallbackClientRefresh = time;
+                    _lastFallbackClientRefresh = now;
                 }
 
                 _allClientFailed = successfulClientsCount == 0;
             }
 
-            return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
+            return _clients.Where(client => client.BackoffEndTime <= now).Select(c => c.Client).ToList();
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -194,7 +192,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshFallbackClients(CancellationToken cancellationToken)
         {
-            IEnumerable<SrvRecord> results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            IEnumerable<SrvRecord> results = Enumerable.Empty<SrvRecord>();
+
+            try
+            {
+                results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            }
+            catch (SocketException)
+            {
+                // If the DNS lookup fails due to network, just return.
+                return;
+            }
+            catch (DnsResponseException ex) when (ex.Code == DnsResponseCode.ConnectionTimeout)
+            {
+                // If the DNS lookup times out, just return.
+                return;
+            }
 
             // Shuffle the results to ensure hosts can be picked randomly.
             // Srv lookup may retrieve trailing dot in the host name, just trim it.
@@ -215,7 +228,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
-                    var configClient = _isUsingConnetionString ?
+                    var configClient = _credential == null ?
                         new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions) :
                         new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
 
