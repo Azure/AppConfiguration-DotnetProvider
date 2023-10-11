@@ -82,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (!string.IsNullOrEmpty(assemblyName))
                 {
-                    // Return the version using only the first 3 fields and remove opening and closing curly braces
+                    // Return the version using only the first 3 fields and remove additional characters
                     return Assembly.Load(assemblyName).GetName().Version.ToString(3).Trim('{', '}');
                 }
             }
