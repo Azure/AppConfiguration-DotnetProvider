@@ -210,7 +210,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(client));
             }
 
-            ConfigurationClientWrapper clientWrapper = _clients.First(c => c.Client.Equals(client));
+            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client.Equals(client));
+
+            if (clientWrapper == null)
+            {
+                clientWrapper = _dynamicClients.First(c => c.Client.Equals(client));
+            }
 
             if (successful)
             {
@@ -239,6 +244,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             ConfigurationClientWrapper clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
+            if (clientWrapper == null)
+            {
+                clientWrapper = this._dynamicClients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+            }
+
             if (clientWrapper != null)
             {
                 clientWrapper.Client.UpdateSyncToken(syncToken);
@@ -256,6 +266,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
+
+            if (currentClient == null)
+            {
+                currentClient = _dynamicClients.FirstOrDefault(c => c.Client == client);
+            }
             
             return currentClient?.Endpoint;
         }
