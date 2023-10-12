@@ -7,11 +7,14 @@ using Azure.Data.AppConfiguration;
 using DnsClient;
 using DnsClient.Protocol;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Exceptions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,10 +30,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private IList<ConfigurationClientWrapper> _clients;
+        private IList<ConfigurationClientWrapper> _dynamicClients;
         private ConfigurationClientOptions _clientOptions;
         private Lazy<SrvLookupClient> _srvLookupClient;
         private DateTimeOffset _lastFallbackClientRefresh = default;
-        private bool _allClientFailed = false;
 
         private readonly Uri _endpoint;
         private readonly string _secret;
@@ -38,7 +41,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly TokenCredential _credential;
         private readonly bool _replicaDiscoveryEnabled;
 
-        private readonly static TimeSpan _fallbackClientRefreshInterval = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
+        private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
 
         public ConfigurationClientManager(AzureAppConfigurationOptions options)
         {
@@ -103,34 +107,63 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public async Task<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
+        public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            if (_replicaDiscoveryEnabled)
+            // Principle of refreshing fallback clients:
+            // 1.Perform initial refresh attempt to query available clients on app start-up.
+            // 2.Refreshing when cached fallback clients have expired, FallbackClientRefreshExpireInterval is due.
+            // 3.At least wait MinimalClientRefreshInterval between two attempt to ensure not perform refreshing too often.
+
+            if (_replicaDiscoveryEnabled &&
+                now >= _lastFallbackClientRefresh + MinimalClientRefreshInterval && 
+                (_dynamicClients == null ||
+                now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
             {
-                // The source of truth whether there's available client in the list.
-                int successfulClientsCount = _clients.Where(client => client.FailedAttempts == 0).Count();
+                await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
 
-                // Refresh fallback clients if:
-                // 1.It's the initial attempt to query available clients on app start-up.
-                // 2.At least one client is available in the last attempt, it's the first attempt that all static and dynamic clients are backed off.
-                // 3.It's not the first attempt that all clients have backed off, as well as it's due time to refresh fallback clients.
-
-                if ((_lastFallbackClientRefresh == default ||
-                    successfulClientsCount == 0) &&
-                    !_allClientFailed ||
-                    now >= _lastFallbackClientRefresh + _fallbackClientRefreshInterval)
-                {
-                    await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
-
-                    _lastFallbackClientRefresh = now;
-                }
-
-                _allClientFailed = successfulClientsCount == 0;
+                _lastFallbackClientRefresh = now;
             }
 
-            return _clients.Where(client => client.BackoffEndTime <= now).Select(c => c.Client).ToList();
+            foreach (ConfigurationClientWrapper clientWrapper in _clients)
+            {
+                if (clientWrapper.BackoffEndTime <= now)
+                {
+                    yield return clientWrapper.Client;
+                }
+            }
+
+            // No need to continue if replica discovery is not enabled.
+            if (!_replicaDiscoveryEnabled)
+            {
+                yield break;
+            }
+
+            foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
+            {
+                if (clientWrapper.BackoffEndTime <= now)
+                {
+                    yield return clientWrapper.Client;
+                }
+            }
+
+            // All static and dynamic clients exhausted, refresh fallback clients if
+            // minimal client refresh interval is due.
+            if (now >= _lastFallbackClientRefresh + MinimalClientRefreshInterval)
+            {
+                await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
+
+                _lastFallbackClientRefresh = now;
+            }
+
+            foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
+            {
+                if (clientWrapper.BackoffEndTime <= now)
+                {
+                    yield return clientWrapper.Client;
+                }
+            }
         }
 
         private async Task RefreshFallbackClients(CancellationToken cancellationToken)
@@ -235,27 +268,42 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
             }
-            catch (SocketException)
+            // Catch and rethrow all exceptions thrown by srv record lookup to avoid new possible exceptions on app startup.
+            catch (SocketException ex)
             {
-                // If the DNS lookup fails due to network, just return.
-                return;
+                throw new FallbackClientLookupException(ex);
             }
-            catch (DnsResponseException ex) when (ex.Code == DnsResponseCode.ConnectionTimeout)
+            catch (DnsResponseException ex)
             {
-                // If the DNS lookup times out, just return.
-                return;
+                throw new FallbackClientLookupException(ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new FallbackClientLookupException(ex);
+            }
+            catch (DnsXidMismatchException ex)
+            {
+                throw new FallbackClientLookupException(ex);
             }
 
             // Shuffle the results to ensure hosts can be picked randomly.
-            // Srv lookup may retrieve trailing dot in the host name, just trim it.
-            IEnumerable<string> srvTargetHosts = results.Shuffle().Select(r => $"{r.Target.Value.Trim('.')}").ToList();
+            // Srv lookup does retrieve trailing dot in the host name, just trim it.
+            IEnumerable<string> srvTargetHosts = results.ToList().Shuffle().Select(r => $"{r.Target.Value.TrimEnd('.')}");
+
+            _dynamicClients ??= new List<ConfigurationClientWrapper>();
+
+            if (!srvTargetHosts.Any())
+            {
+                return;
+            }
 
             // clean up clients in case the corresponding replicas are removed.
-            foreach (ConfigurationClientWrapper client in _clients)
+            foreach (ConfigurationClientWrapper client in _dynamicClients)
             {
-                if (IsEligibleToRemove(srvTargetHosts, client))
+                // Remove from dynamicClient if the replica no longer exists in SRV records.
+                if (!srvTargetHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
                 {
-                    _clients.Remove(client);
+                    _dynamicClients.Remove(client);
                 }
             }
 
@@ -269,25 +317,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions) :
                         new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
 
-                    _clients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient, true));
+                    _dynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
                 }
             }
-        }
-
-        private bool IsEligibleToRemove(IEnumerable<string> srvEndpointHosts, ConfigurationClientWrapper client)
-        {
-            // Only remove the client if it is discovered, as well as not in returned SRV records.
-            if (!client.IsDiscoveredClient)
-            {
-                return false;
-            }
-
-            if (srvEndpointHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 }

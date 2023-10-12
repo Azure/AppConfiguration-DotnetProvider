@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientManager
     {
-        Task<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken);
+        IAsyncEnumerable<ConfigurationClient> GetAvailableClients(CancellationToken cancellationToken);
 
         IEnumerable<ConfigurationClient> GetAllClients();
 

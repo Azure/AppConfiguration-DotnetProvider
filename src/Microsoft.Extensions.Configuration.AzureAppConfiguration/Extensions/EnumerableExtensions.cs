@@ -9,18 +9,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class EnumerableExtensions
     {
-        public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> values)
+        public static IEnumerable<T> Shuffle<T>(this IList<T> values)
         {
             var rdm = new Random();
-            T[] elements = values.ToArray();
 
-            for (int i = elements.Length - 1; i >= 0; i--)
+            int length = values.Count;
+
+            for (int i = length - 1; i >= 0; i--)
             {
                 int swapIndex = rdm.Next(i + 1);
 
-                yield return elements[swapIndex];
+                yield return values[swapIndex];
 
-                elements[swapIndex] = elements[i];
+                values[swapIndex] = values[i];
             }
         }
     }

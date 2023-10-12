@@ -22,7 +22,7 @@ namespace Tests.AzureAppConfiguration
                                                                                           contentType: "text");
 
         [Fact]
-        public void FailOverTests_DoesNotReturnBackedOffClient()
+        public async Task FailOverTests_DoesNotReturnBackedOffClient()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -53,7 +53,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult().Count());
+            Assert.Equal(2, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -72,11 +72,11 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // The client enumerator should return just 1 client since one client is in the backoff state.
-            Assert.Single(configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult());
+            Assert.Equal(1, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
         }
 
         [Fact]
-        public void FailOverTests_ReturnsAllClientsIfAllBackedOff()
+        public async Task FailOverTests_ReturnsAllClientsIfAllBackedOff()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -107,7 +107,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult().Count());
+            Assert.Equal(2, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -139,11 +139,11 @@ namespace Tests.AzureAppConfiguration
             Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
 
             // The client manager should return no clients since all clients are in the back-off state.
-            Assert.False(configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult().Any());
+            Assert.False(await configClientManager.GetAvailableClients(CancellationToken.None).AnyAsync());
         }
 
         [Fact]
-        public void FailOverTests_PropagatesNonFailOverableExceptions()
+        public async Task FailOverTests_PropagatesNonFailOverableExceptions()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -174,7 +174,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult().Count());
+            Assert.Equal(2, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -195,7 +195,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void FailOverTests_BackoffStateIsUpdatedOnSuccessfulRequest()
+        public async Task FailOverTests_BackoffStateIsUpdatedOnSuccessfulRequest()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -233,7 +233,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult().Count());
+            Assert.Equal(2, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -250,7 +250,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // The client enumerator should return just 1 client for the second time.
-            Assert.Single(configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult());
+            Assert.Equal(1, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
 
             // Sleep for backoff-time to pass.
             Thread.Sleep(TimeSpan.FromSeconds(31));
@@ -258,7 +258,7 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // The client enumerator should return 2 clients for the third time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(CancellationToken.None).GetAwaiter().GetResult().Count());
+            Assert.Equal(2, await configClientManager.GetAvailableClients(CancellationToken.None).CountAsync());
         }
 
         [Fact]
