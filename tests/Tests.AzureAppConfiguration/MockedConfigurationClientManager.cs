@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,9 +34,19 @@ namespace Tests.AzureAppConfiguration
             this._clients = clients.ToList();
         }
 
-        public Task<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
+        public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            return Task.FromResult(this._clients.Concat(_autoFailoverClients).Select(cw => cw.Client));
+            await Task.Delay(0);
+
+            foreach (var client in _clients)
+            {
+                yield return client.Client;
+            }
+
+            foreach (var client in _autoFailoverClients)
+            {
+                yield return client.Client;
+            }
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
