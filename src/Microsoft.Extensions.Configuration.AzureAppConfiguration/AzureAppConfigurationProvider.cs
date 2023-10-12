@@ -205,7 +205,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.InnerException.Message));
                     }
 
-                    if (await availableClients.AnyAsync(cancellationToken).ConfigureAwait(false))
+                    if (!await availableClients.AnyAsync(cancellationToken).ConfigureAwait(false))
                     {
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
                         return;
