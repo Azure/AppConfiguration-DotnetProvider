@@ -24,8 +24,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string HostTypeKey = "Host";
         public const string FilterTypeKey = "Filter";
         public const string EnvironmentKey = "Env";
-        public const string FeatureManagementVersionKey = "FeatureManagementVersion";
-        public const string FeatureManagementAspNetCoreVersionKey = "FeatureManagementAspNetCoreVersion";
+        public const string FeatureManagementVersionKey = "FMVer";
+        public const string FeatureManagementAspNetCoreVersionKey = "FMANCVer";
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
