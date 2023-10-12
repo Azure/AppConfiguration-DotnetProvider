@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string CorrelationContextHeader = "Correlation-Context";
         public const string UserAgentHeader = "User-Agent";
 
-        public const string FeatureManagementPackageName = "Microsoft.FeatureManagement";
-        public const string FeatureManagementAspNetCorePackageName = "Microsoft.FeatureManagement.AspNetCore";
+        public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
+        public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
     }
 }

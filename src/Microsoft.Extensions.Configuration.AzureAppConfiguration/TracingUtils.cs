@@ -77,15 +77,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string GetAssemblyVersion(string assemblyName)
         {
-            try
+            if (!string.IsNullOrEmpty(assemblyName))
             {
-                if (!string.IsNullOrEmpty(assemblyName))
-                {
-                    // Return the version using only the first 3 fields and remove additional characters
-                    return AppDomain.CurrentDomain.GetAssemblies()?.SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version.ToString(3).Trim('{', '}');
-                }
+                // Return the version using only the first 3 fields and remove additional characters
+                return AppDomain.CurrentDomain.GetAssemblies()?.SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version.ToString(3).Trim('{', '}');
             }
-            catch (Exception exception) when (exception is AppDomainUnloadedException) { }
 
             return null;
         }

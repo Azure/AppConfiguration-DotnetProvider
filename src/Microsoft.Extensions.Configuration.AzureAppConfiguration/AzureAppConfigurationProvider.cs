@@ -179,17 +179,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
+                    // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh
                     if (!_featureManagementVersionsTelemetrySet)
                     {
-                        if (_requestTracingOptions.FeatureManagementVersion == null)
-                        {
-                            _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementPackageName);
-                        }
+                        _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
-                        if (_requestTracingOptions.FeatureManagementAspNetCoreVersion == null)
-                        {
-                            _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCorePackageName);
-                        }
+                        _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
 
                         _featureManagementVersionsTelemetrySet = true;
                     }
@@ -805,9 +800,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTelemetry = _options.FeatureFilterTelemetry,
-                FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementPackageName),
-                FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCorePackageName)
+                FilterTelemetry = _options.FeatureFilterTelemetry
             };
         }
 
