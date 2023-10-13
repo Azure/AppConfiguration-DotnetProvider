@@ -3,11 +3,10 @@
 //
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
-    internal static class EnumerableExtensions
+    internal static class ListExtensions
     {
         public static IEnumerable<T> Shuffle<T>(this IList<T> values)
         {
