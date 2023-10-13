@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Exceptions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -16,6 +15,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text;
 using System.Threading;
@@ -85,6 +85,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_loggerFactory != null)
                 {
                     _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
+
+                    if (_configClientManager is ConfigurationClientManager clientManager)
+                    {
+                        clientManager.Logger = _logger;
+                    }
                 }
             }
         }
@@ -142,10 +147,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Instantly re-throw the exception
                 throw;
             }
-            catch (FallbackClientLookupException ex)
-            {
-                _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.InnerException.Message));
-            }
             catch
             {
                 // AzureAppConfigurationProvider.Load() method is called in the application's startup code path.
@@ -193,18 +194,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         return;
                     }
-
-                    IAsyncEnumerable<ConfigurationClient> availableClients = AsyncEnumerable.Empty<ConfigurationClient>();
-
-                    try
-                    {
-                        availableClients = _configClientManager.GetAvailableClients(cancellationToken);
-                    }
-                    catch (FallbackClientLookupException ex)
-                    {
-                        _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.InnerException.Message));
-                    }
-
+                    
+                    IAsyncEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(cancellationToken);
+                    
                     if (!await availableClients.AnyAsync(cancellationToken).ConfigureAwait(false))
                     {
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
@@ -870,9 +862,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(IAsyncEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
-            IAsyncEnumerator<ConfigurationClient> clientEnumerator = clients.GetAsyncEnumerator();
+            IAsyncEnumerator<ConfigurationClient> clientEnumerator = clients.GetAsyncEnumerator(cancellationToken);
+            await using ConfiguredAsyncDisposable asyncDisposable = clientEnumerator.ConfigureAwait(false);
 
-            await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
+            await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
 
             Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
@@ -894,7 +887,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    if (!IsFailOverable(rfe) || !await clientEnumerator.MoveNextAsync().ConfigureAwait(false))
+                    if (!IsFailOverable(rfe) || !await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                     {
                         backoffAllClients = true;
 
@@ -903,7 +896,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    if (!IsFailOverable(ae) || !await clientEnumerator.MoveNextAsync().ConfigureAwait(false))
+                    if (!IsFailOverable(ae) || !await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                     {
                         backoffAllClients = true;
 
@@ -919,7 +912,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         do
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
-                            await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
+                            await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);
