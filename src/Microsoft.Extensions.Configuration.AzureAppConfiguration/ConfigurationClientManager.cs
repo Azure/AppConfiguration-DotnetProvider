@@ -7,9 +7,7 @@ using Azure.Data.AppConfiguration;
 using DnsClient;
 using DnsClient.Protocol;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Exceptions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,6 +32,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private ConfigurationClientOptions _clientOptions;
         private Lazy<SrvLookupClient> _srvLookupClient;
         private DateTimeOffset _lastFallbackClientRefresh = default;
+        private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
+        private Logger _logger = new Logger();
 
         private readonly Uri _endpoint;
         private readonly string _secret;
@@ -107,6 +107,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
+        internal Logger Logger 
+        {
+            set
+            {
+                _logger = value;
+            }
+        }
+
         public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -117,10 +125,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // 3.At least wait MinimalClientRefreshInterval between two attempt to ensure not perform refreshing too often.
 
             if (_replicaDiscoveryEnabled &&
-                now >= _lastFallbackClientRefresh + MinimalClientRefreshInterval && 
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval && 
                 (_dynamicClients == null ||
                 now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
             {
+                _lastFallbackClientRefreshAttempt = now;
+
                 await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
 
                 _lastFallbackClientRefresh = now;
@@ -150,8 +160,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // All static and dynamic clients exhausted, refresh fallback clients if
             // minimal client refresh interval is due.
-            if (now >= _lastFallbackClientRefresh + MinimalClientRefreshInterval)
+            if (now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval)
             {
+                _lastFallbackClientRefreshAttempt = now;
+
                 await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
 
                 _lastFallbackClientRefresh = now;
@@ -214,7 +226,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (clientWrapper == null)
             {
-                clientWrapper = _dynamicClients.First(c => c.Client.Equals(client));
+                clientWrapper = _dynamicClients.FirstOrDefault(c => c.Client.Equals(client));
+            }
+
+            if (clientWrapper == null)
+            {
+                return;
             }
 
             if (successful)
@@ -283,34 +300,38 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
             }
-            // Catch and rethrow all exceptions thrown by srv record lookup to avoid new possible exceptions on app startup.
+            // Catch and log all exceptions thrown by srv lookup client to avoid new possible exceptions on app startup.
             catch (SocketException ex)
             {
-                throw new FallbackClientLookupException(ex);
+                _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.Message));
+                return;
             }
             catch (DnsResponseException ex)
             {
-                throw new FallbackClientLookupException(ex);
+                _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.Message));
+                return;
             }
             catch (InvalidOperationException ex)
             {
-                throw new FallbackClientLookupException(ex);
+                _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.Message));
+                return;
             }
             catch (DnsXidMismatchException ex)
             {
-                throw new FallbackClientLookupException(ex);
+                _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(ex.Message));
+                return;
+            }
+
+            _dynamicClients ??= new List<ConfigurationClientWrapper>();
+
+            if (!results.Any())
+            {
+                return;
             }
 
             // Shuffle the results to ensure hosts can be picked randomly.
             // Srv lookup does retrieve trailing dot in the host name, just trim it.
             IEnumerable<string> srvTargetHosts = results.ToList().Shuffle().Select(r => $"{r.Target.Value.TrimEnd('.')}");
-
-            _dynamicClients ??= new List<ConfigurationClientWrapper>();
-
-            if (!srvTargetHosts.Any())
-            {
-                return;
-            }
 
             // clean up clients in case the corresponding replicas are removed.
             foreach (ConfigurationClientWrapper client in _dynamicClients)
