@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using DnsClient;
 using DnsClient.Protocol;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -69,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     originHost = new OriginHostCacheItem()
                     {
-                        OriginHost = records.First().Target.Value.Trim('.'),
+                        OriginHost = records.First().Target.Value.TrimEnd('.'),
                         CacheExpires = DateTimeOffset.UtcNow.Add(OriginHostResultCacheExpiration)
                     };
 
@@ -77,7 +76,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    originHost.OriginHost = records.First().Target.Value.Trim('.');
+                    originHost.OriginHost = records.First().Target.Value.TrimEnd('.');
                     originHost.CacheExpires = DateTimeOffset.UtcNow.Add(OriginHostResultCacheExpiration);
                 }
             }

@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Messaging.EventGrid;
-
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class ErrorMessages

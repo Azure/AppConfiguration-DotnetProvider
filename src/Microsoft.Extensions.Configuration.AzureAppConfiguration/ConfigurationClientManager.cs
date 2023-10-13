@@ -158,8 +158,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            // All static and dynamic clients exhausted, refresh fallback clients if
-            // minimal client refresh interval is due.
+            // All static and dynamic clients exhausted, check if previously unknown
+            // dynamic client available
             if (now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval)
             {
                 _lastFallbackClientRefreshAttempt = now;
