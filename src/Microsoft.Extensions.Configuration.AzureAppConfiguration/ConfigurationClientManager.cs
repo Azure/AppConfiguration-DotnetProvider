@@ -27,19 +27,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </remarks>
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
-        private IList<ConfigurationClientWrapper> _clients;
-        private IList<ConfigurationClientWrapper> _dynamicClients;
-        private ConfigurationClientOptions _clientOptions;
-        private Lazy<SrvLookupClient> _srvLookupClient;
-        private DateTimeOffset _lastFallbackClientRefresh = default;
-        private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
-        private Logger _logger = new Logger();
-
+        private readonly IList<ConfigurationClientWrapper> _clients;
         private readonly Uri _endpoint;
         private readonly string _secret;
         private readonly string _id;
         private readonly TokenCredential _credential;
+        private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
+
+        private IList<ConfigurationClientWrapper> _dynamicClients;       
+        private Lazy<SrvLookupClient> _srvLookupClient;
+        private DateTimeOffset _lastFallbackClientRefresh = default;
+        private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
+        private Logger _logger = new Logger();
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
@@ -52,11 +52,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
-            }
-
-            if (clientOptions == null)
-            {
-                throw new ArgumentNullException(nameof(clientOptions));
             }
 
             string connectionString = connectionStrings.First();
@@ -79,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public ConfigurationClientManager(
             IEnumerable<Uri> endpoints,
-            TokenCredential tokenCredential,
+            TokenCredential credential,
             ConfigurationClientOptions clientOptions,
             bool replicaDiscoveryEnabled)
         {
@@ -88,18 +83,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            if (tokenCredential == null)
+            if (credential == null)
             {
-                throw new ArgumentNullException(nameof(tokenCredential));
-            }
-
-            if (clientOptions == null)
-            {
-                throw new ArgumentNullException(nameof(clientOptions));
+                throw new ArgumentNullException(nameof(credential));
             }
 
             _endpoint = endpoints.First();
-            _credential = tokenCredential;
+            _credential = credential;
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
@@ -322,7 +312,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (string host in srvTargetHosts)
             {
-                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) && 
+                    !_dynamicClients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
