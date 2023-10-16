@@ -88,7 +88,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (_configClientManager is ConfigurationClientManager clientManager)
                     {
-                        clientManager.Logger = _logger;
+                        clientManager.SetLogger(_logger);
                     }
                 }
             }
@@ -195,11 +195,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     
                     IAsyncEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(cancellationToken);
-                    
-                    if (!await availableClients.AnyAsync(cancellationToken).ConfigureAwait(false))
+
+                    IAsyncEnumerator<ConfigurationClient> clientEnumerator = availableClients.GetAsyncEnumerator();
+                    await using (clientEnumerator.ConfigureAwait(false))
                     {
-                        _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
-                        return;
+                        if (!await clientEnumerator.MoveNextAsync().ConfigureAwait(false))
+                        {
+                            _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+                            return;
+                        }
                     }
 
                     // Check if initial configuration load had failed
@@ -951,7 +955,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IAsyncEnumerator<ConfigurationClient> clientEnumerator = clients.GetAsyncEnumerator(cancellationToken);
             await using ConfiguredAsyncDisposable asyncDisposable = clientEnumerator.ConfigureAwait(false);
 
-            await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+            await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
 
             Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
@@ -973,7 +977,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    if (!IsFailOverable(rfe) || !await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+                    if (!IsFailOverable(rfe) || !await clientEnumerator.MoveNextAsync().ConfigureAwait(false))
                     {
                         backoffAllClients = true;
 
@@ -982,7 +986,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    if (!IsFailOverable(ae) || !await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+                    if (!IsFailOverable(ae) || !await clientEnumerator.MoveNextAsync().ConfigureAwait(false))
                     {
                         backoffAllClients = true;
 
@@ -998,7 +1002,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         do
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
-                            await clientEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+                            await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);

@@ -44,58 +44,70 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
 
-        public ConfigurationClientManager(AzureAppConfigurationOptions options)
+        public ConfigurationClientManager(
+            IEnumerable<string> connectionStrings,
+            ConfigurationClientOptions clientOptions,
+            bool replicaDiscoveryEnabled)
         {
-            if (options == null)
+            if (connectionStrings == null || !connectionStrings.Any())
             {
-                throw new ArgumentNullException(nameof(options));
+                throw new ArgumentNullException(nameof(connectionStrings));
             }
 
-            if (options.ClientOptions == null)
+            if (clientOptions == null)
             {
-                throw new ArgumentException(nameof(options.ClientOptions));
+                throw new ArgumentNullException(nameof(clientOptions));
             }
 
-            IEnumerable<string> connectionStrings = options.ConnectionStrings;
-            IEnumerable<Uri> endpoints = options.Endpoints;
-            _credential = options.Credential;
-            _clientOptions = options.ClientOptions;
-            _replicaDiscoveryEnabled = options.ReplicaDiscoveryEnabled;
+            string connectionString = connectionStrings.First();
+            _endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
+            _secret = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection);
+            _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
+            _clientOptions = clientOptions;
+            _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
             _srvLookupClient = new Lazy<SrvLookupClient>();
 
-            if (connectionStrings != null && connectionStrings.Any())
-            {
-                string connectionString = connectionStrings.First();
-                _endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
-                _secret = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection);
-                _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
-
-                _clients = connectionStrings
-                    .Select(cs =>
-                        {
-                            var endpoint = new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection));
-                            return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
-                        })
-                    .ToList();
-            }
-            else if (endpoints != null && endpoints.Any())
-            {
-                if (_credential == null)
+            _clients = connectionStrings
+                .Select(cs =>
                 {
-                    throw new ArgumentException(nameof(options.Credential));
-                }
+                    var endpoint = new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection));
+                    return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
+                })
+                .ToList();
+        }
 
-                _endpoint = endpoints.First();
-
-                _clients = endpoints
-                    .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
-                    .ToList();
-            }
-            else
+        public ConfigurationClientManager(
+            IEnumerable<Uri> endpoints,
+            TokenCredential tokenCredential,
+            ConfigurationClientOptions clientOptions,
+            bool replicaDiscoveryEnabled)
+        {
+            if (endpoints == null || !endpoints.Any())
             {
-                throw new ArgumentException($"Neither {nameof(options.ConnectionStrings)} nor {nameof(options.Endpoints)} is specified.");
+                throw new ArgumentNullException(nameof(endpoints));
             }
+
+            if (tokenCredential == null)
+            {
+                throw new ArgumentNullException(nameof(tokenCredential));
+            }
+
+            if (clientOptions == null)
+            {
+                throw new ArgumentNullException(nameof(clientOptions));
+            }
+
+            _endpoint = endpoints.First();
+            _credential = tokenCredential;
+            _clientOptions = clientOptions;
+            _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+
+            _srvLookupClient = new Lazy<SrvLookupClient>();
+
+            _clients = endpoints
+                .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
+                .ToList();
         }
 
         /// <summary>
@@ -105,14 +117,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientManager(IList<ConfigurationClientWrapper> clients)
         {
             _clients = clients;
-        }
-
-        internal Logger Logger 
-        {
-            set
-            {
-                _logger = value;
-            }
         }
 
         public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -224,7 +228,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client.Equals(client));
 
-            if (clientWrapper == null)
+            if (_dynamicClients != null && clientWrapper == null)
             {
                 clientWrapper = _dynamicClients.FirstOrDefault(c => c.Client.Equals(client));
             }
@@ -261,9 +265,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             ConfigurationClientWrapper clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
-            if (clientWrapper == null)
+            if (_dynamicClients != null && clientWrapper == null)
             {
-                clientWrapper = this._dynamicClients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+                clientWrapper = _dynamicClients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
             }
 
             if (clientWrapper != null)
@@ -284,12 +288,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
-            if (currentClient == null)
+            if (_dynamicClients != null && currentClient == null)
             {
                 currentClient = _dynamicClients.FirstOrDefault(c => c.Client == client);
             }
             
             return currentClient?.Endpoint;
+        }
+
+        public void SetLogger(Logger logger)
+        {
+            if (logger == null)
+            {
+                throw new ArgumentNullException(nameof(logger));
+            }
+
+            _logger = logger;
         }
 
         private async Task RefreshFallbackClients(CancellationToken cancellationToken)
