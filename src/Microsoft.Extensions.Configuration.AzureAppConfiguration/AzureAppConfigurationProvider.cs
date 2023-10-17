@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
-        private bool _featureManagementVersionsTelemetrySet;
+        private bool _isTelemetrySet;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
@@ -179,15 +179,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh
-                    if (!_featureManagementVersionsTelemetrySet)
-                    {
-                        _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
-
-                        _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
-
-                        _featureManagementVersionsTelemetrySet = true;
-                    }
+                    EnsureTelemetry();
 
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -981,6 +973,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
+        }
+
+        private void EnsureTelemetry()
+        {
+            if (!_isTelemetrySet)
+            {
+                // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
+                _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+
+                _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+
+                _isTelemetrySet = true;
+            }
         }
     }
 }
