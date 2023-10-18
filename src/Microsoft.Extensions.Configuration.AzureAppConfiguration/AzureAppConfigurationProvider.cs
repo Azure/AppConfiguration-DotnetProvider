@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
-        private bool _isTelemetrySet;
+        private bool _isTracingSet;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
@@ -179,7 +179,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    EnsureTelemetry();
+                    EnsureTracing();
 
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -975,16 +975,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private void EnsureTelemetry()
+        private void EnsureTracing()
         {
-            if (!_isTelemetrySet)
+            if (!_isTracingSet)
             {
                 // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
                 _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                 _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
 
-                _isTelemetrySet = true;
+                _isTracingSet = true;
             }
         }
     }
