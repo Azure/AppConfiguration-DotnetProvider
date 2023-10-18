@@ -564,46 +564,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             
             try
             {
-                while (true)
+                var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromTicks(_options.Startup.Timeout.Ticks / availableClients.Count()));
+
+                try
                 {
-                    try
-                    {
-                        await ExecuteWithFailOverPolicyAsync(
-                            availableClients,
-                            _startupConfigClientManager,
-                            async (client) =>
-                            {
-                                data = await LoadSelectedKeyValues(
-                                    client,
-                                    cancellationToken)
-                                    .ConfigureAwait(false);
+                    await ExecuteWithFailOverPolicyAsync(
+                        availableClients,
+                        _startupConfigClientManager,
+                        async (client) =>
+                        {
+                            data = await LoadSelectedKeyValues(
+                                client,
+                                cancellationTokenSource.Token)
+                                .ConfigureAwait(false);
 
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(
-                                    client,
-                                    data,
-                                    cancellationToken)
-                                    .ConfigureAwait(false);
+                            watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                                client,
+                                data,
+                                cancellationTokenSource.Token)
+                                .ConfigureAwait(false);
 
-                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                            },
-                            isStartup: true,
-                            cancellationToken)
-                            .ConfigureAwait(false);
-
-                        break;
-                    }
-                    catch (Exception exception) when (
-                        ignoreFailures &&
-                        (exception is RequestFailedException ||
-                        exception is OperationCanceledException ||
-                        ((exception as AggregateException)?.InnerExceptions?.Any(e =>
-                            e is RequestFailedException ||
-                            e is OperationCanceledException) ?? false)))
-                    {
-                        // Continue retrying until startup times out through cancellationToken with _options.Startup.Timeout value
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
+                            watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                        },
+                        cancellationToken)
+                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
             }
             catch (Exception exception) when (
                 ignoreFailures &&
