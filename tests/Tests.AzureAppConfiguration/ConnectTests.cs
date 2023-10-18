@@ -80,7 +80,7 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Act
-            Assert.Throws<TaskCanceledException>(configBuilder.Build);
+            Assert.Throws<OperationCanceledException>(configBuilder.Build);
 
             // Assert the second connect call was successful and it made requests to the configuration store.
             Assert.True(requestCountPolicy.RequestCount > 1);

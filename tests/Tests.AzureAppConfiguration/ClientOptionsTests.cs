@@ -27,12 +27,12 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Act - Build
-            Assert.Throws<TaskCanceledException>(configBuilder.Build);
+            Assert.Throws<OperationCanceledException>(configBuilder.Build);
 
             // Assert the connect call made requests to the configuration store.
             Assert.True(requestCountPolicy.RequestCount > 1);
 
-            var exponentialRequestCount = requestCountPolicy.RequestCount;
+            var originalRequestCount = requestCountPolicy.RequestCount;
             requestCountPolicy.ResetRequestCount();
 
             configBuilder = new ConfigurationBuilder()
@@ -45,10 +45,10 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Act - Build
-            Assert.Throws<TaskCanceledException>(configBuilder.Build);
+            Assert.Throws<OperationCanceledException>(configBuilder.Build);
 
             // Assert the connect call made requests to the configuration store, more than the exponential mode.
-            Assert.True(requestCountPolicy.RequestCount > exponentialRequestCount);
+            Assert.True(requestCountPolicy.RequestCount > originalRequestCount);
         }
     }
 }
