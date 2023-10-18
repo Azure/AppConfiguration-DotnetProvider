@@ -586,17 +586,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                             },
+                            isStartup: true,
                             cancellationToken)
                             .ConfigureAwait(false);
+
+                        break;
                     }
-                    catch (Exception exception) when (exception is OperationCanceledException ||
-                        ((exception as AggregateException)?.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false))
+                    catch (Exception exception) when (
+                        ignoreFailures &&
+                        (exception is RequestFailedException ||
+                        exception is OperationCanceledException ||
+                        ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                            e is RequestFailedException ||
+                            e is OperationCanceledException) ?? false)))
                     {
-                        throw;
-                    }
-                    catch
-                    {
-                        // Continue retrying until startup times out through cancellationToken
+                        // Continue retrying until startup times out through cancellationToken with _options.Startup.Timeout value
+                        cancellationToken.ThrowIfCancellationRequested();
                     }
                 }
             }
@@ -911,10 +916,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    if (isStartup && !clientEnumerator.MoveNext() && IsFailOverable(rfe))
-                    {
-                        
-                    }
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;

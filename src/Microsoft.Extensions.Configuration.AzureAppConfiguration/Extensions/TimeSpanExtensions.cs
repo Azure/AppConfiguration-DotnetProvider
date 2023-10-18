@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
