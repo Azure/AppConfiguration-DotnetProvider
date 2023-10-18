@@ -179,6 +179,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
+                    // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
                     EnsureFeatureManagementVersionInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
@@ -977,7 +978,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void EnsureFeatureManagementVersionInspected()
         {
-            // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
             if (!_isFeatureManagementVersionInspected)
             {
                 _isFeatureManagementVersionInspected = true;
