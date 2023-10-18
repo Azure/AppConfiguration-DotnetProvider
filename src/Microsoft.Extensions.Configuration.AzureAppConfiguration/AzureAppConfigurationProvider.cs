@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
-        private bool _isTracingSet;
+        private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
@@ -179,7 +179,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    EnsureTracing();
+                    EnsureFeatureManagementVersionInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -975,16 +975,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private void EnsureTracing()
+        private void EnsureFeatureManagementVersionInspected()
         {
-            if (!_isTracingSet)
+            // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
+            if (!_isFeatureManagementVersionInspected)
             {
-                // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
+                _isFeatureManagementVersionInspected = true;
+
                 _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                 _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
-
-                _isTracingSet = true;
             }
         }
     }
