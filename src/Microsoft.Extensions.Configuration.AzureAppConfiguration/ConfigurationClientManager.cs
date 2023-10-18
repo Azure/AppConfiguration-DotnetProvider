@@ -83,9 +83,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 clientWrapper.FailedAttempts++;
-                TimeSpan backoffDuration = _isStartup ? 
-                    FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts) :
-                    TimeSpan.FromSeconds(0);
+                TimeSpan backoffDuration = _isStartup ?
+                    TimeSpan.Zero :
+                    FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
                 clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }
         }

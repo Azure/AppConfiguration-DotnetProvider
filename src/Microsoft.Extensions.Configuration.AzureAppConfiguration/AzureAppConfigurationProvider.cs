@@ -911,6 +911,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
+                    if (isStartup && !clientEnumerator.MoveNext() && IsFailOverable(rfe))
+                    {
+                        
+                    }
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
