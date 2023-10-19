@@ -180,7 +180,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for telemetry
-                    InspectFeatureManagementVersion();
+                    EnsureFeatureManagementVersionInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -976,7 +976,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private void InspectFeatureManagementVersion()
+        private void EnsureFeatureManagementVersionInspected()
         {
             if (!_isFeatureManagementVersionInspected)
             {
