@@ -230,7 +230,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, false, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(availableClients, false, async (client, cancellationTokenParam) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -255,7 +255,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                                 {
                                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationTokenParam).ConfigureAwait(false)).ConfigureAwait(false);
                                 }
                                 else
                                 {
@@ -264,7 +264,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     try
                                     {
                                         await CallWithRequestTracing(
-                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationTokenParam).ConfigureAwait(false)).ConfigureAwait(false);
                                     }
                                     catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                                     {
@@ -304,14 +304,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                data = await LoadSelectedKeyValues(client, cancellationTokenParam).ConfigureAwait(false);
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationTokenParam).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationTokenParam).ConfigureAwait(false);
 
                             if (!changedKeyValuesCollection.Any())
                             {
@@ -563,47 +563,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
             
             try
-            {
-                bool loadCompleted = false;
-
-                TimeSpan clientStartupTimeout = availableClients.Count() != 0 ?
-                    TimeSpan.FromTicks(_options.Startup.Timeout.Ticks / availableClients.Count()) :
-                    _options.Startup.Timeout;
-
-                while (!loadCompleted)
-                {
-                    var cancellationTokenSource = new CancellationTokenSource(clientStartupTimeout);
-                    
-                    try
+            {               
+                await ExecuteWithFailOverPolicyAsync(
+                    availableClients,
+                    true,
+                    async (client, cancellationTokenParam) =>
                     {
-                        await ExecuteWithFailOverPolicyAsync(
-                            availableClients,
-                            true,
-                            async (client) =>
-                            {
-                                data = await LoadSelectedKeyValues(
-                                    client,
-                                    cancellationTokenSource.Token)
-                                    .ConfigureAwait(false);
-
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(
-                                    client,
-                                    data,
-                                    cancellationTokenSource.Token)
-                                    .ConfigureAwait(false);
-
-                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                            },
-                            cancellationToken)
+                        data = await LoadSelectedKeyValues(
+                            client,
+                            cancellationTokenParam)
                             .ConfigureAwait(false);
 
-                        loadCompleted = true;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-                }
+                        watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                            client,
+                            data,
+                            cancellationTokenParam)
+                            .ConfigureAwait(false);
+
+                        watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                    },
+                    cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception exception) when (
                 ignoreFailures &&
@@ -889,7 +869,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
             IEnumerable<ConfigurationClient> clients,
             bool isStartup,
-            Func<ConfigurationClient, Task<T>> funcToExecute,
+            Func<ConfigurationClient, CancellationToken, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
             IConfigurationClientManager configurationClientManager = isStartup ? _startupConfigClientManager : _refreshConfigClientManager;
@@ -901,6 +881,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Uri previousEndpoint = configurationClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
+            TimeSpan clientStartupTimeout = clients.Count() != 0 ?
+                TimeSpan.FromTicks(_options.Startup.Timeout.Ticks / clients.Count()) :
+                _options.Startup.Timeout;
+
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
             while (true)
             {
                 bool success = false;
@@ -911,7 +897,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
+                    T result;
+
+                    if (isStartup)
+                    {
+                        cancellationTokenSource = new CancellationTokenSource(clientStartupTimeout);
+
+                        result = await funcToExecute(currentClient, cancellationTokenSource.Token).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        result = await funcToExecute(currentClient, cancellationToken).ConfigureAwait(false);
+                    }
+
                     success = true;
 
                     return result;
@@ -931,6 +929,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         backoffAllClients = true;
 
+                        throw;
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    if (isStartup && cancellationToken.IsCancellationRequested)
+                    {
                         throw;
                     }
                 }
@@ -968,12 +973,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task ExecuteWithFailOverPolicyAsync(
             IEnumerable<ConfigurationClient> clients,
             bool isStartup,
-            Func<ConfigurationClient, Task> funcToExecute,
+            Func<ConfigurationClient, CancellationToken, Task> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            await ExecuteWithFailOverPolicyAsync<object>(clients, isStartup, async (client) =>
+            await ExecuteWithFailOverPolicyAsync<object>(clients, isStartup, async (client, cancellationToken) =>
             {
-                await funcToExecute(client).ConfigureAwait(false);
+                await funcToExecute(client, cancellationToken).ConfigureAwait(false);
                 return null;
 
             }, cancellationToken).ConfigureAwait(false);
