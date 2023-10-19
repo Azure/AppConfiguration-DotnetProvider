@@ -566,9 +566,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 bool loadCompleted = false;
 
+                TimeSpan clientStartupTimeout = TimeSpan.FromTicks(_options.Startup.Timeout.Ticks / availableClients.Count() == 0 ? 1 : availableClients.Count());
+
                 while (!loadCompleted)
                 {
-                    var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromTicks(_options.Startup.Timeout.Ticks / availableClients.Count() == 0 ? 1 : availableClients.Count()));
+                    var cancellationTokenSource = new CancellationTokenSource();
                     
                     try
                     {
@@ -599,6 +601,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                     }
+
+                    availableClients = _startupConfigClientManager.GetAvailableClients(DateTimeOffset.UtcNow);
                 }
             }
             catch (Exception exception) when (
