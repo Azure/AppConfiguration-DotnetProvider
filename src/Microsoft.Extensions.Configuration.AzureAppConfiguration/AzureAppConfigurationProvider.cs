@@ -655,7 +655,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    ConfigurationSettingsSnapshot snapshot;
+                    ConfigurationSnapshot snapshot;
 
                     try
                     {
@@ -666,9 +666,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
                     }
 
-                    if (snapshot.CompositionType != CompositionType.Key)
+                    if (snapshot.SnapshotComposition != SnapshotComposition.Key)
                     {
-                        throw new InvalidOperationException($"{nameof(snapshot.CompositionType)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.CompositionType}'.");
+                        throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
                     }
 
                     settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
