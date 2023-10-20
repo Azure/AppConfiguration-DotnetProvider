@@ -185,21 +185,6 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
 
-        readonly ConfigurationSetting Feature_RequirementTypeAll = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "Feature_All",
-                value: @"
-                        {
-                          ""id"": ""Feature_All"",
-                          ""enabled"": true,
-                          ""conditions"": {
-                            ""requirement_type"": ""All"",
-                            ""client_filters"": []
-                          }
-                        }
-                        ",
-                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
-
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
         [Fact]
@@ -1135,15 +1120,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
-        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
-        {
-            return Response.FromValue(FirstKeyValue, new MockResponse(200));
-        }
-
-        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
-        {
-            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
-        }
 
         [Fact]
         public void WithRequirementType()
@@ -1163,9 +1139,9 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting>()
             {
                 _kv2,
-                featureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
-                featureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
-                featureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
+                FeatureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
+                FeatureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
+                FeatureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
             };
 
             var mockResponse = new Mock<Response>();
@@ -1188,7 +1164,17 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
         }
 
-        private ConfigurationSetting featureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
+        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(FirstKeyValue, new MockResponse(200));
+        }
+
+        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+        {
+            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
+        }
+
+        private ConfigurationSetting FeatureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
         {
             return ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + featureId,
