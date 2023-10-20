@@ -17,10 +17,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         [JsonPropertyName("user")]
         public List<FeatureUserAllocation> User { get; set; }
 
-        [JsonPropertyName("user")]
+        [JsonPropertyName("group")]
         public List<FeatureGroupAllocation> Group { get; set; }
 
-        [JsonPropertyName("user")]
+        [JsonPropertyName("percentile")]
         public List<FeaturePercentileAllocation> Percentile { get; set; }
 
         [JsonPropertyName("seed")]
