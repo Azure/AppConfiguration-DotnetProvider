@@ -147,6 +147,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
             }
 
+            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.TelemetryEnabled}", featureFlag.TelemetryEnabled.ToString()));
+
+            if (featureFlag.TelemetryMetadata != null)
+            {
+                foreach (KeyValuePair<string, string> kvp in featureFlag.TelemetryMetadata)
+                {
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.TelemetryMetadata}:{kvp.Key}", kvp.Value));
+                }
+            }
+
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
         }
 
