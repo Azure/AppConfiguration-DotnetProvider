@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string Variants = "Variants";
         public const string Allocation = "Allocation";
         public const string User = "User";
-        public const string Group = "User";
-        public const string Percentile = "User";
+        public const string Group = "Group";
+        public const string Percentile = "Percentile";
     }
 }
