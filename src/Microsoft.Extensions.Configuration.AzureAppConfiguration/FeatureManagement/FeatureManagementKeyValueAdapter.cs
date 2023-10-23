@@ -147,7 +147,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
             }
 
-            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.TelemetryEnabled}", featureFlag.TelemetryEnabled.ToString()));
+            if (featureFlag.TelemetryEnabled)
+            {
+                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.TelemetryEnabled}", featureFlag.TelemetryEnabled.ToString()));
+            }
 
             if (featureFlag.TelemetryMetadata != null)
             {
