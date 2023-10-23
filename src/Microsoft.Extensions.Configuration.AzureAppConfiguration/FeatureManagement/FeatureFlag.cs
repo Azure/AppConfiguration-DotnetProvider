@@ -22,5 +22,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         [JsonPropertyName("allocation")]
         public FeatureAllocation Allocation { get; set; }
+
+        [JsonPropertyName("telemetry_enabled")]
+        public bool TelemetryEnabled { get; set; }
+
+        [JsonPropertyName("telemetry_metadata")]
+        public IReadOnlyDictionary<string, string> TelemetryMetadata { get; set; }
     }
 }
