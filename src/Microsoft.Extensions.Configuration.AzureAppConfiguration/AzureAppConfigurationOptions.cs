@@ -223,7 +223,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_adapters.Any(a => a is FeatureManagementKeyValueAdapter))
             {
-                _adapters.Add(new FeatureManagementKeyValueAdapter());
+                _adapters.Add(new FeatureManagementKeyValueAdapter(FeatureFilterTelemetry));
             }
 
             return this;
