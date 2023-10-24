@@ -16,5 +16,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string Percentile = "Percentile";
         public const string TelemetryEnabled = "TelemetryEnabled";
         public const string TelemetryMetadata = "TelemetryMetadata";
+        public const string RequirementType = "RequirementType";
     }
 }
