@@ -950,12 +950,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 
-        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(IAsyncEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task ExecuteWithFailOverPolicyAsync<T>(IAsyncEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
         {
             IAsyncEnumerator<ConfigurationClient> clientEnumerator = clients.GetAsyncEnumerator(cancellationToken);
             await using ConfiguredAsyncDisposable asyncDisposable = clientEnumerator.ConfigureAwait(false);
 
-            await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
+            if (!await clientEnumerator.MoveNextAsync().ConfigureAwait(false))
+            {
+                return;
+            }
 
             Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
@@ -973,7 +976,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
-                    return result;
+                    return;
                 }
                 catch (RequestFailedException rfe)
                 {
@@ -1001,7 +1004,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            _configClientManager.UpdateClientStatus(currentClient, success);
+                            _configClientManager.UpdateClientStatus(currentClient, successful: false);
                             await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
                             currentClient = clientEnumerator.Current;
                         }
