@@ -982,9 +982,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _isFeatureManagementVersionInspected = true;
 
-                _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
-                _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                }
             }
         }
     }
