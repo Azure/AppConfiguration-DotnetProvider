@@ -40,11 +40,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
-        private volatile int _counterLock = 0;
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
-        private static readonly TimeSpan SrvLookupTimeout = TimeSpan.FromSeconds(30);
 
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
@@ -114,8 +112,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            DateTimeOffset minimalRefreshTime = _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval;
-            Task task = null;
 
             // Principle of refreshing fallback clients:
             // 1.Perform initial refresh attempt to query available clients on app start-up.
@@ -123,24 +119,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // 3.At least wait MinimalClientRefreshInterval between two attempt to ensure not perform refreshing too often.
 
             if (_replicaDiscoveryEnabled &&
-                now >= minimalRefreshTime && 
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
                 (_dynamicClients == null ||
                 now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
             {
                 _lastFallbackClientRefreshAttempt = now;
 
-                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(SrvLookupTimeout);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-                task = RefreshFallbackClients(cts.Token);
+                cts.CancelAfter(MinimalClientRefreshInterval);
 
-                // Observe cancellation if it occurs
-                _ = task.ObserveCancellation(_logger);
-
-                _ = task.ContinueWith(t =>
+                try
                 {
-                    cts.Dispose();
-                });
+                    await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // Do nothing if origin cancellationToken is not cancelled.
+                }
             }
 
             foreach (ConfigurationClientWrapper clientWrapper in _clients)
@@ -170,18 +166,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // All static and dynamic clients exhausted, check if previously unknown
             // dynamic client available
-            if (now >= minimalRefreshTime)
+            if (now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval)
             {
-                if (task != null)
-                {
-                    await task.ConfigureAwait(false);
-                }
-                else
-                {
-                    _lastFallbackClientRefreshAttempt = now;
+                _lastFallbackClientRefreshAttempt = now;
 
-                    await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
-                }
+                await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
             }
 
             foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
@@ -310,15 +299,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return;
             }
 
+            _dynamicClients ??= new List<ConfigurationClientWrapper>();
+
             // Shuffle the results to ensure hosts can be picked randomly.
             // Srv lookup does retrieve trailing dot in the host name, just trim it.
-            IEnumerable<string> srvTargetHosts = results.ToList().Shuffle().Select(r => $"{r.Target.Value.TrimEnd('.')}");
+            IEnumerable<string> srvTargetHosts = results.Any() ?
+                results.ToList().Shuffle().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
+                Enumerable.Empty<string>();
 
-            List<ConfigurationClientWrapper> newDynamicClients = new List<ConfigurationClientWrapper>();
+            // clean up clients in case the corresponding replicas are removed.
+            foreach (ConfigurationClientWrapper client in _dynamicClients)
+            {
+                // Remove from dynamicClient if the replica no longer exists in SRV records.
+                if (!srvTargetHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _dynamicClients.Remove(client);
+                }
+            }
 
             foreach (string host in srvTargetHosts)
             {
-                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
+                    !_dynamicClients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
@@ -326,18 +328,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions) :
                         new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
 
-                    newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
+                    _dynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
                 }
             }
 
-            if (Interlocked.CompareExchange(ref _counterLock, 1, 0) == 0)
-            {
-                _dynamicClients = newDynamicClients;
-
-                _lastFallbackClientRefresh = DateTime.UtcNow;
-
-                Interlocked.Exchange(ref _counterLock, 0);
-            }
+            _lastFallbackClientRefresh = DateTime.UtcNow;
         }
     }
 }
