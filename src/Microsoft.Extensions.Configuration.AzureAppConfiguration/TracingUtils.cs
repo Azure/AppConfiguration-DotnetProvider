@@ -135,9 +135,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
-            if (requestTracingOptions.FilterTelemetry.UsesAnyFeatureFilter())
+            if (requestTracingOptions.FilterTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTelemetry.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTracing.ToString()));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
