@@ -881,10 +881,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Uri previousEndpoint = configurationClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
-            TimeSpan clientStartupTimeout = clients.Count() != 0 ?
-                TimeSpan.FromTicks(_options.Startup.Timeout.Ticks / clients.Count()) :
-                _options.Startup.Timeout;
-
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
             while (true)
@@ -901,7 +897,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (isStartup)
                     {
-                        cancellationTokenSource = new CancellationTokenSource(clientStartupTimeout);
+                        cancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
 
                         result = await funcToExecute(currentClient, cancellationTokenSource.Token).ConfigureAwait(false);
                     }

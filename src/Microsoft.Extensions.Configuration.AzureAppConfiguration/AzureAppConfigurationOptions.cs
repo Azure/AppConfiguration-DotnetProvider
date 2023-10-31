@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class AzureAppConfigurationOptions
     {
         private const int MaxRetries = 2;
-        private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        internal static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
@@ -119,7 +119,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure provider startup.
         /// </summary>
-        public StartupOptions Startup { get; set; } = new StartupOptions();
+        internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
