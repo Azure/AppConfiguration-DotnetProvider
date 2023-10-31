@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// Options used to configure the behavior of an Azure App Configuration provider.
+    /// Options used to configure the behavior of an Azure App Configuration provider.         
+    /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with no label are included in the configuration provider.
     /// </summary>
     public class AzureAppConfigurationOptions
     {
@@ -189,7 +190,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
-        /// If no filtering is specified via the <cref="FeatureFlagOptions"> then all feature flags with no label are loaded.
+        /// If no filtering is specified via the <see cref="FeatureFlagOptions"/> then all feature flags with no label are loaded.
         /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
