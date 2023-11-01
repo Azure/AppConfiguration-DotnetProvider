@@ -863,7 +863,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
             IEnumerable<ConfigurationClient> clients,
             bool isStartup,
-            Func<ConfigurationClient, CancellationToken, Task<T>> funcToExecute,
+            Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
             IConfigurationClientManager configurationClientManager = isStartup ? _startupConfigClientManager : _refreshConfigClientManager;
@@ -889,16 +889,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     T result;
 
-                    if (isStartup)
-                    {
-                        cancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
-
-                        result = await funcToExecute(currentClient, cancellationTokenSource.Token).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        result = await funcToExecute(currentClient, cancellationToken).ConfigureAwait(false);
-                    }
+                    result = await funcToExecute(currentClient).ConfigureAwait(false);
 
                     success = true;
 
@@ -919,13 +910,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         backoffAllClients = true;
 
-                        throw;
-                    }
-                }
-                catch (TaskCanceledException)
-                {
-                    if ((isStartup && !clientEnumerator.MoveNext() && cancellationTokenSource.IsCancellationRequested) || cancellationToken.IsCancellationRequested)
-                    {
                         throw;
                     }
                 }
@@ -963,12 +947,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task ExecuteWithFailOverPolicyAsync(
             IEnumerable<ConfigurationClient> clients,
             bool isStartup,
-            Func<ConfigurationClient, CancellationToken, Task> funcToExecute,
+            Func<ConfigurationClient, Task> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            await ExecuteWithFailOverPolicyAsync<object>(clients, isStartup, async (client, cancellationToken) =>
+            await ExecuteWithFailOverPolicyAsync<object>(clients, isStartup, async (client) =>
             {
-                await funcToExecute(client, cancellationToken).ConfigureAwait(false);
+                await funcToExecute(client).ConfigureAwait(false);
                 return null;
 
             }, cancellationToken).ConfigureAwait(false);
