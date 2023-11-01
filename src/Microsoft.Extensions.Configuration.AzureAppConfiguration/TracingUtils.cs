@@ -80,7 +80,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (!string.IsNullOrEmpty(assemblyName))
             {
                 // Return the version using only the first 3 fields and remove additional characters
-                return AppDomain.CurrentDomain.GetAssemblies()?.SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version.ToString(3).Trim('{', '}');
+                return AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version?.ToString(3).Trim('{', '}');
             }
 
             return null;
@@ -135,9 +135,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
-            if (requestTracingOptions.FilterTelemetry.UsesAnyFeatureFilter())
+            if (requestTracingOptions.FilterTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTelemetry.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTracing.ToString()));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
