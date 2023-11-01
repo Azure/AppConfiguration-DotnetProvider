@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await PrepareData(ReorderData(cachedInfoLogs), cancellationToken).ConfigureAwait(false));
+                        SetData(await PrepareData(ReorderData(_mappedData, cachedInfoLogs), cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -545,12 +545,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return applicationData;
         }
 
-        private Dictionary<string, ConfigurationSetting> ReorderData(Dictionary<KeyValueIdentifier, string> cachedInfoLogs = default)
+        private Dictionary<string, ConfigurationSetting> ReorderData(Dictionary<KeyValueIdentifier, ConfigurationSetting> mappedData, Dictionary<KeyValueIdentifier, string> cachedInfoLogs = default)
         {
             Dictionary<string, ConfigurationSetting> orderedData = new Dictionary<string, ConfigurationSetting>();
             Dictionary<string, string> logIdentifiers = new Dictionary<string, string>();
 
-            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in _mappedData)
+            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in mappedData)
             {
                 orderedData[kvp.Key.Key] = kvp.Value;
             }
@@ -561,7 +561,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 foreach (ConfigurationSetting setting in currentKeyValues)
                 {
-                    orderedData[setting.Key] = _mappedData[new KeyValueIdentifier(setting.Key, setting.Label)];
+                    orderedData[setting.Key] = mappedData[new KeyValueIdentifier(setting.Key, setting.Label)];
                     logIdentifiers[setting.Key] = setting.Label;
                 }
             }
@@ -642,7 +642,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                     _watchedSettings = watchedSettings;
-                    SetData(await PrepareData(ReorderData(), cancellationToken).ConfigureAwait(false));
+                    SetData(await PrepareData(ReorderData(_mappedData), cancellationToken).ConfigureAwait(false));
                 }
                 catch (KeyVaultReferenceException) when (ignoreFailures)
                 {
