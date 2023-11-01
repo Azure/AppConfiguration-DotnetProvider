@@ -36,7 +36,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly bool _replicaDiscoveryEnabled;
 
         private IList<ConfigurationClientWrapper> _dynamicClients;
-        private Lazy<SrvLookupClient> _srvLookupClient;
+        private SrvLookupClient _srvLookupClient;
+        private IEnumerable<string> _validDomains;
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
@@ -61,7 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
-            _srvLookupClient = new Lazy<SrvLookupClient>();
+            _srvLookupClient = new SrvLookupClient();
 
             _clients = connectionStrings
                 .Select(cs =>
@@ -93,7 +94,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
-            _srvLookupClient = new Lazy<SrvLookupClient>();
+            _srvLookupClient = new SrvLookupClient();
 
             _clients = endpoints
                 .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
@@ -173,11 +174,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
             }
 
-            foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
+            if (_dynamicClients != null)
             {
-                if (clientWrapper.BackoffEndTime <= now)
+                foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
                 {
-                    yield return clientWrapper.Client;
+                    if (clientWrapper.BackoffEndTime <= now)
+                    {
+                        yield return clientWrapper.Client;
+                    }
                 }
             }
         }
@@ -271,11 +275,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshFallbackClients(CancellationToken cancellationToken)
         {
-            IEnumerable<SrvRecord> results = Enumerable.Empty<SrvRecord>();
+            IEnumerable<string> validAltEndpoints = Enumerable.Empty<string>();
 
             try
             {
-                results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+                if (_validDomains == null)
+                {
+                    _validDomains = await DomainVerifier.GetValidDomainsFromTlsCert(_endpoint.DnsSafeHost).ConfigureAwait(false);
+                }
+
+                IEnumerable<SrvRecord> results = await _srvLookupClient.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+
+                // Srv lookup does retrieve trailing dot in the host name, just trim it before verify the host names.
+                validAltEndpoints = results.Select(r => $"{r.Target.Value.TrimEnd('.')}").MatchedHosts(_validDomains);
             }
             // Catch and log all exceptions thrown by srv lookup client to avoid new possible exceptions on app startup.
             catch (SocketException ex)
@@ -302,9 +314,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _dynamicClients ??= new List<ConfigurationClientWrapper>();
 
             // Shuffle the results to ensure hosts can be picked randomly.
-            // Srv lookup does retrieve trailing dot in the host name, just trim it.
-            IEnumerable<string> srvTargetHosts = results.Any() ?
-                results.ToList().Shuffle().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
+            IEnumerable<string> srvTargetHosts = validAltEndpoints.Any() ?
+                validAltEndpoints.ToList().Shuffle():
                 Enumerable.Empty<string>();
 
             // clean up clients in case the corresponding replicas are removed.
