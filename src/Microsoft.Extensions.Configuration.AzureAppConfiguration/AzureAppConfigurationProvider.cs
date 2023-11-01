@@ -561,17 +561,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 await ExecuteWithFailOverPolicyAsync(
                     availableClients,
                     true,
-                    async (client, cancellationTokenParam) =>
+                    async (client) =>
                     {
                         data = await LoadSelectedKeyValues(
                             client,
-                            cancellationTokenParam)
+                            cancellationToken)
                             .ConfigureAwait(false);
 
                         watchedSettings = await LoadKeyValuesRegisteredForRefresh(
                             client,
                             data,
-                            cancellationTokenParam)
+                            cancellationToken)
                             .ConfigureAwait(false);
 
                         watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
@@ -887,10 +887,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    T result;
-
-                    result = await funcToExecute(currentClient).ConfigureAwait(false);
-
+                    T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
                     return result;
