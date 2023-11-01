@@ -136,11 +136,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                var cancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
-
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                InitializeAsync(_optional, availableClients, cancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
+                InitializeAsync(_optional, availableClients, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -210,11 +208,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
 
-                            var startupCts = new CancellationTokenSource(_options.Startup.Timeout);
-
-                            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, startupCts.Token);
-
-                            await InitializeAsync(ignoreFailures: false, _startupConfigClientManager.GetAvailableClients(utcNow), linkedCts.Token).ConfigureAwait(false);
+                            await InitializeAsync(ignoreFailures: false, _startupConfigClientManager.GetAvailableClients(utcNow), cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -930,7 +924,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (TaskCanceledException)
                 {
-                    if (isStartup && cancellationToken.IsCancellationRequested)
+                    if ((isStartup && !clientEnumerator.MoveNext() && cancellationTokenSource.IsCancellationRequested) || cancellationToken.IsCancellationRequested)
                     {
                         throw;
                     }
