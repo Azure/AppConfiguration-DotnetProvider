@@ -932,16 +932,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    bool hasNextClient = !clientEnumerator.MoveNext();
+                    bool hasNextClient = clientEnumerator.MoveNext();
 
-                    if (hasNextClient && isStartup && IsFailOverable(rfe))
+                    if (!hasNextClient && isStartup && IsFailOverable(rfe))
                     {
                         backoffAllClients = true;
 
                         throw new AzureAppConfigurationStartupException(rfe);
                     }
 
-                    if (!IsFailOverable(rfe) || hasNextClient)
+                    if (!IsFailOverable(rfe) || !hasNextClient)
                     {
                         backoffAllClients = true;
 
@@ -950,16 +950,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    bool hasNextClient = !clientEnumerator.MoveNext();
+                    bool hasNextClient = clientEnumerator.MoveNext();
 
-                    if (hasNextClient && isStartup && IsFailOverable(ae))
+                    if (!hasNextClient && isStartup && IsFailOverable(ae))
                     {
                         backoffAllClients = true;
 
                         throw new AzureAppConfigurationStartupException(ae);
                     }
 
-                    if (!IsFailOverable(ae) || hasNextClient)
+                    if (!IsFailOverable(ae) || !hasNextClient)
                     {
                         backoffAllClients = true;
 
