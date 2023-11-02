@@ -934,6 +934,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!clientEnumerator.MoveNext() && isStartup && IsFailOverable(rfe))
                     {
+                        backoffAllClients = true;
+
                         throw new AggregateException(rfe, new TimeoutException());
                     }
 
@@ -948,6 +950,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!clientEnumerator.MoveNext() && isStartup && IsFailOverable(ae))
                     {
+                        backoffAllClients = true;
+
                         throw new AggregateException(ae, new TimeoutException());
                     }
 
