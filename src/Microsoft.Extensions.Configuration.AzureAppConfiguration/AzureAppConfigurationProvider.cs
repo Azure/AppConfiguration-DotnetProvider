@@ -597,6 +597,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             loadSuccess = true;
                         }
+                        // Tries to throw the last exception before startup timed out to give information on request failure instead of just OperationCanceledException
                         catch (RequestFailedException exception)
                         {
                             if (IsFailOverable(exception))
@@ -621,7 +622,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 throw;
                             }
                         }
-                        // Tries to throw the last exception before startup timed out to give information on request failure instead of just OperationCanceledException
                         catch (Exception exception) when (exception is OperationCanceledException ||
                             ((exception as AggregateException)?.InnerExceptions?.All(e =>
                             e is OperationCanceledException) ?? false))
