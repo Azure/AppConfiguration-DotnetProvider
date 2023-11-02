@@ -4,7 +4,6 @@
 using Azure.Core;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -17,24 +16,15 @@ namespace Tests.AzureAppConfiguration
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
             int defaultMaxRetries = 0;
-            TimeSpan startupTimeout = TimeSpan.FromSeconds(5);
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Startup.Timeout = TimeSpan.FromSeconds(5);
                     options.Connect(TestHelpers.CreateMockEndpointString());
-                    options.Startup.Timeout = startupTimeout;
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                     defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
                 });
-
-            try
-            {
-                configBuilder.Build();
-            }
-            catch (TaskCanceledException tce)
-            {
-            }
 
             // Act - Build
             Assert.Throws<AggregateException>(configBuilder.Build);
@@ -50,8 +40,8 @@ namespace Tests.AzureAppConfiguration
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Startup.Timeout = TimeSpan.FromSeconds(5);
                     options.Connect(TestHelpers.CreateMockEndpointString());
-                    options.Startup.Timeout = startupTimeout;
                     options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = maxRetries);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                 });

@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -136,9 +137,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
+                CancellationTokenSource startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
+
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                InitializeAsync(_optional, availableClients, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                InitializeAsync(_optional, availableClients, startupCancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -208,7 +211,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
 
-                            await InitializeAsync(ignoreFailures: false, _startupConfigClientManager.GetAvailableClients(utcNow), cancellationToken).ConfigureAwait(false);
+                            CancellationTokenSource startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
+
+                            CancellationTokenSource linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, startupCancellationTokenSource.Token);
+
+                            await InitializeAsync(ignoreFailures: false, _startupConfigClientManager.GetAvailableClients(utcNow), linkedCancellationTokenSource.Token).ConfigureAwait(false);
                         }
 
                         return;
@@ -224,7 +231,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, false, async (client, cancellationTokenParam) =>
+                    await ExecuteWithFailOverPolicyAsync(availableClients, false, async (client) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -249,7 +256,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                                 {
                                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationTokenParam).ConfigureAwait(false)).ConfigureAwait(false);
+                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                 }
                                 else
                                 {
@@ -258,7 +265,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     try
                                     {
                                         await CallWithRequestTracing(
-                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationTokenParam).ConfigureAwait(false)).ConfigureAwait(false);
+                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                     }
                                     catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                                     {
@@ -298,14 +305,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                data = await LoadSelectedKeyValues(client, cancellationTokenParam).ConfigureAwait(false);
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationTokenParam).ConfigureAwait(false);
+                                data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationTokenParam).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
 
                             if (!changedKeyValuesCollection.Any())
                             {
@@ -557,27 +564,60 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
             
             try
-            {               
-                await ExecuteWithFailOverPolicyAsync(
-                    availableClients,
-                    true,
-                    async (client) =>
+            {
+                bool loadSuccess = false;
+
+                while (!loadSuccess)
+                {
+                    List<Exception> startupExceptions = new List<Exception>();
+
+                    if (availableClients.Any())
                     {
-                        data = await LoadSelectedKeyValues(
-                            client,
-                            cancellationToken)
-                            .ConfigureAwait(false);
+                        try
+                        {
+                            await ExecuteWithFailOverPolicyAsync(
+                                availableClients,
+                                true,
+                                async (client) =>
+                                {
+                                    data = await LoadSelectedKeyValues(
+                                        client,
+                                        cancellationToken)
+                                        .ConfigureAwait(false);
 
-                        watchedSettings = await LoadKeyValuesRegisteredForRefresh(
-                            client,
-                            data,
-                            cancellationToken)
-                            .ConfigureAwait(false);
+                                    watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                                        client,
+                                        data,
+                                        cancellationToken)
+                                        .ConfigureAwait(false);
 
-                        watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                    },
-                    cancellationToken)
-                    .ConfigureAwait(false);
+                                    watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                                },
+                                cancellationToken)
+                                .ConfigureAwait(false);
+
+                            loadSuccess = true;
+                        }
+                        catch (AggregateException ae) when (ae.InnerExceptions?.Any(e =>
+                            e is TimeoutException) ?? false)
+                        {
+                            Exception startupException = ae.InnerExceptions.FirstOrDefault(e => !(e is TimeoutException));
+
+                            if (startupException != null)
+                            {
+                                startupExceptions.Add(startupException);
+                            }
+                        }
+                        catch (Exception exception) when (exception is TaskCanceledException ||
+                            ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                            e is TaskCanceledException) ?? false))
+                        {
+                            throw new AggregateException(startupExceptions);
+                        }
+                    }
+
+                    availableClients = _startupConfigClientManager.GetAvailableClients(DateTimeOffset.UtcNow);
+                }
             }
             catch (Exception exception) when (
                 ignoreFailures &&
@@ -875,8 +915,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Uri previousEndpoint = configurationClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
-            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-
             while (true)
             {
                 bool success = false;
@@ -894,6 +932,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
+                    if (!clientEnumerator.MoveNext() && isStartup && IsFailOverable(rfe))
+                    {
+                        throw new AggregateException(rfe, new TimeoutException());
+                    }
+
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
@@ -903,6 +946,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
+                    if (!clientEnumerator.MoveNext() && isStartup && IsFailOverable(ae))
+                    {
+                        throw new AggregateException(ae, new TimeoutException());
+                    }
+
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;

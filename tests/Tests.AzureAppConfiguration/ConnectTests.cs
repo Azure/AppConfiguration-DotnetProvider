@@ -59,6 +59,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Startup.Timeout = TimeSpan.FromSeconds(5);
                     options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, mockTokenCredential.Object);
                     options.Connect("Invalid connection string");
                 });
@@ -68,22 +69,23 @@ namespace Tests.AzureAppConfiguration
 
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int startupTimeout = 10;
+            int defaultMaxRetries = 0;
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Startup.Timeout = TimeSpan.FromSeconds(5);
                     options.Connect("invalid_connection_string");
                     options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, mockTokenCredential.Object);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
-                    options.Startup.Timeout = TimeSpan.FromSeconds(startupTimeout);
+                    defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
                 });
 
             // Act
-            Assert.Throws<OperationCanceledException>(configBuilder.Build);
+            Assert.Throws<AggregateException>(configBuilder.Build);
 
             // Assert the second connect call was successful and it made requests to the configuration store.
-            Assert.True(requestCountPolicy.RequestCount > 1);
+            Assert.Equal(defaultMaxRetries + 1, requestCountPolicy.RequestCount);
         }
     }
 }

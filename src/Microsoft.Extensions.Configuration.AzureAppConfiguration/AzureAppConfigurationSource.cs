@@ -42,18 +42,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
 
                     options.ClientOptions.Retry.MaxDelay = options.Startup.MaxRetryDelay;
-                    options.ClientOptions.Retry.MaxRetries = int.MaxValue;
 
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions, isStartup: true);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
 
                     options.ClientOptions.Retry.MaxDelay = options.Startup.MaxRetryDelay;
-                    options.ClientOptions.Retry.MaxRetries = int.MaxValue;
 
-                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions, isStartup: true);
                 }
                 else
                 {
