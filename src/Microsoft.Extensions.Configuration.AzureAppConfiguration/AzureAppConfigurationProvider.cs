@@ -615,9 +615,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }
 
-                    await Task.Delay(1000).ConfigureAwait(false);
+                    if (!loadSuccess)
+                    {
+                        await Task.Delay(1000).ConfigureAwait(false);
 
-                    availableClients = _startupConfigClientManager.GetAvailableClients(DateTimeOffset.UtcNow);
+                        availableClients = _startupConfigClientManager.GetAvailableClients(DateTimeOffset.UtcNow);
+                    }
                 }
             }
             catch (Exception exception) when (
