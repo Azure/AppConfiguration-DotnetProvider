@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -231,7 +230,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, false, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(availableClients, isStartup: false, async (client) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -567,7 +566,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 bool loadSuccess = false;
 
-                List<Exception> startupExceptions = new List<Exception>();
+                Exception startupException = null;
 
                 while (!loadSuccess)
                 {
@@ -577,7 +576,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             await ExecuteWithFailOverPolicyAsync(
                                 availableClients,
-                                true,
+                                isStartup: true,
                                 async (client) =>
                                 {
                                     data = await LoadSelectedKeyValues(
@@ -600,15 +599,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         catch (AzureAppConfigurationStartupException exception)
                         {
-                            startupExceptions.Add(exception.InnerException);
+                            startupException = exception.InnerException;
                         }
                         catch (Exception exception) when (exception is OperationCanceledException ||
-                            ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                            ((exception as AggregateException)?.InnerExceptions?.All(e =>
                             e is OperationCanceledException) ?? false))
                         {
-                            startupExceptions.Add(exception);
+                            if (startupException != null)
+                            {
+                                throw startupException;
+                            }
 
-                            throw new AzureAppConfigurationStartupException("Failed to connect to store or replica during startup.", startupExceptions);
+                            throw;
                         }
                     }
 
@@ -930,14 +932,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    if (!clientEnumerator.MoveNext() && isStartup && IsFailOverable(rfe))
+                    bool hasNextClient = !clientEnumerator.MoveNext();
+
+                    if (hasNextClient && isStartup && IsFailOverable(rfe))
                     {
                         backoffAllClients = true;
 
-                        throw new AzureAppConfigurationStartupException("Failed to connect to store or replica during startup.", rfe);
+                        throw new AzureAppConfigurationStartupException(rfe);
                     }
 
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(rfe) || hasNextClient)
                     {
                         backoffAllClients = true;
 
@@ -946,14 +950,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    if (!clientEnumerator.MoveNext() && isStartup && IsFailOverable(ae))
+                    bool hasNextClient = !clientEnumerator.MoveNext();
+
+                    if (hasNextClient && isStartup && IsFailOverable(ae))
                     {
                         backoffAllClients = true;
 
-                        throw new AzureAppConfigurationStartupException("Failed to connect to store or replica during startup.", ae);
+                        throw new AzureAppConfigurationStartupException(ae);
                     }
 
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(ae) || hasNextClient)
                     {
                         backoffAllClients = true;
 

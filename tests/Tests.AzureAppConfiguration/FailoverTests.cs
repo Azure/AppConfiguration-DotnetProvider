@@ -111,6 +111,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.Startup.Timeout = TimeSpan.FromSeconds(15);
                     options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>

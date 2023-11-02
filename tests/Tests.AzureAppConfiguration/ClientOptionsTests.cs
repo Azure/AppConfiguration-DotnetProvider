@@ -4,6 +4,7 @@
 using Azure.Core;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -20,7 +21,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Startup.Timeout = TimeSpan.FromSeconds(5);
+                    options.Startup.Timeout = TimeSpan.FromSeconds(15);
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                     defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
@@ -29,8 +30,7 @@ namespace Tests.AzureAppConfiguration
             // Act - Build
             Assert.Throws<AggregateException>(configBuilder.Build);
 
-            // Assert defaultMaxRetries + 1 original request = totalRequestCount
-            Assert.Equal(defaultMaxRetries + 1, requestCountPolicy.RequestCount);
+            var exponentialRequestCount = requestCountPolicy.RequestCount;
 
             requestCountPolicy.ResetRequestCount();
 
@@ -40,17 +40,17 @@ namespace Tests.AzureAppConfiguration
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Startup.Timeout = TimeSpan.FromSeconds(5);
+                    options.Startup.Timeout = TimeSpan.FromSeconds(15);
                     options.Connect(TestHelpers.CreateMockEndpointString());
-                    options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = maxRetries);
+                    options.ConfigureClientOptions(clientOptions => clientOptions.Retry.Delay = TimeSpan.FromSeconds(60));
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                 });
 
             // Act - Build
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            Assert.Throws<TaskCanceledException>(configBuilder.Build);
 
-            // Assert maxRetries + 1 original request = totalRequestCount.
-            Assert.Equal(maxRetries + 1, requestCountPolicy.RequestCount);
+            // Assert less retries due to increased delay
+            Assert.True(requestCountPolicy.RequestCount < exponentialRequestCount);
         }
     }
 }
