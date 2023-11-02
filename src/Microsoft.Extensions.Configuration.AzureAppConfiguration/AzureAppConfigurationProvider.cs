@@ -601,6 +601,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             startupException = exception.InnerException;
                         }
+                        // Tries to throw the last exception before startup timed out to give information on request failure instead of just OperationCanceledException
                         catch (Exception exception) when (exception is OperationCanceledException ||
                             ((exception as AggregateException)?.InnerExceptions?.All(e =>
                             e is OperationCanceledException) ?? false))
