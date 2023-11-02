@@ -597,9 +597,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             loadSuccess = true;
                         }
-                        catch (AzureAppConfigurationStartupException exception)
+                        catch (RequestFailedException exception)
                         {
-                            startupException = exception.InnerException;
+                            if (IsFailOverable(exception))
+                            {
+                                startupException = exception;
+                            }
+                            else
+                            {
+                                throw;
+                            }
+                        }
+                        catch (Exception exception) when ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                            e is RequestFailedException ||
+                            e is OperationCanceledException) ?? false)
+                        {
+                            if (IsFailOverable(exception as AggregateException))
+                            {
+                                startupException = exception;
+                            }
+                            else
+                            {
+                                throw;
+                            }
                         }
                         // Tries to throw the last exception before startup timed out to give information on request failure instead of just OperationCanceledException
                         catch (Exception exception) when (exception is OperationCanceledException ||
@@ -936,16 +956,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
-                    bool hasNextClient = clientEnumerator.MoveNext();
-
-                    if (!hasNextClient && isStartup && IsFailOverable(rfe))
-                    {
-                        backoffAllClients = true;
-
-                        throw new AzureAppConfigurationStartupException(rfe);
-                    }
-
-                    if (!IsFailOverable(rfe) || !hasNextClient)
+                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
@@ -956,14 +967,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     bool hasNextClient = clientEnumerator.MoveNext();
 
-                    if (!hasNextClient && isStartup && IsFailOverable(ae))
-                    {
-                        backoffAllClients = true;
-
-                        throw new AzureAppConfigurationStartupException(ae);
-                    }
-
-                    if (!IsFailOverable(ae) || !hasNextClient)
+                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
