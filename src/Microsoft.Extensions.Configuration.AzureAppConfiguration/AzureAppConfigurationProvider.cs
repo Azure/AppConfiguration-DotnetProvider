@@ -567,10 +567,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 bool loadSuccess = false;
 
+                List<Exception> startupExceptions = new List<Exception>();
+
                 while (!loadSuccess)
                 {
-                    List<Exception> startupExceptions = new List<Exception>();
-
                     if (availableClients.Any())
                     {
                         try
@@ -598,23 +598,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             loadSuccess = true;
                         }
-                        catch (AggregateException ae) when (ae.InnerExceptions?.Any(e =>
-                            e is TimeoutException) ?? false)
+                        catch (AzureAppConfigurationStartupException exception)
                         {
-                            Exception startupException = ae.InnerExceptions.FirstOrDefault(e => !(e is TimeoutException));
-
-                            if (startupException != null)
-                            {
-                                startupExceptions.Add(startupException);
-                            }
+                            startupExceptions.Add(exception.InnerException);
                         }
-                        catch (Exception exception) when (exception is TaskCanceledException ||
+                        catch (Exception exception) when (exception is OperationCanceledException ||
                             ((exception as AggregateException)?.InnerExceptions?.Any(e =>
-                            e is TaskCanceledException) ?? false))
+                            e is OperationCanceledException) ?? false))
                         {
-                            throw new AggregateException(startupExceptions);
+                            startupExceptions.Add(exception);
+
+                            throw new AzureAppConfigurationStartupException("Failed to connect to store or replica during startup.", startupExceptions);
                         }
                     }
+
+                    await Task.Delay(1000).ConfigureAwait(false);
 
                     availableClients = _startupConfigClientManager.GetAvailableClients(DateTimeOffset.UtcNow);
                 }
@@ -936,7 +934,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         backoffAllClients = true;
 
-                        throw new AggregateException(rfe, new TimeoutException());
+                        throw new AzureAppConfigurationStartupException("Failed to connect to store or replica during startup.", rfe);
                     }
 
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
@@ -952,7 +950,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         backoffAllClients = true;
 
-                        throw new AggregateException(ae, new TimeoutException());
+                        throw new AzureAppConfigurationStartupException("Failed to connect to store or replica during startup.", ae);
                     }
 
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
