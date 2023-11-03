@@ -36,7 +36,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly bool _replicaDiscoveryEnabled;
 
         private IList<ConfigurationClientWrapper> _dynamicClients;
-        private Lazy<SrvLookupClient> _srvLookupClient;
+        private SrvLookupClient _srvLookupClient;
+        private string _validDomain = string.Empty;
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
@@ -61,7 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
-            _srvLookupClient = new Lazy<SrvLookupClient>();
+            _srvLookupClient = new SrvLookupClient();
 
             _clients = connectionStrings
                 .Select(cs =>
@@ -93,7 +94,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
-            _srvLookupClient = new Lazy<SrvLookupClient>();
+            _srvLookupClient = new SrvLookupClient();
 
             _clients = endpoints
                 .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
@@ -173,11 +174,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 await RefreshFallbackClients(cancellationToken).ConfigureAwait(false);
             }
 
-            foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
+            if (_dynamicClients != null)
             {
-                if (clientWrapper.BackoffEndTime <= now)
+                foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
                 {
-                    yield return clientWrapper.Client;
+                    if (clientWrapper.BackoffEndTime <= now)
+                    {
+                        yield return clientWrapper.Client;
+                    }
                 }
             }
         }
@@ -275,7 +279,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+                results = await _srvLookupClient.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
             }
             // Catch and log all exceptions thrown by srv lookup client to avoid new possible exceptions on app startup.
             catch (SocketException ex)
@@ -320,7 +324,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             foreach (string host in srvTargetHosts)
             {
                 if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
-                    !_dynamicClients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                    !_dynamicClients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
+                    await IsValidEndpoint(host).ConfigureAwait(false))
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
@@ -333,6 +338,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
+        }
+
+        private async Task<bool> IsValidEndpoint(string hostName)
+        {
+            if (string.IsNullOrWhiteSpace(hostName))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(_validDomain))
+            {
+                try
+                {
+                    _validDomain = await DomainVerifier.GetValidDomain(_endpoint, hostName).ConfigureAwait(false);
+                }
+                catch (SocketException)
+                {
+                    return false;
+                }
+            }
+            
+            return hostName.EndsWith(_validDomain, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
