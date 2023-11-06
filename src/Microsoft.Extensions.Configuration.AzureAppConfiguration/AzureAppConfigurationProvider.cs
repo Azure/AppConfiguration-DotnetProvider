@@ -566,7 +566,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 bool loadSuccess = false;
 
-                Exception startupException = null;
+                Exception previousException = null;
 
                 while (!loadSuccess)
                 {
@@ -597,12 +597,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             loadSuccess = true;
                         }
-                        // Tries to throw the last exception before startup timed out to give information on request failure instead of just OperationCanceledException
+                        // Tries to throw the last exception before startup timed out to give information on request failure instead of just
+                        // OperationCanceledException when startup times out.
                         catch (RequestFailedException exception)
                         {
                             if (IsFailOverable(exception))
                             {
-                                startupException = exception;
+                                previousException = exception;
                             }
                             else
                             {
@@ -610,12 +611,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                         }
                         catch (Exception exception) when ((exception as AggregateException)?.InnerExceptions?.Any(e =>
-                            e is RequestFailedException ||
-                            e is OperationCanceledException) ?? false)
+                            e is RequestFailedException) ?? false)
                         {
                             if (IsFailOverable(exception as AggregateException))
                             {
-                                startupException = exception;
+                                previousException = exception;
                             }
                             else
                             {
@@ -626,9 +626,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             ((exception as AggregateException)?.InnerExceptions?.All(e =>
                             e is OperationCanceledException) ?? false))
                         {
-                            if (startupException != null)
+                            if (previousException != null)
                             {
-                                throw startupException;
+                                throw previousException;
                             }
 
                             throw;
@@ -965,8 +965,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (AggregateException ae)
                 {
-                    bool hasNextClient = clientEnumerator.MoveNext();
-
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;

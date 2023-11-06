@@ -16,7 +16,6 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int defaultMaxRetries = 0;
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -24,7 +23,6 @@ namespace Tests.AzureAppConfiguration
                     options.Startup.Timeout = TimeSpan.FromSeconds(15);
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
-                    defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
                 });
 
             // Act - Build
@@ -33,9 +31,6 @@ namespace Tests.AzureAppConfiguration
             var exponentialRequestCount = requestCountPolicy.RequestCount;
 
             requestCountPolicy.ResetRequestCount();
-
-            // Arrange
-            int maxRetries = defaultMaxRetries + 1;
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>

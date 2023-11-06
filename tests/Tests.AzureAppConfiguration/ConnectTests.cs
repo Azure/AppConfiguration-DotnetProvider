@@ -84,7 +84,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<AggregateException>(configBuilder.Build);
 
             // Assert the second connect call was successful and it made requests to the configuration store.
-            Assert.True(requestCountPolicy.RequestCount > 1);
+            Assert.True(requestCountPolicy.RequestCount >= defaultMaxRetries + 1);
         }
     }
 }
