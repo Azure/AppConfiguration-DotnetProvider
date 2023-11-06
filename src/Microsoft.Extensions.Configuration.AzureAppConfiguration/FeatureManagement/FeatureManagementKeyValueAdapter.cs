@@ -13,6 +13,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
+        private FeatureFilterTracing _featureFilterTracing;
+
+        public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
+        {
+            _featureFilterTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
+        }
+
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag;
@@ -43,6 +50,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+
+                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
 

@@ -26,6 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
+        private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
@@ -178,6 +179,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
+                    // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for tracing
+                    EnsureFeatureManagementVersionInspected();
+
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -407,40 +411,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (RequestFailedException e)
+            catch (RequestFailedException rfe)
             {
-                if (IsAuthenticationError(e))
+                if (IsAuthenticationError(rfe))
                 {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(rfe.Message));
                 }
                 else
                 {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
+                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(rfe.Message));
                 }
 
                 return false;
             }
-            catch (AggregateException e) when (e?.InnerExceptions?.All(e => e is RequestFailedException) ?? false)
+            catch (KeyVaultReferenceException kvre)
             {
-                if (IsAuthenticationError(e))
-                {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(e.Message));
-                }
-                else
-                {
-                    _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(e.Message));
-                }
-
-                return false;
-            }
-            catch (KeyVaultReferenceException e)
-            {
-                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(e.Message));
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToKeyVaultErrorMessage(kvre.Message));
                 return false;
             }
             catch (OperationCanceledException)
             {
                 _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
+                return false;
+            }
+            catch (AggregateException ae)
+            {
+                if (ae.InnerExceptions?.Any(e => e is RequestFailedException) ?? false)
+                {
+                    if (IsAuthenticationError(ae))
+                    {
+                        _logger.LogWarning(LogHelper.BuildRefreshFailedDueToAuthenticationErrorMessage(ae.Message));
+                    }
+                    else
+                    {
+                        _logger.LogWarning(LogHelper.BuildRefreshFailedErrorMessage(ae.Message));
+                    }
+                }
+                else if (ae.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
+                {
+                    _logger.LogWarning(LogHelper.BuildRefreshCanceledErrorMessage());
+                }
+                else
+                {
+                    throw;
+                }
+
                 return false;
             }
 
@@ -504,8 +519,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Reset old filter telemetry in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
+            // Reset old filter tracing in order to track the filter types present in the current response from server.
+            _options.FeatureFilterTracing.ResetFeatureFilterTracing();
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -559,10 +574,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     cancellationToken)
                     .ConfigureAwait(false);
             }
-            catch (Exception exception) when (ignoreFailures &&
-                                             (exception is RequestFailedException ||
-                                             ((exception as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false) ||
-                                             exception is OperationCanceledException))
+            catch (Exception exception) when (
+                ignoreFailures &&
+                (exception is RequestFailedException ||
+                exception is OperationCanceledException ||
+                ((exception as AggregateException)?.InnerExceptions?.Any(e =>
+                    e is RequestFailedException ||
+                    e is OperationCanceledException) ?? false)))
             { }
 
             // Update the cache expiration time for all refresh registered settings and feature flags
@@ -660,7 +678,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 ConfigurationSetting watchedKv = null;
                 try
                 {
-                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken)).ConfigureAwait(false);
+                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
@@ -775,7 +793,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTelemetry = _options.FeatureFilterTelemetry
+                FilterTracing = _options.FeatureFilterTracing
             };
         }
 
@@ -812,6 +830,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             clientEnumerator.MoveNext();
 
+            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
             while (true)
@@ -829,18 +848,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     return result;
                 }
-                catch (AggregateException ae)
+                catch (RequestFailedException rfe)
                 {
-                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
                         throw;
                     }
                 }
-                catch (RequestFailedException rfe)
+                catch (AggregateException ae)
                 {
-                    if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
@@ -851,6 +870,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
+                        _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
+
                         do
                         {
                             _configClientManager.UpdateClientStatus(currentClient, success);
@@ -864,6 +885,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _configClientManager.UpdateClientStatus(currentClient, success);
                     }
                 }
+
+                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                if (previousEndpoint != currentEndpoint)
+                {
+                    _logger.LogWarning(LogHelper.BuildFailoverMessage(previousEndpoint?.ToString(), currentEndpoint?.ToString()));
+                }
+
+                previousEndpoint = currentEndpoint;
             }
         }
 
@@ -871,22 +901,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
-                await funcToExecute(client);
+                await funcToExecute(client).ConfigureAwait(false);
                 return null;
 
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         private bool IsFailOverable(AggregateException ex)
         {
-            IReadOnlyCollection<Exception> innerExceptions = ex.InnerExceptions;
+            RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
-            if (innerExceptions != null && innerExceptions.Any() && innerExceptions.All(ex => ex is RequestFailedException))
-            {
-                return IsFailOverable((RequestFailedException)innerExceptions.Last());
-            }
-
-            return false;
+            return rfe != null ? IsFailOverable(rfe) : false;
         }
 
         private bool IsFailOverable(RequestFailedException rfe)
@@ -949,6 +974,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
+        }
+
+        private void EnsureFeatureManagementVersionInspected()
+        {
+            if (!_isFeatureManagementVersionInspected)
+            {
+                _isFeatureManagementVersionInspected = true;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+
+                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                }
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -205,6 +206,48 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ValidateAggregateExceptionWithInnerOperationCanceledExceptionLoggedDuringRefresh()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Throws(new AggregateException("Retry failed.", new List<Exception> { new OperationCanceledException(), new RequestFailedException("Request failed.") }));
+
+            string warningInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Warning)
+                    {
+                        warningInvocation += s;
+                    }
+                }, EventLevel.Verbose);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.NotEqual("newValue1", config["TestKey1"]);
+            Assert.Contains(LoggingConstants.RefreshFailedError, warningInvocation);
+        }
+
+        [Fact]
         public void ValidateOperationCanceledExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
@@ -245,6 +288,71 @@ namespace Tests.AzureAppConfiguration
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
             Assert.Contains(LoggingConstants.RefreshCanceledError, warningInvocation);
+        }
+
+        [Fact]
+        public void ValidateFailoverToDifferentEndpointMessageLoggedAfterFailover()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient1 = GetMockConfigurationClient();
+            var mockClient2 = GetMockConfigurationClient();
+
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException(HttpStatusCodes.TooManyRequests, "Too many requests"));
+            mockClient1.Setup(c => c.ToString()).Returns("client");
+            mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
+            mockClient2.Setup(c => c.Equals(mockClient1)).Returns(true);
+
+            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+
+            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ConfigurationClientManager(clientList);
+
+            string warningInvocation = "";
+            using var _ = new AzureEventSourceListener(
+                (args, s) =>
+                {
+                    if (args.Level == EventLevel.Warning)
+                    {
+                        warningInvocation += s;
+                    }
+                }, EventLevel.Verbose);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = configClientManager;
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(CacheExpirationTime);
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            FirstKeyValue.Value = "newValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Contains(LogHelper.BuildFailoverMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString(), TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
+
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException(HttpStatusCodes.TooManyRequests, "Too many requests"));
+            mockClient2.Setup(c => c.ToString()).Returns("client");
+
+            FirstKeyValue.Value = "TestValue1";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Contains(LogHelper.BuildLastEndpointFailedMessage(TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
         }
 
         [Fact]
