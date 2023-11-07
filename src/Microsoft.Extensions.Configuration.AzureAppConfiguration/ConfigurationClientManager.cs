@@ -10,9 +10,11 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -37,7 +39,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private IList<ConfigurationClientWrapper> _dynamicClients;
         private SrvLookupClient _srvLookupClient;
-        private string _validDomain = string.Empty;
+        private IEnumerable<string> _validDomains;
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
@@ -259,7 +261,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 currentClient = _dynamicClients.FirstOrDefault(c => c.Client == client);
             }
-            
+
             return currentClient?.Endpoint;
         }
 
@@ -323,7 +325,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (string host in srvTargetHosts)
             {
-                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
+                if (!string.IsNullOrEmpty(host) &&
+                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
                     !_dynamicClients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
                     await IsValidEndpoint(host).ConfigureAwait(false))
                 {
@@ -342,24 +345,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<bool> IsValidEndpoint(string hostName)
         {
-            if (string.IsNullOrWhiteSpace(hostName))
-            {
-                return false;
-            }
+            Debug.Assert(!string.IsNullOrEmpty(hostName));
 
-            if (string.IsNullOrEmpty(_validDomain))
+            if (_validDomains == null || !_validDomains.Any())
             {
                 try
                 {
-                    _validDomain = await DomainVerifier.GetValidDomain(_endpoint, hostName).ConfigureAwait(false);
+                    _validDomains = await DomainVerifier.GetValidDomain(_endpoint, hostName).ConfigureAwait(false);
                 }
                 catch (SocketException)
                 {
                     return false;
                 }
+                catch (AuthenticationException)
+                {
+                    return false;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
             }
-            
-            return hostName.EndsWith(_validDomain, StringComparison.OrdinalIgnoreCase);
+
+            foreach (string domain in _validDomains)
+            {
+                if (hostName.EndsWith(domain, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

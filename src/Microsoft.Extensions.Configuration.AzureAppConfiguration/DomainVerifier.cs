@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
@@ -19,30 +18,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int TlsPort = 443;
         private const string SubjectAltNameOid = "2.5.29.17";
-        private const string CommonName = "CN=";
+        private const string DnsName = "DNS Name=";
         private const string MultiDomainWildcard = "*.";
 
-        public static async Task<string> GetValidDomain(Uri originEndpoint, string srvHostName)
+        public static async Task<IEnumerable<string>> GetValidDomain(Uri originEndpoint, string srvHostName)
         {
-            if (string.IsNullOrEmpty(srvHostName))
-            {
-                return string.Empty;
-            }
+            IEnumerable<string> validDomains = await GetSubjectAlternativeNames(srvHostName).ConfigureAwait(false);
 
-            IEnumerable<string> validDomains = await GetValidDomainsFromTlsCert(srvHostName).ConfigureAwait(false);
+            var domainList = new List<string>();
             
-            foreach (var domain in validDomains)
+            foreach (string domain in validDomains)
             {
                 if (originEndpoint.DnsSafeHost.EndsWith(domain, StringComparison.OrdinalIgnoreCase))
                 {
-                    return domain;
+                    domainList.Add(domain);
                 }
             }
 
-            return string.Empty;
+            return domainList;
         }
 
-        private static async Task<List<string>> GetValidDomainsFromTlsCert(string endpoint)
+        private static async Task<IEnumerable<string>> GetSubjectAlternativeNames(string endpoint)
         {
             Debug.Assert(!string.IsNullOrEmpty(endpoint));
 
@@ -53,7 +49,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             using (var client = new TcpClient(endpoint, TlsPort))
             using (var sslStream = new SslStream(client.GetStream(), leaveInnerStreamOpen: false))
             {
-
                 // Initiate the connection, so it will download the server certificate
                 await sslStream.AuthenticateAsClientAsync(endpoint).ConfigureAwait(false);
 
@@ -84,14 +79,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 foreach (string formattedExtension in formattedSanExtensions)
                 {
                     // Valid pattern should be "DNS Name=*.domain.com"
-                    string[] parts = formattedExtension.Split('=');
-
-                    if (parts.Length != 2)
+                    if (!formattedExtension.StartsWith(DnsName, StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
 
-                    string value = parts[1];
+                    string value = formattedExtension.Substring(DnsName.Length);
 
                     // Skip non-multi domain
                     if (!value.StartsWith(MultiDomainWildcard))
@@ -105,36 +98,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (domain.Length > 1 && !validDomains.Contains(domain))
                     {
                         validDomains.Add(domain);
-                    }
-                }
-            }
-
-            // Get the Common Name (CN) from the Subject Name if Subject Alternative Name is not available
-            if (!validDomains.Any() && cert.SubjectName != null)
-            {
-                IEnumerable<string> parts = cert.SubjectName
-                    .Format(true)
-                    .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-
-                foreach (string part in parts)
-                {
-                    // Valid pattern should be "CN=*.domain.com", skip non-multi domain
-                    if (part.StartsWith(CommonName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        string domain = part.Substring(CommonName.Length);
-
-                        if (domain.StartsWith(MultiDomainWildcard))
-                        {
-                            // .domain.com
-                            string domainName = domain.Substring(1);
-
-                            if (domainName.Length > 1)
-                            {
-                                validDomains.Add(domainName);
-                            }
-                        }
-
-                        break;
                     }
                 }
             }
