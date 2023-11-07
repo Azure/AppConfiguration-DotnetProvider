@@ -22,6 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
+        private readonly TimeSpan StartupMinBackoffDuration = TimeSpan.FromSeconds(1);
         private bool _isStartup;
 
         public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions, bool isStartup = false)
@@ -83,7 +84,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 clientWrapper.FailedAttempts++;
-                TimeSpan minBackoffDuration = _isStartup ? TimeSpan.FromSeconds(1) : FailOverConstants.MinBackoffDuration;
+                TimeSpan minBackoffDuration = _isStartup ? StartupMinBackoffDuration : FailOverConstants.MinBackoffDuration;
                 TimeSpan backoffDuration = minBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
                 clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }
