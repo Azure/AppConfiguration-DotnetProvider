@@ -221,7 +221,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, isStartup: false, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -642,7 +642,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             await ExecuteWithFailOverPolicyAsync(
                 availableClients,
-                isStartup: true,
                 async (client) =>
                 {
                     data = await LoadSelectedKeyValues(
@@ -927,7 +926,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
             IEnumerable<ConfigurationClient> clients,
-            bool isStartup,
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
@@ -1004,11 +1002,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task ExecuteWithFailOverPolicyAsync(
             IEnumerable<ConfigurationClient> clients,
-            bool isStartup,
             Func<ConfigurationClient, Task> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            await ExecuteWithFailOverPolicyAsync<object>(clients, isStartup, async (client) =>
+            await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
                 await funcToExecute(client).ConfigureAwait(false);
                 return null;

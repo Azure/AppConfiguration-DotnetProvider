@@ -270,7 +270,7 @@ namespace Tests.AzureAppConfiguration
             mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Throws(new OperationCanceledException());
 
-            Assert.Throws<TimeoutException>(() =>
+            Assert.Throws<OperationCanceledException>(() =>
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
