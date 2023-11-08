@@ -130,7 +130,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                using CancellationTokenSource startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
+                using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
 
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
@@ -572,7 +572,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     catch (OperationCanceledException)
                     {
-                        throw new TimeoutException($"The provider timed out while attempting to load data on startup.",
+                        throw new TimeoutException($"The provider timed out while attempting to load.",
                             new AggregateException(startupExceptions));
                     }
                 }
