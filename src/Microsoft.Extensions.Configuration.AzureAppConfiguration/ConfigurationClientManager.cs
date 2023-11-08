@@ -36,9 +36,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly TokenCredential _credential;
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
+        private readonly SrvLookupClient _srvLookupClient;
 
         private IList<ConfigurationClientWrapper> _dynamicClients;
-        private SrvLookupClient _srvLookupClient;
         private IEnumerable<string> _validDomains;
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;

@@ -19,7 +19,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int TlsPort = 443;
         private const string SubjectAltNameOid = "2.5.29.17";
         private const string DnsName = "DNS Name=";
-        private const string MultiDomainWildcard = "*.";
 
         public static async Task<IEnumerable<string>> GetValidDomain(Uri originEndpoint, string srvHostName)
         {
@@ -52,7 +51,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Initiate the connection, so it will download the server certificate
                 await sslStream.AuthenticateAsClientAsync(endpoint).ConfigureAwait(false);
 
-                var serverCertificate = sslStream.RemoteCertificate;
+                X509Certificate serverCertificate = sslStream.RemoteCertificate;
 
                 if (serverCertificate == null)
                 {
@@ -67,37 +66,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return validDomains;
             }
 
-            // Get the Subject Alternative Name (SAN) extension
-            var sanExtension = cert.Extensions[SubjectAltNameOid];
-
-            if (sanExtension != null)
+            using (cert)
             {
-                IEnumerable<string> formattedSanExtensions = sanExtension
-                    .Format(true)
-                    .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                // Get the Subject Alternative Name (SAN) extension
+                X509Extension sanExtension = cert.Extensions[SubjectAltNameOid];
 
-                foreach (string formattedExtension in formattedSanExtensions)
+                if (sanExtension != null)
                 {
-                    // Valid pattern should be "DNS Name=*.domain.com"
-                    if (!formattedExtension.StartsWith(DnsName, StringComparison.OrdinalIgnoreCase))
+                    IEnumerable<string> formattedSanExtensions = sanExtension
+                        .Format(true)
+                        .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+                    foreach (string formattedExtension in formattedSanExtensions)
                     {
-                        continue;
-                    }
+                        // Valid pattern should be "DNS Name=*.domain.com"
+                        if (!formattedExtension.StartsWith(DnsName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
 
-                    string value = formattedExtension.Substring(DnsName.Length);
+                        string value = formattedExtension.Substring(DnsName.Length);
 
-                    // Skip non-multi domain
-                    if (!value.StartsWith(MultiDomainWildcard))
-                    {
-                        continue;
-                    }
+                        // Skip non-multi domain
+                        if (!value.StartsWith("*."))
+                        {
+                            continue;
+                        }
 
-                    // .domain.com
-                    string domain = value.Substring(1);
+                        // .domain.com
+                        string domain = value.Substring(1);
 
-                    if (domain.Length > 1 && !validDomains.Contains(domain))
-                    {
-                        validDomains.Add(domain);
+                        if (domain.Length > 1 && !validDomains.Contains(domain))
+                        {
+                            validDomains.Add(domain);
+                        }
                     }
                 }
             }
