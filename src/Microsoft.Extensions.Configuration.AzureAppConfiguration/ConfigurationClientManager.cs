@@ -56,14 +56,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time, bool ignoreBackoff = false)
+        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
         {
-            if (ignoreBackoff)
-            {
-                return _clients.Select(c => c.Client).ToList();
-            }
-
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
+        }
+
+        public IEnumerable<ConfigurationClient> GetClients()
+        {
+            return _clients.Select(c => c.Client).ToList();
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)

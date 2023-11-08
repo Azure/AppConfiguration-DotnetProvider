@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -205,7 +204,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
 
-                            await InitializeAsync(_configClientManager.GetAvailableClients(utcNow), cancellationToken).ConfigureAwait(false);
+                            await InitializeAsync(availableClients, cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -548,7 +547,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return applicationData;
         }
 
-        public async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
+        private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
         {
             var startupExceptions = new List<Exception>();
 
@@ -560,7 +559,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     attempts++;
 
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAvailableClients(DateTimeOffset.UtcNow, ignoreBackoff: true);
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
@@ -597,9 +596,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is OperationCanceledException ||
-                ((exception as AggregateException)?.InnerExceptions?.Any(e =>
-                e is OperationCanceledException) ?? false))
+            catch (OperationCanceledException)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -619,14 +616,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 throw;
             }
-            catch (Exception exception) when ((exception as AggregateException)?.InnerExceptions?.Any(e =>
-                e is RequestFailedException) ?? false)
+            catch (AggregateException exception)
             {
-                if (IsFailOverable(exception as AggregateException))
+                if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
                 {
-                    startupExceptions.Add(exception);
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return false;
+                    }
+                }
 
-                    return false;
+                if (exception.InnerExceptions?.Any(e => e is RequestFailedException) ?? false)
+                {
+                    if (IsFailOverable(exception))
+                    {
+                        startupExceptions.Add(exception);
+
+                        return false;
+                    }
                 }
 
                 throw;

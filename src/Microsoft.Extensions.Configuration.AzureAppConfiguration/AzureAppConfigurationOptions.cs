@@ -435,7 +435,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the client(s) used to communicate with Azure App Configuration during startup.
+        /// Configure the provider behavior when loading data from Azure App Configuration on startup.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration startup options.</param>
         public AzureAppConfigurationOptions ConfigureStartupOptions(Action<StartupOptions> configure)

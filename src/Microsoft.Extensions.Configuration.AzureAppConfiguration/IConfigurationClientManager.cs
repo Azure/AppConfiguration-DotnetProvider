@@ -10,7 +10,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientManager
     {
-        IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time, bool ignoreBackoff = false);
+        IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time);
+
+        IEnumerable<ConfigurationClient> GetClients();
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 

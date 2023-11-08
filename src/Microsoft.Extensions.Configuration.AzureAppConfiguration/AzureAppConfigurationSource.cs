@@ -28,26 +28,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                IConfigurationClientManager refreshClientManager;
+                IConfigurationClientManager clientManager;
 
                 if (options.ClientManager != null)
                 {
-                    refreshClientManager = options.ClientManager;
+                    clientManager = options.ClientManager;
                 }
                 else if (options.ConnectionStrings != null)
                 {
-                    refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(refreshClientManager, options, _optional);
+                provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {
