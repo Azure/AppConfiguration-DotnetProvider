@@ -20,13 +20,16 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Startup.Timeout = TimeSpan.FromSeconds(15);
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
+                    });
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                 });
 
             // Act - Build
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            Assert.Throws<TimeoutException>(configBuilder.Build);
 
             var exponentialRequestCount = requestCountPolicy.RequestCount;
 
@@ -35,14 +38,17 @@ namespace Tests.AzureAppConfiguration
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Startup.Timeout = TimeSpan.FromSeconds(15);
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
+                    });
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ConfigureClientOptions(clientOptions => clientOptions.Retry.Delay = TimeSpan.FromSeconds(60));
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                 });
 
             // Act - Build
-            Assert.Throws<TaskCanceledException>(configBuilder.Build);
+            Assert.Throws<TimeoutException>(configBuilder.Build);
 
             // Assert less retries due to increased delay
             Assert.True(requestCountPolicy.RequestCount < exponentialRequestCount);

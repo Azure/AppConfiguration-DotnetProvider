@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class AzureAppConfigurationOptions
     {
         private const int MaxRetries = 2;
-        internal static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
@@ -119,7 +119,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure provider startup.
         /// </summary>
-        public StartupOptions Startup { get; set; } = new StartupOptions();
+        internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -356,7 +356,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the client used to communicate with Azure App Configuration.
+        /// Configure the client(s) used to communicate with Azure App Configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
@@ -431,6 +431,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _mappers.Add(mapper);
+            return this;
+        }
+
+        /// <summary>
+        /// Configure the client(s) used to communicate with Azure App Configuration during startup.
+        /// </summary>
+        /// <param name="configure">A callback used to configure Azure App Configuration startup options.</param>
+        public AzureAppConfigurationOptions ConfigureStartupOptions(Action<StartupOptions> configure)
+        {
+            configure?.Invoke(Startup);
             return this;
         }
 

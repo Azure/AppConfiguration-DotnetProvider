@@ -22,10 +22,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
-        private readonly TimeSpan StartupMinBackoffDuration = TimeSpan.FromSeconds(1);
-        private bool _isStartup;
 
-        public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions, bool isStartup = false)
+        public ConfigurationClientManager(IEnumerable<string> connectionStrings, ConfigurationClientOptions clientOptions)
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
@@ -37,11 +35,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var endpoint = new Uri(ConnectionStringParser.Parse(connectionString, ConnectionStringParser.EndpointSection));
                 return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(connectionString, clientOptions));
             }).ToList();
-
-            _isStartup = isStartup;
         }
 
-        public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions, bool isStartup = false)
+        public ConfigurationClientManager(IEnumerable<Uri> endpoints, TokenCredential credential, ConfigurationClientOptions clientOptions)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -49,8 +45,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _clients = endpoints.Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, credential, clientOptions))).ToList();
-
-            _isStartup = isStartup;
         }
 
         /// <summary>
@@ -62,8 +56,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
+        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time, bool ignoreBackoff = false)
         {
+            if (ignoreBackoff)
+            {
+                return _clients.Select(c => c.Client).ToList();
+            }
+
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
@@ -84,8 +83,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 clientWrapper.FailedAttempts++;
-                TimeSpan minBackoffDuration = _isStartup ? StartupMinBackoffDuration : FailOverConstants.MinBackoffDuration;
-                TimeSpan backoffDuration = minBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
+                TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
                 clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }
         }

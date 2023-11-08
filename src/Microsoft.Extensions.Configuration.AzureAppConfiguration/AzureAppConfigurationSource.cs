@@ -29,36 +29,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
                 IConfigurationClientManager refreshClientManager;
-                IConfigurationClientManager startupClientManager;
 
                 if (options.ClientManager != null)
                 {
                     refreshClientManager = options.ClientManager;
-
-                    startupClientManager = options.ClientManager;
                 }
                 else if (options.ConnectionStrings != null)
                 {
                     refreshClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
-
-                    options.ClientOptions.Retry.MaxDelay = options.Startup.MaxRetryDelay;
-
-                    startupClientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions, isStartup: true);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     refreshClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
-
-                    options.ClientOptions.Retry.MaxDelay = options.Startup.MaxRetryDelay;
-
-                    startupClientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions, isStartup: true);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(refreshClientManager, startupClientManager, options, _optional);
+                provider = new AzureAppConfigurationProvider(refreshClientManager, options, _optional);
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {

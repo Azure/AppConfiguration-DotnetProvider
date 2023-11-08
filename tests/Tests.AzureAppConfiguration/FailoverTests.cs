@@ -111,7 +111,10 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Startup.Timeout = TimeSpan.FromSeconds(15);
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
+                    });
                     options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
@@ -124,7 +127,7 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Throws last exception when all clients fail.
-            Assert.Throws<RequestFailedException>(configBuilder.Build);
+            Assert.Throws<TimeoutException>(configBuilder.Build);
 
             // The client manager should return no clients since all clients are in the back-off state.
             Assert.False(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Any());

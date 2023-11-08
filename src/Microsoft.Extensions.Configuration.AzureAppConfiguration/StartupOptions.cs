@@ -14,11 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The maximum delay before timing out when loading data from Azure App Configuration on startup.
         /// </summary>
-        public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1);
-
-        /// <summary>
-        /// The maximum delay between retries when loading data from Azure App Configuration on startup.
-        /// </summary>
-        public TimeSpan MaxRetryDelay { get; set; } = AzureAppConfigurationOptions.MaxRetryDelay;
+        public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(10);
     }
 }
