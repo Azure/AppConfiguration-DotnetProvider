@@ -618,24 +618,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (AggregateException exception)
             {
-                if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
+                if ((exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false) && cancellationToken.IsCancellationRequested)
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return false;
-                    }
+                    return false;
                 }
 
-                if (exception.InnerExceptions?.Any(e => e is RequestFailedException) ?? false)
+                if ((exception.InnerExceptions?.Any(e => e is RequestFailedException) ?? false) && IsFailOverable(exception))
                 {
-                    if (IsFailOverable(exception))
-                    {
-                        startupExceptions.Add(exception);
+                    startupExceptions.Add(exception);
 
-                        return false;
-                    }
+                    return false;
                 }
-
+                
                 throw;
             }
 
