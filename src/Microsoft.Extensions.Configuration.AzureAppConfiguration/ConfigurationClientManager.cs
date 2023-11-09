@@ -61,7 +61,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public IEnumerable<ConfigurationClient> GetAllClients()
         {
             return _clients.Select(c => c.Client).ToList();
         }

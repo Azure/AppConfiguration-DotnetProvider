@@ -1,10 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
 using Azure.Core;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Threading.Tasks;
+using System.Linq;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -29,7 +30,13 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Act - Build
-            Assert.Throws<TimeoutException>(configBuilder.Build);
+            Exception exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
+
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the second inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException.InnerException);
 
             var exponentialRequestCount = requestCountPolicy.RequestCount;
 
@@ -48,7 +55,13 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Act - Build
-            Assert.Throws<TimeoutException>(configBuilder.Build);
+            exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
+
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the inner request failed exceptions
+            Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
 
             // Assert less retries due to increased delay
             Assert.True(requestCountPolicy.RequestCount < exponentialRequestCount);

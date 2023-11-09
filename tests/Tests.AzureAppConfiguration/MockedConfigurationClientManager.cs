@@ -23,12 +23,9 @@ namespace Tests.AzureAppConfiguration
             _clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
-        {
-            return _clients.Select(cw => cw.Client);
-        }
+        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time) => GetAllClients();
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public IEnumerable<ConfigurationClient> GetAllClients()
         {
             return _clients.Select(cw => cw.Client);
         }

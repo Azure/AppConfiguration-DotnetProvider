@@ -553,7 +553,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             int attempts = 0;
 
-            IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+            IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
 
             try
             {
@@ -613,12 +613,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (AggregateException exception)
             {
-                if ((exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false) && cancellationToken.IsCancellationRequested)
+                if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
                 {
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        startupExceptions.Add(exception);
+                    }
+
                     return false;
                 }
 
-                if ((exception.InnerExceptions?.Any(e => e is RequestFailedException) ?? false) && IsFailOverable(exception))
+                if (IsFailOverable(exception))
                 {
                     startupExceptions.Add(exception);
 
@@ -631,13 +636,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        private async Task InitializeAsync(IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
+        private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
 
             await ExecuteWithFailOverPolicyAsync(
-                availableClients,
+                clients,
                 async (client) =>
                 {
                     data = await LoadSelectedKeyValues(

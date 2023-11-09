@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time);
 
-        IEnumerable<ConfigurationClient> GetClients();
+        IEnumerable<ConfigurationClient> GetAllClients();
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 

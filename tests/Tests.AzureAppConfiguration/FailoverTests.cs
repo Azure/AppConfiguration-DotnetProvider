@@ -127,7 +127,13 @@ namespace Tests.AzureAppConfiguration
                 });
 
             // Throws last exception when all clients fail.
-            Assert.Throws<TimeoutException>(configBuilder.Build);
+            Exception exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
+
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the inner request failed exceptions
+            Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
 
             // The client manager should return no clients since all clients are in the back-off state.
             Assert.False(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Any());

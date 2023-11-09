@@ -1,12 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -83,8 +85,14 @@ namespace Tests.AzureAppConfiguration
                     defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
                 });
 
-            // Act
-            Assert.Throws<TimeoutException>(configBuilder.Build);
+            // Act - Build
+            Exception exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
+
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the second inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException.InnerException);
 
             // Assert the second connect call was successful and it made requests to the configuration store.
             Assert.True(requestCountPolicy.RequestCount >= defaultMaxRetries + 1);
