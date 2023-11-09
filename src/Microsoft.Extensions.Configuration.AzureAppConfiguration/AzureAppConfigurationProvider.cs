@@ -553,13 +553,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             int attempts = 0;
 
+            IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+
             try
             {
                 while (true)
                 {
                     attempts++;
-
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
