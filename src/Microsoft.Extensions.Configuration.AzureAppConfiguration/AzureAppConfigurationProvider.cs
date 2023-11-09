@@ -596,14 +596,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return false;
-                }
-
-                throw;
+                return false;
             }
             catch (RequestFailedException exception)
             {
