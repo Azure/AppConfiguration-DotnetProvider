@@ -28,6 +28,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshFeatureFlagUpdated = "Feature flag updated.";
 
         // Other
+        public const string KeyValueMatchFailed = "Key {0} with label {1} did not match with configuration";
         public const string RefreshSkippedNoClientAvailable = "Refresh skipped because no endpoint is accessible.";
         public const string RefreshFailedToGetSettingsFromEndpoint = "Failed to get configuration settings from endpoint";
         public const string FailingOverToEndpoint = "Failing over to endpoint";

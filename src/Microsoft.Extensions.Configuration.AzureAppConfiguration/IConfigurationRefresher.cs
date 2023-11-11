@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -44,5 +45,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="pushNotification">Fully populated <see cref="PushNotification"/> object.</param>
         /// /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
         void ProcessPushNotification(PushNotification pushNotification, TimeSpan? maxDelay = null);
+
+        /// <summary>
+        /// Process the details of a <see cref="KeyValuePushNotification"/> object to ensure the latest key-values are provided in 
+        /// the next request to App Configuration. The next request will be made after the cached values have been marked as dirty.
+        /// </summary>
+        /// <param name="keyValuePushNotification">Fully populated <see cref="KeyValuePushNotification"/> object.</param>
+        /// /// <param name="maxDelay">Maximum delay before the cached value is marked as dirty. Default value is 30 seconds.</param>
+        void ProcessKeyValuePushNotification(KeyValuePushNotification keyValuePushNotification, TimeSpan? maxDelay = null);
     }
 }

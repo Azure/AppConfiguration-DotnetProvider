@@ -14,7 +14,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         internal TimeSpan CacheExpirationInterval { get; private set; } = RefreshConstants.DefaultCacheExpirationInterval;
         internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
-        
+        internal bool RefreshUpdatesOnly { get; private set; } = false;
+
+        /// <summary>
+        /// Register the marked as updated key-values to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
+        /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
+        /// </summary>
+        public AzureAppConfigurationRefreshOptions RegisterUpdatesOnly()
+        {
+            RefreshUpdatesOnly = true;
+            return this;
+        }
+
         /// <summary>
         /// Register the specified individual key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.

@@ -24,10 +24,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
-        { 
+        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>()
+        {
             new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-            new JsonKeyValueAdapter() 
+            new JsonKeyValueAdapter()
         };
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
@@ -182,7 +182,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -190,7 +190,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
                     LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
-                });  
+                });
             }
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
@@ -348,9 +348,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             configure?.Invoke(refreshOptions);
 
             if (!refreshOptions.RefreshRegistrations.Any())
-            {
-                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
-            }
+                if (!refreshOptions.RefreshRegistrations.Any() && !refreshOptions.RefreshUpdatesOnly)
+                {
+                    throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
+                }
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
