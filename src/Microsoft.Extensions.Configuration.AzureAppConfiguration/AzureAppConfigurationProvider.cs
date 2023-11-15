@@ -550,7 +550,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var startupStopwatch = Stopwatch.StartNew();
 
-            int exponentialBackoffAttempts = 0;
+            int postFixedWindowAttempts = 0;
 
             var startupExceptions = new List<Exception>();
 
@@ -567,19 +567,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        if (startupStopwatch.Elapsed < FailOverConstants.StartupFixedBackoffDuration)
+                        TimeSpan delay;
+
+                        if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
                         {
-                            await Task.Delay(startupStopwatch.Elapsed.CalculateFixedStartupBackoffDuration(), cancellationToken).ConfigureAwait(false);
+                            delay = backoff;
                         }
                         else
                         {
-                            exponentialBackoffAttempts++;
+                            postFixedWindowAttempts++;
 
-                            await Task.Delay(FailOverConstants.MinBackoffDuration.CalculateExponentialStartupBackoffDuration(
+                            delay = FailOverConstants.MaxFixedStartupBackoff.CalculateExponentialStartupBackoffDuration(
                                 FailOverConstants.MaxBackoffDuration,
-                                exponentialBackoffAttempts,
-                                startupStopwatch.Elapsed), cancellationToken).ConfigureAwait(false);
+                                postFixedWindowAttempts,
+                                startupStopwatch.Elapsed);
                         }
+
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

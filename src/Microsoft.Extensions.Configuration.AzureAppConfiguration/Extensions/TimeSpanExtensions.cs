@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         {
             new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(100), TimeSpan.FromSeconds(5)),
             new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(200), TimeSpan.FromSeconds(10)),
-            new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(600), TimeSpan.FromSeconds(30)),
+            new KeyValuePair<TimeSpan, TimeSpan>(FailOverConstants.StartupFixedBackoffDuration, FailOverConstants.MaxFixedStartupBackoff),
         };
 
         /// <summary>
@@ -128,14 +128,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         /// <summary>
-        /// This method calculates the fixed backoff duration for the configuration store after a failure
-        /// during startup 
+        /// This method tries to get the fixed backoff duration for the elapsed startup time if possible.
         /// </summary>
         /// <param name="startupTimeElapsed">The time elapsed since the current startup began.</param>
-        /// <returns>The backoff duration before retrying a request to the configuration store or replica again.</returns>
-        public static TimeSpan CalculateFixedStartupBackoffDuration(this TimeSpan startupTimeElapsed)
+        /// <param name="backoff">The backoff time span if getting the fixed backoff is successful.</param>
+        /// <returns>A boolean indicating if getting the fixed backoff duration was successful.</returns>
+        public static bool TryGetFixedBackoff(this TimeSpan startupTimeElapsed, out TimeSpan backoff)
         {
-            return CalculateMaxStartupBackoffDuration(startupTimeElapsed).Jitter(StartupJitterRatio);
+            if (startupTimeElapsed > FailOverConstants.StartupFixedBackoffDuration)
+            {
+                backoff = TimeSpan.Zero;
+
+                return false;
+            }
+
+            backoff = CalculateMaxStartupBackoffDuration(startupTimeElapsed).Jitter(StartupJitterRatio);
+
+            return true;
         }
 
         private static TimeSpan Jitter(this TimeSpan timeSpan, double ratio)

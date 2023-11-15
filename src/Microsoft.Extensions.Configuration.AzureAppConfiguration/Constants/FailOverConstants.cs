@@ -12,5 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public static readonly TimeSpan MinBackoffDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxBackoffDuration = TimeSpan.FromMinutes(10);
         public static readonly TimeSpan StartupFixedBackoffDuration = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan MaxFixedStartupBackoff = TimeSpan.FromSeconds(30);
     }
 }
