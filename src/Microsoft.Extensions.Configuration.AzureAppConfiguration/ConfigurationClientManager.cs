@@ -4,7 +4,6 @@
 
 using Azure.Core;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
@@ -100,7 +99,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientWrapper clientWrapper = this._clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+            ConfigurationClientWrapper clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
             if (clientWrapper != null)
             {

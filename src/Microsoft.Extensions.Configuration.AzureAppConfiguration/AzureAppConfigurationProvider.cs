@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -555,6 +554,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
 
+            var startupStartTime = DateTimeOffset.UtcNow;
+
             try
             {
                 while (true)
@@ -568,7 +569,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        await Task.Delay(FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, attempts), cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(FailOverConstants.MinStartupBackoffDuration.CalculateStartupBackoffDuration(FailOverConstants.MaxBackoffDuration, attempts, startupStartTime), cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

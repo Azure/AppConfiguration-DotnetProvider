@@ -14,6 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The amount of time allowed to load data from Azure App Configuration on startup.
         /// </summary>
-        public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(10);
+        public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(100);
     }
 }

@@ -4,7 +4,7 @@
 
 using System;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class FailOverConstants
     {
