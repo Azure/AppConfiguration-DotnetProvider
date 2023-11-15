@@ -958,7 +958,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
-                    Console.WriteLine("Begin request: " + DateTimeOffset.UtcNow.ToString());
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
@@ -984,7 +983,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 finally
                 {
-                    Console.WriteLine("End request: " + DateTimeOffset.UtcNow.ToString());
                     if (!success && backoffAllClients)
                     {
                         _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
