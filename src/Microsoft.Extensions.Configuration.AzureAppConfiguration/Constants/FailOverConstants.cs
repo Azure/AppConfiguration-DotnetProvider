@@ -11,6 +11,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Timeouts to retry requests to config stores and their replicas after failure.
         public static readonly TimeSpan MinBackoffDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxBackoffDuration = TimeSpan.FromMinutes(10);
-        public static readonly TimeSpan MinStartupBackoffDuration = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan StartupFixedBackoffDuration = TimeSpan.FromMinutes(10);
     }
 }

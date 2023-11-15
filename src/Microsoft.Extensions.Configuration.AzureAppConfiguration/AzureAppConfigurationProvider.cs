@@ -548,20 +548,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
         {
+            var startupStopwatch = Stopwatch.StartNew();
+
+            int exponentialBackoffAttempts = 0;
+
             var startupExceptions = new List<Exception>();
 
-            int attempts = 0;
-
             IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
-
-            var startupStartTime = DateTimeOffset.UtcNow;
 
             try
             {
                 while (true)
                 {
-                    attempts++;
-
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
                         break;
@@ -569,7 +567,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        await Task.Delay(FailOverConstants.MinStartupBackoffDuration.CalculateStartupBackoffDuration(FailOverConstants.MaxBackoffDuration, attempts, startupStartTime), cancellationToken).ConfigureAwait(false);
+                        if (startupStopwatch.Elapsed < FailOverConstants.StartupFixedBackoffDuration)
+                        {
+                            await Task.Delay(startupStopwatch.Elapsed.CalculateFixedStartupBackoffDuration(), cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            exponentialBackoffAttempts++;
+
+                            await Task.Delay(FailOverConstants.MinBackoffDuration.CalculateExponentialStartupBackoffDuration(
+                                FailOverConstants.MaxBackoffDuration,
+                                exponentialBackoffAttempts,
+                                startupStopwatch.Elapsed), cancellationToken).ConfigureAwait(false);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -948,6 +958,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 try
                 {
+                    Console.WriteLine("Begin request: " + DateTimeOffset.UtcNow.ToString());
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
@@ -973,6 +984,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 finally
                 {
+                    Console.WriteLine("End request: " + DateTimeOffset.UtcNow.ToString());
                     if (!success && backoffAllClients)
                     {
                         _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
