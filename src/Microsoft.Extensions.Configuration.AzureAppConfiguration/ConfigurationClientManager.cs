@@ -351,7 +351,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
-                    _validDomains = await DomainVerifier.GetValidDomain(_endpoint, hostName).ConfigureAwait(false);
+                    _validDomains = await DomainVerifier.GetValidDomains(_endpoint, hostName).ConfigureAwait(false);
                 }
                 catch (SocketException)
                 {
