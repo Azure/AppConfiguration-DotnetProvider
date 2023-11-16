@@ -379,7 +379,7 @@ namespace Tests.AzureAppConfiguration
                 options.UseFeatureFlags();
             }).Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -407,7 +407,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv/?key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -1120,6 +1120,50 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
+
+        [Fact]
+        public void WithRequirementType()
+        {
+            var emptyFilters = "[]";
+            var nonEmptyFilters = @"[
+                {
+                    ""name"": ""FilterA"",
+                    ""parameters"": {
+                        ""Foo"": ""Bar""
+                    }
+                },
+                {
+                    ""name"": ""FilterB""
+                }
+            ]";
+            var featureFlags = new List<ConfigurationSetting>()
+            {
+                _kv2,
+                FeatureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
+                FeatureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
+                FeatureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
+            };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Null(config["FeatureManagement:MyFeature2:RequirementType"]);
+            Assert.Null(config["FeatureManagement:Feature_NoFilters:RequirementType"]);
+            Assert.Equal("All", config["FeatureManagement:Feature_RequireAll:RequirementType"]);
+            Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
+        }
+
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
@@ -1128,6 +1172,24 @@ namespace Tests.AzureAppConfiguration
         Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
         {
             return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
+        }
+
+        private ConfigurationSetting FeatureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
+        {
+            return ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + featureId,
+                value: $@"
+                        {{
+                          ""id"": ""{featureId}"",
+                          ""enabled"": true,
+                          ""conditions"": {{
+                            ""requirement_type"": ""{requirementType}"",
+                            ""client_filters"": {clientFiltersJsonString}
+                          }}
+                        }}
+                        ",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
         }
     }
 }

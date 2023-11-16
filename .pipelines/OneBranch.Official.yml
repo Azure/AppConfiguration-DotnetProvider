@@ -171,5 +171,5 @@ extends:
              testResultsFormat: 'vstest'
              testResultsFiles: '**/*.trx'
              searchFolder: ''
-             failTaskOnFailedTests: False
+             failTaskOnFailedTests: True
              testRunTitle: Unit Tests
