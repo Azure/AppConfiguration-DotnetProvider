@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     internal static class TimeSpanExtensions
     {
         private const int MaxAttempts = 63;
-        private const double JitterRatio = 0.5;
+        private const double JitterRatio = 0.25;
 
         private static readonly IList<KeyValuePair<TimeSpan, TimeSpan>> StartupMaxBackoffDurationIntervals = new List<KeyValuePair<TimeSpan, TimeSpan>>
         {

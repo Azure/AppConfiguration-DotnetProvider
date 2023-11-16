@@ -1038,18 +1038,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(RequestFailedException rfe)
         {
+            var innerException = rfe.InnerException;
 
-            // The InnerException could be SocketException or WebException when endpoint is invalid and IOException if it is network issue.
-            if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+            if (innerException == null)
             {
-                return hre.InnerException is WebException ||
-                       hre.InnerException is SocketException ||
-                       hre.InnerException is IOException;
-            }
-
-            return rfe.Status == HttpStatusCodes.TooManyRequests ||
+                return rfe.Status == HttpStatusCodes.TooManyRequests ||
                    rfe.Status == (int)HttpStatusCode.RequestTimeout ||
                    rfe.Status >= (int)HttpStatusCode.InternalServerError;
+            }
+
+            if (innerException is HttpRequestException hre && hre.InnerException != null)
+            {
+                innerException = hre.InnerException;
+            }
+
+            // The InnerException could be SocketException or WebException when an endpoint is invalid and IOException if it's a network issue.
+            return innerException is WebException ||
+                   innerException is SocketException ||
+                   innerException is IOException;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
