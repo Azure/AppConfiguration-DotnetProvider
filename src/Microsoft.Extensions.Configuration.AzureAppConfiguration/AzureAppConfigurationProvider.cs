@@ -1038,18 +1038,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(RequestFailedException rfe)
         {
-            var innerException = rfe.InnerException;
-
-            if (innerException == null)
+            if (rfe.Status == HttpStatusCodes.TooManyRequests ||
+                rfe.Status == (int)HttpStatusCode.RequestTimeout ||
+                rfe.Status >= (int)HttpStatusCode.InternalServerError)
             {
-                return rfe.Status == HttpStatusCodes.TooManyRequests ||
-                   rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                   rfe.Status >= (int)HttpStatusCode.InternalServerError;
+                return true;
             }
 
-            if (innerException is HttpRequestException hre && hre.InnerException != null)
+            Exception innerException;
+
+            if (rfe.InnerException is HttpRequestException hre)
             {
                 innerException = hre.InnerException;
+            }
+            else
+            {
+                innerException = rfe.InnerException;
             }
 
             // The InnerException could be SocketException or WebException when an endpoint is invalid and IOException if it's a network issue.
