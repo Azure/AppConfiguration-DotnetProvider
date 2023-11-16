@@ -20,12 +20,14 @@ namespace Tests.AzureAppConfiguration
 
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
         {
-            this._clients = clients.ToList();
+            _clients = clients.ToList();
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
+        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time) => GetAllClients();
+
+        public IEnumerable<ConfigurationClient> GetAllClients()
         {
-            return this._clients.Select(cw => cw.Client);
+            return _clients.Select(cw => cw.Client);
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
