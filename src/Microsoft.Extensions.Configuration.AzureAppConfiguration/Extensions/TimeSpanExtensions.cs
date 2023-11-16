@@ -119,13 +119,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             var rand = new Random();
 
-            double interval = Math.Abs(timeSpan.TotalMilliseconds * ratio);
+            double jitter = ratio * (rand.NextDouble() * 2 - 1);
 
-            double lowest = timeSpan.TotalMilliseconds - interval * 0.5;
+            double interval = timeSpan.TotalMilliseconds * (1 + jitter);
 
-            double offset = interval * rand.NextDouble();
-
-            return TimeSpan.FromMilliseconds(lowest + offset);
+            return TimeSpan.FromMilliseconds(interval);
         }
     }
 }
