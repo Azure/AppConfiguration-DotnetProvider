@@ -9,13 +9,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     internal static class TimeSpanExtensions
     {
         private const int MaxAttempts = 63;
-        private const double StartupJitterRatio = 0.5;
+        private const double JitterRatio = 0.5;
 
         private static readonly IList<KeyValuePair<TimeSpan, TimeSpan>> StartupMaxBackoffDurationIntervals = new List<KeyValuePair<TimeSpan, TimeSpan>>
         {
             new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(100), TimeSpan.FromSeconds(5)),
             new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(200), TimeSpan.FromSeconds(10)),
-            new KeyValuePair<TimeSpan, TimeSpan>(FailOverConstants.StartupFixedBackoffDuration, FailOverConstants.MaxFixedStartupBackoff),
+            new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(600), FailOverConstants.MinStartupBackoffDuration),
         };
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         /// <summary>
-        /// This method calculates the randomized exponential backoff duration for the configuration store after a failure
+        /// This method calculates the jittered exponential backoff duration for the configuration store after a failure
         /// which lies between <paramref name="minDuration"/> and <paramref name="maxDuration"/>.
         /// </summary>
         /// <param name="minDuration">The minimum duration to retry after.</param>
@@ -78,73 +78,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 calculatedMilliseconds = maxDuration.TotalMilliseconds;
             }
 
-            return TimeSpan.FromMilliseconds(minDuration.TotalMilliseconds + new Random().NextDouble() * (calculatedMilliseconds - minDuration.TotalMilliseconds));
+            return TimeSpan.FromMilliseconds(calculatedMilliseconds).Jitter(JitterRatio);
         }
 
         /// <summary>
-        /// This method calculates the jittered exponential backoff duration for the configuration store after a failure
-        /// during startup which lies between <paramref name="minDuration"/> and <paramref name="maxDuration"/>.
-        /// </summary>
-        /// <param name="minDuration">The minimum duration to retry after.</param>
-        /// <param name="maxDuration">The maximum duration to retry after.</param>
-        /// <param name="attempts">The number of attempts made to the configuration store after the fixed retry period.</param>
-        /// <param name="startupTimeElapsed">The time elapsed since the current startup began.</param>
-        /// <returns>The backoff duration before retrying a request to the configuration store or replica again.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// An exception is thrown when <paramref name="attempts"/> is less than 1.
-        /// </exception>
-        public static TimeSpan CalculateExponentialStartupBackoffDuration(this TimeSpan minDuration, TimeSpan maxDuration, int attempts, TimeSpan startupTimeElapsed)
-        {
-            if (attempts < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
-            }
-
-            if (attempts == 1)
-            {
-                return minDuration;
-            }
-
-            //
-            // IMPORTANT: This can overflow
-            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
-
-            if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
-                    calculatedMilliseconds <= 0 /*overflow*/)
-            {
-                calculatedMilliseconds = maxDuration.TotalMilliseconds;
-            }
-
-            TimeSpan maxBackoffDuration = CalculateMaxStartupBackoffDuration(startupTimeElapsed);
-
-            TimeSpan calculatedDuration = TimeSpan.FromMilliseconds(calculatedMilliseconds);
-
-            if (calculatedDuration > maxBackoffDuration)
-            {
-                calculatedDuration = maxBackoffDuration;
-            }
-
-            return calculatedDuration.Jitter(StartupJitterRatio);
-        }
-
-        /// <summary>
-        /// This method tries to get the fixed backoff duration for the elapsed startup time if possible.
+        /// This method tries to get the fixed backoff duration for the elapsed startup time.
         /// </summary>
         /// <param name="startupTimeElapsed">The time elapsed since the current startup began.</param>
         /// <param name="backoff">The backoff time span if getting the fixed backoff is successful.</param>
-        /// <returns>A boolean indicating if getting the fixed backoff duration was successful.</returns>
+        /// <returns>A boolean indicating if getting the fixed backoff duration was successful. Returns false
+        /// if the elapsed startup time is greater than the fixed backoff window.</returns>
         public static bool TryGetFixedBackoff(this TimeSpan startupTimeElapsed, out TimeSpan backoff)
         {
-            if (startupTimeElapsed > FailOverConstants.StartupFixedBackoffDuration)
+            foreach (KeyValuePair<TimeSpan, TimeSpan> interval in StartupMaxBackoffDurationIntervals)
             {
-                backoff = TimeSpan.Zero;
+                if (startupTimeElapsed < interval.Key)
+                {
+                    backoff = interval.Value;
 
-                return false;
+                    return true;
+                }
             }
 
-            backoff = CalculateMaxStartupBackoffDuration(startupTimeElapsed).Jitter(StartupJitterRatio);
+            backoff = TimeSpan.Zero;
 
-            return true;
+            return false;
         }
 
         private static TimeSpan Jitter(this TimeSpan timeSpan, double ratio)
@@ -168,19 +126,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             double offset = interval * rand.NextDouble();
 
             return TimeSpan.FromMilliseconds(lowest + offset);
-        }
-
-        private static TimeSpan CalculateMaxStartupBackoffDuration(TimeSpan startupTimeElapsed)
-        {
-            foreach (KeyValuePair<TimeSpan, TimeSpan> interval in StartupMaxBackoffDurationIntervals)
-            {
-                if (startupTimeElapsed < interval.Key)
-                {
-                    return interval.Value;
-                }
-            }
-
-            return FailOverConstants.MaxBackoffDuration;
         }
     }
 }

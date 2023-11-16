@@ -554,40 +554,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var startupExceptions = new List<Exception>();
 
-            IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
-
             try
             {
                 while (true)
                 {
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
+
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
                         break;
                     }
 
+                    TimeSpan delay;
+
+                    if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
+                    {
+                        delay = backoff;
+                    }
+                    else
+                    {
+                        postFixedWindowAttempts++;
+
+                        delay = FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
+                            FailOverConstants.MaxBackoffDuration,
+                            postFixedWindowAttempts);
+                    }
+
                     try
                     {
-                        TimeSpan delay;
-
-                        if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
-                        {
-                            delay = backoff;
-                        }
-                        else
-                        {
-                            postFixedWindowAttempts++;
-
-                            delay = FailOverConstants.MaxFixedStartupBackoff.CalculateExponentialStartupBackoffDuration(
-                                FailOverConstants.MaxBackoffDuration,
-                                postFixedWindowAttempts,
-                                startupStopwatch.Elapsed);
-                        }
-
                         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
-                        throw new TimeoutException($"The provider timed out while attempting to load.",
+                        throw new TimeoutException(
+                            $"The provider timed out while attempting to load.",
                             new AggregateException(startupExceptions));
                     }
                 }
