@@ -2,12 +2,12 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -74,17 +74,27 @@ namespace Tests.AzureAppConfiguration
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
+                    });
                     options.Connect("invalid_connection_string");
                     options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, mockTokenCredential.Object);
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                     defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
                 });
 
-            // Act
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            // Act - Build
+            Exception exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
+
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the second inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException.InnerException);
 
             // Assert the second connect call was successful and it made requests to the configuration store.
-            Assert.Equal(defaultMaxRetries + 1, requestCountPolicy.RequestCount);
+            Assert.True(requestCountPolicy.RequestCount >= defaultMaxRetries + 1);
         }
     }
 }
