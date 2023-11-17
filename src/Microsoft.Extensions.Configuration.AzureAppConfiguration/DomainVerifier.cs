@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int TlsPort = 443;
         private const string SubjectAltNameOid = "2.5.29.17";
-        private const string DnsName = "DNS Name=";
+        private readonly static char[] DnsNameDelimiters = new char[2] { ':', '=' };
 
         public static async Task<IEnumerable<string>> GetValidDomains(Uri originEndpoint, string srvHostName)
         {
@@ -74,13 +74,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 foreach (string formattedExtension in formattedSanExtensions)
                 {
-                    // Valid pattern should be "DNS Name=*.domain.com"
-                    if (!formattedExtension.StartsWith(DnsName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
+                    // Valid pattern should be
+                    // Windows: "DNS Name=*.domain.com"
+                    // Linux: "DNS:*.domain.com"
+                    string value = string.Empty;
 
-                    string value = formattedExtension.Substring(DnsName.Length);
+                    foreach (var delimiter in DnsNameDelimiters)
+                    {
+                        if (formattedExtension.IndexOf(delimiter) <= 0)
+                        {
+                            continue;
+                        }
+
+                        string[] parts = formattedExtension.Split(new[] { delimiter }, StringSplitOptions.RemoveEmptyEntries);
+
+                        if (parts.Length == 2)
+                        {
+                            value = parts[1];
+
+                            break;
+                        }
+                    }
 
                     // Skip non-multi domain
                     if (!value.StartsWith("*."))
