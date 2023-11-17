@@ -314,11 +314,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task RefreshFallbackClients(CancellationToken cancellationToken)
         {
-            IEnumerable<SrvRecord> results = Enumerable.Empty<SrvRecord>();
+            IEnumerable<string> srvTargetHosts = Enumerable.Empty<string>();
 
             try
             {
-                results = await _srvLookupClient.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+                srvTargetHosts = await _srvLookupClient.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
             }
             // Catch and log all exceptions thrown by srv lookup client to avoid new possible exceptions on app startup.
             catch (SocketException ex)
@@ -346,21 +346,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Shuffle the results to ensure hosts can be picked randomly.
             // Srv lookup does retrieve trailing dot in the host name, just trim it.
-            IEnumerable<string> srvTargetHosts = results.Any() ?
-                results.ToList().Shuffle().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
+            IEnumerable<string> shuffledHosts = srvTargetHosts.Any() ?
+                srvTargetHosts.ToList().Shuffle() :
                 Enumerable.Empty<string>();
 
             // clean up clients in case the corresponding replicas are removed.
             foreach (ConfigurationClientWrapper client in _dynamicClients)
             {
                 // Remove from dynamicClient if the replica no longer exists in SRV records.
-                if (!srvTargetHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
+                if (!shuffledHosts.Any(h => h.Equals(client.Endpoint.Host, StringComparison.OrdinalIgnoreCase)))
                 {
                     _dynamicClients.Remove(client);
                 }
             }
 
-            foreach (string host in srvTargetHosts)
+            foreach (string host in shuffledHosts)
             {
                 if (!string.IsNullOrEmpty(host) &&
                     !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&

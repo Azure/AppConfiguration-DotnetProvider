@@ -48,9 +48,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             });
         }
 
-        public async Task<IEnumerable<SrvRecord>> QueryAsync(string host, CancellationToken cancellationToken)
+        public async Task<IEnumerable<string>> QueryAsync(string host, CancellationToken cancellationToken)
         {
-            IEnumerable<SrvRecord> resultRecords = Enumerable.Empty<SrvRecord>();
             var originSrvDns = $"{TcpOrigin}.{host}";
 
             bool exists = _cachedOriginHosts.TryGetValue(originSrvDns, out OriginHostCacheItem originHost);
@@ -61,7 +60,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (records == null || records.Count() == 0)
                 {
-                    return Enumerable.Empty<SrvRecord>();
+                    return Enumerable.Empty<string>();
                 }
 
                 if (!exists)
@@ -81,6 +80,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
+            IEnumerable<string> results = new string[] { originHost.OriginHost };
+
             int index = 0;
 
             while (true)
@@ -94,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     break;
                 }
 
-                resultRecords = resultRecords.Concat(records);
+                results = results.Concat(records.Select(r => $"{r.Target.Value.TrimEnd('.')}"));
 
                 // If we get less than 20 records from _alt{i} SRV, we have reached the end of _alt* list
                 if (records.Count() < MaxSrvRecordCountPerRecordSet)
@@ -105,7 +106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 index++;
             }
 
-            return resultRecords;
+            return results;
         }
 
         private async Task<IEnumerable<SrvRecord>> InternalQueryAsync(string srvDns, CancellationToken cancellationToken)
