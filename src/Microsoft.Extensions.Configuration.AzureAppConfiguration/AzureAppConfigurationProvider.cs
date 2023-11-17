@@ -636,13 +636,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
-                foreach (var loadOption in _options.KeyValueSelectors)
+            foreach (var loadOption in _options.KeyValueSelectors)
+            {
+                var selector = new SettingSelector
                 {
-                    var selector = new SettingSelector
-                    {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter
-                    };
+                    KeyFilter = loadOption.KeyFilter,
+                    LabelFilter = loadOption.LabelFilter
+                };
 
                 await CallWithRequestTracing(async () =>
                 {

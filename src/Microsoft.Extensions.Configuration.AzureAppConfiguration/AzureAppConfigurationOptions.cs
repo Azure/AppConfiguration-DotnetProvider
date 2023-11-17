@@ -150,8 +150,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
-
-            if (!_kvSelectors.Any(s => s.KeyFilter.Equals(keyFilter) && s.LabelFilter.Equals(labelFilter)))
+            var foundExactSameSelector = _kvSelectors.Find(s => s.KeyFilter.Equals(keyFilter) && s.LabelFilter.Equals(labelFilter));
+            if (foundExactSameSelector != null)
+            {
+                // Move to the end, keeping precedence.
+                _kvSelectors.Remove(foundExactSameSelector);
+                _kvSelectors.Add(foundExactSameSelector);
+            }
+            else
             {
                 _kvSelectors.Add(new KeyValueSelector
                 {
