@@ -274,6 +274,10 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(5);
+                    });
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })

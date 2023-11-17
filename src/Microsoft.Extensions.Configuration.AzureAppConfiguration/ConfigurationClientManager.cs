@@ -4,12 +4,10 @@
 
 using Azure.Core;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -62,6 +60,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return _clients.Where(client => client.BackoffEndTime <= time).Select(c => c.Client).ToList();
         }
 
+        public IEnumerable<ConfigurationClient> GetAllClients()
+        {
+            return _clients.Select(c => c.Client).ToList();
+        }
+
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
         {
             if (client == null)
@@ -96,7 +99,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientWrapper clientWrapper = this._clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+            ConfigurationClientWrapper clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
             if (clientWrapper != null)
             {
