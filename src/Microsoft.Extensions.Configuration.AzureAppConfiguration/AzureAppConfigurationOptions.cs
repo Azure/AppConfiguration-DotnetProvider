@@ -25,12 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
-        { 
-            new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-            new JsonKeyValueAdapter(),
-            new FeatureManagementKeyValueAdapter()
-        };
+        private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
@@ -120,6 +115,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
+        /// </summary>
+        public AzureAppConfigurationOptions()
+        {
+            _adapters = new List<IKeyValueAdapter>()
+            {
+                new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
+                new JsonKeyValueAdapter(),
+                new FeatureManagementKeyValueAdapter(FeatureFilterTracing)
+            };
+        }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
