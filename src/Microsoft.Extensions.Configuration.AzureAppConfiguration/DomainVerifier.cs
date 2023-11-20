@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Formats.Asn1;
 using System.Linq;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -19,7 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int TlsPort = 443;
         private const string SubjectAltNameOid = "2.5.29.17";
-        private readonly static char[] DnsNameDelimiters = new char[2] { ':', '=' };
 
         public static async Task<IEnumerable<string>> GetValidDomains(Uri originEndpoint, string srvHostName)
         {
@@ -56,7 +56,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             using (var cert = new X509Certificate2(serverCertificate))
             {
-                return GetDomainsFromSanExtension(cert);
+                try
+                {
+                    return GetDomainsFromSanExtension(cert);
+                }
+                catch (AsnContentException)
+                {
+                    return Enumerable.Empty<string>();
+                }
             }
         }
 
@@ -66,49 +73,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             X509Extension sanExtension = cert.Extensions[SubjectAltNameOid];
 
-            if (sanExtension != null)
+            // For the DNS name, the tag class is ContextSpecific and tag value is 2 according to RFC 5280
+            var dnsNameTag = new Asn1Tag(TagClass.ContextSpecific, tagValue: 2, isConstructed: false);
+
+            AsnReader reader = new AsnReader(sanExtension.RawData, AsnEncodingRules.BER);
+            AsnReader sequenceReader = reader.ReadSequence(Asn1Tag.Sequence);
+
+            // Process each GeneralName
+            while (sequenceReader.HasData)
             {
-                IEnumerable<string> formattedSanExtensions = sanExtension
-                    .Format(true)
-                    .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                Asn1Tag tag = sequenceReader.PeekTag();
 
-                foreach (string formattedExtension in formattedSanExtensions)
+                // Check if the current is a DNS name
+                if (tag.Equals(dnsNameTag))
                 {
-                    // Valid pattern should be
-                    // Windows: "DNS Name=*.domain.com"
-                    // Linux: "DNS:*.domain.com"
-                    string value = string.Empty;
-
-                    foreach (var delimiter in DnsNameDelimiters)
-                    {
-                        if (formattedExtension.IndexOf(delimiter) <= 0)
-                        {
-                            continue;
-                        }
-
-                        string[] parts = formattedExtension.Split(new[] { delimiter }, StringSplitOptions.RemoveEmptyEntries);
-
-                        if (parts.Length == 2)
-                        {
-                            value = parts[1];
-
-                            break;
-                        }
-                    }
+                    // The domain name MUST be stored as an IA5String in subjectAltName extension according to RFC 5280
+                    string dnsName = sequenceReader.ReadCharacterString(UniversalTagNumber.IA5String, dnsNameTag);
 
                     // Skip non-multi domain
-                    if (!value.StartsWith("*."))
+                    if (dnsName.StartsWith("*."))
                     {
-                        continue;
-                    }
+                        // .domain.com
+                        string domain = dnsName.Substring(1);
 
-                    // .domain.com
-                    string domain = value.Substring(1);
-
-                    if (domain.Length > 1 && !validDomains.Contains(domain))
-                    {
-                        validDomains.Add(domain);
+                        if (domain.Length > 1 && !validDomains.Contains(domain))
+                        {
+                            validDomains.Add(domain);
+                        }
                     }
+                }
+                else
+                {
+                    // Skip over non-DNSName types
+                    sequenceReader.ReadOctetString(tag);
                 }
             }
 
