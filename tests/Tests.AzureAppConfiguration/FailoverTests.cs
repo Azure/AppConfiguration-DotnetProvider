@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
@@ -297,6 +298,37 @@ namespace Tests.AzureAppConfiguration
                     refresher = options.GetRefresher();
                 })
                 .Build();
+        }
+
+
+        [Fact]
+        public async Task FailOverTests_ValidateNonExistenceEndpointTlsCert()
+        {
+            var configClientManager = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            // A non-existence endpoint should not be valid.
+            bool isValid = await configClientManager.IsValidEndpoint("azure.azconfig.io");
+
+            Assert.False(isValid);
+        }
+
+        [Fact]
+        public async Task FailOverTests_GetNoDynamicClient()
+        {
+            var configClientManager = new ConfigurationClientManager(
+                new[] { new Uri("https://azure.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            var clients = configClientManager.GetAvailableClients(CancellationToken.None);
+
+            // Only contains the client that passed while constructing the ConfigurationClientManager
+            Assert.Equal(1, await clients.CountAsync());
         }
     }
 }

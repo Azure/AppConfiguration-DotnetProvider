@@ -5,7 +5,6 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using DnsClient;
-using DnsClient.Protocol;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
@@ -343,7 +342,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }
 
-        private async Task<bool> IsValidEndpoint(string hostName)
+        internal async Task<bool> IsValidEndpoint(string hostName)
         {
             Debug.Assert(!string.IsNullOrEmpty(hostName));
 
