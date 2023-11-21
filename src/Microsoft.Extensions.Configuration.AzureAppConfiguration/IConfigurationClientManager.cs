@@ -12,6 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time);
 
+        IEnumerable<ConfigurationClient> GetAllClients();
+
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 
         bool UpdateSyncToken(Uri endpoint, String syncToken);
