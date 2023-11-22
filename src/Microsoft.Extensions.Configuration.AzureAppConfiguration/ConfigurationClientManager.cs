@@ -45,7 +45,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
-        private static readonly string[] TrustedDomainPrefixes = new[] { ".azconfig", ".appconfig" };
+        private static readonly string[] TrustedDomainLabels = new[] { "azconfig", "azconfig-test", "appconfig", "appconfig-test" };
 
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
@@ -351,9 +351,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             string hostName = endpoint.Host;
 
-            foreach (string domainPrefix in TrustedDomainPrefixes)
+            foreach (string label in TrustedDomainLabels)
             {
-                int index = hostName.IndexOf(domainPrefix, StringComparison.OrdinalIgnoreCase);
+                int index = hostName.LastIndexOf($".{label}.", StringComparison.OrdinalIgnoreCase);
 
                 if (index > 0)
                 {
