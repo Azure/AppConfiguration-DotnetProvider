@@ -339,7 +339,7 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationClientOptions(),
                 true);
 
-            Assert.True(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
+            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
 
             var configClientManager4 = new ConfigurationClientManager(
@@ -348,8 +348,8 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationClientOptions(),
                 true);
 
-            Assert.True(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
-            Assert.True(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
             Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig.azure.com"));
         }
 

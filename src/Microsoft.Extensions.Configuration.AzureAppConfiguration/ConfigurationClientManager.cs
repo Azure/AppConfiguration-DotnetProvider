@@ -45,7 +45,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
-        private static readonly string[] TrustedDomainLabels = new[] { "azconfig", "azconfig-test", "appconfig", "appconfig-test" };
+        private static readonly string[] TrustedDomainLabels = new[] { "azconfig", "appconfig" };
 
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
