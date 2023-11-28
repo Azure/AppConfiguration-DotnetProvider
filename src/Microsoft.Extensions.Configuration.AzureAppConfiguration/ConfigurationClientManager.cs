@@ -14,7 +14,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -37,15 +36,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
         private readonly SrvLookupClient _srvLookupClient;
+        private readonly string _validDomain;
 
         private IList<ConfigurationClientWrapper> _dynamicClients;
-        private IEnumerable<string> _validDomains;
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
+        private static readonly string[] TrustedDomainLabels = new[] { "azconfig", "appconfig" };
 
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
@@ -64,6 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
+            _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
             _clients = connectionStrings
@@ -96,6 +97,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
+            _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
             _clients = endpoints
@@ -365,7 +367,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (!string.IsNullOrEmpty(host) &&
                     !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
                     !_dynamicClients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
-                    await IsValidEndpoint(host).ConfigureAwait(false))
+                    IsValidEndpoint(host))
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
@@ -380,39 +382,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }
 
-        private async Task<bool> IsValidEndpoint(string hostName)
+        private string GetValidDomain(Uri endpoint)
+        {
+            Debug.Assert(endpoint != null);
+
+            string hostName = endpoint.Host;
+
+            foreach (string label in TrustedDomainLabels)
+            {
+                int index = hostName.LastIndexOf($".{label}.", StringComparison.OrdinalIgnoreCase);
+
+                if (index > 0)
+                {
+                    return hostName.Substring(index);
+                }
+            }
+
+            return string.Empty;
+        }
+
+        internal bool IsValidEndpoint(string hostName)
         {
             Debug.Assert(!string.IsNullOrEmpty(hostName));
 
-            if (_validDomains == null || !_validDomains.Any())
+            if (string.IsNullOrEmpty(_validDomain))
             {
-                try
-                {
-                    _validDomains = await DomainVerifier.GetValidDomains(_endpoint, hostName).ConfigureAwait(false);
-                }
-                catch (SocketException)
-                {
-                    return false;
-                }
-                catch (AuthenticationException)
-                {
-                    return false;
-                }
-                catch (InvalidOperationException)
-                {
-                    return false;
-                }
+                return false;
             }
 
-            foreach (string domain in _validDomains)
-            {
-                if (hostName.EndsWith(domain, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return hostName.EndsWith(_validDomain, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

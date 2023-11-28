@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
@@ -307,6 +308,74 @@ namespace Tests.AzureAppConfiguration
                     refresher = options.GetRefresher();
                 })
                 .Build();
+        }
+
+        [Fact]
+        public void FailOverTests_ValidateEndpoints()
+        {
+            var configClientManager = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.True(configClientManager.IsValidEndpoint("azure.azconfig.io"));
+            Assert.True(configClientManager.IsValidEndpoint("appconfig.azconfig.io"));
+            Assert.True(configClientManager.IsValidEndpoint("azure.privatelink.azconfig.io"));
+            Assert.True(configClientManager.IsValidEndpoint("azure-replica.azconfig.io"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.badazconfig.io"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.azconfigbad.io"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.appconfig.azure.com"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
+
+            var configClientManager2 = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.appconfig.azure.com") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.True(configClientManager2.IsValidEndpoint("azure.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azure.z1.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azure-replia.z1.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azure.privatelink.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azconfig.appconfig.azure.com"));
+            Assert.False(configClientManager2.IsValidEndpoint("azure.azconfig.io"));
+            Assert.False(configClientManager2.IsValidEndpoint("azure.badappconfig.azure.com"));
+            Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
+
+            var configClientManager3 = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.azconfig-test.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
+            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
+
+            var configClientManager4 = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig.azure.com"));
+        }
+
+        [Fact]
+        public async Task FailOverTests_GetNoDynamicClient()
+        {
+            var configClientManager = new ConfigurationClientManager(
+                new[] { new Uri("https://azure.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            var clients = configClientManager.GetAvailableClients(CancellationToken.None);
+
+            // Only contains the client that passed while constructing the ConfigurationClientManager
+            Assert.Equal(1, await clients.CountAsync());
         }
     }
 }
