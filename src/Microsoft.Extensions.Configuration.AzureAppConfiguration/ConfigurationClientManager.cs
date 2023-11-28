@@ -5,8 +5,6 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using DnsClient;
-using DnsClient.Protocol;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
@@ -123,26 +121,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // 2.Refreshing when cached fallback clients have expired, FallbackClientRefreshExpireInterval is due.
             // 3.At least wait MinimalClientRefreshInterval between two attempt to ensure not perform refreshing too often.
 
-            if (_replicaDiscoveryEnabled &&
-                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
-                (_dynamicClients == null ||
-                now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
-            {
-                _lastFallbackClientRefreshAttempt = now;
-
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-                cts.CancelAfter(MinimalClientRefreshInterval);
-
-                try
-                {
-                    await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                {
-                    // Do nothing if origin cancellationToken is not cancelled.
-                }
-            }
+            await OptimisticRefreshFallbackClients(now, cancellationToken).ConfigureAwait(false);
 
             foreach (ConfigurationClientWrapper clientWrapper in _clients)
             {
@@ -190,41 +169,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task RefreshFallbackClients(CancellationToken cancellationToken)
+        public async IAsyncEnumerable<ConfigurationClient> GetAllClients([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            IEnumerable<SrvRecord> results = await _srvLookupClient.Value.QueryAsync(_endpoint.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            // Shuffle the results to ensure hosts can be picked randomly.
-            // Srv lookup may retrieve trailing dot in the host name, just trim it.
-            IEnumerable<string> srvTargetHosts = results.Shuffle().Select(r => $"{r.Target.Value.Trim('.')}").ToList();
+            await OptimisticRefreshFallbackClients(now, cancellationToken).ConfigureAwait(false);
 
-            // clean up clients in case the corresponding replicas are removed.
-            foreach (ConfigurationClientWrapper client in _clients)
+            foreach (ConfigurationClientWrapper clientWrapper in _clients)
             {
-                if (IsEligibleToRemove(srvTargetHosts, client))
-                {
-                    _clients.Remove(client);
-                }
+                yield return clientWrapper.Client;
             }
 
-            foreach (string host in srvTargetHosts)
+            if (_dynamicClients != null)
             {
-                if (!_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                foreach (ConfigurationClientWrapper clientWrapper in _dynamicClients)
                 {
-                    var targetEndpoint = new Uri($"https://{host}");
-
-                    var configClient = _isUsingConnetionString ? 
-                        new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions):
-                        new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
-
-                    _clients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient, true));
+                    yield return clientWrapper.Client;
                 }
             }
-        }
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
-        {
-            return _clients.Select(c => c.Client).ToList();
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -312,6 +274,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _logger = logger;
+        }
+
+        private async Task OptimisticRefreshFallbackClients(DateTimeOffset now, CancellationToken cancellationToken)
+        {
+            if (_replicaDiscoveryEnabled &&
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
+                (_dynamicClients == null ||
+                now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
+            {
+                _lastFallbackClientRefreshAttempt = now;
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+                cts.CancelAfter(MinimalClientRefreshInterval);
+
+                try
+                {
+                    await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // Do nothing if origin cancellationToken is not cancelled.
+                }
+            }
         }
 
         private async Task RefreshFallbackClients(CancellationToken cancellationToken)

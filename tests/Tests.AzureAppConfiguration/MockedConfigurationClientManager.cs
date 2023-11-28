@@ -24,8 +24,8 @@ namespace Tests.AzureAppConfiguration
 
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
         {
-            this._clients = clients.ToList();
-            this._autoFailoverClients = new List<ConfigurationClientWrapper>();
+            _clients = clients.ToList();
+            _autoFailoverClients = new List<ConfigurationClientWrapper>();
         }
 
         public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time) => GetAllClients();
@@ -37,8 +37,8 @@ namespace Tests.AzureAppConfiguration
 
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients, IEnumerable<ConfigurationClientWrapper> autoFailoverClients)
         {
-            this._autoFailoverClients = autoFailoverClients.ToList();
-            this._clients = clients.ToList();
+            _autoFailoverClients = autoFailoverClients.ToList();
+            _clients = clients.ToList();
         }
 
         public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -79,6 +79,21 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
             return currentClient?.Endpoint;
+        }
+
+        public async IAsyncEnumerable<ConfigurationClient> GetAllClients([EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await Task.Delay(0);
+
+            foreach (var client in _clients)
+            {
+                yield return client.Client;
+            }
+
+            foreach (var client in _autoFailoverClients)
+            {
+                yield return client.Client;
+            }
         }
     }
 }

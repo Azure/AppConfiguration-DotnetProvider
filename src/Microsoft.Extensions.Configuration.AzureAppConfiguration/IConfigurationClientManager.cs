@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         IAsyncEnumerable<ConfigurationClient> GetAvailableClients(CancellationToken cancellationToken);
 
-        IEnumerable<ConfigurationClient> GetAllClients();
+        IAsyncEnumerable<ConfigurationClient> GetAllClients(CancellationToken cancellationToken);
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 

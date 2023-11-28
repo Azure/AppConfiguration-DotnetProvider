@@ -449,17 +449,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
-        /// <summary>
-        /// Configure automatic http failover for Azure App Configuration.
-        /// </summary>
-        /// <param name="enabled">Enable automatic Http failover or not</param>
-        public AzureAppConfigurationOptions EnableAutoFailover(bool enabled)
-        {
-            IsAutoFailover = enabled;
-
-            return this;
-        }
-
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
             var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
