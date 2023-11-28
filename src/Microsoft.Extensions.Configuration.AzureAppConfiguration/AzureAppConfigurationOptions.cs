@@ -117,6 +117,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
 
         /// <summary>
+        /// Options used to configure provider startup.
+        /// </summary>
+        internal StartupOptions Startup { get; set; } = new StartupOptions();
+
+        /// <summary>
         /// Specify what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
@@ -351,7 +356,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the client used to communicate with Azure App Configuration.
+        /// Configure the client(s) used to communicate with Azure App Configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
@@ -429,9 +434,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
+        /// <summary>
+        /// Configure the provider behavior when loading data from Azure App Configuration on startup.
+        /// </summary>
+        /// <param name="configure">A callback used to configure Azure App Configuration startup options.</param>
+        public AzureAppConfigurationOptions ConfigureStartupOptions(Action<StartupOptions> configure)
+        {
+            configure?.Invoke(Startup);
+            return this;
+        }
+
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2022_11_01_Preview);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;

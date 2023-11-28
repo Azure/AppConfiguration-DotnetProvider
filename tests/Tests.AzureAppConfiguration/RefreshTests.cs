@@ -1076,6 +1076,10 @@ namespace Tests.AzureAppConfiguration
 
         private void optionsInitializer(AzureAppConfigurationOptions options)
         {
+            options.ConfigureStartupOptions(startupOptions =>
+            {
+                startupOptions.Timeout = TimeSpan.FromSeconds(5);
+            });
             options.Connect(TestHelpers.CreateMockEndpointString());
             options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 0);
         }

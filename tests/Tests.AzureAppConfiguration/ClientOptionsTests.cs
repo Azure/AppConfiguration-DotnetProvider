@@ -3,11 +3,9 @@
 //
 using Azure;
 using Azure.Core;
-using Azure.Core.Testing;
-using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
-using Moq;
 using System;
+using System.Linq;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -19,40 +17,54 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             var requestCountPolicy = new HttpRequestCountPipelinePolicy();
-            int defaultMaxRetries = 0;
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
+                    });
                     options.Connect(TestHelpers.CreateMockEndpointString());
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
-                    defaultMaxRetries = options.ClientOptions.Retry.MaxRetries;
                 });
 
             // Act - Build
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            Exception exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
 
-            // Assert defaultMaxRetries + 1 original request = totalRequestCount
-            Assert.Equal(defaultMaxRetries + 1, requestCountPolicy.RequestCount);
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the second inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException.InnerException);
+
+            var exponentialRequestCount = requestCountPolicy.RequestCount;
 
             requestCountPolicy.ResetRequestCount();
-
-            // Arrange
-            int maxRetries = defaultMaxRetries + 1;
 
             configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.ConfigureStartupOptions(startupOptions =>
+                    {
+                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
+                    });
                     options.Connect(TestHelpers.CreateMockEndpointString());
-                    options.ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = maxRetries);
+                    options.ConfigureClientOptions(clientOptions => clientOptions.Retry.Delay = TimeSpan.FromSeconds(60));
                     options.ClientOptions.AddPolicy(requestCountPolicy, HttpPipelinePosition.PerRetry);
                 });
 
             // Act - Build
-            Assert.Throws<AggregateException>(configBuilder.Build);
+            exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
 
-            // Assert maxRetries + 1 original request = totalRequestCount.
-            Assert.Equal(maxRetries + 1, requestCountPolicy.RequestCount);
+            // Assert the inner aggregate exception
+            Assert.IsType<AggregateException>(exception.InnerException);
+
+            // Assert the inner request failed exceptions
+            Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
+
+            // Assert less retries due to increased delay
+            Assert.True(requestCountPolicy.RequestCount < exponentialRequestCount);
         }
     }
 }
