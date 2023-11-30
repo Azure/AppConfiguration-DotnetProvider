@@ -568,47 +568,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
+                    clientEnumerator = _configClientManager.GetAllClients(cancellationToken).GetAsyncEnumerator();
+
+                    await using ConfiguredAsyncDisposable configuredAsyncDisposable = clientEnumerator.ConfigureAwait(false);
+                    // Guaranteed to have at least one available client since it is a application startup path.
+                    _ = await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
+
+                    if (await TryInitializeAsync(clientEnumerator, startupExceptions, cancellationToken).ConfigureAwait(false))
+                    {
+                        break;
+                    }
+
+                    TimeSpan delay;
+
+                    if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
+                    {
+                        delay = backoff;
+                    }
+                    else
+                    {
+                        postFixedWindowAttempts++;
+
+                        delay = FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
+                            FailOverConstants.MaxBackoffDuration,
+                            postFixedWindowAttempts);
+                    }
+
                     try
                     {
-                        clientEnumerator = _configClientManager.GetAllClients(cancellationToken).GetAsyncEnumerator();
-
-                        // Guaranteed to have at least one available client since it is a application startup path.
-                        _ = await clientEnumerator.MoveNextAsync().ConfigureAwait(false);
-
-                        if (await TryInitializeAsync(clientEnumerator, startupExceptions, cancellationToken).ConfigureAwait(false))
-                        {
-                            break;
-                        }
-
-                        TimeSpan delay;
-
-                        if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
-                        {
-                            delay = backoff;
-                        }
-                        else
-                        {
-                            postFixedWindowAttempts++;
-
-                            delay = FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
-                                FailOverConstants.MaxBackoffDuration,
-                                postFixedWindowAttempts);
-                        }
-
                         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    catch (OperationCanceledException)
                     {
                         throw new TimeoutException(
                             $"The provider timed out while attempting to load.",
                             new AggregateException(startupExceptions));
-                    }
-                    finally
-                    {
-                        if (clientEnumerator != null)
-                        {
-                            clientEnumerator.DisposeAsync().AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
-                        }
                     }
                 }
             }

@@ -171,9 +171,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async IAsyncEnumerable<ConfigurationClient> GetAllClients([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-
-            await OptimisticRefreshFallbackClients(now, cancellationToken).ConfigureAwait(false);
+            await OptimisticRefreshFallbackClients(DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(false);
 
             foreach (ConfigurationClientWrapper clientWrapper in _clients)
             {
