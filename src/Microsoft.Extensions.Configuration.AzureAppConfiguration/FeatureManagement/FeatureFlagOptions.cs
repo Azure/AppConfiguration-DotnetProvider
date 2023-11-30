@@ -67,7 +67,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             string featureFlagPrefix = FeatureManagementConstants.FeatureFlagMarker + featureFlagFilter;
 
-            if (!FeatureFlagSelectors.Any(s => s.KeyFilter.Equals(featureFlagPrefix) && s.LabelFilter.Equals(labelFilter)))
+            KeyValueSelector existingFeatureFlagSelector = FeatureFlagSelectors.FirstOrDefault(s => s.KeyFilter.Equals(featureFlagPrefix) && s.LabelFilter.Equals(labelFilter));
+
+            if (existingFeatureFlagSelector != null) 
+            {
+                // Move to the end, keeping precedence.
+                FeatureFlagSelectors.Remove(existingFeatureFlagSelector);
+                FeatureFlagSelectors.Add(existingFeatureFlagSelector);
+            }
+            else
             {
                 FeatureFlagSelectors.Add(new KeyValueSelector
                 {
