@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -14,29 +13,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class SrvLookupClient
     {
-        private class OriginHostCacheItem
-        {
-            public string OriginHost { get; set; }
-
-            public DateTimeOffset CacheExpires { get; set; }
-        }
-
-        private readonly ConcurrentDictionary<string, OriginHostCacheItem> _cachedOriginHosts;
         private readonly LookupClient _tcpLookupClient;
         private readonly LookupClient _udpLookupClient;
 
         private const string TcpOrigin = "_origin._tcp";
         private const string TCP = "_tcp";
         private const string Alt = "_alt";
-        private const int MaxSrvRecordCountPerRecordSet = 20;
 
-        private static readonly TimeSpan OriginHostResultCacheExpiration = TimeSpan.FromMinutes(30);
         private static readonly TimeSpan UdpSrvQueryTimeout = TimeSpan.FromSeconds(5);
 
         public SrvLookupClient()
         {
-            _cachedOriginHosts = new ConcurrentDictionary<string, OriginHostCacheItem>();
-
             _udpLookupClient = new LookupClient(new LookupClientOptions()
             {
                 UseTcpFallback = false
@@ -48,45 +35,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             });
         }
 
-        public async Task<IEnumerable<string>> QueryAsync(string host, CancellationToken cancellationToken)
+        public async Task<IEnumerable<SrvRecord>> QueryAsync(string host, CancellationToken cancellationToken)
         {
-            var originSrvDns = $"{TcpOrigin}.{host}";
+            string originSrvDns = $"{TcpOrigin}.{host}";
+            
+            IEnumerable<SrvRecord> originRecords = await InternalQueryAsync(originSrvDns, cancellationToken).ConfigureAwait(false);
 
-            bool exists = _cachedOriginHosts.TryGetValue(originSrvDns, out OriginHostCacheItem originHost);
-
-            if (!exists || originHost.CacheExpires <= DateTimeOffset.UtcNow)
+            if (originRecords == null || originRecords.Count() == 0)
             {
-                IEnumerable<SrvRecord> records = await InternalQueryAsync(originSrvDns, cancellationToken).ConfigureAwait(false);
-
-                if (records == null || records.Count() == 0)
-                {
-                    return Enumerable.Empty<string>();
-                }
-
-                if (!exists)
-                {
-                    originHost = new OriginHostCacheItem()
-                    {
-                        OriginHost = records.First().Target.Value.TrimEnd('.'),
-                        CacheExpires = DateTimeOffset.UtcNow.Add(OriginHostResultCacheExpiration)
-                    };
-
-                    _cachedOriginHosts[originSrvDns] = originHost;
-                }
-                else
-                {
-                    originHost.OriginHost = records.First().Target.Value.TrimEnd('.');
-                    originHost.CacheExpires = DateTimeOffset.UtcNow.Add(OriginHostResultCacheExpiration);
-                }
+                return Enumerable.Empty<SrvRecord>();
             }
 
-            IEnumerable<string> results = new string[] { originHost.OriginHost };
+            SrvRecord originHostSrv = originRecords.First();
+
+            string originHost = originHostSrv.Target.Value.TrimEnd('.');
+
+            IEnumerable<SrvRecord> results = new SrvRecord[] { originHostSrv };
+
 
             int index = 0;
 
             while (true)
             {
-                string altSrvDns = $"{Alt}{index}.{TCP}.{originHost.OriginHost}";
+                string altSrvDns = $"{Alt}{index}.{TCP}.{originHost}";
 
                 IEnumerable<SrvRecord> records = await InternalQueryAsync(altSrvDns, cancellationToken).ConfigureAwait(false);
 
@@ -95,10 +66,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     break;
                 }
 
-                results = results.Concat(records.Select(r => $"{r.Target.Value.TrimEnd('.')}"));
+                results = results.Concat(records);
 
-                // If we get less than 20 records from _alt{i} SRV, we have reached the end of _alt* list
-                if (records.Count() < MaxSrvRecordCountPerRecordSet)
+                // If we get no record from _alt{i} SRV, we have reached the end of _alt* list
+                if (records.Count() == 0)
                 {
                     break;
                 }

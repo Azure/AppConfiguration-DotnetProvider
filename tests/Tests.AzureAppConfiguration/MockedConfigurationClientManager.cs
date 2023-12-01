@@ -28,32 +28,10 @@ namespace Tests.AzureAppConfiguration
             _autoFailoverClients = new List<ConfigurationClientWrapper>();
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time) => GetAllClients();
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
-        {
-            return _clients.Select(cw => cw.Client);
-        }
-
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients, IEnumerable<ConfigurationClientWrapper> autoFailoverClients)
         {
             _autoFailoverClients = autoFailoverClients.ToList();
             _clients = clients.ToList();
-        }
-
-        public async IAsyncEnumerable<ConfigurationClient> GetAvailableClients([EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            await Task.Delay(0);
-
-            foreach (var client in _clients)
-            {
-                yield return client.Client;
-            }
-
-            foreach (var client in _autoFailoverClients)
-            {
-                yield return client.Client;
-            }
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -81,19 +59,27 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public async IAsyncEnumerable<ConfigurationClient> GetAllClients([EnumeratorCancellation] CancellationToken cancellationToken)
+        public async ValueTask<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
+        {
+            return await GetAllClients(cancellationToken);
+        }
+
+        public async ValueTask<IEnumerable<ConfigurationClient>> GetAllClients(CancellationToken cancellationToken)
         {
             await Task.Delay(0);
 
-            foreach (var client in _clients)
-            {
-                yield return client.Client;
+            var result = new List<ConfigurationClient>();
+
+            foreach (var client in _clients) {
+                result.Add(client.Client);
             }
 
             foreach (var client in _autoFailoverClients)
             {
-                yield return client.Client;
+                result.Add(client.Client);
             }
+
+            return result;
         }
     }
 }
