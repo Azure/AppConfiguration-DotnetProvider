@@ -166,7 +166,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            _kvSelectors.AppendUnique(keyFilter, labelFilter);
+            _kvSelectors.AppendUnique(new KeyValueSelector
+            {
+                KeyFilter = keyFilter,
+                LabelFilter = labelFilter
+            });
             return this;
         }
 
@@ -182,7 +186,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(name));
             }
 
-            _kvSelectors.AppendUnique(name);
+            _kvSelectors.AppendUnique(new KeyValueSelector
+            {
+                SnapshotName = name
+            });
 
             return this;
         }
@@ -208,7 +215,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -216,7 +223,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
                     LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
-                });  
+                });
             }
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
@@ -226,27 +233,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 Select(featureFlagFilter, labelFilter);
 
-                var multiKeyWatcher = _multiKeyWatchers.FirstOrDefault(kw => kw.Key.Equals(featureFlagFilter) && kw.Label.NormalizeNull() == labelFilter.NormalizeNull());
-
-                if (multiKeyWatcher == null)
+                _multiKeyWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    _multiKeyWatchers.Add(new KeyValueWatcher
-                    {
-                        Key = featureFlagFilter,
-                        Label = labelFilter,
-                        CacheExpirationInterval = options.CacheExpirationInterval
-                    });
-                }
-                else
-                {
-                    _multiKeyWatchers.Remove(multiKeyWatcher);
-
+                    Key = featureFlagFilter,
+                    Label = labelFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
-                    multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
+                    CacheExpirationInterval = options.CacheExpirationInterval
+                });
 
-                    // Move it to the end, keeping precedence
-                    _multiKeyWatchers.Add(multiKeyWatcher);
-                }
             }
 
             return this;
