@@ -182,13 +182,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(name));
             }
 
-            if (!_kvSelectors.Any(s => string.Equals(s.SnapshotName, name)))
-            {
-                _kvSelectors.Add(new KeyValueSelector
-                {
-                    SnapshotName = name
-                });
-            }
+            _kvSelectors.AppendUnique(name);
 
             return this;
         }

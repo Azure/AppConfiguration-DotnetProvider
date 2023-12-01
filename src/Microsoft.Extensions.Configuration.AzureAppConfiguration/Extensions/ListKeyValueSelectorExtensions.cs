@@ -29,5 +29,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
         }
+
+        public static void AppendUnique(this List<KeyValueSelector> selectors, string snapshotName)
+        {
+            KeyValueSelector existingKvSelector = selectors.FirstOrDefault(s => string.Equals(s.SnapshotName, snapshotName));
+
+            if (existingKvSelector != null)
+            {
+                // Move to the end, keeping precedence.
+                selectors.Remove(existingKvSelector);
+                selectors.Add(existingKvSelector);
+            }
+            else
+            {
+                selectors.Add(new KeyValueSelector
+                {
+                    SnapshotName = snapshotName
+                });
+            }
+
+        }
     }
 }
