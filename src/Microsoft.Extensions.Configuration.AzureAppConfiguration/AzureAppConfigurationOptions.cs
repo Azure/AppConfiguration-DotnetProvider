@@ -224,7 +224,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
 
-                // For FeatureFlags, FeatureFlagOptions.Select should have higher precedence than AzureAppConfigurationOptions.Select
                 Select(featureFlagFilter, labelFilter);
 
                 var multiKeyWatcher = _multiKeyWatchers.FirstOrDefault(kw => kw.Key.Equals(featureFlagFilter) && kw.Label.NormalizeNull() == labelFilter.NormalizeNull());
@@ -240,11 +239,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
+                    _multiKeyWatchers.Remove(multiKeyWatcher);
+
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
 
-                    // Move to the end, keeping precedence
-                    _multiKeyWatchers.Remove(multiKeyWatcher);
+                    // Move it to the end, keeping precedence
                     _multiKeyWatchers.Add(multiKeyWatcher);
                 }
             }
