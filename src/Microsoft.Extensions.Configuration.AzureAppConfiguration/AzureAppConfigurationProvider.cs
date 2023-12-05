@@ -31,6 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+        private List<ConfigurationSetting> _orderedSettings;
         private RequestTracingOptions _requestTracingOptions;
 
         private readonly TimeSpan MinCacheExpirationInterval;
