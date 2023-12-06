@@ -7,9 +7,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -59,12 +56,12 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(CancellationToken cancellationToken)
+        public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
-            return GetAllClients(cancellationToken);
+            return GetAllClients();
         }
 
-        public IEnumerable<ConfigurationClient> GetAllClients(CancellationToken cancellationToken)
+        public IEnumerable<ConfigurationClient> GetAllClients()
         {
             var result = new List<ConfigurationClient>();
 

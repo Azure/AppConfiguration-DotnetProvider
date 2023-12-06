@@ -15,7 +15,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text;
 using System.Threading;
@@ -23,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
@@ -194,7 +193,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(cancellationToken);
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
 
                     if (!availableClients.Any())
                     {
@@ -563,7 +562,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients(cancellationToken);
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
@@ -1111,6 +1110,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
+        }
+
+        public void Dispose()
+        {
+            (_configClientManager as ConfigurationClientManager)?.Dispose();
         }
     }
 }

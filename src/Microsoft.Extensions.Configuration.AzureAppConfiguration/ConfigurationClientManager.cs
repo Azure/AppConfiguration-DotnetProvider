@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// This class is not thread-safe. Since config provider does not allow multiple network requests at the same time,
     /// there won't be multiple threads calling this client at the same time.
     /// </remarks>
-    internal class ConfigurationClientManager : IConfigurationClientManager
+    internal class ConfigurationClientManager : IConfigurationClientManager, IDisposable
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
         private readonly Uri _endpoint;
@@ -40,10 +40,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
+        private bool _isDisposed = false;
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
         private static readonly string[] TrustedDomainLabels = new[] { "azconfig", "appconfig" };
+
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
@@ -112,7 +115,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients(CancellationToken cancellationToken)
+        public IEnumerable<ConfigurationClient> GetAvailableClients()
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -120,7 +123,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _lastFallbackClientRefreshAttempt = now;
 
-                _ = DiscoverFallbackClients(cancellationToken).SwallowCancellation();
+                _ = DiscoverFallbackClients();
             }
 
             List<ConfigurationClient> clients = new List<ConfigurationClient>(_clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
@@ -139,7 +142,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAllClients(CancellationToken cancellationToken)
+        public IEnumerable<ConfigurationClient> GetAllClients()
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -147,7 +150,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _lastFallbackClientRefreshAttempt = now;
 
-                _ = DiscoverFallbackClients(cancellationToken).SwallowCancellation();
+                _ = DiscoverFallbackClients();
             }
 
             List<ConfigurationClient> clients = new List<ConfigurationClient>(_clients.Select(c => c.Client));
@@ -250,9 +253,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _logger = logger;
         }
 
-        private async Task DiscoverFallbackClients(CancellationToken cancellationToken)
+        private async Task DiscoverFallbackClients()
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
 
             cts.CancelAfter(MinimalClientRefreshInterval);
 
@@ -260,7 +263,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException e)
             {
                 _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(e.Message));
             }
@@ -327,15 +330,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFallbackClientDiscoveryDue(DateTimeOffset dateTime)
         {
-            if (dateTime >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
+            return dateTime >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
                 (_dynamicClients == null ||
                 _dynamicClients.All(c => c.BackoffEndTime > dateTime) ||
-                dateTime >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
-            {
-                return true;
-            }
-
-            return false;
+                dateTime >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval);
         }
 
         private string GetValidDomain(Uri endpoint)
@@ -367,6 +365,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return hostName.EndsWith(_validDomain, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public void Dispose()
+        {
+            if (!_isDisposed) 
+            {
+                _cancellationTokenSource.Cancel();
+
+                _cancellationTokenSource.Dispose();
+
+                _isDisposed = true;
+            }
         }
     }
 }
