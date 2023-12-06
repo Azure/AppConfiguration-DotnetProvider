@@ -59,15 +59,13 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public async ValueTask<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
+        public IEnumerable<ConfigurationClient> GetAvailableClients(CancellationToken cancellationToken)
         {
-            return await GetAllClients(cancellationToken);
+            return GetAllClients(cancellationToken);
         }
 
-        public async ValueTask<IEnumerable<ConfigurationClient>> GetAllClients(CancellationToken cancellationToken)
+        public IEnumerable<ConfigurationClient> GetAllClients(CancellationToken cancellationToken)
         {
-            await Task.Delay(0);
-
             var result = new List<ConfigurationClient>();
 
             foreach (var client in _clients) {

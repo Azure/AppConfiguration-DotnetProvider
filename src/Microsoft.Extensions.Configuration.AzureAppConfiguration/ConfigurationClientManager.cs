@@ -41,7 +41,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
 
-        private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
         private static readonly string[] TrustedDomainLabels = new[] { "azconfig", "appconfig" };
 
@@ -112,13 +112,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async ValueTask<IEnumerable<ConfigurationClient>> GetAvailableClients(CancellationToken cancellationToken)
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        public IEnumerable<ConfigurationClient> GetAvailableClients(CancellationToken cancellationToken)
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            _ = OptimisticRefreshFallbackClients(now, cancellationToken).SwallowUnhandledOperationCanceledException();
+            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
+            {
+                _lastFallbackClientRefreshAttempt = now;
+
+                _ = DiscoverFallbackClients(cancellationToken).SwallowCancellation();
+            }
 
             List<ConfigurationClient> clients = new List<ConfigurationClient>(_clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
 
@@ -136,11 +139,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return clients;
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async ValueTask<IEnumerable<ConfigurationClient>> GetAllClients(CancellationToken cancellationToken)
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        public IEnumerable<ConfigurationClient> GetAllClients(CancellationToken cancellationToken)
         {
-            _ = OptimisticRefreshFallbackClients(DateTimeOffset.UtcNow, cancellationToken).SwallowUnhandledOperationCanceledException();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
+            {
+                _lastFallbackClientRefreshAttempt = now;
+
+                _ = DiscoverFallbackClients(cancellationToken).SwallowCancellation();
+            }
 
             List<ConfigurationClient> clients = new List<ConfigurationClient>(_clients.Select(c => c.Client));
 
@@ -242,27 +250,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _logger = logger;
         }
 
-        private async Task OptimisticRefreshFallbackClients(DateTimeOffset now, CancellationToken cancellationToken)
+        private async Task DiscoverFallbackClients(CancellationToken cancellationToken)
         {
-            if (_replicaDiscoveryEnabled &&
-                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
-                (_dynamicClients == null ||
-                now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            cts.CancelAfter(MinimalClientRefreshInterval);
+
+            try
             {
-                _lastFallbackClientRefreshAttempt = now;
-
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-                cts.CancelAfter(MinimalClientRefreshInterval);
-
-                try
-                {
-                    await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                {
-                    // Do nothing if origin cancellationToken is not cancelled.
-                }
+                await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(e.Message));
             }
         }
 
@@ -323,6 +323,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _dynamicClients = newDynamicClients;
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
+        }
+
+        private bool IsFallbackClientDiscoveryDue(DateTimeOffset dateTime)
+        {
+            if (dateTime >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
+                (_dynamicClients == null ||
+                _dynamicClients.All(c => c.BackoffEndTime > dateTime) ||
+                dateTime >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private string GetValidDomain(Uri endpoint)

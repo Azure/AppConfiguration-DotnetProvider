@@ -194,7 +194,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = await _configClientManager.GetAvailableClients(cancellationToken).ConfigureAwait(false);
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(cancellationToken);
 
                     if (!availableClients.Any())
                     {
@@ -563,7 +563,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = await _configClientManager.GetAllClients(cancellationToken).ConfigureAwait(false);
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients(cancellationToken);
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {

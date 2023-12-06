@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class TaskExtensions
     {
-        public static async Task SwallowUnhandledOperationCanceledException(this Task task)
+        public static async Task SwallowCancellation(this Task task)
         {
             try
             {
