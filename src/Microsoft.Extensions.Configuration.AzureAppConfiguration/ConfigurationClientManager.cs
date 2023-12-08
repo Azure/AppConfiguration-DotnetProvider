@@ -126,17 +126,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
-            List<ConfigurationClient> clients = new List<ConfigurationClient>(_clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
+            IEnumerable<ConfigurationClient> clients = _clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client);
 
-            if (_dynamicClients != null)
+            if (_dynamicClients != null && _dynamicClients.Any())
             {
-                foreach (ConfigurationClientWrapper client in _dynamicClients)
-                {
-                    if (client.BackoffEndTime <= now)
-                    {
-                        clients.Add(client.Client);
-                    }
-                }
+                clients = clients.Concat(_dynamicClients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
             }
 
             return clients;
@@ -153,14 +147,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
-            List<ConfigurationClient> clients = new List<ConfigurationClient>(_clients.Select(c => c.Client));
+            IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
 
-            if (_dynamicClients != null)
+            if (_dynamicClients != null && _dynamicClients.Any())
             {
-                foreach (ConfigurationClientWrapper client in _dynamicClients)
-                {
-                    clients.Add(client.Client);
-                }
+                clients = clients.Concat(_dynamicClients.Select(c => c.Client));
             }
 
             return clients;
@@ -263,7 +254,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 await RefreshFallbackClients(cts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException e) when (!_cancellationTokenSource.IsCancellationRequested)
             {
                 _logger.LogWarning(LogHelper.BuildFallbackClientLookupFailMessage(e.Message));
             }

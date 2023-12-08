@@ -48,18 +48,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 IEnumerable<SrvRecord> records = await InternalQueryAsync(altSrvDns, cancellationToken).ConfigureAwait(false);
 
-                if (records == null)
+                // If we get no record from _alt{i} SRV, we have reached the end of _alt* list
+                if (records == null || !records.Any())
                 {
                     break;
                 }
 
                 results = results.Concat(records);
-
-                // If we get no record from _alt{i} SRV, we have reached the end of _alt* list
-                if (records.Count() == 0)
-                {
-                    break;
-                }
 
                 index++;
             }
