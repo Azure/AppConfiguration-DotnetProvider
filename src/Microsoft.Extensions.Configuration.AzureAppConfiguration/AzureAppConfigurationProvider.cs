@@ -193,7 +193,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager
+                        .GetClientWrappers()
+                        .Where(c => c.BackoffEndTime > utcNow)
+                        .Select(c => c.Client);
 
                     if (!availableClients.Any())
                     {
@@ -562,7 +565,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClientWrappers().Select(c => c.Client);
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {

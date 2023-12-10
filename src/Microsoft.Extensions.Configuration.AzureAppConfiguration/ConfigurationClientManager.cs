@@ -115,7 +115,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public IEnumerable<ConfigurationClientWrapper> GetClientWrappers()
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -126,32 +126,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
-            IEnumerable<ConfigurationClient> clients = _clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client);
+            IEnumerable<ConfigurationClientWrapper> clients = _clients;
 
             if (_dynamicClients != null && _dynamicClients.Any())
             {
-                clients = clients.Concat(_dynamicClients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
-            }
-
-            return clients;
-        }
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
-        {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-
-            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
-            {
-                _lastFallbackClientRefreshAttempt = now;
-
-                _ = DiscoverFallbackClients();
-            }
-
-            IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
-
-            if (_dynamicClients != null && _dynamicClients.Any())
-            {
-                clients = clients.Concat(_dynamicClients.Select(c => c.Client));
+                clients = clients.Concat(_dynamicClients);
             }
 
             return clients;

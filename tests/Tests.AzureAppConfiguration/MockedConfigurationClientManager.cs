@@ -56,22 +56,17 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public IEnumerable<ConfigurationClientWrapper> GetClientWrappers()
         {
-            return GetAllClients();
-        }
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
-        {
-            var result = new List<ConfigurationClient>();
+            var result = new List<ConfigurationClientWrapper>();
 
             foreach (var client in _clients) {
-                result.Add(client.Client);
+                result.Add(client);
             }
 
             foreach (var client in _autoFailoverClients)
             {
-                result.Add(client.Client);
+                result.Add(client);
             }
 
             return result;
