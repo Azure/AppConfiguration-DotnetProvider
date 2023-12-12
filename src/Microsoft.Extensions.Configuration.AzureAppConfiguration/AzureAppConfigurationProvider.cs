@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringUtils.Parse(_options.ConnectionStrings.First(), ConnectionStringUtils.EndpointSection));
                     }
                     catch (FormatException) { }
                 }
@@ -85,6 +85,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_loggerFactory != null)
                 {
                     _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
+
+                    if (_configClientManager is ConfigurationClientManager clientManager)
+                    {
+                        clientManager.SetLogger(_logger);
+                    }
                 }
             }
         }
@@ -192,7 +197,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
+                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
 
                     if (!availableClients.Any())
                     {
@@ -358,7 +363,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 adapter.InvalidateCache(change.Current);
                             }
                         }
-
                     }
                     else
                     {
@@ -1125,6 +1129,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            (_configClientManager as ConfigurationClientManager)?.Dispose();
         }
     }
 }

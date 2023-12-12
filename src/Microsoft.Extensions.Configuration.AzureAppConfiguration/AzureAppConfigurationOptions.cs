@@ -35,6 +35,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
+        /// Flag to indicate whether enable replica discovery.
+        /// </summary>
+        public bool ReplicaDiscoveryEnabled { get; set; } = true;
+
+        /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
         internal IEnumerable<string> ConnectionStrings { get; private set; }
