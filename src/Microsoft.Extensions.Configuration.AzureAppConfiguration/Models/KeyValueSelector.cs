@@ -47,7 +47,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
-            return SnapshotName != null ? SnapshotName.GetHashCode() : KeyFilter.GetHashCode() ^ LabelFilter.GetHashCode();
+            return (KeyFilter?.GetHashCode() ?? 0) ^
+                   (LabelFilter?.GetHashCode() ?? 1) ^
+                   (SnapshotName?.GetHashCode() ?? 2);
         }
     }
 }
