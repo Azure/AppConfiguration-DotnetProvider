@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,14 +68,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             string featureFlagPrefix = FeatureManagementConstants.FeatureFlagMarker + featureFlagFilter;
 
-            if (!FeatureFlagSelectors.Any(s => s.KeyFilter.Equals(featureFlagPrefix) && s.LabelFilter.Equals(labelFilter)))
+            FeatureFlagSelectors.AppendUnique(new KeyValueSelector
             {
-                FeatureFlagSelectors.Add(new KeyValueSelector
-                {
-                    KeyFilter = featureFlagPrefix,
-                    LabelFilter = labelFilter
-                });
-            }
+                KeyFilter = featureFlagPrefix,
+                LabelFilter = labelFilter
+            });
 
             return this;
         }

@@ -166,15 +166,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            if (!_kvSelectors.Any(s => string.Equals(s.KeyFilter, keyFilter) && string.Equals(s.LabelFilter, labelFilter)))
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
-                _kvSelectors.Add(new KeyValueSelector
-                {
-                    KeyFilter = keyFilter,
-                    LabelFilter = labelFilter
-                });
-            }
-
+                KeyFilter = keyFilter,
+                LabelFilter = labelFilter
+            });
             return this;
         }
 
@@ -190,13 +186,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(name));
             }
 
-            if (!_kvSelectors.Any(s => string.Equals(s.SnapshotName, name)))
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
-                _kvSelectors.Add(new KeyValueSelector
-                {
-                    SnapshotName = name
-                });
-            }
+                SnapshotName = name
+            });
 
             return this;
         }
@@ -222,7 +215,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -230,7 +223,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
                     LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
-                });  
+                });
             }
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
@@ -238,27 +231,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
 
-                if (!_kvSelectors.Any(selector => selector.KeyFilter == featureFlagFilter && selector.LabelFilter == labelFilter))
-                {
-                    Select(featureFlagFilter, labelFilter);
-                }
+                Select(featureFlagFilter, labelFilter);
 
-                var multiKeyWatcher = _multiKeyWatchers.FirstOrDefault(kw => kw.Key.Equals(featureFlagFilter) && kw.Label.NormalizeNull() == labelFilter.NormalizeNull());
-
-                if (multiKeyWatcher == null)
+                _multiKeyWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    _multiKeyWatchers.Add(new KeyValueWatcher
-                    {
-                        Key = featureFlagFilter,
-                        Label = labelFilter,
-                        CacheExpirationInterval = options.CacheExpirationInterval
-                    });
-                }
-                else
-                {
+                    Key = featureFlagFilter,
+                    Label = labelFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
-                    multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
-                }
+                    CacheExpirationInterval = options.CacheExpirationInterval
+                });
+
             }
 
             return this;
