@@ -315,5 +315,36 @@ namespace Tests.AzureAppConfiguration
             // Delete the azure function environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
         }
+
+        [Fact]
+        public void TestKeepSelectorPrecedenceAfterDedup()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var kvOfDevLabel = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("message", "message from dev label", "dev")
+            };
+            var kvOfProdLabel = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("message", "message from prod label", "prod")
+            };
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s => s.LabelFilter == "dev"), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(kvOfDevLabel));
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s => s.LabelFilter == "prod"), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(kvOfProdLabel));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("message", "dev");
+                    options.Select("message", "prod");
+                    options.Select("message", "dev");
+                })
+                .Build();
+
+            Assert.True(config["message"] == "message from dev label");
+        }
     }
 }
