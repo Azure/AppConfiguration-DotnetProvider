@@ -17,8 +17,6 @@ namespace Tests.AzureAppConfiguration
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
-        public bool HasAvailableClients => _clients.Any(client => client.BackoffEndTime <= DateTime.UtcNow);
-
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
         {
             _clients = clients.ToList();
@@ -56,12 +54,7 @@ namespace Tests.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
-        {
-            return GetAllClients();
-        }
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
+        public IEnumerable<ConfigurationClient> GetClients()
         {
             var result = new List<ConfigurationClient>();
 

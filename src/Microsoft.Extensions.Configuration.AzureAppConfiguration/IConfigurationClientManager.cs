@@ -11,13 +11,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IConfigurationClientManager
     {
-        IEnumerable<ConfigurationClient> GetAvailableClients();
+        IEnumerable<ConfigurationClient> GetClients();
 
-        IEnumerable<ConfigurationClient> GetAllClients();
-
-        void UpdateClientStatus(ConfigurationClient client, bool successful);
-
-        bool UpdateSyncToken(Uri endpoint, String syncToken);
+        bool UpdateSyncToken(Uri endpoint, string syncToken);
 
         Uri GetEndpointForClient(ConfigurationClient client);
     }

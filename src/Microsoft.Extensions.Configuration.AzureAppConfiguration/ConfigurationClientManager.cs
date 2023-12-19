@@ -115,28 +115,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
-        {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-
-            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
-            {
-                _lastFallbackClientRefreshAttempt = now;
-
-                _ = DiscoverFallbackClients();
-            }
-
-            IEnumerable<ConfigurationClient> clients = _clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client);
-
-            if (_dynamicClients != null && _dynamicClients.Any())
-            {
-                clients = clients.Concat(_dynamicClients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
-            }
-
-            return clients;
-        }
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
+        public IEnumerable<ConfigurationClient> GetClients()
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -155,38 +134,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return clients;
-        }
-
-        public void UpdateClientStatus(ConfigurationClient client, bool successful)
-        {
-            if (client == null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-
-            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client == client);
-
-            if (_dynamicClients != null && clientWrapper == null)
-            {
-                clientWrapper = _dynamicClients.FirstOrDefault(c => c.Client == client);
-            }
-
-            if (clientWrapper == null)
-            {
-                return;
-            }
-
-            if (successful)
-            {
-                clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow;
-                clientWrapper.FailedAttempts = 0;
-            }
-            else
-            {
-                clientWrapper.FailedAttempts++;
-                TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
-                clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
-            }
         }
 
         public bool UpdateSyncToken(Uri endpoint, string syncToken)
