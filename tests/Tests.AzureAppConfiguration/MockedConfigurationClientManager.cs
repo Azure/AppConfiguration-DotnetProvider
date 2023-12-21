@@ -76,5 +76,10 @@ namespace Tests.AzureAppConfiguration
 
             return result;
         }
+
+        public void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, bool successful)
+        {
+            return;
+        }
     }
 }

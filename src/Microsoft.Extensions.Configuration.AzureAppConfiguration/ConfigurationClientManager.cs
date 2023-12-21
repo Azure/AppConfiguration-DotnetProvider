@@ -136,27 +136,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAllClients()
-        {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-
-            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
-            {
-                _lastFallbackClientRefreshAttempt = now;
-
-                _ = DiscoverFallbackClients();
-            }
-
-            IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
-
-            if (_dynamicClients != null && _dynamicClients.Any())
-            {
-                clients = clients.Concat(_dynamicClients.Select(c => c.Client));
-            }
-
-            return clients;
-        }
-
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
         {
             if (client == null)
@@ -186,6 +165,78 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clientWrapper.FailedAttempts++;
                 TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
                 clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
+            }
+        }
+
+        public void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, bool successful)
+        {
+            if (clients == null)
+            {
+                throw new ArgumentNullException(nameof(clients));
+            }
+
+            if (!clients.Any())
+            {
+                throw new ArgumentOutOfRangeException(nameof(clients));
+            }
+
+            var firstClient = clients.First();
+
+            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client == firstClient);
+
+            if (clientWrapper == null)
+            {
+                return;
+            }
+
+            if (!successful)
+            {
+                var failedAttempt = clientWrapper.FailedAttempts;
+
+                DateTimeOffset dateTimeOffset;
+
+                if (failedAttempt < 20) // Within 100s, attempt every 5s
+                {
+                    dateTimeOffset = dateTime.Add(TimeSpan.FromSeconds(5));
+                }
+                else if (failedAttempt < 30) // Within 200s, attempt every 10s
+                {
+                    dateTimeOffset = dateTime.Add(TimeSpan.FromSeconds(10));
+                }
+                else if (failedAttempt < 40) // Within 600s, attempt every 10s
+                {
+                    dateTimeOffset = dateTime.Add(TimeSpan.FromSeconds(30));
+                }
+                else
+                {
+                    dateTimeOffset = dateTime.Add(FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
+                                FailOverConstants.MaxBackoffDuration,
+                                failedAttempt));
+                }
+
+                foreach (var client in clients)
+                {
+                    ConfigurationClientWrapper cw = _clients.FirstOrDefault(c => c.Client == client);
+                    if (cw == null)
+                    {
+                        continue;
+                    }
+                    cw.FailedAttempts = failedAttempt;
+                    cw.BackoffEndTime = dateTimeOffset;
+                }
+            }
+            else
+            {
+                foreach (var client in clients)
+                {
+                    ConfigurationClientWrapper cw = _clients.FirstOrDefault(c => c.Client == client);
+                    if (cw == null)
+                    {
+                        continue;
+                    }
+                    cw.FailedAttempts = 0;
+                    cw.BackoffEndTime = DateTimeOffset.MinValue;
+                }
             }
         }
 

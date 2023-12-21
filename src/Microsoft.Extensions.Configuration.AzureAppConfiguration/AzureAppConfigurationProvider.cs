@@ -554,46 +554,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var startupStopwatch = Stopwatch.StartNew();
 
-            int postFixedWindowAttempts = 0;
-
             var startupExceptions = new List<Exception>();
 
             try
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAvailableClients();
 
-                    if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
+                    if (clients.Any()) 
                     {
-                        break;
-                    }
-
-                    TimeSpan delay;
-
-                    if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
-                    {
-                        delay = backoff;
-                    }
-                    else
-                    {
-                        postFixedWindowAttempts++;
-
-                        delay = FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
-                            FailOverConstants.MaxBackoffDuration,
-                            postFixedWindowAttempts);
+                        if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
+                        {
+                            break;
+                        }
                     }
 
                     try
                     {
-                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                        // Wait for a second before trying again.
+                        await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
                         throw new TimeoutException(
                             $"The provider timed out while attempting to load.",
                             new AggregateException(startupExceptions));
-                    }
+                    }         
                 }
             }
             catch (Exception exception) when (
@@ -991,21 +978,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 finally
                 {
-                    if (!success && backoffAllClients)
+                    if (!success && backoffAllClients )
                     {
                         _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
 
-                        do
+                        if (_isInitialLoadComplete)
                         {
-                            _configClientManager.UpdateClientStatus(currentClient, success);
-                            clientEnumerator.MoveNext();
-                            currentClient = clientEnumerator.Current;
+                            do
+                            {
+                                _configClientManager.UpdateClientStatus(currentClient, success);
+                                clientEnumerator.MoveNext();
+                                currentClient = clientEnumerator.Current;
+
+                            }
+                            while (currentClient != null);
                         }
-                        while (currentClient != null);
+                        else
+                        {
+                            _configClientManager.UpdateStartupClientsStatus(clients, DateTimeOffset.UtcNow, success);
+                        }
                     }
                     else
                     {
-                        _configClientManager.UpdateClientStatus(currentClient, success);
+                        if (_isInitialLoadComplete)
+                        {
+                            _configClientManager.UpdateClientStatus(currentClient, success);
+                        }
+                        else if (success)
+                        {
+                            _configClientManager.UpdateStartupClientsStatus(clients, DateTimeOffset.UtcNow, success);
+                        }
                     }
                 }
 
