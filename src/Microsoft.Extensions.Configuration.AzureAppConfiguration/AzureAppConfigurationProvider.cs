@@ -32,6 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
+        private Stopwatch _startupStopwatch;
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -139,6 +140,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
                 LoadAsync(_optional, startupCancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
+
+                // Mark all settings have loaded at startup.
+                _isInitialLoadComplete = true;
             }
             catch (ArgumentException)
             {
@@ -168,9 +172,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
                 refresher.SetProvider(this);
             }
-
-            // Mark all settings have loaded at startup.
-            _isInitialLoadComplete = true;
         }
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -552,9 +553,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
         {
-            var startupStopwatch = Stopwatch.StartNew();
-
             var startupExceptions = new List<Exception>();
+
+            _startupStopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -995,7 +996,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else
                         {
-                            _configClientManager.UpdateStartupClientsStatus(clients, DateTimeOffset.UtcNow, success);
+                            _configClientManager.UpdateStartupClientsStatus(clients, DateTimeOffset.UtcNow, _startupStopwatch, success);
                         }
                     }
                     else
@@ -1006,7 +1007,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else if (success)
                         {
-                            _configClientManager.UpdateStartupClientsStatus(clients, DateTimeOffset.UtcNow, success);
+                            _configClientManager.UpdateStartupClientsStatus(clients, DateTimeOffset.UtcNow, _startupStopwatch, success);
                         }
                     }
                 }

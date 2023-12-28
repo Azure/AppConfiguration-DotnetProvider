@@ -5,7 +5,7 @@
 using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.Diagnostics;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         void UpdateClientStatus(ConfigurationClient client, bool successful);
 
-        void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, bool successful);
+        void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, Stopwatch startupStopwatch, bool successful);
 
         bool UpdateSyncToken(Uri endpoint, String syncToken);
 

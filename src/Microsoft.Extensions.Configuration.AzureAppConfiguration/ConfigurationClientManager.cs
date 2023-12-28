@@ -168,7 +168,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, bool successful)
+        public void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, Stopwatch startupStopwatch, bool successful)
         {
             if (clients == null)
             {
@@ -180,9 +180,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentOutOfRangeException(nameof(clients));
             }
 
-            var firstClient = clients.First();
-
-            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client == firstClient);
+            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client == clients.First());
 
             if (clientWrapper == null)
             {
@@ -191,38 +189,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!successful)
             {
-                var failedAttempt = clientWrapper.FailedAttempts;
+                TimeSpan delay;
 
-                DateTimeOffset dateTimeOffset;
-
-                if (failedAttempt < 20) // Within 100s, attempt every 5s
+                if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
                 {
-                    dateTimeOffset = dateTime.Add(TimeSpan.FromSeconds(5));
-                }
-                else if (failedAttempt < 30) // Within 200s, attempt every 10s
-                {
-                    dateTimeOffset = dateTime.Add(TimeSpan.FromSeconds(10));
-                }
-                else if (failedAttempt < 40) // Within 600s, attempt every 10s
-                {
-                    dateTimeOffset = dateTime.Add(TimeSpan.FromSeconds(30));
+                    delay = backoff;
                 }
                 else
                 {
-                    dateTimeOffset = dateTime.Add(FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
+                    delay = FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
                                 FailOverConstants.MaxBackoffDuration,
-                                failedAttempt));
+                                clientWrapper.FailedAttempts);
                 }
 
                 foreach (var client in clients)
                 {
                     ConfigurationClientWrapper cw = _clients.FirstOrDefault(c => c.Client == client);
+
                     if (cw == null)
                     {
                         continue;
                     }
-                    cw.FailedAttempts = failedAttempt;
-                    cw.BackoffEndTime = dateTimeOffset;
+
+                    cw.FailedAttempts++;
+
+                    cw.BackoffEndTime = DateTimeOffset.UtcNow.Add(delay);
                 }
             }
             else
@@ -230,12 +221,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 foreach (var client in clients)
                 {
                     ConfigurationClientWrapper cw = _clients.FirstOrDefault(c => c.Client == client);
+
                     if (cw == null)
                     {
                         continue;
                     }
+
                     cw.FailedAttempts = 0;
-                    cw.BackoffEndTime = DateTimeOffset.MinValue;
+
+                    cw.BackoffEndTime = DateTimeOffset.UtcNow;
                 }
             }
         }

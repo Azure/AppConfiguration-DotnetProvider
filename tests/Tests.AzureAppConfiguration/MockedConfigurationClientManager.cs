@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Tests.AzureAppConfiguration
@@ -77,7 +78,7 @@ namespace Tests.AzureAppConfiguration
             return result;
         }
 
-        public void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, bool successful)
+        public void UpdateStartupClientsStatus(IEnumerable<ConfigurationClient> clients, DateTimeOffset dateTime, Stopwatch startupStopwatch, bool successful)
         {
             return;
         }
