@@ -140,9 +140,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
                 LoadAsync(_optional, startupCancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
-
-                // Mark all settings have loaded at startup.
-                _isInitialLoadComplete = true;
             }
             catch (ArgumentException)
             {
@@ -172,6 +169,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
                 refresher.SetProvider(this);
             }
+
+            // Mark all settings have loaded at startup.
+            _isInitialLoadComplete = true;
         }
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
