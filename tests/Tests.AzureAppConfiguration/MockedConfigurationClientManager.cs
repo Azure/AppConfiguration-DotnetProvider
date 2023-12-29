@@ -69,5 +69,10 @@ namespace Tests.AzureAppConfiguration
 
             return result;
         }
+
+        public void RefreshClients()
+        {
+            return;
+        }
     }
 }

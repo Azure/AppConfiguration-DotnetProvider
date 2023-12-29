@@ -119,7 +119,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
+            if (_replicaDiscoveryEnabled &&
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
+                (_dynamicClients == null ||
+                    now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
             {
                 _lastFallbackClientRefreshAttempt = now;
 
@@ -134,6 +137,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return clients;
+        }
+
+        public void RefreshClients()
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            if (_replicaDiscoveryEnabled && 
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval)
+            {
+                _lastFallbackClientRefreshAttempt = now;
+
+                _ = DiscoverFallbackClients();
+            }
         }
 
         public bool UpdateSyncToken(Uri endpoint, string syncToken)
@@ -266,12 +282,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }
 
-        private bool IsFallbackClientDiscoveryDue(DateTimeOffset dateTime)
+        private bool IsFallbackClientDiscoveryDue(DateTimeOffset now)
         {
-            return dateTime >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
+            return now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
                 (_dynamicClients == null ||
-                _dynamicClients.All(c => c.BackoffEndTime > dateTime) ||
-                dateTime >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval);
+                now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval);
         }
 
         private string GetValidDomain(Uri endpoint)

@@ -202,9 +202,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
+                    //
+                    // Filter clients based on their backoff status
+                    clients = clients.Where(client => _configClientBackoffs.TryGetValue(_configClientManager.GetEndpointForClient(client), out ConfigurationClientBackoffStatus clientBackoffStatus));
+
                     if (!clients.Any())
                     {
+                        _configClientManager.RefreshClients();
+
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+
                         return;
                     }
 
