@@ -206,11 +206,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Filter clients based on their backoff status
                     clients = clients.Where(client => 
                     {
-                        _configClientBackoffs.TryGetValue(_configClientManager.GetEndpointForClient(client), out ConfigurationClientBackoffStatus clientBackoffStatus);
-                            
-                        return clientBackoffStatus?.BackoffEndTime <= utcNow;
+                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
+
+                        if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+                        {
+                            UpdateClientBackoffStatus(endpoint, true);
+
+                            clientBackoffStatus = _configClientBackoffs[endpoint];
+                        }
+
+                        return clientBackoffStatus?.BackoffEndTime <= DateTimeOffset.UtcNow;
                     }
-                    );
+                    ).ToList();
 
                     if (!clients.Any())
                     {
