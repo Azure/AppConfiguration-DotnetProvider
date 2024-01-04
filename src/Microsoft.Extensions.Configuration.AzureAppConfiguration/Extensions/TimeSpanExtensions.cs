@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class TimeSpanExtensions
     {
-        private const double ExponentialBackoffFactor = 2;
+        private const int MaxAttempts = 63;
         private const double JitterRatio = 0.25;
 
         private static readonly IList<KeyValuePair<TimeSpan, TimeSpan>> StartupMaxBackoffDurationIntervals = new List<KeyValuePair<TimeSpan, TimeSpan>>
@@ -93,9 +93,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return minDuration;
             }
 
-            double calculatedMilliseconds = minDuration.TotalMilliseconds * Math.Pow(ExponentialBackoffFactor, attempts);
+            //
+            // IMPORTANT: This can overflow
+            double calculatedMilliseconds = minDuration.TotalMilliseconds * ((long)1 << Math.Min(attempts, MaxAttempts));
 
-            if (calculatedMilliseconds > maxDuration.TotalMilliseconds)
+            if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
+                    calculatedMilliseconds <= 0 /*overflow*/)
             {
                 calculatedMilliseconds = maxDuration.TotalMilliseconds;
             }
