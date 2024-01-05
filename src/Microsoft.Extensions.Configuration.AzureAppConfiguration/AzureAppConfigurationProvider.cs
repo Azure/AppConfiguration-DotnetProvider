@@ -217,7 +217,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         return clientBackoffStatus?.BackoffEndTime <= DateTimeOffset.UtcNow;
                     }
-                    ).ToList();
+                    );
 
                     if (!clients.Any())
                     {
