@@ -1162,7 +1162,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 clientBackoffStatus.FailedAttempts++;
 
-                TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
+                TimeSpan minBackoffDuration = _options.ClientManager == null ? FailOverConstants.MinBackoffDuration : TimeSpan.FromSeconds(1);
+
+                TimeSpan backoffDuration = minBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
 
                 clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }

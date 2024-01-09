@@ -254,7 +254,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Single(configClientManager.GetClients());
 
             // Sleep for backoff-time to pass.
-            Thread.Sleep(TimeSpan.FromSeconds(31));
+            Thread.Sleep(1500);
 
             refresher.RefreshAsync().Wait();
 
