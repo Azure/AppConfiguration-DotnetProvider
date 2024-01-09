@@ -282,13 +282,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }
 
-        private bool IsFallbackClientDiscoveryDue(DateTimeOffset now)
-        {
-            return now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
-                (_dynamicClients == null ||
-                now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval);
-        }
-
         private string GetValidDomain(Uri endpoint)
         {
             Debug.Assert(endpoint != null);

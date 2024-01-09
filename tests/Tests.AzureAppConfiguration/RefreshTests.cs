@@ -746,11 +746,16 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey2"]);
             Assert.Null(configuration["TestKey3"]);
 
+            // Wait for the client backoff time to end
+            Thread.Sleep(38000);
+
             // Act
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
             {
                 await refresher.RefreshAsync();
             });
+
+            Thread.Sleep(76000);
 
             await refresher.RefreshAsync();
 
@@ -758,8 +763,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey2"]);
             Assert.Null(configuration["TestKey3"]);
 
-            // Wait for the cache to expire
-            Thread.Sleep(1500);
+            Thread.Sleep(152000);
 
             await refresher.RefreshAsync();
 
@@ -829,8 +833,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            // Wait for the cache to expire
-            Thread.Sleep(1500);
+            // Wait for the client backoff time to end
+            Thread.Sleep(38000);
 
             bool secondRefreshResult = refresher.TryRefreshAsync().Result;
             Assert.True(secondRefreshResult);

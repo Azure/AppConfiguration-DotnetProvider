@@ -210,12 +210,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
                         {
-                            UpdateClientBackoffStatus(endpoint, true);
+                            clientBackoffStatus = new ConfigurationClientBackoffStatus();
+
+                            clientBackoffStatus.BackoffEndTime = utcNow;
+
+                            clientBackoffStatus.FailedAttempts = 0;
 
                             clientBackoffStatus = _configClientBackoffs[endpoint];
                         }
 
-                        return clientBackoffStatus?.BackoffEndTime <= DateTimeOffset.UtcNow;
+                        return clientBackoffStatus.BackoffEndTime <= utcNow;
                     }
                     );
 
