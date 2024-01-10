@@ -260,11 +260,13 @@ namespace Tests.AzureAppConfiguration
                             }
                         ]
                         },
-                        ""telemetry_enabled"": true,
-                        ""telemetry_metadata"": {
-		                    ""Tags.Tag1"": ""Tag1Value"",
-		                    ""Tags.Tag2"": ""Tag2Value""
-	                    }
+                        ""telemetry"": {
+                            ""enabled"": true,
+                            ""metadata"": {
+		                        ""Tags.Tag1"": ""Tag1Value"",
+		                        ""Tags.Tag2"": ""Tag2Value""
+	                        }
+                        }
                     }
                     ",
             label: default,
@@ -1269,9 +1271,9 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:TelemetryFeature:TelemetryEnabled"]);
-            Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:TelemetryMetadata:Tags.Tag1"]);
-            Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:TelemetryMetadata:Tags.Tag2"]);
+            Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
+            Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
+            Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
         }
 
 

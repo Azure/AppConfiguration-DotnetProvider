@@ -156,16 +156,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
             }
 
-            if (featureFlag.TelemetryEnabled)
+            if (featureFlag.Telemetry != null)
             {
-                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.TelemetryEnabled}", featureFlag.TelemetryEnabled.ToString()));
-            }
+                FeatureTelemetry featureTelemetry = featureFlag.Telemetry;
 
-            if (featureFlag.TelemetryMetadata != null)
-            {
-                foreach (KeyValuePair<string, string> kvp in featureFlag.TelemetryMetadata)
+                if (featureTelemetry.Enabled)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.TelemetryMetadata}:{kvp.Key}", kvp.Value));
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Enabled}", featureTelemetry.Enabled.ToString()));
+                }
+
+                if (featureTelemetry.Metadata != null)
+                {
+                    foreach (KeyValuePair<string, string> kvp in featureTelemetry.Metadata)
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
+                    }
                 }
             }
 
