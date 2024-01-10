@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
@@ -53,7 +54,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -65,13 +66,14 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label")
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
+                    options.ReplicaDiscoveryEnabled = true;
 
                     refresher = options.GetRefresher();
                 })
                 .Build();
 
             // The client enumerator should return just 1 client since one client is in the backoff state.
-            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
+            Assert.Single(configClientManager.GetAvailableClients());
         }
 
         [Fact]
@@ -106,7 +108,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -123,6 +125,8 @@ namespace Tests.AzureAppConfiguration
                             .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
 
+                    options.ReplicaDiscoveryEnabled = false;
+                   
                     refresher = options.GetRefresher();
                 });
 
@@ -136,7 +140,7 @@ namespace Tests.AzureAppConfiguration
             Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
 
             // The client manager should return no clients since all clients are in the back-off state.
-            Assert.False(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Any());
+            Assert.False(configClientManager.GetAvailableClients().Any());
         }
 
         [Fact]
@@ -171,7 +175,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -230,7 +234,7 @@ namespace Tests.AzureAppConfiguration
             var configClientManager = new ConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -247,7 +251,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // The client enumerator should return just 1 client for the second time.
-            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
+            Assert.Single(configClientManager.GetAvailableClients());
 
             // Sleep for backoff-time to pass.
             Thread.Sleep(TimeSpan.FromSeconds(31));
@@ -255,7 +259,123 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // The client enumerator should return 2 clients for the third time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+            Assert.Equal(2, configClientManager.GetAvailableClients().Count());
+        }
+
+        [Fact]
+        public void FailOverTests_AutoFailover()
+        {
+            // Arrange
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+
+            var mockClient1 = new Mock<ConfigurationClient>();
+            mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
+
+            var mockClient2 = new Mock<ConfigurationClient>();
+            mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+            mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
+
+            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+
+            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
+            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
+            var mockedConfigClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
+
+            // Should not throw exception.
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockedConfigClientManager;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+        }
+
+        [Fact]
+        public void FailOverTests_ValidateEndpoints()
+        {
+            var configClientManager = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.True(configClientManager.IsValidEndpoint("azure.azconfig.io"));
+            Assert.True(configClientManager.IsValidEndpoint("appconfig.azconfig.io"));
+            Assert.True(configClientManager.IsValidEndpoint("azure.privatelink.azconfig.io"));
+            Assert.True(configClientManager.IsValidEndpoint("azure-replica.azconfig.io"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.badazconfig.io"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.azconfigbad.io"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.appconfig.azure.com"));
+            Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
+
+            var configClientManager2 = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.appconfig.azure.com") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.True(configClientManager2.IsValidEndpoint("azure.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azure.z1.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azure-replia.z1.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azure.privatelink.appconfig.azure.com"));
+            Assert.True(configClientManager2.IsValidEndpoint("azconfig.appconfig.azure.com"));
+            Assert.False(configClientManager2.IsValidEndpoint("azure.azconfig.io"));
+            Assert.False(configClientManager2.IsValidEndpoint("azure.badappconfig.azure.com"));
+            Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
+
+            var configClientManager3 = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.azconfig-test.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
+            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
+
+            var configClientManager4 = new ConfigurationClientManager(
+                new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
+            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig.azure.com"));
+        }
+
+        [Fact]
+        public void FailOverTests_GetNoDynamicClient()
+        {
+            var configClientManager = new ConfigurationClientManager(
+                new[] { new Uri("https://azure.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
+                true);
+
+            var clients = configClientManager.GetAvailableClients();
+
+            // Only contains the client that passed while constructing the ConfigurationClientManager
+            Assert.Single(clients);
         }
     }
 }
