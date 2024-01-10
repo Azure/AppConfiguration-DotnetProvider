@@ -48,6 +48,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
+        // Only used for unit testing
+        public int RefreshClientsCalled { get; set; } = 0;
+
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
             ConfigurationClientOptions clientOptions,
@@ -150,6 +153,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 _ = DiscoverFallbackClients();
             }
+
+            RefreshClientsCalled++;
         }
 
         public bool UpdateSyncToken(Uri endpoint, string syncToken)

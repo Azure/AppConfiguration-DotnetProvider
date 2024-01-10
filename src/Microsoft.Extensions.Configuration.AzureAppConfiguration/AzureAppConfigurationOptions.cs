@@ -102,6 +102,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
+        /// An optional timespan value to set the minimum backoff duration to a value other than the default.
+        /// </summary>
+        /// <remarks>This property is used only for unit testing.</remarks>
+        internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
+
+        /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();

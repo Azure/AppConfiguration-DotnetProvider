@@ -51,6 +51,11 @@ namespace Tests.AzureAppConfiguration
 
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
+            if (currentClient == null)
+            {
+                currentClient = _autoFailoverClients.FirstOrDefault(c => c.Client == client);
+            }
+
             return currentClient?.Endpoint;
         }
 

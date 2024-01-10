@@ -216,7 +216,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             clientBackoffStatus.FailedAttempts = 0;
 
-                            clientBackoffStatus = _configClientBackoffs[endpoint];
+                            _configClientBackoffs[endpoint] = clientBackoffStatus;
                         }
 
                         return clientBackoffStatus.BackoffEndTime <= utcNow;
@@ -1162,9 +1162,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 clientBackoffStatus.FailedAttempts++;
 
-                TimeSpan minBackoffDuration = _options.ClientManager == null ? FailOverConstants.MinBackoffDuration : TimeSpan.FromSeconds(1);
-
-                TimeSpan backoffDuration = minBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
+                TimeSpan backoffDuration = _options.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
 
                 clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }

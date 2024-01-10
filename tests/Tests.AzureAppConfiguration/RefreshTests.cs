@@ -730,6 +730,7 @@ namespace Tests.AzureAppConfiguration
             .AddAzureAppConfiguration(options =>
             {
                 options.Select("TestKey*");
+                options.MinBackoffDuration = TimeSpan.Zero;
                 options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 options.ConfigureRefresh(refreshOptions =>
                 {
@@ -746,16 +747,11 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey2"]);
             Assert.Null(configuration["TestKey3"]);
 
-            // Wait for the client backoff time (+ jitter) to end
-            Thread.Sleep(1500);
-
             // Act
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
             {
                 await refresher.RefreshAsync();
             });
-
-            Thread.Sleep(3000);
 
             await refresher.RefreshAsync();
 
@@ -763,7 +759,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey2"]);
             Assert.Null(configuration["TestKey3"]);
 
-            Thread.Sleep(6000);
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
 
             await refresher.RefreshAsync();
 
@@ -805,6 +802,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.MinBackoffDuration = TimeSpan.Zero;
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label");
                     options.ConfigureRefresh(refreshOptions =>
@@ -833,7 +831,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            // Wait for the client backoff time (+ jitter) to end
+            // Wait for the cache to expire
             Thread.Sleep(1500);
 
             bool secondRefreshResult = refresher.TryRefreshAsync().Result;
