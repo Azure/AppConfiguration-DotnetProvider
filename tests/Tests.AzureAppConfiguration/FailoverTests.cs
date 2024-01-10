@@ -22,7 +22,6 @@ namespace Tests.AzureAppConfiguration
                                                                                           eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                                                                                           contentType: "text");
 
-
         [Fact]
         public void FailOverTests_ReturnsAllClientsIfAllBackedOff()
         {
@@ -54,7 +53,7 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients for the first time.
+            // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
@@ -123,7 +122,7 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients for the first time.
+            // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
 
             var configBuilder = new ConfigurationBuilder()
@@ -182,7 +181,7 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients for the first time.
+            // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
 
             var config = new ConfigurationBuilder()
