@@ -94,38 +94,38 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (featureFlag.Allocation != null)
             {
-                FeatureAllocation featureAllocation = featureFlag.Allocation;
+                FeatureAllocation allocation = featureFlag.Allocation;
 
-                if (featureAllocation.DefaultWhenDisabled != null)
+                if (allocation.DefaultWhenDisabled != null)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.DefaultWhenDisabled}", featureAllocation.DefaultWhenDisabled));
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.DefaultWhenDisabled}", allocation.DefaultWhenDisabled));
                 }
 
-                if (featureAllocation.DefaultWhenEnabled != null)
+                if (allocation.DefaultWhenEnabled != null)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.DefaultWhenEnabled}", featureAllocation.DefaultWhenEnabled));
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.DefaultWhenEnabled}", allocation.DefaultWhenEnabled));
                 }
 
-                if (featureAllocation.User != null)
+                if (allocation.User != null)
                 {
-                    for (int i = 0; i < featureAllocation.User.Count; i++)
+                    for (int i = 0; i < allocation.User.Count; i++)
                     {
-                        FeatureUserAllocation featureUserAllocation = featureAllocation.User[i];
+                        FeatureUserAllocation userAllocation = allocation.User[i];
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Variant}", featureUserAllocation.Variant));
+                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Variant}", userAllocation.Variant));
 
-                        for (int j = 0; j < featureUserAllocation.Users.Count; j++)
+                        for (int j = 0; j < userAllocation.Users.Count; j++)
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Users}:{j}", featureUserAllocation.Users[j]));
+                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Users}:{j}", userAllocation.Users[j]));
                         }
                     }
                 }
 
-                if (featureAllocation.Group != null)
+                if (allocation.Group != null)
                 {
-                    for (int i = 0; i < featureAllocation.Group.Count; i++)
+                    for (int i = 0; i < allocation.Group.Count; i++)
                     {
-                        FeatureGroupAllocation featureGroupAllocation = featureAllocation.Group[i];
+                        FeatureGroupAllocation featureGroupAllocation = allocation.Group[i];
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Variant}", featureGroupAllocation.Variant));
 
@@ -136,11 +136,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     }
                 }
 
-                if (featureAllocation.Percentile != null)
+                if (allocation.Percentile != null)
                 {
-                    for (int i = 0; i < featureAllocation.Percentile.Count; i++)
+                    for (int i = 0; i < allocation.Percentile.Count; i++)
                     {
-                        FeaturePercentileAllocation featurePercentileAllocation = featureAllocation.Percentile[i];
+                        FeaturePercentileAllocation featurePercentileAllocation = allocation.Percentile[i];
 
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.Variant}", featurePercentileAllocation.Variant));
 
@@ -150,24 +150,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     }
                 }
 
-                if (featureAllocation.Seed != null)
+                if (allocation.Seed != null)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Seed}", featureAllocation.Seed));
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
             }
 
             if (featureFlag.Telemetry != null)
             {
-                FeatureTelemetry featureTelemetry = featureFlag.Telemetry;
+                FeatureTelemetry telemetry = featureFlag.Telemetry;
 
-                if (featureTelemetry.Enabled)
+                if (telemetry.Enabled)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Enabled}", featureTelemetry.Enabled.ToString()));
+                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
                 }
 
-                if (featureTelemetry.Metadata != null)
+                if (telemetry.Metadata != null)
                 {
-                    foreach (KeyValuePair<string, string> kvp in featureTelemetry.Metadata)
+                    foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
                     }
