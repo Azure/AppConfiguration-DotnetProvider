@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class TimeSpanExtensions
     {
-        private const int MaxSafeShiftBit = 63;
+        private const int SafeShiftLimit = 63;
         private const double JitterRatio = 0.25;
 
         private static readonly IList<KeyValuePair<TimeSpan, TimeSpan>> StartupMaxBackoffDurationIntervals = new List<KeyValuePair<TimeSpan, TimeSpan>>
@@ -95,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             //
             // IMPORTANT: This can overflow
-            double calculatedMilliseconds = minDuration.TotalMilliseconds * (1L << Math.Min(attempts, MaxSafeShiftBit));
+            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * (1L << Math.Min(attempts, SafeShiftLimit));
 
             if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
                     calculatedMilliseconds <= 0 /*overflow*/)
