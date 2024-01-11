@@ -104,7 +104,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
         /// </summary>
-        /// <remarks>This property is used only for unit testing.</remarks>
         internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
 
         /// <summary>

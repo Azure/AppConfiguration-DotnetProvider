@@ -70,7 +70,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             //
             // IMPORTANT: This can overflow
-            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
+            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts - 1, MaxAttempts));
 
             if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
                     calculatedMilliseconds <= 0 /*overflow*/)

@@ -201,8 +201,7 @@ namespace Tests.AzureAppConfiguration
 
             refresher.RefreshAsync().Wait();
 
-
-            // The first client should have been called just once
+            // The first client should not have been called during refresh
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
 
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
@@ -214,7 +213,7 @@ namespace Tests.AzureAppConfiguration
             
             refresher.RefreshAsync().Wait();
 
-            // The first client should have been called now with refresh
+            // The first client should have been called now with refresh after the backoff time ends
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
         }
 
