@@ -212,10 +212,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             clientBackoffStatus = new ConfigurationClientBackoffStatus();
 
-                            clientBackoffStatus.BackoffEndTime = utcNow;
-
-                            clientBackoffStatus.FailedAttempts = 0;
-
                             _configClientBackoffs[endpoint] = clientBackoffStatus;
                         }
 

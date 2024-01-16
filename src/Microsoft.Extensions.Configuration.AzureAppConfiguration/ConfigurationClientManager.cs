@@ -49,7 +49,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         // Only used for unit testing
-        public int RefreshClientsCalled { get; set; } = 0;
+        internal int RefreshClientsCalled { get; set; } = 0;
 
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,

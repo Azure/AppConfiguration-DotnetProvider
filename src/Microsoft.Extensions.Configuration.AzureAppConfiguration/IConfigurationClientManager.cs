@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         IEnumerable<ConfigurationClient> GetClients();
 
-        public void RefreshClients();
+        void RefreshClients();
 
         bool UpdateSyncToken(Uri endpoint, string syncToken);
 
