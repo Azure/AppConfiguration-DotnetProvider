@@ -27,6 +27,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
+            string featureFlagPath = $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}";
+
             if (featureFlag.Enabled)
             {
                 //if (featureFlag.Conditions?.ClientFilters == null)
@@ -34,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 {
                     //
                     // Always on
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", true.ToString()));
+                    keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
                 }
                 else
                 {
@@ -44,11 +46,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Name}", clientFilter.Name));
+                        string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.EnabledFor}:{i}";
+
+                        keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:{FeatureManagementConstants.Name}", clientFilter.Name));
 
                         foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Parameters}:{kvp.Key}", kvp.Value));
+                            keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:{FeatureManagementConstants.Parameters}:{kvp.Key}", kvp.Value));
                         }
                     }
 
@@ -57,7 +61,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     if (featureFlag.Conditions.RequirementType != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>(
-                            $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}", 
+                            $"{featureFlagPath}:{FeatureManagementConstants.RequirementType}", 
                             featureFlag.Conditions.RequirementType));
                     }
                 }
@@ -73,21 +77,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 {
                     FeatureVariant featureVariant = featureFlag.Variants[i];
 
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Variants}:{i}:{FeatureManagementConstants.Name}", featureVariant.Name));
+                    string variantsPath = $"{featureFlagPath}:{FeatureManagementConstants.Variants}:{i}";
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.Name}", featureVariant.Name));
 
                     if (featureVariant.ConfigurationValue != null)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Variants}:{i}:{FeatureManagementConstants.ConfigurationValue}", featureVariant.ConfigurationValue));
+                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationValue}", featureVariant.ConfigurationValue));
                     }
 
                     if (featureVariant.ConfigurationReference != null)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Variants}:{i}:{FeatureManagementConstants.ConfigurationReference}", featureVariant.ConfigurationReference));
+                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationReference}", featureVariant.ConfigurationReference));
                     }
 
                     if (featureVariant.StatusOverride != null)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Variants}:{i}:{FeatureManagementConstants.StatusOverride}", featureVariant.StatusOverride));
+                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.StatusOverride}", featureVariant.StatusOverride));
                     }
                 }
             }
@@ -96,14 +102,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 FeatureAllocation allocation = featureFlag.Allocation;
 
+                string allocationPath = $"{featureFlagPath}:{FeatureManagementConstants.Allocation}";
+
                 if (allocation.DefaultWhenDisabled != null)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.DefaultWhenDisabled}", allocation.DefaultWhenDisabled));
+                    keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.DefaultWhenDisabled}", allocation.DefaultWhenDisabled));
                 }
 
                 if (allocation.DefaultWhenEnabled != null)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.DefaultWhenEnabled}", allocation.DefaultWhenEnabled));
+                    keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.DefaultWhenEnabled}", allocation.DefaultWhenEnabled));
                 }
 
                 if (allocation.User != null)
@@ -112,11 +120,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         FeatureUserAllocation userAllocation = allocation.User[i];
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Variant}", userAllocation.Variant));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Variant}", userAllocation.Variant));
 
-                        for (int j = 0; j < userAllocation.Users.Count; j++)
+                        int j = 0;
+
+                        foreach (string user in userAllocation.Users)
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Users}:{j}", userAllocation.Users[j]));
+                            keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Users}:{j}", user));
+
+                            j++;
                         }
                     }
                 }
@@ -127,11 +139,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         FeatureGroupAllocation featureGroupAllocation = allocation.Group[i];
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Variant}", featureGroupAllocation.Variant));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Variant}", featureGroupAllocation.Variant));
 
                         for (int j = 0; j < featureGroupAllocation.Groups.Count; j++)
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Groups}:{j}", featureGroupAllocation.Groups[j]));
+                            keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Groups}:{j}", featureGroupAllocation.Groups[j]));
                         }
                     }
                 }
@@ -142,17 +154,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         FeaturePercentileAllocation featurePercentileAllocation = allocation.Percentile[i];
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.Variant}", featurePercentileAllocation.Variant));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.Variant}", featurePercentileAllocation.Variant));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.From}", featurePercentileAllocation.From.ToString()));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.From}", featurePercentileAllocation.From.ToString()));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.To}", featurePercentileAllocation.To.ToString()));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.To}", featurePercentileAllocation.To.ToString()));
                     }
                 }
 
                 if (allocation.Seed != null)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Allocation}:{FeatureManagementConstants.Seed}", allocation.Seed));
+                    keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
             }
 
@@ -160,16 +172,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 FeatureTelemetry telemetry = featureFlag.Telemetry;
 
+                string telemetryPath = $"{featureFlagPath}:{FeatureManagementConstants.Telemetry}";
+
                 if (telemetry.Enabled)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
                 }
 
                 if (telemetry.Metadata != null)
                 {
                     foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.Telemetry}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
+                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
                     }
                 }
             }
