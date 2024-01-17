@@ -35,6 +35,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Type of feature filters used by the application.
         /// </summary>
-        public FeatureFilterTelemetry FilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+        public FeatureFilterTracing FilterTracing { get; set; } = new FeatureFilterTracing();
+
+        /// <summary>
+        /// Version of the Microsoft.FeatureManagement assembly, if present in the application.
+        /// </summary>
+        public string FeatureManagementVersion { get; set; }
+
+        /// <summary>
+        /// Version of the Microsoft.FeatureManagement.AspNetCore assembly, if present in the application.
+        /// </summary>
+        public string FeatureManagementAspNetCoreVersion { get; set; }
     }
 }
