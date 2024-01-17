@@ -626,6 +626,41 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void KeepSelectorPrecedenceAfterDedup()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var prefix = "Feature1";
+            var label1 = "App1_Label";
+            var label2 = "App2_Label";
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label1) ||
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label2)).ToList());
+                });
+
+            var testClient = mockClient.Object;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(prefix + "*", label1); // to be deduped
+                        ff.Select(prefix + "*", label2); // lower precedence
+                        ff.Select(prefix + "*", label1); // higher precedence, taking effect
+                    });
+                })
+                .Build();
+            // label: App1_Label has higher precedence
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+        }
+
+        [Fact]
         public void UseFeatureFlagsThrowsIfBothSelectAndLabelPresent()
         {
             void action() => new ConfigurationBuilder()

@@ -730,7 +730,7 @@ namespace Tests.AzureAppConfiguration
             .AddAzureAppConfiguration(options =>
             {
                 options.Select("TestKey*");
-                options.MinBackoffDuration = TimeSpan.Zero;
+                options.MinBackoffDuration = TimeSpan.FromMilliseconds(1);
                 options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 options.ConfigureRefresh(refreshOptions =>
                 {
@@ -746,6 +746,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey1"]);
             Assert.Null(configuration["TestKey2"]);
             Assert.Null(configuration["TestKey3"]);
+
+            Thread.Sleep(1000);
 
             // Act
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
@@ -802,7 +804,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.MinBackoffDuration = TimeSpan.Zero;
+                    options.MinBackoffDuration = TimeSpan.FromMilliseconds(1);
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label");
                     options.ConfigureRefresh(refreshOptions =>

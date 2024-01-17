@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class TimeSpanExtensions
     {
-        private const int MaxAttempts = 63;
+        private const int SafeShiftLimit = 63;
         private const double JitterRatio = 0.25;
 
         private static readonly IList<KeyValuePair<TimeSpan, TimeSpan>> StartupMaxBackoffDurationIntervals = new List<KeyValuePair<TimeSpan, TimeSpan>>
@@ -30,6 +30,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         /// <returns>The calculated exponential backoff time, or <paramref name="interval"/> if it is less than <paramref name="min"/>.</returns>
         public static TimeSpan CalculateBackoffTime(this TimeSpan interval, TimeSpan min, TimeSpan max, int attempts)
         {
+            if (interval <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(interval), interval, "The time interval should not be equal to or less than 0.");
+            }
+
+            if (min <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(min), min, "The minimum backoff time should not be equal to or less than 0.");
+            }
+
+            if (max < min)
+            {
+                throw new ArgumentOutOfRangeException(nameof(max), max, "The maximum backoff time should not be less than the minimum backoff time.");
+            }
+
             if (attempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
@@ -58,6 +73,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         /// </exception>
         public static TimeSpan CalculateBackoffDuration(this TimeSpan minDuration, TimeSpan maxDuration, int attempts)
         {
+            if (minDuration <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minDuration), minDuration, "The minimum backoff time should not be equal to or less than 0.");
+            }
+
+            if (maxDuration < minDuration)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxDuration), maxDuration, "The maximum backoff time should not be less than the minimum backoff time.");
+            }
+
             if (attempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
@@ -70,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             //
             // IMPORTANT: This can overflow
-            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts - 1, MaxAttempts));
+            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * (1L << Math.Min(attempts - 1, SafeShiftLimit));
 
             if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
                     calculatedMilliseconds <= 0 /*overflow*/)
