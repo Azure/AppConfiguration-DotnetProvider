@@ -48,6 +48,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
+        // Only used for unit testing
+        internal int RefreshClientsCalled { get; set; } = 0;
+
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
             ConfigurationClientOptions clientOptions,
@@ -115,32 +118,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = clients;
         }
 
-        public IEnumerable<ConfigurationClient> GetAvailableClients()
+        public IEnumerable<ConfigurationClient> GetClients()
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
-            {
-                _lastFallbackClientRefreshAttempt = now;
-
-                _ = DiscoverFallbackClients();
-            }
-
-            IEnumerable<ConfigurationClient> clients = _clients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client);
-
-            if (_dynamicClients != null && _dynamicClients.Any())
-            {
-                clients = clients.Concat(_dynamicClients.Where(c => c.BackoffEndTime <= now).Select(c => c.Client));
-            }
-
-            return clients;
-        }
-
-        public IEnumerable<ConfigurationClient> GetAllClients()
-        {
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-
-            if (_replicaDiscoveryEnabled && IsFallbackClientDiscoveryDue(now))
+            if (_replicaDiscoveryEnabled &&
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
+                (_dynamicClients == null ||
+                    now >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval))
             {
                 _lastFallbackClientRefreshAttempt = now;
 
@@ -157,36 +142,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return clients;
         }
 
-        public void UpdateClientStatus(ConfigurationClient client, bool successful)
+        public void RefreshClients()
         {
-            if (client == null)
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            if (_replicaDiscoveryEnabled && 
+                now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval)
             {
-                throw new ArgumentNullException(nameof(client));
+                _lastFallbackClientRefreshAttempt = now;
+
+                _ = DiscoverFallbackClients();
             }
 
-            ConfigurationClientWrapper clientWrapper = _clients.FirstOrDefault(c => c.Client == client);
-
-            if (_dynamicClients != null && clientWrapper == null)
-            {
-                clientWrapper = _dynamicClients.FirstOrDefault(c => c.Client == client);
-            }
-
-            if (clientWrapper == null)
-            {
-                return;
-            }
-
-            if (successful)
-            {
-                clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow;
-                clientWrapper.FailedAttempts = 0;
-            }
-            else
-            {
-                clientWrapper.FailedAttempts++;
-                TimeSpan backoffDuration = FailOverConstants.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientWrapper.FailedAttempts);
-                clientWrapper.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
-            }
+            RefreshClientsCalled++;
         }
 
         public bool UpdateSyncToken(Uri endpoint, string syncToken)
@@ -317,14 +285,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _dynamicClients = newDynamicClients;
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
-        }
-
-        private bool IsFallbackClientDiscoveryDue(DateTimeOffset dateTime)
-        {
-            return dateTime >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval &&
-                (_dynamicClients == null ||
-                _dynamicClients.All(c => c.BackoffEndTime > dateTime) ||
-                dateTime >= _lastFallbackClientRefresh + FallbackClientRefreshExpireInterval);
         }
 
         private string GetValidDomain(Uri endpoint)
