@@ -12,6 +12,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string Variant { get; set; }
 
         [JsonPropertyName("groups")]
-        public List<string> Groups { get; set; }
+        public IEnumerable<string> Groups { get; set; }
     }
 }

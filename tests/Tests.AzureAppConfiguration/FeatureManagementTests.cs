@@ -221,7 +221,14 @@ namespace Tests.AzureAppConfiguration
 					                    ""Marsha"",
                                         ""John""
 				                    ]
-			                    }
+			                    },
+                                {
+                                    ""variant"": ""Small"",
+                                    ""users"": [
+                                        ""Alice"",
+                                        ""Bob""
+                                    ]
+                                }   
 		                    ],
 		                    ""group"": [
 			                    {
@@ -229,14 +236,26 @@ namespace Tests.AzureAppConfiguration
 				                    ""groups"": [
 					                    ""Ring1""
 				                    ]
-			                    }
+			                    },
+                                {
+                                    ""variant"": ""Small"",
+                                    ""groups"": [
+                                        ""Ring2"",
+                                        ""Ring3""
+                                    ]
+                                }
 		                    ],
 		                    ""percentile"": [
 			                    {
 				                    ""variant"": ""Big"",
 				                    ""from"": 0,
-				                    ""to"": 100
-			                    }
+				                    ""to"": 50
+			                    },
+                                {
+                                    ""variant"": ""Small"",
+                                    ""from"": 50,
+                                    ""to"": 100
+                                }
 		                    ]
 	                    }
                     }
@@ -1241,11 +1260,20 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:User:0:Variant"]);
             Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature:Allocation:User:0:Users:0"]);
             Assert.Equal("John", config["FeatureManagement:VariantsFeature:Allocation:User:0:Users:1"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:User:1:Variant"]);
+            Assert.Equal("Alice", config["FeatureManagement:VariantsFeature:Allocation:User:1:Users:0"]);
+            Assert.Equal("Bob", config["FeatureManagement:VariantsFeature:Allocation:User:1:Users:1"]);
             Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:Group:0:Variant"]);
             Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature:Allocation:Group:0:Groups:0"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Variant"]);
+            Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Groups:0"]);
+            Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Groups:1"]);
             Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:Variant"]);
             Assert.Equal("0", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:From"]);
-            Assert.Equal("100", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:To"]);
+            Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:To"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:Variant"]);
+            Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:From"]);
+            Assert.Equal("100", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:To"]);
             Assert.Equal("13992821", config["FeatureManagement:VariantsFeature:Allocation:Seed"]);
         }
 

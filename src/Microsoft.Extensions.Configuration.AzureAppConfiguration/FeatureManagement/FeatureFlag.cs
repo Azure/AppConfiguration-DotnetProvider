@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public FeatureConditions Conditions { get; set; }
 
         [JsonPropertyName("variants")]
-        public List<FeatureVariant> Variants { get; set; }
+        public IEnumerable<FeatureVariant> Variants { get; set; }
 
         [JsonPropertyName("allocation")]
         public FeatureAllocation Allocation { get; set; }

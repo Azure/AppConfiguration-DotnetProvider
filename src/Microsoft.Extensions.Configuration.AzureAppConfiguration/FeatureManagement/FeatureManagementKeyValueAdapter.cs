@@ -73,10 +73,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (featureFlag.Variants != null)
             {
-                for (int i = 0; i < featureFlag.Variants.Count; i++)
-                {
-                    FeatureVariant featureVariant = featureFlag.Variants[i];
+                int i = 0;
 
+                foreach (FeatureVariant featureVariant in featureFlag.Variants)
+                {
                     string variantsPath = $"{featureFlagPath}:{FeatureManagementConstants.Variants}:{i}";
 
                     keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.Name}", featureVariant.Name));
@@ -95,6 +95,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.StatusOverride}", featureVariant.StatusOverride));
                     }
+
+                    i++;
                 }
             }
 
@@ -116,10 +118,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.User != null)
                 {
-                    for (int i = 0; i < allocation.User.Count; i++)
-                    {
-                        FeatureUserAllocation userAllocation = allocation.User[i];
+                    int i = 0;
 
+                    foreach (FeatureUserAllocation userAllocation in allocation.User)
+                    {
                         keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.User}:{i}:{FeatureManagementConstants.Variant}", userAllocation.Variant));
 
                         int j = 0;
@@ -130,35 +132,45 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                             j++;
                         }
+
+                        i++;
                     }
                 }
 
                 if (allocation.Group != null)
                 {
-                    for (int i = 0; i < allocation.Group.Count; i++)
+                    int i = 0;
+
+                    foreach (FeatureGroupAllocation groupAllocation in allocation.Group)
                     {
-                        FeatureGroupAllocation featureGroupAllocation = allocation.Group[i];
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Variant}", groupAllocation.Variant));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Variant}", featureGroupAllocation.Variant));
+                        int j = 0;
 
-                        for (int j = 0; j < featureGroupAllocation.Groups.Count; j++)
+                        foreach (string group in groupAllocation.Groups)
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Groups}:{j}", featureGroupAllocation.Groups[j]));
+                            keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Group}:{i}:{FeatureManagementConstants.Groups}:{j}", group));
+
+                            j++;
                         }
+
+                        i++;
                     }
                 }
 
                 if (allocation.Percentile != null)
                 {
-                    for (int i = 0; i < allocation.Percentile.Count; i++)
+                    int i = 0;
+
+                    foreach (FeaturePercentileAllocation percentileAllocation in allocation.Percentile)
                     {
-                        FeaturePercentileAllocation featurePercentileAllocation = allocation.Percentile[i];
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.Variant}", percentileAllocation.Variant));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.Variant}", featurePercentileAllocation.Variant));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.From}", percentileAllocation.From.ToString()));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.From}", featurePercentileAllocation.From.ToString()));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.To}", percentileAllocation.To.ToString()));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Percentile}:{i}:{FeatureManagementConstants.To}", featurePercentileAllocation.To.ToString()));
+                        i++;
                     }
                 }
 
