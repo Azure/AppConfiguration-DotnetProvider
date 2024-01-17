@@ -10,9 +10,9 @@ using System.Text;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
     /// <summary>
-    /// Telemetry for tracking built-in feature filter usage.
+    /// Tracing for tracking built-in feature filter usage.
     /// </summary>
-    internal class FeatureFilterTelemetry
+    internal class FeatureFilterTracing
     {
         private const string CustomFilter = "CSTM";
         private const string PercentageFilter = "PRCNT";
@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;
         }
 
-        public void ResetFeatureFilterTelemetry()
+        public void ResetFeatureFilterTracing()
         {
             UsesCustomFilter = false;
             UsesPercentageFilter = false;
@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             UsesTargetingFilter = false;
         }
 
-        public void UpdateFeatureFilterTelemetry(string filterName)
+        public void UpdateFeatureFilterTracing(string filterName)
         {
             if (PercentageFilterNames.Any(name => string.Equals(name, filterName, StringComparison.OrdinalIgnoreCase)))
             {
