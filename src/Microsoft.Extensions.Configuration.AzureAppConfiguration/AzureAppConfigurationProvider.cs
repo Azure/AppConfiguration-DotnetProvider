@@ -33,6 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
+        private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -46,6 +47,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private int _networkOperationsInProgress = 0;
         private Logger _logger = new Logger();
         private ILoggerFactory _loggerFactory;
+
+        private class ConfigurationClientBackoffStatus
+        {
+            public int FailedAttempts { get; set; }
+            public DateTimeOffset BackoffEndTime { get; set; }
+        }
 
         public Uri AppConfigurationEndpoint
         {
@@ -197,11 +204,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients();
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (!availableClients.Any())
+                    //
+                    // Filter clients based on their backoff status
+                    clients = clients.Where(client => 
                     {
+                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
+
+                        if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+                        {
+                            clientBackoffStatus = new ConfigurationClientBackoffStatus();
+
+                            _configClientBackoffs[endpoint] = clientBackoffStatus;
+                        }
+
+                        return clientBackoffStatus.BackoffEndTime <= utcNow;
+                    }
+                    );
+
+                    if (!clients.Any())
+                    {
+                        _configClientManager.RefreshClients();
+
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+
                         return;
                     }
 
@@ -212,7 +239,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
 
-                            await InitializeAsync(availableClients, cancellationToken).ConfigureAwait(false);
+                            await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -228,7 +255,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -566,7 +593,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
@@ -1001,15 +1028,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            _configClientManager.UpdateClientStatus(currentClient, success);
+                            UpdateClientBackoffStatus(previousEndpoint, success);
+
                             clientEnumerator.MoveNext();
+
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);
                     }
                     else
                     {
-                        _configClientManager.UpdateClientStatus(currentClient, success);
+                        UpdateClientBackoffStatus(previousEndpoint, success);
                     }
                 }
 
@@ -1129,6 +1158,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
                 }
             }
+        }
+
+        private void UpdateClientBackoffStatus(Uri endpoint, bool successful)
+        {
+            if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+            {
+                clientBackoffStatus = new ConfigurationClientBackoffStatus();
+            }
+
+            if (successful)
+            {
+                clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow;
+
+                clientBackoffStatus.FailedAttempts = 0;
+            }
+            else
+            {
+                clientBackoffStatus.FailedAttempts++;
+
+                TimeSpan backoffDuration = _options.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
+
+                clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
+            }
+
+            _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
         public void Dispose()
