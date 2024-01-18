@@ -67,9 +67,13 @@ namespace Tests.AzureAppConfiguration
         {
             string invalidConnectionString = "invalid-Connection-String";
             var builder = new ConfigurationBuilder();
-            builder.AddAzureAppConfiguration(invalidConnectionString, true);
-            var config = builder.Build();
-            Assert.True(config["TestKey1"] == null);
+            var exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(invalidConnectionString, true);
+                builder.Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentException>(exception);
         }
 
         [Fact]
@@ -84,6 +88,55 @@ namespace Tests.AzureAppConfiguration
             });
             Assert.NotNull(exception);
             Assert.IsType<ArgumentException>(exception);
+        }
+
+        [Fact]
+        public void AddsInvalidConfigurationStore_MalformedSecret()
+        {
+            string invalidConnectionString = "Endpoint=https://fake-endpoint;Id=fake-id;Secret=non-base64-string";
+            var builder = new ConfigurationBuilder();
+            var exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(invalidConnectionString, false);
+                builder.Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentException>(exception);
+            Assert.IsType<InvalidOperationException>(exception.InnerException); // thrown by SDK
+        }
+
+        [Fact]
+        public void LoadConfigurationStore_OnFailure()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException("Mock request failure"));
+
+            var exception = Record.Exception(() =>
+            {
+                var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object), false)
+                .Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<RequestFailedException>(exception);
+        }
+
+        [Fact]
+        public void LoadOptionalConfigurationStore_OnFailure()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Throws(new RequestFailedException("Mock request failure"));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object), true)
+                .Build();
+            Assert.Null(config["TestKey1"]);
         }
 
         [Fact]
@@ -186,7 +239,7 @@ namespace Tests.AzureAppConfiguration
             // 4. Contains the name and version of the App Configuration SDK package
             // 5. Contains the runtime information (target framework, OS description etc.) in the format set by the SDK
             // 6. Does not contain any additional components
-            string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(-preview)?(-\d+-\d+)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
+            string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(-preview(\.\d+)?)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
             
             var response = new MockResponse(200);
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
@@ -261,6 +314,37 @@ namespace Tests.AzureAppConfiguration
 
             // Delete the azure function environment variable
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, null);
+        }
+
+        [Fact]
+        public void TestKeepSelectorPrecedenceAfterDedup()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var kvOfDevLabel = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("message", "message from dev label", "dev")
+            };
+            var kvOfProdLabel = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("message", "message from prod label", "prod")
+            };
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s => s.LabelFilter == "dev"), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(kvOfDevLabel));
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s => s.LabelFilter == "prod"), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(kvOfProdLabel));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("message", "dev");
+                    options.Select("message", "prod");
+                    options.Select("message", "dev");
+                })
+                .Build();
+
+            Assert.True(config["message"] == "message from dev label");
         }
     }
 }

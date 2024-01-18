@@ -22,16 +22,18 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
+        private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
+        private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -45,6 +47,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private int _networkOperationsInProgress = 0;
         private Logger _logger = new Logger();
         private ILoggerFactory _loggerFactory;
+
+        private class ConfigurationClientBackoffStatus
+        {
+            public int FailedAttempts { get; set; }
+            public DateTimeOffset BackoffEndTime { get; set; }
+        }
 
         public Uri AppConfigurationEndpoint
         {
@@ -62,7 +70,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringUtils.Parse(_options.ConnectionStrings.First(), ConnectionStringUtils.EndpointSection));
                     }
                     catch (FormatException) { }
                 }
@@ -84,13 +92,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_loggerFactory != null)
                 {
                     _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
+
+                    if (_configClientManager is ConfigurationClientManager clientManager)
+                    {
+                        clientManager.SetLogger(_logger);
+                    }
                 }
             }
         }
 
-        public AzureAppConfigurationProvider(IConfigurationClientManager clientManager, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(IConfigurationClientManager configClientManager, AzureAppConfigurationOptions options, bool optional)
         {
-            _configClientManager = clientManager ?? throw new ArgumentNullException(nameof(clientManager));
+            _configClientManager = configClientManager ?? throw new ArgumentNullException(nameof(configClientManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
@@ -127,16 +140,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var watch = Stopwatch.StartNew();
 
-            var loadStartTime = DateTimeOffset.UtcNow;
-
-            // Guaranteed to have atleast one available client since it is a application startup path.
-            IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(loadStartTime);
-
             try
             {
+                using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
+
                 // Load() is invoked only once during application startup. We don't need to check for concurrent network
                 // operations here because there can't be any other startup or refresh operation in progress at this time.
-                InitializeAsync(_optional, availableClients, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                LoadAsync(_optional, startupCancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (ArgumentException)
             {
@@ -178,6 +188,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
+                    // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for tracing
+                    EnsureFeatureManagementVersionInspected();
+
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -191,11 +204,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (!availableClients.Any())
+                    //
+                    // Filter clients based on their backoff status
+                    clients = clients.Where(client => 
                     {
+                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
+
+                        if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+                        {
+                            clientBackoffStatus = new ConfigurationClientBackoffStatus();
+
+                            _configClientBackoffs[endpoint] = clientBackoffStatus;
+                        }
+
+                        return clientBackoffStatus.BackoffEndTime <= utcNow;
+                    }
+                    );
+
+                    if (!clients.Any())
+                    {
+                        _configClientManager.RefreshClients();
+
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+
                         return;
                     }
 
@@ -205,7 +238,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         if (InitializationCacheExpires < utcNow)
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
-                            await InitializeAsync(ignoreFailures: false, availableClients, cancellationToken).ConfigureAwait(false);
+
+                            await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -221,7 +255,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -356,7 +390,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 adapter.InvalidateCache(change.Current);
                             }
                         }
-
                     }
                     else
                     {
@@ -520,8 +553,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Reset old filter telemetry in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
+            // Reset old filter tracing in order to track the filter types present in the current response from server.
+            _options.FeatureFilterTracing.ResetFeatureFilterTracing();
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -548,42 +581,135 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return applicationData;
         }
 
-        private async Task InitializeAsync(bool ignoreFailures, IEnumerable<ConfigurationClient> availableClients, CancellationToken cancellationToken = default)
+        private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
         {
-            Dictionary<string, ConfigurationSetting> data = null;
-            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
-            
+            var startupStopwatch = Stopwatch.StartNew();
+
+            int postFixedWindowAttempts = 0;
+
+            var startupExceptions = new List<Exception>();
+
             try
             {
-                await ExecuteWithFailOverPolicyAsync(
-                    availableClients,
-                    async (client) =>
+                while (true)
+                {
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+
+                    if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
-                        data = await LoadSelectedKeyValues(
-                            client,
-                            cancellationToken)
-                            .ConfigureAwait(false);
+                        break;
+                    }
 
-                        watchedSettings = await LoadKeyValuesRegisteredForRefresh(
-                            client,
-                            data,
-                            cancellationToken)
-                            .ConfigureAwait(false);
+                    TimeSpan delay;
 
-                        watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
-                    },
-                    cancellationToken)
-                    .ConfigureAwait(false);
+                    if (startupStopwatch.Elapsed.TryGetFixedBackoff(out TimeSpan backoff))
+                    {
+                        delay = backoff;
+                    }
+                    else
+                    {
+                        postFixedWindowAttempts++;
+
+                        delay = FailOverConstants.MinStartupBackoffDuration.CalculateBackoffDuration(
+                            FailOverConstants.MaxBackoffDuration,
+                            postFixedWindowAttempts);
+                    }
+
+                    try
+                    {
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw new TimeoutException(
+                            $"The provider timed out while attempting to load.",
+                            new AggregateException(startupExceptions));
+                    }
+                }
             }
             catch (Exception exception) when (
                 ignoreFailures &&
                 (exception is RequestFailedException ||
+                exception is KeyVaultReferenceException ||
+                exception is TimeoutException ||
                 exception is OperationCanceledException ||
                 exception is InvalidOperationException ||
                 ((exception as AggregateException)?.InnerExceptions?.Any(e =>
                     e is RequestFailedException ||
                     e is OperationCanceledException) ?? false)))
             { }
+        }
+
+        private async Task<bool> TryInitializeAsync(IEnumerable<ConfigurationClient> clients, List<Exception> startupExceptions, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+            catch (RequestFailedException exception)
+            {
+                if (IsFailOverable(exception))
+                {
+                    startupExceptions.Add(exception);
+
+                    return false;
+                }
+
+                throw;
+            }
+            catch (AggregateException exception)
+            {
+                if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        startupExceptions.Add(exception);
+                    }
+
+                    return false;
+                }
+
+                if (IsFailOverable(exception))
+                {
+                    startupExceptions.Add(exception);
+
+                    return false;
+                }
+                
+                throw;
+            }
+
+            return true;
+        }
+
+        private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
+        {
+            Dictionary<string, ConfigurationSetting> data = null;
+            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
+
+            await ExecuteWithFailOverPolicyAsync(
+                clients,
+                async (client) =>
+                {
+                    data = await LoadSelectedKeyValues(
+                        client,
+                        cancellationToken)
+                        .ConfigureAwait(false);
+
+                    watchedSettings = await LoadKeyValuesRegisteredForRefresh(
+                        client,
+                        data,
+                        cancellationToken)
+                        .ConfigureAwait(false);
+
+                    watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                },
+                cancellationToken)
+                .ConfigureAwait(false);
 
             // Update the cache expiration time for all refresh registered settings and feature flags
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
@@ -599,17 +725,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.InvalidateCache();
                 }
 
-                try
-                {
-                    Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
-                    SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
-                    _watchedSettings = watchedSettings;
-                    _mappedData = mappedData;
-                }
-                catch (KeyVaultReferenceException) when (ignoreFailures)
-                {
-                    // ignore failures
-                }
+                Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
+                SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
+                _watchedSettings = watchedSettings;
+                _mappedData = mappedData;
             }
         }
 
@@ -655,7 +774,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    ConfigurationSettingsSnapshot snapshot;
+                    ConfigurationSnapshot snapshot;
 
                     try
                     {
@@ -666,9 +785,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
                     }
 
-                    if (snapshot.CompositionType != CompositionType.Key)
+                    if (snapshot.SnapshotComposition != SnapshotComposition.Key)
                     {
-                        throw new InvalidOperationException($"{nameof(snapshot.CompositionType)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.CompositionType}'.");
+                        throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
                     }
 
                     settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
@@ -825,7 +944,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTelemetry = _options.FeatureFilterTelemetry
+                FilterTracing = _options.FeatureFilterTracing
             };
         }
 
@@ -856,7 +975,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
         }
 
-        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(IEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task<T>> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
+            IEnumerable<ConfigurationClient> clients,
+            Func<ConfigurationClient, Task<T>> funcToExecute,
+            CancellationToken cancellationToken = default)
         {
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
@@ -906,15 +1028,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            _configClientManager.UpdateClientStatus(currentClient, success);
+                            UpdateClientBackoffStatus(previousEndpoint, success);
+
                             clientEnumerator.MoveNext();
+
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);
                     }
                     else
                     {
-                        _configClientManager.UpdateClientStatus(currentClient, success);
+                        UpdateClientBackoffStatus(previousEndpoint, success);
                     }
                 }
 
@@ -929,7 +1053,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task ExecuteWithFailOverPolicyAsync(IEnumerable<ConfigurationClient> clients, Func<ConfigurationClient, Task> funcToExecute, CancellationToken cancellationToken = default)
+        private async Task ExecuteWithFailOverPolicyAsync(
+            IEnumerable<ConfigurationClient> clients,
+            Func<ConfigurationClient, Task> funcToExecute,
+            CancellationToken cancellationToken = default)
         {
             await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
@@ -948,18 +1075,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(RequestFailedException rfe)
         {
-
-            // The InnerException could be SocketException or WebException when endpoint is invalid and IOException if it is network issue.
-            if (rfe.InnerException != null && rfe.InnerException is HttpRequestException hre && hre.InnerException != null)
+            if (rfe.Status == HttpStatusCodes.TooManyRequests ||
+                rfe.Status == (int)HttpStatusCode.RequestTimeout ||
+                rfe.Status >= (int)HttpStatusCode.InternalServerError)
             {
-                return hre.InnerException is WebException ||
-                       hre.InnerException is SocketException ||
-                       hre.InnerException is IOException;
+                return true;
             }
 
-            return rfe.Status == HttpStatusCodes.TooManyRequests ||
-                   rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                   rfe.Status >= (int)HttpStatusCode.InternalServerError;
+            Exception innerException;
+
+            if (rfe.InnerException is HttpRequestException hre)
+            {
+                innerException = hre.InnerException;
+            }
+            else
+            {
+                innerException = rfe.InnerException;
+            }
+
+            // The InnerException could be SocketException or WebException when an endpoint is invalid and IOException if it's a network issue.
+            return innerException is WebException ||
+                   innerException is SocketException ||
+                   innerException is IOException;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
@@ -1006,6 +1143,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
+        }
+
+        private void EnsureFeatureManagementVersionInspected()
+        {
+            if (!_isFeatureManagementVersionInspected)
+            {
+                _isFeatureManagementVersionInspected = true;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+
+                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                }
+            }
+        }
+
+        private void UpdateClientBackoffStatus(Uri endpoint, bool successful)
+        {
+            if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+            {
+                clientBackoffStatus = new ConfigurationClientBackoffStatus();
+            }
+
+            if (successful)
+            {
+                clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow;
+
+                clientBackoffStatus.FailedAttempts = 0;
+            }
+            else
+            {
+                clientBackoffStatus.FailedAttempts++;
+
+                TimeSpan backoffDuration = _options.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
+
+                clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
+            }
+
+            _configClientBackoffs[endpoint] = clientBackoffStatus;
+        }
+
+        public void Dispose()
+        {
+            (_configClientManager as ConfigurationClientManager)?.Dispose();
         }
     }
 }

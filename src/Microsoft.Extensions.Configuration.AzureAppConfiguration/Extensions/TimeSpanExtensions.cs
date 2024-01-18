@@ -1,14 +1,22 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Constants;
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class TimeSpanExtensions
     {
-        private const int MaxAttempts = 63;
+        private const int SafeShiftLimit = 63;
+        private const double JitterRatio = 0.25;
+
+        private static readonly IList<KeyValuePair<TimeSpan, TimeSpan>> StartupMaxBackoffDurationIntervals = new List<KeyValuePair<TimeSpan, TimeSpan>>
+        {
+            new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(100), TimeSpan.FromSeconds(5)),
+            new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(200), TimeSpan.FromSeconds(10)),
+            new KeyValuePair<TimeSpan, TimeSpan>(TimeSpan.FromSeconds(600), FailOverConstants.MinStartupBackoffDuration),
+        };
 
         /// <summary>
         /// This method calculates randomized exponential backoff times for operations that occur periodically on a given <paramref name="interval"/>.
@@ -22,6 +30,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         /// <returns>The calculated exponential backoff time, or <paramref name="interval"/> if it is less than <paramref name="min"/>.</returns>
         public static TimeSpan CalculateBackoffTime(this TimeSpan interval, TimeSpan min, TimeSpan max, int attempts)
         {
+            if (interval <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(interval), interval, "The time interval should not be equal to or less than 0.");
+            }
+
+            if (min <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(min), min, "The minimum backoff time should not be equal to or less than 0.");
+            }
+
+            if (max < min)
+            {
+                throw new ArgumentOutOfRangeException(nameof(max), max, "The maximum backoff time should not be less than the minimum backoff time.");
+            }
+
             if (attempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
@@ -38,7 +61,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         /// <summary>
-        /// This method calculates the randomized exponential backoff duration for the configuration store after a failure
+        /// This method calculates the jittered exponential backoff duration for the configuration store after a failure
         /// which lies between <paramref name="minDuration"/> and <paramref name="maxDuration"/>.
         /// </summary>
         /// <param name="minDuration">The minimum duration to retry after.</param>
@@ -50,6 +73,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         /// </exception>
         public static TimeSpan CalculateBackoffDuration(this TimeSpan minDuration, TimeSpan maxDuration, int attempts)
         {
+            if (minDuration <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minDuration), minDuration, "The minimum backoff time should not be equal to or less than 0.");
+            }
+
+            if (maxDuration < minDuration)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxDuration), maxDuration, "The maximum backoff time should not be less than the minimum backoff time.");
+            }
+
             if (attempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(attempts), attempts, "The number of attempts should not be less than 1.");
@@ -62,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             //
             // IMPORTANT: This can overflow
-            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * ((long)1 << Math.Min(attempts, MaxAttempts));
+            double calculatedMilliseconds = Math.Max(1, minDuration.TotalMilliseconds) * (1L << Math.Min(attempts - 1, SafeShiftLimit));
 
             if (calculatedMilliseconds > maxDuration.TotalMilliseconds ||
                     calculatedMilliseconds <= 0 /*overflow*/)
@@ -70,7 +103,52 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 calculatedMilliseconds = maxDuration.TotalMilliseconds;
             }
 
-            return TimeSpan.FromMilliseconds(minDuration.TotalMilliseconds + new Random().NextDouble() * (calculatedMilliseconds - minDuration.TotalMilliseconds));
+            return TimeSpan.FromMilliseconds(calculatedMilliseconds).Jitter(JitterRatio);
+        }
+
+        /// <summary>
+        /// This method tries to get the fixed backoff duration for the elapsed startup time.
+        /// </summary>
+        /// <param name="startupTimeElapsed">The time elapsed since the current startup began.</param>
+        /// <param name="backoff">The backoff time span if getting the fixed backoff is successful.</param>
+        /// <returns>A boolean indicating if getting the fixed backoff duration was successful. Returns false
+        /// if the elapsed startup time is greater than the fixed backoff window.</returns>
+        public static bool TryGetFixedBackoff(this TimeSpan startupTimeElapsed, out TimeSpan backoff)
+        {
+            foreach (KeyValuePair<TimeSpan, TimeSpan> interval in StartupMaxBackoffDurationIntervals)
+            {
+                if (startupTimeElapsed < interval.Key)
+                {
+                    backoff = interval.Value;
+
+                    return true;
+                }
+            }
+
+            backoff = TimeSpan.Zero;
+
+            return false;
+        }
+
+        private static TimeSpan Jitter(this TimeSpan timeSpan, double ratio)
+        {
+            if (ratio < 0 || ratio > 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ratio));
+            }
+
+            if (ratio == 0)
+            {
+                return timeSpan;
+            }
+
+            var rand = new Random();
+
+            double jitter = ratio * (rand.NextDouble() * 2 - 1);
+
+            double interval = timeSpan.TotalMilliseconds * (1 + jitter);
+
+            return TimeSpan.FromMilliseconds(interval);
         }
     }
 }

@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// Options used to configure the behavior of an Azure App Configuration provider.
+    /// Options used to configure the behavior of an Azure App Configuration provider.         
+    /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with no label are included in the configuration provider.
     /// </summary>
     public class AzureAppConfigurationOptions
     {
@@ -24,12 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
-        private List<IKeyValueAdapter> _adapters = new List<IKeyValueAdapter>() 
-        { 
-            new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-            new JsonKeyValueAdapter(),
-            new FeatureManagementKeyValueAdapter()
-        };
+        private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
@@ -37,6 +33,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
+
+        /// <summary>
+        /// Flag to indicate whether enable replica discovery.
+        /// </summary>
+        public bool ReplicaDiscoveryEnabled { get; set; } = true;
 
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
@@ -58,7 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
-        public IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -96,6 +97,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
+        /// An optional timespan value to set the minimum backoff duration to a value other than the default.
+        /// </summary>
+        internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
+
+        /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
         internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
@@ -113,7 +119,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Indicates all types of feature filters used by the application.
         /// </summary>
-        internal FeatureFilterTelemetry FeatureFilterTelemetry { get; set; } = new FeatureFilterTelemetry();
+        internal FeatureFilterTracing FeatureFilterTracing { get; set; } = new FeatureFilterTracing();
+
+        /// <summary>
+        /// Options used to configure provider startup.
+        /// </summary>
+        internal StartupOptions Startup { get; set; } = new StartupOptions();
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
+        /// </summary>
+        public AzureAppConfigurationOptions()
+        {
+            _adapters = new List<IKeyValueAdapter>()
+            {
+                new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
+                new JsonKeyValueAdapter(),
+                new FeatureManagementKeyValueAdapter(FeatureFilterTracing)
+            };
+        }
 
         /// <summary>
         /// Specify what key-values to include in the configuration provider.
@@ -152,15 +176,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
             }
 
-            if (!_kvSelectors.Any(s => string.Equals(s.KeyFilter, keyFilter) && string.Equals(s.LabelFilter, labelFilter)))
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
-                _kvSelectors.Add(new KeyValueSelector
-                {
-                    KeyFilter = keyFilter,
-                    LabelFilter = labelFilter
-                });
-            }
-
+                KeyFilter = keyFilter,
+                LabelFilter = labelFilter
+            });
             return this;
         }
 
@@ -176,20 +196,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(name));
             }
 
-            if (!_kvSelectors.Any(s => string.Equals(s.SnapshotName, name)))
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
-                _kvSelectors.Add(new KeyValueSelector
-                {
-                    SnapshotName = name
-                });
-            }
+                SnapshotName = name
+            });
 
             return this;
         }
 
         /// <summary>
         /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
-        /// If no filtering is specified via the <cref="FeatureFlagOptions"> then all feature flags with no label are loaded.
+        /// If no filtering is specified via the <see cref="FeatureFlagOptions"/> then all feature flags with no label are loaded.
         /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
@@ -208,7 +225,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-            
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
@@ -216,7 +233,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
                     LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
-                });  
+                });
             }
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
@@ -224,27 +241,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
 
-                if (!_kvSelectors.Any(selector => selector.KeyFilter == featureFlagFilter && selector.LabelFilter == labelFilter))
-                {
-                    Select(featureFlagFilter, labelFilter);
-                }
+                Select(featureFlagFilter, labelFilter);
 
-                var multiKeyWatcher = _multiKeyWatchers.FirstOrDefault(kw => kw.Key.Equals(featureFlagFilter) && kw.Label.NormalizeNull() == labelFilter.NormalizeNull());
-
-                if (multiKeyWatcher == null)
+                _multiKeyWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    _multiKeyWatchers.Add(new KeyValueWatcher
-                    {
-                        Key = featureFlagFilter,
-                        Label = labelFilter,
-                        CacheExpirationInterval = options.CacheExpirationInterval
-                    });
-                }
-                else
-                {
+                    Key = featureFlagFilter,
+                    Label = labelFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
-                    multiKeyWatcher.CacheExpirationInterval = options.CacheExpirationInterval;
-                }
+                    CacheExpirationInterval = options.CacheExpirationInterval
+                });
+
             }
 
             return this;
@@ -350,7 +356,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the client used to communicate with Azure App Configuration.
+        /// Configure the client(s) used to communicate with Azure App Configuration.
         /// </summary>
         /// <param name="configure">A callback used to configure Azure App Configuration client options.</param>
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
@@ -428,9 +434,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
+        /// <summary>
+        /// Configure the provider behavior when loading data from Azure App Configuration on startup.
+        /// </summary>
+        /// <param name="configure">A callback used to configure Azure App Configuration startup options.</param>
+        public AzureAppConfigurationOptions ConfigureStartupOptions(Action<StartupOptions> configure)
+        {
+            configure?.Invoke(Startup);
+            return this;
+        }
+
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2022_11_01_Preview);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;

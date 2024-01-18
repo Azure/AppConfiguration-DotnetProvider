@@ -23,5 +23,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.
         /// </summary>
         public string SnapshotName { get; set; }
+
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
+        public override bool Equals(object obj)
+        {
+            if (obj is KeyValueSelector selector)
+            {
+                return KeyFilter == selector.KeyFilter
+                    && LabelFilter == selector.LabelFilter
+                    && SnapshotName == selector.SnapshotName;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Serves as the hash function.
+        /// </summary>
+        /// <returns>A hash code for the current object.</returns>
+        public override int GetHashCode()
+        {
+            return (KeyFilter?.GetHashCode() ?? 0) ^
+                   (LabelFilter?.GetHashCode() ?? 1) ^
+                   (SnapshotName?.GetHashCode() ?? 2);
+        }
     }
 }

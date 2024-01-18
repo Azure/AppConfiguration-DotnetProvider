@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
@@ -36,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         {
             if (obj is KeyValueWatcher kvWatcher)
             {
-                return Key == kvWatcher.Key && Label == kvWatcher.Label;
+                return Key == kvWatcher.Key && Label.NormalizeNull() == kvWatcher.Label.NormalizeNull();
             }
 
             return false;
