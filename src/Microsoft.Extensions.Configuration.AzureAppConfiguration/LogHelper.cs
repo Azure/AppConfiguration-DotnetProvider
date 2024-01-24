@@ -86,5 +86,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint?.TrimEnd('/')}'.";
         }
+
+        public static string BuildFallbackClientLookupFailMessage(string exceptionMessage)
+        {
+            return $"{LoggingConstants.FallbackClientLookupError}\n{exceptionMessage}";
+        }
     }
 }

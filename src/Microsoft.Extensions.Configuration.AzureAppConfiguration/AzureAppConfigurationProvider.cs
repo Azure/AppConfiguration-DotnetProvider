@@ -22,10 +22,11 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
+        private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
@@ -33,6 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private List<KeyValueIdentifier> _orderedSelectedKeyValues;
         private RequestTracingOptions _requestTracingOptions;
+        private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -46,6 +48,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private int _networkOperationsInProgress = 0;
         private Logger _logger = new Logger();
         private ILoggerFactory _loggerFactory;
+
+        private class ConfigurationClientBackoffStatus
+        {
+            public int FailedAttempts { get; set; }
+            public DateTimeOffset BackoffEndTime { get; set; }
+        }
 
         public Uri AppConfigurationEndpoint
         {
@@ -63,7 +71,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        return new Uri(ConnectionStringParser.Parse(_options.ConnectionStrings.First(), ConnectionStringParser.EndpointSection));
+                        return new Uri(ConnectionStringUtils.Parse(_options.ConnectionStrings.First(), ConnectionStringUtils.EndpointSection));
                     }
                     catch (FormatException) { }
                 }
@@ -85,6 +93,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (_loggerFactory != null)
                 {
                     _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
+
+                    if (_configClientManager is ConfigurationClientManager clientManager)
+                    {
+                        clientManager.SetLogger(_logger);
+                    }
                 }
             }
         }
@@ -176,6 +189,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 try
                 {
+                    // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for tracing
+                    EnsureFeatureManagementVersionInspected();
+
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
                     IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
@@ -189,11 +205,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> availableClients = _configClientManager.GetAvailableClients(utcNow);
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (!availableClients.Any())
+                    //
+                    // Filter clients based on their backoff status
+                    clients = clients.Where(client => 
                     {
+                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
+
+                        if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+                        {
+                            clientBackoffStatus = new ConfigurationClientBackoffStatus();
+
+                            _configClientBackoffs[endpoint] = clientBackoffStatus;
+                        }
+
+                        return clientBackoffStatus.BackoffEndTime <= utcNow;
+                    }
+                    );
+
+                    if (!clients.Any())
+                    {
+                        _configClientManager.RefreshClients();
+
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+
                         return;
                     }
 
@@ -204,7 +240,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
 
-                            await InitializeAsync(availableClients, cancellationToken).ConfigureAwait(false);
+                            await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                         }
 
                         return;
@@ -221,7 +257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logDebugBuilder = new StringBuilder();
                     Dictionary<KeyValueIdentifier, string> cachedInfoLogs = new Dictionary<KeyValueIdentifier, string>();
 
-                    await ExecuteWithFailOverPolicyAsync(availableClients, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
                         {
                             data = null;
                             watchedSettings = null;
@@ -358,7 +394,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 adapter.InvalidateCache(change.Current);
                             }
                         }
-
                     }
                     else
                     {
@@ -518,8 +553,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Reset old filter telemetry in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTelemetry.ResetFeatureFilterTelemetry();
+            // Reset old filter tracing in order to track the filter types present in the current response from server.
+            _options.FeatureFilterTracing.ResetFeatureFilterTracing();
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -603,7 +638,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetAllClients();
+                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
@@ -960,7 +995,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTelemetry = _options.FeatureFilterTelemetry
+                FilterTracing = _options.FeatureFilterTracing
             };
         }
 
@@ -1044,15 +1079,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            _configClientManager.UpdateClientStatus(currentClient, success);
+                            UpdateClientBackoffStatus(previousEndpoint, success);
+
                             clientEnumerator.MoveNext();
+
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);
                     }
                     else
                     {
-                        _configClientManager.UpdateClientStatus(currentClient, success);
+                        UpdateClientBackoffStatus(previousEndpoint, success);
                     }
                 }
 
@@ -1157,6 +1194,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return currentKeyValues;
+        }
+
+        private void EnsureFeatureManagementVersionInspected()
+        {
+            if (!_isFeatureManagementVersionInspected)
+            {
+                _isFeatureManagementVersionInspected = true;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+
+                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                }
+            }
+        }
+
+        private void UpdateClientBackoffStatus(Uri endpoint, bool successful)
+        {
+            if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+            {
+                clientBackoffStatus = new ConfigurationClientBackoffStatus();
+            }
+
+            if (successful)
+            {
+                clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow;
+
+                clientBackoffStatus.FailedAttempts = 0;
+            }
+            else
+            {
+                clientBackoffStatus.FailedAttempts++;
+
+                TimeSpan backoffDuration = _options.MinBackoffDuration.CalculateBackoffDuration(FailOverConstants.MaxBackoffDuration, clientBackoffStatus.FailedAttempts);
+
+                clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
+            }
+
+            _configClientBackoffs[endpoint] = clientBackoffStatus;
+        }
+
+        public void Dispose()
+        {
+            (_configClientManager as ConfigurationClientManager)?.Dispose();
         }
     }
 }

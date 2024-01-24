@@ -9,7 +9,6 @@ using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -184,6 +183,114 @@ namespace Tests.AzureAppConfiguration
                 value: "TestValue1",
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
+
+        private ConfigurationSetting _variantsKv = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature",
+            value: @"
+                    {
+                        ""id"": ""VariantsFeature"",
+                        ""description"": """",
+                        ""display_name"": ""Variants Feature"",
+                        ""enabled"": true,
+                        ""conditions"": {
+                        ""client_filters"": [
+                            {
+                            ""name"": ""AlwaysOn""
+                            }
+                        ]
+                        },
+                        ""variants"": [
+		                {
+			                ""name"": ""Big"",
+			                ""configuration_value"": ""600px""
+		                },
+		                {
+			                ""name"": ""Small"",
+			                ""configuration_reference"": ""ShoppingCart:Small"",
+			                ""status_override"": ""Disabled""
+		                }
+	                    ],
+	                    ""allocation"": {
+		                    ""seed"": ""13992821"",
+		                    ""default_when_disabled"": ""Small"",
+		                    ""default_when_enabled"": ""Small"",
+		                    ""user"": [
+			                    {
+				                    ""variant"": ""Big"",
+				                    ""users"": [
+					                    ""Marsha"",
+                                        ""John""
+				                    ]
+			                    },
+                                {
+                                    ""variant"": ""Small"",
+                                    ""users"": [
+                                        ""Alice"",
+                                        ""Bob""
+                                    ]
+                                }   
+		                    ],
+		                    ""group"": [
+			                    {
+				                    ""variant"": ""Big"",
+				                    ""groups"": [
+					                    ""Ring1""
+				                    ]
+			                    },
+                                {
+                                    ""variant"": ""Small"",
+                                    ""groups"": [
+                                        ""Ring2"",
+                                        ""Ring3""
+                                    ]
+                                }
+		                    ],
+		                    ""percentile"": [
+			                    {
+				                    ""variant"": ""Big"",
+				                    ""from"": 0,
+				                    ""to"": 50
+			                    },
+                                {
+                                    ""variant"": ""Small"",
+                                    ""from"": 50,
+                                    ""to"": 100
+                                }
+		                    ]
+	                    }
+                    }
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+        private ConfigurationSetting _telemetryKv = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryFeature",
+            value: @"
+                    {
+                        ""id"": ""TelemetryFeature"",
+                        ""description"": """",
+                        ""display_name"": ""Telemetry Feature"",
+                        ""enabled"": true,
+                        ""conditions"": {
+                        ""client_filters"": [
+                            {
+                            ""name"": ""AlwaysOn""
+                            }
+                        ]
+                        },
+                        ""telemetry"": {
+                            ""enabled"": true,
+                            ""metadata"": {
+		                        ""Tags.Tag1"": ""Tag1Value"",
+		                        ""Tags.Tag2"": ""Tag2Value""
+	                        }
+                        }
+                    }
+                    ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
         TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
@@ -516,6 +623,41 @@ namespace Tests.AzureAppConfiguration
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
+        }
+
+        [Fact]
+        public void KeepSelectorPrecedenceAfterDedup()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var prefix = "Feature1";
+            var label1 = "App1_Label";
+            var label2 = "App2_Label";
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label1) ||
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label2)).ToList());
+                });
+
+            var testClient = mockClient.Object;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(prefix + "*", label1); // to be deduped
+                        ff.Select(prefix + "*", label2); // lower precedence
+                        ff.Select(prefix + "*", label1); // higher precedence, taking effect
+                    });
+                })
+                .Build();
+            // label: App1_Label has higher precedence
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
         }
 
         [Fact]
@@ -1120,6 +1262,83 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
+
+        [Fact]
+        public void WithVariants()
+        {
+            var featureFlags = new List<ConfigurationSetting>()
+            {
+                _variantsKv
+            };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Variants:0:Name"]);
+            Assert.Equal("600px", config["FeatureManagement:VariantsFeature:Variants:0:ConfigurationValue"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Variants:1:Name"]);
+            Assert.Equal("ShoppingCart:Small", config["FeatureManagement:VariantsFeature:Variants:1:ConfigurationReference"]);
+            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature:Variants:1:StatusOverride"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:DefaultWhenDisabled"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:DefaultWhenEnabled"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:User:0:Variant"]);
+            Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature:Allocation:User:0:Users:0"]);
+            Assert.Equal("John", config["FeatureManagement:VariantsFeature:Allocation:User:0:Users:1"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:User:1:Variant"]);
+            Assert.Equal("Alice", config["FeatureManagement:VariantsFeature:Allocation:User:1:Users:0"]);
+            Assert.Equal("Bob", config["FeatureManagement:VariantsFeature:Allocation:User:1:Users:1"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:Group:0:Variant"]);
+            Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature:Allocation:Group:0:Groups:0"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Variant"]);
+            Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Groups:0"]);
+            Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Groups:1"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:Variant"]);
+            Assert.Equal("0", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:From"]);
+            Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:To"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:Variant"]);
+            Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:From"]);
+            Assert.Equal("100", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:To"]);
+            Assert.Equal("13992821", config["FeatureManagement:VariantsFeature:Allocation:Seed"]);
+        }
+
+        [Fact]
+        public void WithTelemetry()
+        {
+            var featureFlags = new List<ConfigurationSetting>()
+            {
+                _telemetryKv
+            };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
+            Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
+            Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
+        }
+
 
         [Fact]
         public void WithRequirementType()

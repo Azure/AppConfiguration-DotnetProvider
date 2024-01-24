@@ -36,11 +36,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else if (options.ConnectionStrings != null)
                 {
-                    clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options.ConnectionStrings, options.ClientOptions, options.ReplicaDiscoveryEnabled);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions);
+                    clientManager = new ConfigurationClientManager(options.Endpoints, options.Credential, options.ClientOptions, options.ReplicaDiscoveryEnabled);
                 }
                 else
                 {
@@ -51,17 +51,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {
-                if (!_optional)
-                {
-                    throw new ArgumentException(ex.Message, ex);
-                }
+                throw new ArgumentException(ex.Message, ex);
             }
             catch (FormatException fe) // FormatException is thrown when the connection string is not a well formed connection string.
             {
-                if (!_optional)
-                {
-                    throw new ArgumentException(fe.Message, fe);
-                }
+                throw new ArgumentException(fe.Message, fe);
             }
 
             return provider ?? new EmptyConfigurationProvider();
