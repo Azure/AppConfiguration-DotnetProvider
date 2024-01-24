@@ -634,12 +634,30 @@ namespace Tests.AzureAppConfiguration
             var label1 = "App1_Label";
             var label2 = "App2_Label";
 
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                It.Is<SettingSelector>(s => s.LabelFilter == "App1_Label"),
+                It.IsAny<CancellationToken>()))
+                    .Returns(() =>
+                    {
+                        return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                            s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label1).ToList());
+                    });
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                It.Is<SettingSelector>(s => s.LabelFilter == "App2_Label"),
+                It.IsAny<CancellationToken>()))
+                    .Returns(() =>
+                    {
+                        return new MockAsyncPageable(_featureFlagCollection.Where(s =>
+                            s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label2).ToList());
+                    });
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
                     return new MockAsyncPageable(_featureFlagCollection.Where(s =>
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label1) ||
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label2)).ToList());
+                        s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label1 ||
+                        s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix) && s.Label == label2).ToList());
                 });
 
             var testClient = mockClient.Object;
@@ -657,7 +675,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
             // label: App1_Label has higher precedence
-            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:Feature1"]);
         }
 
         [Fact]
