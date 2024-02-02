@@ -200,6 +200,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
                 }
 
+                string featureFlagId = $"{setting.Key}\n{setting.Label}";
+
+                keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
+
+                keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
+
                 if (telemetry.Metadata != null)
                 {
                     foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
