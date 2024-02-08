@@ -212,11 +212,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
 
-                string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(setting.Label != null ? $"?label={setting.Label}" : "")}";
-
                 keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
 
-                keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
+                if (endpoint != null)
+                {
+                    string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(setting.Label != null ? $"?label={setting.Label}" : "")}";
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
+                }
 
                 keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
 
