@@ -916,7 +916,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     continue;
                 }
 
-                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, _logger, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> kvs = await adapter.ProcessKeyValue(setting, AppConfigurationEndpoint, _logger, cancellationToken).ConfigureAwait(false);
 
                 if (kvs != null)
                 {

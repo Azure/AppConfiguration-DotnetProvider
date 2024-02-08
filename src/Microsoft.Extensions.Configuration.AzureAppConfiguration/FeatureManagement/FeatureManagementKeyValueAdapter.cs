@@ -5,6 +5,9 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             _featureFilterTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
         }
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag;
             try
@@ -200,9 +203,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
                 }
 
-                string featureFlagId = $"{setting.Key}\n{setting.Label}";
+                byte[] featureFlagIdHash;
+
+                using (HashAlgorithm hashAlgorithm = SHA256.Create())
+                {
+                    featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{setting.Label}"));
+                }
+
+                string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
+
+                string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(setting.Label != null ? $"?label={setting.Label}" : "")}";
 
                 keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
+
+                keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
 
                 keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
 

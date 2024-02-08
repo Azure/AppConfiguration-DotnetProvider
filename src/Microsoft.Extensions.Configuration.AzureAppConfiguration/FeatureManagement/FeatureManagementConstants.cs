@@ -33,5 +33,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string Seed = "Seed";
         public const string ETag = "ETag";
         public const string FeatureFlagId = "FeatureFlagId";
+        public const string FeatureFlagReference = "FeatureFlagReference";
     }
 }
