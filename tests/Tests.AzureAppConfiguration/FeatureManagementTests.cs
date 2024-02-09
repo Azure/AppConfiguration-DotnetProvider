@@ -14,6 +14,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -1337,6 +1340,19 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
             Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
             Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
+            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:ETag"]);
+
+            byte[] featureFlagIdHash;
+
+            using (HashAlgorithm hashAlgorithm = SHA256.Create())
+            {
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\n"));
+            }
+
+            string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
+
+            Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
+            Assert.Equal($"https://azure.azconfig.io/kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
         }
 
 

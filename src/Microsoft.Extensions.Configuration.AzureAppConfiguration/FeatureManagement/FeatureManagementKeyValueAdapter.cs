@@ -201,27 +201,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 if (telemetry.Enabled)
                 {
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
+
+                    byte[] featureFlagIdHash;
+
+                    using (HashAlgorithm hashAlgorithm = SHA256.Create())
+                    {
+                        featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{setting.Label}"));
+                    }
+
+                    string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
+
+                    if (endpoint != null)
+                    {
+                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(setting.Label != null ? $"?label={setting.Label}" : "")}";
+
+                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
+                    }
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
                 }
-
-                byte[] featureFlagIdHash;
-
-                using (HashAlgorithm hashAlgorithm = SHA256.Create())
-                {
-                    featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{setting.Label}"));
-                }
-
-                string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
-
-                keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
-
-                if (endpoint != null)
-                {
-                    string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(setting.Label != null ? $"?label={setting.Label}" : "")}";
-
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
-                }
-
-                keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
 
                 if (telemetry.Metadata != null)
                 {
