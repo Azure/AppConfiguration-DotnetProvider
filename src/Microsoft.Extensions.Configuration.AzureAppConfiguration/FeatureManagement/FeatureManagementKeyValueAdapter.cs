@@ -198,6 +198,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 string telemetryPath = $"{featureFlagPath}:{FeatureManagementConstants.Telemetry}";
 
+                if (telemetry.Metadata != null)
+                {
+                    foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
+                    }
+                }
+
                 if (telemetry.Enabled)
                 {
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
@@ -221,14 +229,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     }
 
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
-                }
-
-                if (telemetry.Metadata != null)
-                {
-                    foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
-                    {
-                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
-                    }
                 }
             }
 
