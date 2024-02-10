@@ -291,7 +291,7 @@ namespace Tests.AzureAppConfiguration
                         }
                     }
                     ",
-            label: default,
+            label: "label",
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
@@ -1346,13 +1346,13 @@ namespace Tests.AzureAppConfiguration
 
             using (HashAlgorithm hashAlgorithm = SHA256.Create())
             {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\n"));
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\nlabel"));
             }
 
             string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
 
             Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
-            Assert.Equal($"https://azure.azconfig.io/kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
         }
 
 
