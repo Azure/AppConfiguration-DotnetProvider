@@ -75,14 +75,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     catch (FormatException) { }
                 }
 
-                // This is used only when a test passes in a ConfigurationClientManager but no endpoint or connection string is provided.
-                ConfigurationClient client = _configClientManager.GetClients().FirstOrDefault();
-
-                if (client != null)
-                {
-                    return _configClientManager.GetEndpointForClient(client);
-                }
-
                 return null;
             }
         }
