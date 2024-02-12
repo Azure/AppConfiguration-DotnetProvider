@@ -211,7 +211,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     using (HashAlgorithm hashAlgorithm = SHA256.Create())
                     {
-                        featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{setting.Label}"));
+                        featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{(string.IsNullOrWhiteSpace(setting.Label) ? null : setting.Label)}"));
                     }
 
                     string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
