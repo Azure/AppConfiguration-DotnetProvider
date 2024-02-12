@@ -1351,7 +1351,10 @@ namespace Tests.AzureAppConfiguration
                 featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\nlabel"));
             }
 
-            string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
+            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
 
             Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
             Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);

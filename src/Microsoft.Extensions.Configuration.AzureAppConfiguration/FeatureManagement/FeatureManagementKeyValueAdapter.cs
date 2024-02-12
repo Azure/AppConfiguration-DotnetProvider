@@ -5,7 +5,6 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -215,7 +214,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{setting.Label}"));
                     }
 
-                    string featureFlagId = WebUtility.UrlEncode(Convert.ToBase64String(featureFlagIdHash));
+                    string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
+                        .TrimEnd('=')
+                        .Replace('+', '-')
+                        .Replace('/', '_');
 
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
 
