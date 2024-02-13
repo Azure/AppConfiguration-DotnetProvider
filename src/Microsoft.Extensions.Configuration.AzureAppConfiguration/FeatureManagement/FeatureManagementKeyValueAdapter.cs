@@ -214,12 +214,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{(string.IsNullOrWhiteSpace(setting.Label) ? null : setting.Label)}"));
                     }
 
-                    string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
-                        .TrimEnd('=')
-                        .Replace('+', '-')
-                        .Replace('/', '_');
+                    string featureFlagIdBase64 = Convert.ToBase64String(featureFlagIdHash);
 
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
+                    StringBuilder featureFlagIdBuilder = new StringBuilder(featureFlagIdBase64[featureFlagIdBase64.Length - 1] == '=' ? featureFlagIdBase64.Length - 1 : featureFlagIdBase64.Length);
+
+                    for (int i = 0; i < featureFlagIdBuilder.Capacity; i++)
+                    {
+                        if (featureFlagIdBase64[i] == '+')
+                        {
+                            featureFlagIdBuilder.Append('-');
+                        }
+                        else if (featureFlagIdBase64[i] == '/')
+                        {
+                            featureFlagIdBuilder.Append('_');
+                        }
+                        else
+                        {
+                            featureFlagIdBuilder.Append(featureFlagIdBase64[i]);
+                        }
+                    }
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagIdBuilder.ToString()));
 
                     if (endpoint != null)
                     {
