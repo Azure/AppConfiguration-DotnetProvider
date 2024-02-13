@@ -216,7 +216,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     string featureFlagIdBase64 = Convert.ToBase64String(featureFlagIdHash);
 
-                    StringBuilder featureFlagIdBuilder = new StringBuilder(featureFlagIdBase64[featureFlagIdBase64.Length - 1] == '=' ? featureFlagIdBase64.Length - 1 : featureFlagIdBase64.Length);
+                    int indexOfEquals = featureFlagIdBase64.IndexOf("=");
+
+                    StringBuilder featureFlagIdBuilder = new StringBuilder(indexOfEquals != -1 ? indexOfEquals : featureFlagIdBase64.Length);
 
                     for (int i = 0; i < featureFlagIdBuilder.Capacity; i++)
                     {
