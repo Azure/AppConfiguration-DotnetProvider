@@ -630,6 +630,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 throw;
             }
+            catch (KeyVaultReferenceException exception)
+            {
+                if (exception.InnerException is RequestFailedException rfe && IsFailOverable(rfe))
+                {
+                    startupExceptions.Add(exception);
+
+                    return false;
+                }
+
+                throw;
+            }
             catch (AggregateException exception)
             {
                 if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
@@ -974,6 +985,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 catch (RequestFailedException rfe)
                 {
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
+                    {
+                        backoffAllClients = true;
+
+                        throw;
+                    }
+                }
+                catch (KeyVaultReferenceException kvre)
+                {
+                    if (kvre.InnerException is RequestFailedException rfe && !IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
 
