@@ -6,6 +6,7 @@ using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -14,6 +15,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -288,7 +292,7 @@ namespace Tests.AzureAppConfiguration
                         }
                     }
                     ",
-            label: default,
+            label: "label",
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
@@ -1330,6 +1334,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, new DefaultAzureCredential());
                     options.UseFeatureFlags();
                 })
                 .Build();
@@ -1337,6 +1342,22 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
             Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
             Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
+            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:ETag"]);
+
+            byte[] featureFlagIdHash;
+
+            using (HashAlgorithm hashAlgorithm = SHA256.Create())
+            {
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\nlabel"));
+            }
+
+            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+
+            Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
         }
 
 

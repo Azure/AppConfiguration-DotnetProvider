@@ -422,7 +422,7 @@ namespace Tests.AzureAppConfiguration
             var mockKeyValueAdapter = new Mock<IKeyValueAdapter>(MockBehavior.Strict);
             mockKeyValueAdapter.Setup(adapter => adapter.CanProcess(_kv))
                 .Returns(true);
-            mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(_kv, It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
+            mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(_kv, It.IsAny<Uri>(), It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
                 .Throws(new KeyVaultReferenceException("Key vault error", null));
             mockKeyValueAdapter.Setup(adapter => adapter.InvalidateCache(null));
 
