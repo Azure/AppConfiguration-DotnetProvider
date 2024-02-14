@@ -218,9 +218,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     int indexOfEquals = featureFlagIdBase64.IndexOf("=");
 
-                    StringBuilder featureFlagIdBuilder = new StringBuilder(indexOfEquals != -1 ? indexOfEquals : featureFlagIdBase64.Length);
+                    int stringBuilderCapacity = indexOfEquals != -1 ? indexOfEquals : featureFlagIdBase64.Length;
 
-                    for (int i = 0; i < featureFlagIdBuilder.Capacity; i++)
+                    StringBuilder featureFlagIdBuilder = new StringBuilder(stringBuilderCapacity);
+
+                    for (int i = 0; i < stringBuilderCapacity; i++)
                     {
                         if (featureFlagIdBase64[i] == '+')
                         {
