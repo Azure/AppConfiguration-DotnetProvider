@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     internal static class BytesExtensions
     {
         /// <summary>
-        /// Converts a byte array to Base64URL string and removes trailing '=' characters.
+        /// Converts a byte array to Base64URL string with optional padding ('=') characters removed.
         /// Base64 description: https://datatracker.ietf.org/doc/html/rfc4648.html#section-4
         /// </summary>
         public static string ToBase64Url(this byte[] bytes)
