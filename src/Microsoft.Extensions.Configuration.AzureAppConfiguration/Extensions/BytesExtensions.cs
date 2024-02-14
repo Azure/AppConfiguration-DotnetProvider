@@ -14,10 +14,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             int indexOfEquals = bytesBase64.IndexOf("=");
 
+            // Remove all instances of "=" at the end of the string that were added as padding
             int stringBuilderCapacity = indexOfEquals != -1 ? indexOfEquals : bytesBase64.Length;
 
             StringBuilder stringBuilder = new StringBuilder(stringBuilderCapacity);
 
+            // Construct Base64URL string by replacing characters in Base64 conversion that are not URL safe
             for (int i = 0; i < stringBuilderCapacity; i++)
             {
                 if (bytesBase64[i] == '+')
