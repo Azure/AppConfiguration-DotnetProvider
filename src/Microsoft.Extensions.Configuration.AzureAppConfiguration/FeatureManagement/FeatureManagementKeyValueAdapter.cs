@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -197,16 +198,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 string telemetryPath = $"{featureFlagPath}:{FeatureManagementConstants.Telemetry}";
 
-                if (telemetry.Metadata != null)
-                {
-                    foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
-                    {
-                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
-                    }
-                }
-
                 if (telemetry.Enabled)
                 {
+                    if (telemetry.Metadata != null)
+                    {
+                        foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
+                        }
+                    }
+
                     byte[] featureFlagIdHash;
 
                     using (HashAlgorithm hashAlgorithm = SHA256.Create())
@@ -214,35 +215,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{setting.Key}\n{(string.IsNullOrWhiteSpace(setting.Label) ? null : setting.Label)}"));
                     }
 
-                    string featureFlagIdBase64 = Convert.ToBase64String(featureFlagIdHash);
+                    string featureFlagId = featureFlagIdHash.ToBase64Url();
 
-                    int indexOfEquals = featureFlagIdBase64.IndexOf("=");
-
-                    int stringBuilderCapacity = indexOfEquals != -1 ? indexOfEquals : featureFlagIdBase64.Length;
-
-                    StringBuilder featureFlagIdBuilder = new StringBuilder(stringBuilderCapacity);
-
-                    for (int i = 0; i < stringBuilderCapacity; i++)
-                    {
-                        if (featureFlagIdBase64[i] == '+')
-                        {
-                            featureFlagIdBuilder.Append('-');
-                        }
-                        else if (featureFlagIdBase64[i] == '/')
-                        {
-                            featureFlagIdBuilder.Append('_');
-                        }
-                        else
-                        {
-                            featureFlagIdBuilder.Append(featureFlagIdBase64[i]);
-                        }
-                    }
-
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagIdBuilder.ToString()));
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
 
                     if (endpoint != null)
                     {
-                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(setting.Label != null ? $"?label={setting.Label}" : "")}";
+                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(!string.IsNullOrWhiteSpace(setting.Label) ? $"?label={setting.Label}" : "")}";
 
                         keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
                     }
