@@ -773,8 +773,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadSelectedKeyValues(ConfigurationClient client, CancellationToken cancellationToken)
         {
-            var serverDataCopy = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
-            var serverDataKeyLabels = new Dictionary<string, string>();
+            var serverDataCopy = new Dictionary<string, ConfigurationSetting>();
             var serverData = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
             // Use default query if there are no key-values specified for use other than the feature flags
@@ -794,9 +793,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                     {
-                        KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(setting.Key, setting.Label);
-                        serverDataCopy[kvIdentifier] = setting;
-                        serverDataKeyLabels[setting.Key] = setting.Label;
+                        serverDataCopy[setting.Key] = setting;
                     }
                 }).ConfigureAwait(false);
             }
@@ -842,19 +839,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
                     {
-                        KeyValueIdentifier kvIdentifier = new KeyValueIdentifier(setting.Key, setting.Label);
-                        serverDataCopy[kvIdentifier] = setting;
-                        serverDataKeyLabels[setting.Key] = setting.Label;
+                        serverDataCopy[setting.Key] = setting;
                     }
                 }).ConfigureAwait(false);
             }
 
-            foreach (KeyValuePair<KeyValueIdentifier, ConfigurationSetting> kvp in serverDataCopy)
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in serverDataCopy)
             {
-                if (serverDataKeyLabels[kvp.Key.Key] == kvp.Key.Label)
-                {
-                    serverData[kvp.Key] = kvp.Value;
-                }
+                serverData[new KeyValueIdentifier(kvp.Key, kvp.Value.Label)] = kvp.Value;
             }
 
             return serverData;
