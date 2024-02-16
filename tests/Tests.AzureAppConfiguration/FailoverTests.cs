@@ -289,9 +289,6 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients for the first time.
-            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
-
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -306,6 +303,9 @@ namespace Tests.AzureAppConfiguration
                     refresher = options.GetRefresher();
                 })
                 .Build();
+
+            // The client enumerator should return just 1 client.
+            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
 
             // The build should be successful since one client was backed off and it failed over to the second client.
             Assert.Equal("TestValue1", config["TestKey1"]);
