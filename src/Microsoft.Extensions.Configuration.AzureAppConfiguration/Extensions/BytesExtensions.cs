@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             int indexOfEquals = bytesBase64.IndexOf("=");
 
-            // Skip the optional padding of '=' characters for Base64Url if any are present from the Base64 conversion
+            // Skip the optional padding of '=' characters from the Base64Url spec if any are present from the Base64 conversion
             int stringBuilderCapacity = indexOfEquals != -1 ? indexOfEquals : bytesBase64.Length;
 
             StringBuilder stringBuilder = new StringBuilder(stringBuilderCapacity);
