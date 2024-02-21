@@ -747,6 +747,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey2"]);
             Assert.Null(configuration["TestKey3"]);
 
+            // Make sure MinBackoffDuration has ended
+            Thread.Sleep(100);
+
             // Act
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
             {
