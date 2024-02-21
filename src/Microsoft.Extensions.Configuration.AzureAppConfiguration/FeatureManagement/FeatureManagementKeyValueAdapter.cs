@@ -2,9 +2,12 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             _featureFilterTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
         }
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag;
             try
@@ -197,15 +200,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
-                }
-
-                if (telemetry.Metadata != null)
-                {
-                    foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
+                    if (telemetry.Metadata != null)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
+                        foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
+                        }
                     }
+
+                    string featureFlagId = CalculateFeatureFlagId(setting.Key, setting.Label);
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
+
+                    if (endpoint != null)
+                    {
+                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(!string.IsNullOrWhiteSpace(setting.Label) ? $"?label={setting.Label}" : "")}";
+
+                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
+                    }
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
+
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
                 }
             }
 
@@ -228,6 +244,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool NeedsRefresh()
         {
             return false;
+        }
+
+        private static string CalculateFeatureFlagId(string key, string label)
+        {
+            byte[] featureFlagIdHash;
+
+            // Convert the value consisting of key, newline character, and label to a byte array using UTF8 encoding to hash it using SHA 256
+            using (HashAlgorithm hashAlgorithm = SHA256.Create())
+            {
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{key}\n{(string.IsNullOrWhiteSpace(label) ? null : label)}"));
+            }
+
+            // Convert the hashed byte array to Base64Url
+            return featureFlagIdHash.ToBase64Url();
         }
     }
 }
