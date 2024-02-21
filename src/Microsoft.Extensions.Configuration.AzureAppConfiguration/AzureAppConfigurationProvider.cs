@@ -630,6 +630,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 throw;
             }
+            catch (KeyVaultReferenceException exception)
+            {
+                if (IsFailOverable(exception))
+                {
+                    startupExceptions.Add(exception);
+
+                    return false;
+                }
+
+                throw;
+            }
             catch (AggregateException exception)
             {
                 if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
@@ -980,6 +991,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw;
                     }
                 }
+                catch (KeyVaultReferenceException kvre)
+                {
+                    if (!IsFailOverable(kvre) || !clientEnumerator.MoveNext())
+                    {
+                        backoffAllClients = true;
+
+                        throw;
+                    }
+                }
                 catch (AggregateException ae)
                 {
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
@@ -1064,6 +1084,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return innerException is WebException ||
                    innerException is SocketException ||
                    innerException is IOException;
+        }
+
+        private bool IsFailOverable(KeyVaultReferenceException kvre)
+        {
+            if (kvre.InnerException is RequestFailedException rfe && IsFailOverable(rfe))
+            {
+                return true;
+            }
+            else if (kvre.InnerException is AggregateException ae && IsFailOverable(ae))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
