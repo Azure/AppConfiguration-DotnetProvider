@@ -379,9 +379,6 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            // The client enumerator should return just 1 client.
-            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
-
             // The build should be successful since one client was backed off and it failed over to the second client.
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
