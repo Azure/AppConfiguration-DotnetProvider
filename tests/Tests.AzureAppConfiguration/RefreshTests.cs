@@ -730,7 +730,7 @@ namespace Tests.AzureAppConfiguration
             .AddAzureAppConfiguration(options =>
             {
                 options.Select("TestKey*");
-                options.MinBackoffDuration = TimeSpan.FromMilliseconds(1);
+                options.MinBackoffDuration = TimeSpan.FromTicks(1);
                 options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 options.ConfigureRefresh(refreshOptions =>
                 {
@@ -802,7 +802,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.MinBackoffDuration = TimeSpan.FromMilliseconds(1);
+                    options.MinBackoffDuration = TimeSpan.FromTicks(1);
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label");
                     options.ConfigureRefresh(refreshOptions =>
