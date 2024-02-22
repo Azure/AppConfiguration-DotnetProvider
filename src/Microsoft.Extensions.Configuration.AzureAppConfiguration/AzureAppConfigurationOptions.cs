@@ -35,6 +35,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
+        /// Flag to indicate whether enable replica discovery.
+        /// </summary>
+        public bool ReplicaDiscoveryEnabled { get; set; } = true;
+
+        /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
         internal IEnumerable<string> ConnectionStrings { get; private set; }
@@ -90,6 +95,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <remarks>This property is used only for unit testing.</remarks>
         internal IConfigurationClientManager ClientManager { get; set; }
+
+        /// <summary>
+        /// An optional timespan value to set the minimum backoff duration to a value other than the default.
+        /// </summary>
+        internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
