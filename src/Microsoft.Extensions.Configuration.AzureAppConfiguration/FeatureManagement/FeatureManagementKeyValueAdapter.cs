@@ -44,6 +44,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 //if (featureFlag.Conditions?.ClientFilters == null)
                 if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
                 {
+                    // Add the AlwaysOn filter instead of setting the flag to "true" so feature management doesn't skip evaluating variants and telemetry when present
                     if (featureFlag.Variants != null && featureFlag.Telemetry != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.EnabledFor}:{0}:{FeatureManagementConstants.Name}", FeatureManagementConstants.AlwaysOnFilter));
@@ -89,6 +90,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
             else
             {
+                // Only explicitly set the flag to false if there are no variants to override the enabled state
                 if (featureFlag.Variants == null)
                 {
                     keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, false.ToString()));
