@@ -198,9 +198,6 @@ namespace Tests.AzureAppConfiguration
                         ""enabled"": true,
                         ""conditions"": {
                         ""client_filters"": [
-                            {
-                            ""name"": ""AlwaysOn""
-                            }
                         ]
                         },
                         ""variants"": [
@@ -278,9 +275,6 @@ namespace Tests.AzureAppConfiguration
                         ""enabled"": true,
                         ""conditions"": {
                         ""client_filters"": [
-                            {
-                            ""name"": ""AlwaysOn""
-                            }
                         ]
                         },
                         ""telemetry"": {
@@ -1289,6 +1283,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("AlwaysOn", config["FeatureManagement:VariantsFeature:EnabledFor:0:Name"]);
             Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Variants:0:Name"]);
             Assert.Equal("600px", config["FeatureManagement:VariantsFeature:Variants:0:ConfigurationValue"]);
             Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Variants:1:Name"]);
@@ -1314,6 +1309,27 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:From"]);
             Assert.Equal("100", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:To"]);
             Assert.Equal("13992821", config["FeatureManagement:VariantsFeature:Allocation:Seed"]);
+        }
+
+        [Fact]
+        public void WithStatus()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_featureFlagCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Conditional", config["FeatureManagement:Feature1:Status"]);
         }
 
         [Fact]
