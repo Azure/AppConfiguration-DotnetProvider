@@ -36,5 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string FeatureFlagReference = "FeatureFlagReference";
         public const string Status = "Status";
         public const string AlwaysOnFilter = "AlwaysOn";
+        public const string Conditional = "Conditional";
+        public const string Disabled = "Disabled";
     }
 }
