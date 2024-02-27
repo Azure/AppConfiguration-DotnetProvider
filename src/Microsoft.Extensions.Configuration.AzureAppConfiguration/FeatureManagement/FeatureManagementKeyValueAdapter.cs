@@ -44,9 +44,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 //if (featureFlag.Conditions?.ClientFilters == null)
                 if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
                 {
-                    //
-                    // Always on
-                    keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
+                    if (featureFlag.Variants != null && featureFlag.Variants.Any())
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.EnabledFor}:{0}:{FeatureManagementConstants.Name}", FeatureManagementConstants.AlwaysOnFilter));
+                    }
+                    else
+                    {
+                        //
+                        // Always on
+                        keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
+                    }
                 }
                 else
                 {
@@ -77,10 +84,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             featureFlag.Conditions.RequirementType));
                     }
                 }
+
+                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Status}", "Conditional"));
             }
             else
             {
-                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
+                if (featureFlag.Variants == null || !featureFlag.Variants.Any())
+                {
+                    keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, false.ToString()));
+                }
+
+                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Status}", "Disabled"));
             }
 
             if (featureFlag.Variants != null)

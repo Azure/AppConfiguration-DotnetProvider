@@ -34,5 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string ETag = "ETag";
         public const string FeatureFlagId = "FeatureFlagId";
         public const string FeatureFlagReference = "FeatureFlagReference";
+        public const string Status = "Status";
+        public const string AlwaysOnFilter = "AlwaysOn";
     }
 }
