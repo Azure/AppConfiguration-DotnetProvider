@@ -571,8 +571,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
@@ -614,10 +614,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
@@ -655,7 +655,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
             // label: App1_Label has higher precedence
-            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
         }
 
         [Fact]
@@ -727,10 +727,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
@@ -771,13 +771,13 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Loaded from prefix1 and label1
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
 
             // Loaded from label2
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
-            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
         }
 
         [Fact]
@@ -821,10 +821,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
 
             // update the value of App1_Feature1 feature flag with label1
             featureFlagCollection[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -872,9 +872,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Browser", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
             Assert.Equal("Edge", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
 
             // even though App2_Feature3 feature flag has been added, its value should not be loaded in config because label2 cache has not expired
             Assert.Null(config["FeatureManagement:App2_Feature3"]);
@@ -914,11 +914,11 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
-            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
 
             // update the value of App1_Feature1 feature flag with label1
             featureFlagCollection[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -948,11 +948,11 @@ namespace Tests.AzureAppConfiguration
 
             // The cache expiration time for feature flags was overwritten by second call to UseFeatureFlags.
             // Sleeping for cacheExpiration1 time should not update feature flags.
-            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
-            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
-            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
-            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
-            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
         }
 
         [Fact]
@@ -987,7 +987,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("False", config["FeatureManagement:Feature1"]);
+            Assert.Equal("Disabled", config["FeatureManagement:Feature1:Status"]);
 
             // update the value of Feature1 feature flag with App1_Label
             featureFlagCollection[2] = ConfigurationModelFactory.ConfigurationSetting(
