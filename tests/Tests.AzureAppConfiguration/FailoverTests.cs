@@ -332,5 +332,55 @@ namespace Tests.AzureAppConfiguration
             // Only contains the client that passed while constructing the ConfigurationClientManager
             Assert.Single(clients);
         }
+
+        [Fact]
+        public void FailOverTests_FailOverOnKeyVaultReferenceException()
+        {
+            // Arrange
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+
+            var mockClient1 = new Mock<ConfigurationClient>();
+            mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Throws(new KeyVaultReferenceException("Key vault reference failed.", new RequestFailedException(503, "Request failed.")));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Throws(new KeyVaultReferenceException("Key vault reference failed.", new RequestFailedException(503, "Request failed.")));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Throws(new KeyVaultReferenceException("Key vault reference failed.", new RequestFailedException(503, "Request failed.")));
+            mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
+
+            var mockClient2 = new Mock<ConfigurationClient>();
+            mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+            mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
+
+            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+
+            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ConfigurationClientManager(clientList);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = configClientManager;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // The build should be successful since one client was backed off and it failed over to the second client.
+            Assert.Equal("TestValue1", config["TestKey1"]);
+        }
     }
 }
