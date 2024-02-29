@@ -77,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var endpoint = new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection));
                     return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
                 })
-                .ToList();
+                .ToList().Shuffle();
         }
 
         public ConfigurationClientManager(
