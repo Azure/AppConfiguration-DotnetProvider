@@ -106,7 +106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             _clients = endpoints
                 .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
-                .ToList();
+                .ToList().Shuffle();
         }
 
         /// <summary>
@@ -282,7 +282,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            _dynamicClients = newDynamicClients;
+            _dynamicClients = newDynamicClients.Shuffle();
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }

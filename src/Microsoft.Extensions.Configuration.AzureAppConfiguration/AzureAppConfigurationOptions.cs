@@ -127,6 +127,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
+        /// Flag to indicate whether load balancing is enabled.
+        /// </summary>
+        internal bool LoadBalancingEnabled { get; set; } = false;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()

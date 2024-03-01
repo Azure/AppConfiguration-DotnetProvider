@@ -19,6 +19,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -29,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
+        private int _currentClientIndex = 0;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -991,6 +993,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
+            int clientsLength = clients.Count();
+
+            // If the dynamic clients have changed and the client index is out of range, reset the index to 0
+            if (_currentClientIndex >= clientsLength)
+            {
+                _currentClientIndex = 0;
+            }
+
+            int currentClientIndex = _currentClientIndex;
+
+            if (_options.LoadBalancingEnabled)
+            {
+                clients = clients.Skip(currentClientIndex).Concat(clients.Take(currentClientIndex));
+            }
+
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
@@ -1010,6 +1027,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
+
+                    currentClientIndex++;
+
+                    _currentClientIndex = currentClientIndex;
 
                     return result;
                 }
@@ -1055,10 +1076,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);
+
+                        currentClientIndex = _currentClientIndex;
                     }
                     else
                     {
                         UpdateClientBackoffStatus(previousEndpoint, success);
+
+                        currentClientIndex = (currentClientIndex + 1) % clientsLength;
                     }
                 }
 
