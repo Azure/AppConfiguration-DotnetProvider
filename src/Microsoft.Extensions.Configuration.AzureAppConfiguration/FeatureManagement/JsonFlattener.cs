@@ -32,19 +32,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             switch (element.ValueKind)
             {
                 case JsonValueKind.Object:
-                    foreach (JsonProperty property in element.EnumerateObject())
+                    var enumeratedElement = element.EnumerateObject();
+
+                    if (!enumeratedElement.Any())
                     {
-                        VisitJsonProperty(property);
+                        _data.Add(new KeyValuePair<string, string>(_currentPath, null));
                     }
+                    else
+                    {
+                        foreach (JsonProperty property in enumeratedElement)
+                        {
+                            VisitJsonProperty(property);
+                        }
+                    }
+
                     break;
 
                 case JsonValueKind.Array:
-                    for (int index = 0; index < element.GetArrayLength(); index++)
+                    int elementArrayLength = element.GetArrayLength();
+
+                    if (elementArrayLength == 0)
                     {
-                        EnterContext(index.ToString());
-                        VisitJsonElement(element[index]);
-                        ExitContext();
+                        _data.Add(new KeyValuePair<string, string>(_currentPath, null));
                     }
+                    else
+                    {
+                        for (int index = 0; index < element.GetArrayLength(); index++)
+                        {
+                            EnterContext(index.ToString());
+                            VisitJsonElement(element[index]);
+                            ExitContext();
+                        }
+                    }
+
                     break;
 
                 case JsonValueKind.String:
