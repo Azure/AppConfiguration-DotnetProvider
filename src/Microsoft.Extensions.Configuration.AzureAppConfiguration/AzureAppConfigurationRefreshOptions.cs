@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationRefreshOptions
     {
-        internal TimeSpan CacheExpirationInterval { get; private set; } = RefreshConstants.DefaultCacheExpirationInterval;
+        internal TimeSpan RefreshInterval { get; private set; } = RefreshConstants.DefaultCacheExpirationInterval;
         internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
         
         /// <summary>
@@ -55,6 +55,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key until the cached value for that key has expired.
         /// </summary>
         /// <param name="cacheExpiration">Minimum time that must elapse before the cache is expired.</param>
+        [Obsolete("The SetCacheExpiration method will be deprecated in a future release. Please use the `SetRefreshInterval` method instead. " +
+            "Note that only the name of the method has changed, and the functionality remains the same.")]
         public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpiration)
         {
             if (cacheExpiration < RefreshConstants.MinimumCacheExpirationInterval)
@@ -64,6 +66,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             CacheExpirationInterval = cacheExpiration;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the refresh interval time for the key-values registered for refresh. Default value is 30 seconds. Must be greater than 1 second.
+        /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key until the cached value for that key has expired.
+        /// </summary>
+        /// <param name="refreshInterval">Minimum time that must elapse before the.</param>
+        public AzureAppConfigurationRefreshOptions SetRefreshInterval(TimeSpan refreshInterval)
+        {
+            if (refreshInterval < RefreshConstants.MinimumCacheExpirationInterval)
+            {
+                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumCacheExpirationInterval.TotalMilliseconds));
+            }
+
+            CacheExpirationInterval = refreshInterval;
             return this;
         }
     }
