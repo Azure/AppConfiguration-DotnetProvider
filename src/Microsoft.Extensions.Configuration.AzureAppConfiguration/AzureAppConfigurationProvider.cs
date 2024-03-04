@@ -760,6 +760,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     LabelFilter = LabelFilter.Null
                 };
 
+                var x = client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false);
+
                 await CallWithRequestTracing(async () =>
                 {
                     await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
