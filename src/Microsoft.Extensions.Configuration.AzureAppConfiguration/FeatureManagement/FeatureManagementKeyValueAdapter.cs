@@ -93,9 +93,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.Name}", featureVariant.Name));
 
-                    if (featureVariant.ConfigurationValue != null)
+                    foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(featureVariant.ConfigurationValue))
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationValue}", featureVariant.ConfigurationValue));
+                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationValue}:{kvp.Key}", kvp.Value));
                     }
 
                     if (featureVariant.ConfigurationReference != null)
