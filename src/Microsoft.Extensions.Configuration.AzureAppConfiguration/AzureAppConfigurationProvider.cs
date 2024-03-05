@@ -208,6 +208,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
+                    int clientIndex = 0;
+
                     //
                     // Filter clients based on their backoff status
                     clients = clients.Where(client => 
@@ -221,7 +223,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             _configClientBackoffs[endpoint] = clientBackoffStatus;
                         }
 
-                        return clientBackoffStatus.BackoffEndTime <= utcNow;
+                        bool hasBackoffEnded = clientBackoffStatus.BackoffEndTime <= utcNow;
+
+                        if (!hasBackoffEnded && _currentClientIndex > clientIndex)
+                        {
+                            _currentClientIndex--;
+                        }
+
+                        clientIndex++;
+
+                        return hasBackoffEnded;
                     }
                     );
 
