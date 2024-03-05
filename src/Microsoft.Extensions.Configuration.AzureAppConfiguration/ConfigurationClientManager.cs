@@ -33,6 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly TokenCredential _credential;
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
+        private readonly bool _loadBalancingEnabled;
         private readonly SrvLookupClient _srvLookupClient;
         private readonly string _validDomain;
 
@@ -54,7 +55,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
             ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled)
+            bool replicaDiscoveryEnabled,
+            bool loadBalancingEnabled)
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
@@ -67,6 +69,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+            _loadBalancingEnabled = loadBalancingEnabled;
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -77,14 +80,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var endpoint = new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection));
                     return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
                 })
-                .ToList().Shuffle();
+                .ToList();
         }
 
         public ConfigurationClientManager(
             IEnumerable<Uri> endpoints,
             TokenCredential credential,
             ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled)
+            bool replicaDiscoveryEnabled,
+            bool loadBalancingEnabled)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -100,13 +104,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _credential = credential;
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+            _loadBalancingEnabled = loadBalancingEnabled;
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
             _clients = endpoints
                 .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
-                .ToList().Shuffle();
+                .ToList();
         }
 
         /// <summary>
@@ -139,7 +144,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clients = clients.Concat(_dynamicClients.Select(c => c.Client));
             }
 
-            return clients;
+            if (_loadBalancingEnabled)
+            {
+                return clients.ToList().Shuffle();
+            }
+            else
+            {
+                return clients;
+            }
         }
 
         public void RefreshClients()
@@ -282,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            _dynamicClients = newDynamicClients.Shuffle();
+            _dynamicClients = newDynamicClients;
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }
