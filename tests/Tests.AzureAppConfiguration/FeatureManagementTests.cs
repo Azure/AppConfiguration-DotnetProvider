@@ -188,13 +188,13 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
 
-        private ConfigurationSetting _variantsKv = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature",
+        private ConfigurationSetting _variantsKv1 = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature1",
             value: @"
                     {
-                        ""id"": ""VariantsFeature"",
+                        ""id"": ""VariantsFeature1"",
                         ""description"": """",
-                        ""display_name"": ""Variants Feature"",
+                        ""display_name"": ""Variants Feature 1"",
                         ""enabled"": true,
                         ""conditions"": {
                         ""client_filters"": [
@@ -261,6 +261,39 @@ namespace Tests.AzureAppConfiguration
 	                    }
                     }
                     ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+        private ConfigurationSetting _variantsKv2 = ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature2",
+            value: @"
+                            {
+                                ""id"": ""VariantsFeature2"",
+                                ""description"": """",
+                                ""display_name"": ""Variants Feature 2"",
+                                ""enabled"": false,
+                                ""conditions"": {
+                                ""client_filters"": [
+                                ]
+                                },
+                                ""variants"": [
+		                        {
+			                        ""name"": ""Medium"",
+			                        ""configuration_value"": {
+                                        ""Key1"": ""Value1"",
+                                        ""Key2"": {
+                                            ""InsideKey2"": ""Value2""
+                                        }
+                                    }
+		                        }
+	                            ],
+	                            ""allocation"": {
+		                            ""default_when_disabled"": ""Medium"",
+		                            ""default_when_enabled"": ""Medium""
+	                            }
+                            }
+                            ",
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
@@ -1266,7 +1299,8 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting>()
             {
-                _variantsKv
+                _variantsKv1,
+                _variantsKv2
             };
 
             var mockResponse = new Mock<Response>();
@@ -1283,32 +1317,39 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:VariantsFeature:EnabledFor:0:Name"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Variants:0:Name"]);
-            Assert.Equal("600px", config["FeatureManagement:VariantsFeature:Variants:0:ConfigurationValue"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Variants:1:Name"]);
-            Assert.Equal("ShoppingCart:Small", config["FeatureManagement:VariantsFeature:Variants:1:ConfigurationReference"]);
-            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature:Variants:1:StatusOverride"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:DefaultWhenDisabled"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:DefaultWhenEnabled"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:User:0:Variant"]);
-            Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature:Allocation:User:0:Users:0"]);
-            Assert.Equal("John", config["FeatureManagement:VariantsFeature:Allocation:User:0:Users:1"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:User:1:Variant"]);
-            Assert.Equal("Alice", config["FeatureManagement:VariantsFeature:Allocation:User:1:Users:0"]);
-            Assert.Equal("Bob", config["FeatureManagement:VariantsFeature:Allocation:User:1:Users:1"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:Group:0:Variant"]);
-            Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature:Allocation:Group:0:Groups:0"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Variant"]);
-            Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Groups:0"]);
-            Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature:Allocation:Group:1:Groups:1"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:Variant"]);
-            Assert.Equal("0", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:From"]);
-            Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:0:To"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:Variant"]);
-            Assert.Equal("50", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:From"]);
-            Assert.Equal("100", config["FeatureManagement:VariantsFeature:Allocation:Percentile:1:To"]);
-            Assert.Equal("13992821", config["FeatureManagement:VariantsFeature:Allocation:Seed"]);
+            Assert.Equal("AlwaysOn", config["FeatureManagement:VariantsFeature1:EnabledFor:0:Name"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Variants:0:Name"]);
+            Assert.Equal("600px", config["FeatureManagement:VariantsFeature1:Variants:0:ConfigurationValue"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Variants:1:Name"]);
+            Assert.Equal("ShoppingCart:Small", config["FeatureManagement:VariantsFeature1:Variants:1:ConfigurationReference"]);
+            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature1:Variants:1:StatusOverride"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenDisabled"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenEnabled"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Variant"]);
+            Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:0"]);
+            Assert.Equal("John", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:1"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Variant"]);
+            Assert.Equal("Alice", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:0"]);
+            Assert.Equal("Bob", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:1"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Variant"]);
+            Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Groups:0"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Variant"]);
+            Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:0"]);
+            Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:1"]);
+            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:Variant"]);
+            Assert.Equal("0", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:From"]);
+            Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:To"]);
+            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:Variant"]);
+            Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:From"]);
+            Assert.Equal("100", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:To"]);
+            Assert.Equal("13992821", config["FeatureManagement:VariantsFeature1:Allocation:Seed"]);
+
+            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature2:Status"]);
+            Assert.Equal("Medium", config["FeatureManagement:VariantsFeature2:Variants:0:Name"]);
+            Assert.Equal("Value1", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key1"]);
+            Assert.Equal("Value2", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key2:InsideKey2"]);
+            Assert.Equal("Medium", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenDisabled"]);
+            Assert.Equal("Medium", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenEnabled"]);
         }
 
         [Fact]
