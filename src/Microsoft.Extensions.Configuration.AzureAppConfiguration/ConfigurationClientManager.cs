@@ -33,7 +33,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly TokenCredential _credential;
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
-        private readonly bool _loadBalancingEnabled;
         private readonly SrvLookupClient _srvLookupClient;
         private readonly string _validDomain;
 
@@ -69,7 +68,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
-            _loadBalancingEnabled = loadBalancingEnabled;
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -81,6 +79,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
                 })
                 .ToList();
+
+            if (loadBalancingEnabled)
+            {
+                _clients = _clients.ToList().Shuffle();
+            }
         }
 
         public ConfigurationClientManager(
@@ -104,7 +107,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _credential = credential;
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
-            _loadBalancingEnabled = loadBalancingEnabled;
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -112,6 +114,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _clients = endpoints
                 .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
                 .ToList();
+
+            if (loadBalancingEnabled)
+            {
+                _clients = _clients.ToList().Shuffle();
+            }
         }
 
         /// <summary>
@@ -142,11 +149,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_dynamicClients != null && _dynamicClients.Any())
             {
                 clients = clients.Concat(_dynamicClients.Select(c => c.Client));
-            }
-
-            if (_loadBalancingEnabled)
-            {
-                return clients.ToList().Shuffle();
             }
 
             return clients;
