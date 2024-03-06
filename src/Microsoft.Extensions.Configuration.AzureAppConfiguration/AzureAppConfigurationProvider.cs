@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
-        private int _currentClientIndex = 0;
+        private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -208,8 +208,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    int clientIndex = 0;
-
                     //
                     // Filter clients based on their backoff status
                     clients = clients.Where(client => 
@@ -223,16 +221,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             _configClientBackoffs[endpoint] = clientBackoffStatus;
                         }
 
-                        bool hasBackoffEnded = clientBackoffStatus.BackoffEndTime <= utcNow;
-
-                        if (!hasBackoffEnded && _currentClientIndex > clientIndex)
-                        {
-                            _currentClientIndex--;
-                        }
-
-                        clientIndex++;
-
-                        return hasBackoffEnded;
+                        return clientBackoffStatus.BackoffEndTime <= utcNow;
                     }
                     );
 
@@ -1004,19 +993,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            int clientsLength = clients.Count();
-
-            // If the dynamic clients have changed and the client index is out of range, reset the index to 0
-            if (_currentClientIndex >= clientsLength)
-            {
-                _currentClientIndex = 0;
-            }
-
-            int currentClientIndex = _currentClientIndex;
-
             if (_options.LoadBalancingEnabled)
             {
-                clients = clients.Skip(currentClientIndex).Concat(clients.Take(currentClientIndex));
+                if (_lastSuccessfulEndpoint != null)
+                {
+                    int clientIndex = 0;
+
+                    foreach (ConfigurationClient client in clients)
+                    {
+                        if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
+                        {
+                            clientIndex++;
+
+                            break;
+                        }
+
+                        clientIndex++;
+                    }
+
+                    if (clientIndex < clients.Count())
+                    {
+                        clients = clients.Skip(clientIndex).Concat(clients.Take(clientIndex));
+                    }
+                }
             }
 
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
@@ -1039,9 +1038,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
-                    currentClientIndex++;
-
-                    _currentClientIndex = currentClientIndex;
+                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient); ;
 
                     return result;
                 }
@@ -1087,14 +1084,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             currentClient = clientEnumerator.Current;
                         }
                         while (currentClient != null);
-
-                        currentClientIndex = _currentClientIndex;
                     }
                     else
                     {
                         UpdateClientBackoffStatus(previousEndpoint, success);
-
-                        currentClientIndex = (currentClientIndex + 1) % clientsLength;
                     }
                 }
 
