@@ -279,18 +279,33 @@ namespace Tests.AzureAppConfiguration
                                 },
                                 ""variants"": [
 		                        {
-			                        ""name"": ""Medium"",
+			                        ""name"": ""ObjectVariant"",
 			                        ""configuration_value"": {
                                         ""Key1"": ""Value1"",
                                         ""Key2"": {
                                             ""InsideKey2"": ""Value2""
                                         }
                                     }
+		                        },
+		                        {
+			                        ""name"": ""NumberVariant"",
+			                        ""configuration_value"": 100
+		                        },
+		                        {
+			                        ""name"": ""NullVariant"",
+			                        ""configuration_value"": null
+		                        },
+		                        {
+			                        ""name"": ""MissingValueVariant""
+		                        },
+		                        {
+			                        ""name"": ""BooleanVariant"",
+			                        ""configuration_value"": true
 		                        }
 	                            ],
 	                            ""allocation"": {
-		                            ""default_when_disabled"": ""Medium"",
-		                            ""default_when_enabled"": ""Medium""
+		                            ""default_when_disabled"": ""ObjectVariant"",
+		                            ""default_when_enabled"": ""ObjectVariant""
 	                            }
                             }
                             ",
@@ -1345,11 +1360,29 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("13992821", config["FeatureManagement:VariantsFeature1:Allocation:Seed"]);
 
             Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature2:Status"]);
-            Assert.Equal("Medium", config["FeatureManagement:VariantsFeature2:Variants:0:Name"]);
+            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Variants:0:Name"]);
             Assert.Equal("Value1", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key1"]);
             Assert.Equal("Value2", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key2:InsideKey2"]);
-            Assert.Equal("Medium", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenDisabled"]);
-            Assert.Equal("Medium", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenEnabled"]);
+            Assert.Equal("NumberVariant", config["FeatureManagement:VariantsFeature2:Variants:1:Name"]);
+            Assert.Equal("100", config["FeatureManagement:VariantsFeature2:Variants:1:ConfigurationValue"]);
+            Assert.Equal("NullVariant", config["FeatureManagement:VariantsFeature2:Variants:2:Name"]);
+            Assert.Null(config["FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"]);
+            Assert.True(config
+                .GetSection("FeatureManagement:VariantsFeature2:Variants:2")
+                .AsEnumerable()
+                .ToDictionary(x => x.Key, x => x.Value)
+                .ContainsKey("FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"));
+            Assert.Equal("MissingValueVariant", config["FeatureManagement:VariantsFeature2:Variants:3:Name"]);
+            Assert.Null(config["FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"]);
+            Assert.False(config
+                .GetSection("FeatureManagement:VariantsFeature2:Variants:3")
+                .AsEnumerable()
+                .ToDictionary(x => x.Key, x => x.Value)
+                .ContainsKey("FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"));
+            Assert.Equal("BooleanVariant", config["FeatureManagement:VariantsFeature2:Variants:4:Name"]);
+            Assert.Equal("True", config["FeatureManagement:VariantsFeature2:Variants:4:ConfigurationValue"]);
+            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenDisabled"]);
+            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenEnabled"]);
         }
 
         [Fact]
