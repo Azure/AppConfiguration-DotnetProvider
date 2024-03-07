@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
         private bool _isDisposed = false;
-        private Random _loadBalancingRandom;
+        private int _loadBalancingRandomSeed;
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (loadBalancingEnabled)
             {
-                _loadBalancingRandom = new Random();
+                _loadBalancingRandomSeed = new Random().Next();
             }
 
             _validDomain = GetValidDomain(_endpoint);
@@ -114,7 +114,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (loadBalancingEnabled)
             {
-                _loadBalancingRandom = new Random();
+                _loadBalancingRandomSeed = new Random().Next();
             }
 
             _validDomain = GetValidDomain(_endpoint);
@@ -157,7 +157,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_loadBalancingEnabled)
             {
-                clients = clients.ToList().Shuffle(_loadBalancingRandom);
+                clients = clients.ToList().Shuffle(_loadBalancingRandomSeed);
             }
 
             return clients;
@@ -284,7 +284,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Honor with the DNS based service discovery protocol, but shuffle the results first to ensure hosts can be picked randomly,
             // Srv lookup does retrieve trailing dot in the host name, just trim it.
             IEnumerable<string> OrderedHosts = srvTargetHosts.Any() ?
-                srvTargetHosts.ToList().Shuffle().SortSrvRecords().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
+                srvTargetHosts.ToList().Shuffle(new Random().Next()).SortSrvRecords().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
                 Enumerable.Empty<string>();
 
             foreach (string host in OrderedHosts)
@@ -307,7 +307,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_loadBalancingEnabled)
             {
-                _loadBalancingRandom = new Random();
+                _loadBalancingRandomSeed = new Random().Next();
             }
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
