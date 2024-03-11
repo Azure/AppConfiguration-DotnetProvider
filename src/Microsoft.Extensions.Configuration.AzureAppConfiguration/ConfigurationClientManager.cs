@@ -42,7 +42,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
         private bool _isDisposed = false;
-        private int _loadBalancingRandomSeed;
 
         private static readonly TimeSpan FallbackClientRefreshExpireInterval = TimeSpan.FromHours(1);
         private static readonly TimeSpan MinimalClientRefreshInterval = TimeSpan.FromSeconds(30);
@@ -150,14 +149,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
 
-            if (_dynamicClients != null && _dynamicClients.Any())
-            {
-                clients = clients.Concat(_dynamicClients.Select(c => c.Client));
-            }
-
             if (_loadBalancingEnabled)
             {
-                clients = clients.ToList().Shuffle(_loadBalancingRandomSeed);
+                if (_dynamicClients != null && _dynamicClients.Any())
+                {
+                    clients = _dynamicClients.Select(c => c.Client);
+                }
+            }
+            else
+            {
+                clients = _clients.Select(c => c.Client);
+
+                if (_dynamicClients != null && _dynamicClients.Any())
+                {
+                    clients = clients.Concat(_dynamicClients.Select(c => c.Client));
+                }
             }
 
             return clients;
@@ -284,13 +290,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Honor with the DNS based service discovery protocol, but shuffle the results first to ensure hosts can be picked randomly,
             // Srv lookup does retrieve trailing dot in the host name, just trim it.
             IEnumerable<string> OrderedHosts = srvTargetHosts.Any() ?
-                srvTargetHosts.ToList().Shuffle(new Random().Next()).SortSrvRecords().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
+                srvTargetHosts.ToList().Shuffle().SortSrvRecords().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
                 Enumerable.Empty<string>();
 
             foreach (string host in OrderedHosts)
             {
-                if (!string.IsNullOrEmpty(host) &&
-                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
+                if (!string.IsNullOrEmpty(host) && (_loadBalancingEnabled || 
+                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase))) &&
                     IsValidEndpoint(host))
                 {
                     var targetEndpoint = new Uri($"https://{host}");
@@ -304,11 +310,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _dynamicClients = newDynamicClients;
-
-            if (_loadBalancingEnabled)
-            {
-                _loadBalancingRandomSeed = new Random().Next();
-            }
 
             _lastFallbackClientRefresh = DateTime.UtcNow;
         }

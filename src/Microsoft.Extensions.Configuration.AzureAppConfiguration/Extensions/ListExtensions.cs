@@ -10,9 +10,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ListExtensions
     {
-        public static List<T> Shuffle<T>(this List<T> values, int seed)
+        public static List<T> Shuffle<T>(this List<T> values)
         {
-            Random rdm = new Random(seed);
+            Random rdm = new Random();
 
             int count = values.Count;
 
