@@ -71,11 +71,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
             _loadBalancingEnabled = loadBalancingEnabled;
 
-            if (loadBalancingEnabled)
-            {
-                _loadBalancingRandomSeed = new Random().Next();
-            }
-
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
@@ -111,11 +106,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
             _loadBalancingEnabled = loadBalancingEnabled;
 
-            if (loadBalancingEnabled)
-            {
-                _loadBalancingRandomSeed = new Random().Next();
-            }
-
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
@@ -147,23 +137,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
-            IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
+            IEnumerable<ConfigurationClient> clients = new List<ConfigurationClient>();
 
-            if (_loadBalancingEnabled)
-            {
-                if (_dynamicClients != null && _dynamicClients.Any())
-                {
-                    clients = _dynamicClients.Select(c => c.Client);
-                }
-            }
-            else
+            if (!_loadBalancingEnabled)
             {
                 clients = _clients.Select(c => c.Client);
+            }
 
-                if (_dynamicClients != null && _dynamicClients.Any())
-                {
-                    clients = clients.Concat(_dynamicClients.Select(c => c.Client));
-                }
+            if (_dynamicClients != null && _dynamicClients.Any())
+            {
+                clients = clients.Concat(_dynamicClients.Select(c => c.Client));
             }
 
             return clients;
