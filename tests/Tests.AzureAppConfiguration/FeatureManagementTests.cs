@@ -1366,7 +1366,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("NumberVariant", config["FeatureManagement:VariantsFeature2:Variants:1:Name"]);
             Assert.Equal("100", config["FeatureManagement:VariantsFeature2:Variants:1:ConfigurationValue"]);
             Assert.Equal("NullVariant", config["FeatureManagement:VariantsFeature2:Variants:2:Name"]);
-            Assert.Null(config["FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"]);
+            Assert.Equal("", config["FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"]);
             Assert.True(config
                 .GetSection("FeatureManagement:VariantsFeature2:Variants:2")
                 .AsEnumerable()
