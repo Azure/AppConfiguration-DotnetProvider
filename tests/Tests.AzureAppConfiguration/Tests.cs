@@ -11,6 +11,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Xunit;
 
@@ -257,7 +258,7 @@ namespace Tests.AzureAppConfiguration
 
             MockRequest request = mockTransport.SingleRequest;
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
-            Assert.Matches(userAgentRegex, userAgentHeader);
+            Assert.True(Regex.IsMatch(userAgentRegex, userAgentHeader), $"The user agent header '{userAgentHeader}' does not match the regex pattern '{userAgentRegex}'");
         }
 
         [Fact]
