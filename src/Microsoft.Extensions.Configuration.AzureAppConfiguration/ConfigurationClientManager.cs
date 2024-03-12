@@ -139,7 +139,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IEnumerable<ConfigurationClient> clients = new List<ConfigurationClient>();
 
-            if (!_loadBalancingEnabled)
+            if (!_loadBalancingEnabled || _dynamicClients == null || !_dynamicClients.Any())
             {
                 clients = _clients.Select(c => c.Client);
             }
