@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
-        private readonly TimeSpan MinCacheExpirationInterval;
+        private readonly TimeSpan MinRefreshInterval;
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
         private DateTimeOffset InitializationCacheExpires = default;
@@ -111,11 +111,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (watchers.Any())
             {
-                MinCacheExpirationInterval = watchers.Min(w => w.CacheExpirationInterval);
+                MinRefreshInterval = watchers.Min(w => w.RefreshInterval);
             }
             else
             {
-                MinCacheExpirationInterval = RefreshConstants.DefaultCacheExpirationInterval;
+                MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
             }
 
             // Enable request tracing if not opt-out
@@ -237,7 +237,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (InitializationCacheExpires < utcNow)
                         {
-                            InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
+                            InitializationCacheExpires = utcNow.Add(MinRefreshInterval);
 
                             await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                         }
@@ -982,8 +982,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher)
         {
-            TimeSpan cacheExpirationTime = changeWatcher.CacheExpirationInterval;
-            changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
+            changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(changeWatcher.RefreshInterval);
         }
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
