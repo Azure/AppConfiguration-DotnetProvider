@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationRefreshOptions
     {
-        internal TimeSpan RefreshInterval { get; private set; } = RefreshConstants.DefaultCacheExpirationInterval;
+        internal TimeSpan RefreshInterval { get; private set; } = RefreshConstants.DefaultRefreshInterval;
         internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
         
         /// <summary>
@@ -59,14 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             "Note that only the name of the method has changed, and the functionality remains the same.")]
         public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpiration)
         {
-            if (cacheExpiration < RefreshConstants.MinimumCacheExpirationInterval)
-            {
-                throw new ArgumentOutOfRangeException(nameof(cacheExpiration), cacheExpiration.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumCacheExpirationInterval.TotalMilliseconds));
-            }
-
-            CacheExpirationInterval = cacheExpiration;
-            return this;
+            return SetRefreshInterval(cacheExpiration);
         }
 
         /// <summary>
@@ -76,13 +69,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="refreshInterval">Minimum time that must elapse before the.</param>
         public AzureAppConfigurationRefreshOptions SetRefreshInterval(TimeSpan refreshInterval)
         {
-            if (refreshInterval < RefreshConstants.MinimumCacheExpirationInterval)
+            if (refreshInterval < RefreshConstants.MinimumRefreshInterval)
             {
                 throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumCacheExpirationInterval.TotalMilliseconds));
+                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumRefreshInterval.TotalMilliseconds));
             }
 
-            CacheExpirationInterval = refreshInterval;
+            RefreshInterval = refreshInterval;
             return this;
         }
     }

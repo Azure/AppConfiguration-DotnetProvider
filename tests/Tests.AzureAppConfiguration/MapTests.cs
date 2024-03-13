@@ -48,7 +48,7 @@ namespace Tests.AzureAppConfiguration
         ConfigurationSetting FirstKeyValue => _kvCollection.First();
         ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
 
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         string _certValue = "Certificate Value from KeyVault";
         string _secretValue = "SecretValue from KeyVault";
@@ -144,7 +144,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     options.Map((setting) =>
                     {
@@ -175,7 +175,7 @@ namespace Tests.AzureAppConfiguration
 
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1 mapped first", config["TestKey1"]);
@@ -197,7 +197,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     options.Map((setting) =>
                     {
@@ -225,7 +225,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
             _kvCollection.Last().Value = "newValue2";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
@@ -247,7 +247,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     options.Map((setting) =>
                     {
@@ -273,7 +273,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
             _kvCollection.Last().Value = "newValue2";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1 changed", config["TestKey1"]);
@@ -295,7 +295,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     options.Map((setting) =>
                     {
@@ -321,7 +321,7 @@ namespace Tests.AzureAppConfiguration
 
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("TestValue2 changed", config["TestKey2"]);
@@ -343,7 +343,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     options.Map((setting) =>
                     {
@@ -366,7 +366,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("mappedValue1", config["TestKey1"]);
@@ -479,7 +479,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     options.Map((setting) =>
                     {
@@ -507,7 +507,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
             _kvCollection.Last().Value = "newValue2";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);

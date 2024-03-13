@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
-        public TimeSpan CacheExpirationInterval { get; set; } = RefreshConstants.DefaultFeatureFlagsCacheExpirationInterval;
+        public TimeSpan RefreshInterval { get; set; } = RefreshConstants.DefaultFeatureFlagsRefreshInterval;
 
         /// <summary>
         /// Specify what feature flags to include in the configuration provider.

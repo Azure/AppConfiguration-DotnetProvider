@@ -185,7 +185,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
 
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         [Fact]
         public void UsesFeatureFlags()
@@ -232,12 +232,11 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(featureFlags));
 
             IConfigurationRefresher refresher = null;
-            var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
+                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
 
                     refresher = options.GetRefresher();
                 })
@@ -281,7 +280,7 @@ namespace Tests.AzureAppConfiguration
             featureFlags.Add(_kv2);
 
             // Sleep to let the cache expire
-            Thread.Sleep(cacheExpirationTimeSpan);
+            Thread.Sleep(RefreshInterval);
             refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -307,7 +306,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(10));
+                    options.UseFeatureFlags(o => o.RefreshInterval = TimeSpan.FromSeconds(10));
 
                     refresher = options.GetRefresher();
                 })
@@ -422,19 +421,18 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             IConfigurationRefresher refresher = null;
-            var cacheExpirationTimeSpan = TimeSpan.FromSeconds(1);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationTimeSpan);
+                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
 
                     refresher = options.GetRefresher();
                 })
                 .Build();
 
             // Sleep to let the cache expire
-            Thread.Sleep(cacheExpirationTimeSpan);
+            Thread.Sleep(RefreshInterval);
 
             refresher.TryRefreshAsync().Wait();
             mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
@@ -447,7 +445,6 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var featureFlagPrefix = "App1";
             var labelFilter = "App1_Label";
-            var cacheExpiration = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_featureFlagCollection.Where(s => s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + featureFlagPrefix) && s.Label == labelFilter).ToList()));
@@ -460,7 +457,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.RefreshInterval = RefreshInterval;
                         ff.Select(featureFlagPrefix + "*", labelFilter);
                     });
                 })
@@ -703,12 +700,12 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration1;
+                        ff.RefreshInterval = cacheExpiration1;
                         ff.Select(prefix1 + "*", label1);
                     });
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration2;
+                        ff.RefreshInterval = cacheExpiration2;
                         ff.Select(prefix2 + "*", label2);
                     });
 
@@ -796,13 +793,13 @@ namespace Tests.AzureAppConfiguration
                     {
                         ff.Select("*", "App1_Label");
                         ff.Select("*", "App2_Label");
-                        ff.CacheExpirationInterval = cacheExpiration1;
+                        ff.RefreshInterval = cacheExpiration1;
                     });
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select("*", "App1_Label");
                         ff.Select("*", "App2_Label");
-                        ff.CacheExpirationInterval = cacheExpiration2;
+                        ff.RefreshInterval = cacheExpiration2;
                     });
 
                     refresher = options.GetRefresher();
@@ -857,7 +854,6 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var prefix1 = "Feature1";
             var label1 = "App1_Label";
-            var cacheExpiration = TimeSpan.FromSeconds(1);
             IConfigurationRefresher refresher = null;
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
 
@@ -874,7 +870,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.RefreshInterval = RefreshInterval;
                         ff.Select(prefix1, label1);
                     });
 
@@ -908,7 +904,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             // Sleep to let the cache for feature flag with label1 expire
-            Thread.Sleep(cacheExpiration);
+            Thread.Sleep(RefreshInterval);
             refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
@@ -948,7 +944,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
                     refresher = options.GetRefresher();
                 })
                 .Build();
@@ -976,14 +972,14 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
             Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
 
             featureFlags.RemoveAt(0);
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
@@ -1024,11 +1020,11 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
                     refresher = options.GetRefresher();
                 })
@@ -1037,7 +1033,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
@@ -1092,9 +1088,9 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = CacheExpirationTime);
+                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
                     options.Map((setting) =>
                     {
                         if (setting.ContentType == FeatureManagementConstants.ContentType + ";charset=utf-8")
@@ -1149,7 +1145,7 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);

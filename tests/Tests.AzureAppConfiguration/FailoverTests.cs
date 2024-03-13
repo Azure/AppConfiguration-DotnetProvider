@@ -68,7 +68,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     options.ReplicaDiscoveryEnabled = false;
@@ -133,7 +133,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -193,7 +193,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -258,7 +258,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     refresher = options.GetRefresher();
                 })
@@ -372,7 +372,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
