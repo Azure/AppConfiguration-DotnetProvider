@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                                .ConfigureRefresh(refresh =>
                                {
                                    refresh.Register("Settings:BackgroundColor")
-                                          .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                                          .SetRefreshInterval(TimeSpan.FromSeconds(10));
                                });
                     });
                 })
