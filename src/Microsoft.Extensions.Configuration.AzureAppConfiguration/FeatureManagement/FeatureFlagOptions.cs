@@ -14,6 +14,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// </summary>
     public class FeatureFlagOptions
     {
+        private TimeSpan _refreshInterval = RefreshConstants.DefaultFeatureFlagsRefreshInterval;
+
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
@@ -22,7 +24,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The time after which feature flags can be refreshed.  Must be greater than or equal to 1 second.
         /// </summary>
-        internal TimeSpan RefreshInterval { get; set; } = RefreshConstants.DefaultFeatureFlagsRefreshInterval;
+        internal TimeSpan RefreshInterval 
+        {
+            get { return _refreshInterval; }
+            set { _refreshInterval = value; } 
+        }
 
         /// <summary>
         /// The label that feature flags will be selected from.
@@ -34,7 +40,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// </summary>
         [Obsolete("The CacheExpirationInterval property will be deprecated in a future release. Please use the new `SetFeatureFlagRefreshInterval` method instead. " +
             "Note that the usage has changed, but the functionality remains the same.")]
-        public TimeSpan CacheExpirationInterval { get; set; } = RefreshConstants.DefaultFeatureFlagsRefreshInterval;
+        public TimeSpan CacheExpirationInterval
+        {
+            get { return _refreshInterval; }
+            set { _refreshInterval = value; }
+        }
 
         /// <summary>
         /// Sets the time after which feature flags can be refreshed.
