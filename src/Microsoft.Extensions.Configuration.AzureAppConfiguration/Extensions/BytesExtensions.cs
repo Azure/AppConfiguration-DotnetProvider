@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             int indexOfEquals = bytesBase64.IndexOf("=");
 
-            // Remove all instances of "=" at the end of the string that were added as padding
+            // Skip the optional padding of '=' characters based on the Base64Url spec if any are present from the Base64 conversion
             int stringBuilderCapacity = indexOfEquals != -1 ? indexOfEquals : bytesBase64.Length;
 
             StringBuilder stringBuilder = new StringBuilder(stringBuilderCapacity);
