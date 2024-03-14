@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Sets the refresh interval time for the key-values registered for refresh. Default value is 30 seconds. Must be greater than 1 second.
+        /// Sets the minimum time interval between consecutive refresh operations for the registered key-values. Default value is 30 seconds. Must be greater than 1 second.
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key unless the refresh interval has elapsed since the key was last refreshed.
         /// </summary>
         /// <param name="refreshInterval">Minimum time that must elapse between each refresh for a specific key.</param>

@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// </summary>
     public class FeatureFlagOptions
     {
-        private TimeSpan _refreshInterval = RefreshConstants.DefaultFeatureFlagsRefreshInterval;
+        private TimeSpan _refreshInterval = RefreshConstants.DefaultFeatureFlagRefreshInterval;
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -50,9 +50,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// Sets the time after which feature flags can be refreshed.
         /// </summary>
         /// <param name="refreshInterval">
-        /// The minimum time after which feature flags can be refreshed. Must be greater than or equal to 1 second.
+        /// Sets the minimum time interval between consecutive refresh operations for feature flags. Default value is 30 seconds. Must be greater than or equal to 1 second.
         /// </param>
-        public FeatureFlagOptions SetFeatureFlagRefreshInterval(TimeSpan refreshInterval)
+        public FeatureFlagOptions SetRefreshInterval(TimeSpan refreshInterval)
         {
             RefreshInterval = refreshInterval;
 
