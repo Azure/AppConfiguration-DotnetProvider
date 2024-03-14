@@ -389,7 +389,78 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
+            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
+            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
+            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
+
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                value: @"
+                        {
+                          ""id"": ""Beta"",
+                          ""description"": ""The new beta version of our web site."",
+                          ""display_name"": ""Beta Feature"",
+                          ""enabled"": true,
+                          ""conditions"": {
+                            ""client_filters"": [
+                              {
+                                ""name"": ""Browser"",
+                                ""parameters"": {
+                                  ""AllowedBrowsers"": [ ""Chrome"", ""Edge"" ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+
+            featureFlags.Add(_kv2);
+
+            // Sleep to let the refresh interval elapse
+            Thread.Sleep(RefreshInterval);
+            refresher.RefreshAsync().Wait();
+
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+        }
+
+        [Fact]
+        public void WatchesFeatureFlagsUsingCacheExpirationInterval()
+        {
+            var featureFlags = new List<ConfigurationSetting> { _kv };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            var cacheExpirationInterval = TimeSpan.FromSeconds(1);
+
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationInterval);
 
                     refresher = options.GetRefresher();
                 })
@@ -433,7 +504,7 @@ namespace Tests.AzureAppConfiguration
             featureFlags.Add(_kv2);
 
             // Sleep to let the cache expire
-            Thread.Sleep(RefreshInterval);
+            Thread.Sleep(cacheExpirationInterval);
             refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
@@ -442,9 +513,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
         }
 
-
         [Fact]
-        public void SkipRefreshIfCacheNotExpired()
+        public void SkipRefreshIfRefreshIntervalHasNotElapsed()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -459,7 +529,74 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.RefreshInterval = TimeSpan.FromSeconds(10));
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(TimeSpan.FromSeconds(10)));
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
+            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
+            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
+            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
+            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
+
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                value: @"
+                        {
+                          ""id"": ""Beta"",
+                          ""description"": ""The new beta version of our web site."",
+                          ""display_name"": ""Beta Feature"",
+                          ""enabled"": true,
+                          ""conditions"": {
+                            ""client_filters"": [
+                              {
+                                ""name"": ""Browser"",
+                                ""parameters"": {
+                                  ""AllowedBrowsers"": [ ""Chrome"", ""Edge"" ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+
+            featureFlags.Add(_kv2);
+
+            refresher.RefreshAsync().Wait();
+
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Null(config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+        }
+
+        [Fact]
+        public void SkipRefreshIfCacheExpirationIntervalHasNotElapsed()
+        {
+            var featureFlags = new List<ConfigurationSetting> { _kv };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
+
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(10));
 
                     refresher = options.GetRefresher();
                 })
@@ -578,13 +715,13 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
 
                     refresher = options.GetRefresher();
                 })
                 .Build();
 
-            // Sleep to let the cache expire
+            // Sleep to wait for refresh interval to elapse
             Thread.Sleep(RefreshInterval);
 
             refresher.TryRefreshAsync().Wait();
@@ -610,7 +747,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.RefreshInterval = RefreshInterval;
+                        ff.SetRefreshInterval(RefreshInterval);
                         ff.Select(featureFlagPrefix + "*", labelFilter);
                     });
                 })
@@ -826,7 +963,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
+        public void DifferentRefreshIntervalsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -834,8 +971,8 @@ namespace Tests.AzureAppConfiguration
             var prefix2 = "App2";
             var label1 = "App1_Label";
             var label2 = "App2_Label";
-            var cacheExpiration1 = TimeSpan.FromSeconds(1);
-            var cacheExpiration2 = TimeSpan.FromSeconds(60);
+            var refreshInterval1 = TimeSpan.FromSeconds(1);
+            var refreshInterval2 = TimeSpan.FromSeconds(60);
             IConfigurationRefresher refresher = null;
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
 
@@ -853,12 +990,12 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.RefreshInterval = cacheExpiration1;
+                        ff.SetRefreshInterval(refreshInterval1);
                         ff.Select(prefix1 + "*", label1);
                     });
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.RefreshInterval = cacheExpiration2;
+                        ff.SetRefreshInterval(refreshInterval2);
                         ff.Select(prefix2 + "*", label2);
                     });
 
@@ -910,8 +1047,8 @@ namespace Tests.AzureAppConfiguration
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f")));
 
-            // Sleep to let the cache for feature flag with label1 expire
-            Thread.Sleep(cacheExpiration1);
+            // Sleep to let the refresh interval for feature flag with label1 elapse
+            Thread.Sleep(refreshInterval1);
             refresher.RefreshAsync().Wait();
 
             Assert.Equal("Browser", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
@@ -921,17 +1058,17 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
             Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
 
-            // even though App2_Feature3 feature flag has been added, its value should not be loaded in config because label2 cache has not expired
+            // even though App2_Feature3 feature flag has been added, its value should not be loaded in config because label2 refresh interval has not elapsed
             Assert.Null(config["FeatureManagement:App2_Feature3"]);
         }
 
         [Fact]
-        public void OverwrittenCacheExpirationForSameFeatureFlagRegistrations()
+        public void OverwrittenRefreshIntervalForSameFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var cacheExpiration1 = TimeSpan.FromSeconds(1);
-            var cacheExpiration2 = TimeSpan.FromSeconds(60);
+            var refreshInterval1 = TimeSpan.FromSeconds(1);
+            var refreshInterval2 = TimeSpan.FromSeconds(60);
             IConfigurationRefresher refresher = null;
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
 
@@ -946,13 +1083,13 @@ namespace Tests.AzureAppConfiguration
                     {
                         ff.Select("*", "App1_Label");
                         ff.Select("*", "App2_Label");
-                        ff.RefreshInterval = cacheExpiration1;
+                        ff.SetRefreshInterval(refreshInterval1);
                     });
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select("*", "App1_Label");
                         ff.Select("*", "App2_Label");
-                        ff.RefreshInterval = cacheExpiration2;
+                        ff.SetRefreshInterval(refreshInterval2);
                     });
 
                     refresher = options.GetRefresher();
@@ -988,11 +1125,11 @@ namespace Tests.AzureAppConfiguration
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
-            Thread.Sleep(cacheExpiration1);
+            Thread.Sleep(refreshInterval1);
             refresher.RefreshAsync().Wait();
 
-            // The cache expiration time for feature flags was overwritten by second call to UseFeatureFlags.
-            // Sleeping for cacheExpiration1 time should not update feature flags.
+            // The refresh interval time for feature flags was overwritten by second call to UseFeatureFlags.
+            // Sleeping for refreshInterval1 time should not update feature flags.
             Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
             Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
@@ -1023,7 +1160,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.RefreshInterval = RefreshInterval;
+                        ff.SetRefreshInterval(RefreshInterval);
                         ff.Select(prefix1, label1);
                     });
 
@@ -1056,7 +1193,7 @@ namespace Tests.AzureAppConfiguration
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
-            // Sleep to let the cache for feature flag with label1 expire
+            // Sleep to let the refresh interval for feature flag with label1 elapse
             Thread.Sleep(RefreshInterval);
             refresher.RefreshAsync().Wait();
 
@@ -1097,7 +1234,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
                     refresher = options.GetRefresher();
                 })
                 .Build();
@@ -1173,7 +1310,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
@@ -1243,7 +1380,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label", true)
                             .SetRefreshInterval(RefreshInterval);
                     });
-                    options.UseFeatureFlags(o => o.RefreshInterval = RefreshInterval);
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
                     options.Map((setting) =>
                     {
                         if (setting.ContentType == FeatureManagementConstants.ContentType + ";charset=utf-8")

@@ -215,10 +215,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
 
-            if (options.RefreshInterval < RefreshConstants.MinimumFeatureFlagsRefreshInterval)
+            if (options.RefreshInterval < RefreshConstants.MinimumFeatureFlagRefreshInterval)
             {
                 throw new ArgumentOutOfRangeException(nameof(options.RefreshInterval), options.RefreshInterval.TotalMilliseconds,
-                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumFeatureFlagsRefreshInterval.TotalMilliseconds));
+                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumFeatureFlagRefreshInterval.TotalMilliseconds));
             }
 
             if (options.FeatureFlagSelectors.Count() != 0 && options.Label != null)

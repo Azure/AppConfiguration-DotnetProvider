@@ -29,9 +29,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public TimeSpan RefreshInterval { get; set; }
 
         /// <summary>
-        /// The cache expiration time for the key-value.
+        /// The next time when this key-value can be refreshed.
         /// </summary>
-        public DateTimeOffset CacheExpires { get; set; }
+        public DateTimeOffset NextRefreshTime { get; set; }
 
         public override bool Equals(object obj)
         {
