@@ -207,7 +207,7 @@ namespace Tests.AzureAppConfiguration
 					options.ConfigureRefresh(refreshOptions =>
 					{
 						refreshOptions.Register("TestKey1", "label")
-							.SetCacheExpiration(TimeSpan.FromDays(30));
+							.SetRefreshInterval(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
@@ -243,7 +243,7 @@ namespace Tests.AzureAppConfiguration
 					options.ConfigureRefresh(refreshOptions =>
 					{
 						refreshOptions.Register("TestKey1", "label")
-							.SetCacheExpiration(TimeSpan.FromDays(30));
+							.SetRefreshInterval(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
@@ -280,7 +280,7 @@ namespace Tests.AzureAppConfiguration
 					options.ConfigureRefresh(refreshOptions =>
 					{
 						refreshOptions.Register("TestKey1", "label")
-							.SetCacheExpiration(TimeSpan.FromDays(30));
+							.SetRefreshInterval(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
