@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
@@ -11,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string Name { get; set; }
 
         [JsonPropertyName("configuration_value")]
-        public string ConfigurationValue { get; set; }
+        public JsonElement ConfigurationValue { get; set; }
 
         [JsonPropertyName("configuration_reference")]
         public string ConfigurationReference { get; set; }
