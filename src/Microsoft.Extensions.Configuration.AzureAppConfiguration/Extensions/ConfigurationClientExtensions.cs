@@ -4,6 +4,7 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             IEnumerable<ConfigurationSetting> keyValues,
             GetKeyValueChangeCollectionOptions options,
             StringBuilder logDebugBuilder,
-            StringBuilder logInfoBuilder,
+            Dictionary<KeyValueIdentifier, string> cachedInfoLogs,
             Uri endpoint,
             CancellationToken cancellationToken)
         {
@@ -162,7 +163,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
                                 logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                                logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
+                                cachedInfoLogs[new KeyValueIdentifier(setting.Key, options.Label.NormalizeNull())] = LogHelper.BuildFeatureFlagUpdatedMessage(key);
                             }
 
                             eTagMap.Remove(setting.Key);
@@ -180,7 +181,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
                     logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                    logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
+                    cachedInfoLogs[new KeyValueIdentifier(kvp.Key, options.Label.NormalizeNull())] = LogHelper.BuildFeatureFlagUpdatedMessage(key);
                 }
             }
 

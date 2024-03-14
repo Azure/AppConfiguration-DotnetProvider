@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class LogHelper
@@ -52,17 +54,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildRefreshFailedDueToAuthenticationErrorMessage(string exceptionMessage)
         {
-            return $"{LoggingConstants.RefreshFailedDueToAuthenticationError}\n{exceptionMessage}";
+            return $"{LoggingConstants.RefreshFailedDueToAuthenticationError}{Environment.NewLine}{exceptionMessage}";
         }
 
         public static string BuildRefreshFailedErrorMessage(string exceptionMessage)
         {
-            return $"{LoggingConstants.RefreshFailedError}\n{exceptionMessage}";
+            return $"{LoggingConstants.RefreshFailedError}{Environment.NewLine}{exceptionMessage}";
         }
 
         public static string BuildRefreshFailedDueToKeyVaultErrorMessage(string exceptionMessage)
         {
-            return $"{LoggingConstants.RefreshFailedDueToKeyVaultError}\n{exceptionMessage}";
+            return $"{LoggingConstants.RefreshFailedDueToKeyVaultError}{Environment.NewLine}{exceptionMessage}";
         }
 
         public static string BuildRefreshCanceledErrorMessage()
