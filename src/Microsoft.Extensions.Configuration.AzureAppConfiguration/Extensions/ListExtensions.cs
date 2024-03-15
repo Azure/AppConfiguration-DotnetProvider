@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     {
         public static List<T> Shuffle<T>(this List<T> values)
         {
-            Random rdm = new Random();
+            var rdm = new Random();
 
             int count = values.Count;
 

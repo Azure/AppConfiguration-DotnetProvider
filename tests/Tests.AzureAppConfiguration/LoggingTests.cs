@@ -604,7 +604,6 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
 
             var mockClient1 = GetMockConfigurationClient();
             var mockClient2 = GetMockConfigurationClient();
@@ -645,14 +644,23 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, FirstKeyValue.Key, FirstKeyValue.Label, TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/')), invocation);
+
             FirstKeyValue.Value = "newValue2";
 
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
-            // Regardless of order, both endpoints should have been used during refresh with load balancing
-            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, FirstKeyValue.Key, FirstKeyValue.Label, TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/')), invocation);
+            // Both endpoints should have been used during refresh with load balancing even if there are no failures
             Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, FirstKeyValue.Key, FirstKeyValue.Label, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), invocation);
+
+            FirstKeyValue.Value = "newValue3";
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.TryRefreshAsync().Wait();
+
+            // Should start back from the first endpoint
+            Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, FirstKeyValue.Key, FirstKeyValue.Label, TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/')), invocation);
         }
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()

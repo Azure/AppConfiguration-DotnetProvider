@@ -992,29 +992,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            if (_options.LoadBalancingEnabled)
+            if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null)
             {
-                if (_lastSuccessfulEndpoint != null)
+                int nextClientIndex = 0;
+
+                foreach (ConfigurationClient client in clients)
                 {
-                    int clientIndex = 0;
-
-                    foreach (ConfigurationClient client in clients)
+                    if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
                     {
-                        if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
-                        {
-                            clientIndex++;
+                        nextClientIndex++;
 
-                            break;
-                        }
-
-                        clientIndex++;
+                        break;
                     }
 
-                    if (clientIndex < clients.Count())
-                    {
-                        clients = clients.Skip(clientIndex).Concat(clients.Take(clientIndex));
-                    }
+                    nextClientIndex++;
                 }
+
+                if (nextClientIndex < clients.Count())
+                {
+                    clients = clients.Skip(nextClientIndex).Concat(clients.Take(nextClientIndex));
+                } 
             }
 
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
