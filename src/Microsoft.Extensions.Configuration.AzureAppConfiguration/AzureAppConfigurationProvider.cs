@@ -19,7 +19,6 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -1038,7 +1037,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
-                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient); ;
+                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
 
                     return result;
                 }
