@@ -998,14 +998,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 foreach (ConfigurationClient client in clients)
                 {
+                    nextClientIndex++;
+
                     if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
                     {
-                        nextClientIndex++;
-
                         break;
                     }
-
-                    nextClientIndex++;
                 }
 
                 if (nextClientIndex < clients.Count())
