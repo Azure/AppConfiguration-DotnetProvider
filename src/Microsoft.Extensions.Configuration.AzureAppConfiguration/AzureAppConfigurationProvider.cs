@@ -1006,6 +1006,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }
 
+                // We found the last successful client, so we'll rotate the list so that the next client is at the beginning
                 if (nextClientIndex < clients.Count())
                 {
                     clients = clients.Skip(nextClientIndex).Concat(clients.Take(nextClientIndex));
