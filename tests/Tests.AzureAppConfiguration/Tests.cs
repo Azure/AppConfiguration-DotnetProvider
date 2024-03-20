@@ -258,6 +258,7 @@ namespace Tests.AzureAppConfiguration
 
             MockRequest request = mockTransport.SingleRequest;
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
+            Console.WriteLine("*****" + userAgentHeader);
             Assert.True(Regex.IsMatch(userAgentRegex, userAgentHeader), $"The user agent header '{userAgentHeader}' does not match the regex pattern '{userAgentRegex}'");
         }
 
