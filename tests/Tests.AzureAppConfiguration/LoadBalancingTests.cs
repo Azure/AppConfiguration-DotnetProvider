@@ -75,6 +75,8 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // Ensure client 2 was used for refresh
+            mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
+
             mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
 
             Thread.Sleep(CacheExpirationTime);
@@ -137,6 +139,8 @@ namespace Tests.AzureAppConfiguration
             refresher.RefreshAsync().Wait();
 
             // Ensure client 1 has recovered and is used for refresh
+            mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
+
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
 
             Thread.Sleep(CacheExpirationTime);
