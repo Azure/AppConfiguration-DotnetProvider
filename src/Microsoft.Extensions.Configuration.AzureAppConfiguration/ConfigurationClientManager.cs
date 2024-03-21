@@ -33,6 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly TokenCredential _credential;
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
+        private readonly bool _loadBalancingEnabled;
         private readonly SrvLookupClient _srvLookupClient;
         private readonly string _validDomain;
 
@@ -54,7 +55,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
             ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled)
+            bool replicaDiscoveryEnabled,
+            bool loadBalancingEnabled)
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
@@ -67,6 +69,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+            _loadBalancingEnabled = loadBalancingEnabled;
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -84,7 +87,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IEnumerable<Uri> endpoints,
             TokenCredential credential,
             ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled)
+            bool replicaDiscoveryEnabled,
+            bool loadBalancingEnabled)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -100,6 +104,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _credential = credential;
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+            _loadBalancingEnabled = loadBalancingEnabled;
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -132,7 +137,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
-            IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
+            IEnumerable<ConfigurationClient> clients = new List<ConfigurationClient>();
+
+            if (!_loadBalancingEnabled || _dynamicClients == null || !_dynamicClients.Any())
+            {
+                clients = _clients.Select(c => c.Client);
+            }
 
             if (_dynamicClients != null && _dynamicClients.Any())
             {
@@ -268,8 +278,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (string host in OrderedHosts)
             {
-                if (!string.IsNullOrEmpty(host) &&
-                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
+                if (!string.IsNullOrEmpty(host) && (_loadBalancingEnabled || 
+                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase))) &&
                     IsValidEndpoint(host))
                 {
                     var targetEndpoint = new Uri($"https://{host}");

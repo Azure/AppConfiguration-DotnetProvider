@@ -29,6 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
+        private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
@@ -991,6 +992,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
+            if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null)
+            {
+                int nextClientIndex = 0;
+
+                foreach (ConfigurationClient client in clients)
+                {
+                    nextClientIndex++;
+
+                    if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
+                    {
+                        break;
+                    }
+                }
+
+                // We found the last successful client, so we'll rotate the list so that the next client is at the beginning
+                if (nextClientIndex < clients.Count())
+                {
+                    clients = clients.Skip(nextClientIndex).Concat(clients.Take(nextClientIndex));
+                } 
+            }
+
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
@@ -1010,6 +1032,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
+
+                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
 
                     return result;
                 }

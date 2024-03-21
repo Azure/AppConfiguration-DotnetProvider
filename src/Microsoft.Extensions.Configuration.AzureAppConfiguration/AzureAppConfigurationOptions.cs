@@ -40,6 +40,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool ReplicaDiscoveryEnabled { get; set; } = true;
 
         /// <summary>
+        /// Flag to indicate whether load balancing is enabled.
+        /// </summary>
+        public bool LoadBalancingEnabled { get; set; } = false;
+
+        /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
         internal IEnumerable<string> ConnectionStrings { get; private set; }
