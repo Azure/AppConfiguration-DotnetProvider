@@ -140,6 +140,11 @@ namespace Tests.AzureAppConfiguration
 
             // Ensure client 1 has recovered and is used for refresh
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+
+            Thread.Sleep(CacheExpirationTime);
+            refresher.RefreshAsync().Wait();
+
+            mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
         }
     }
 }
