@@ -45,11 +45,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             throw new FormatException(string.Format(
                                 ErrorMessages.FeatureFlagInvalidJsonProperty,
-                                setting.Key,
                                 FeatureManagementConstants.EnabledJsonPropertyName,
-                                $"{JsonValueKind.String} or {JsonValueKind.True} or {JsonValueKind.False}",
-                                enabledElement.ValueKind
-                                ));
+                                setting.Key,
+                                $"{JsonValueKind.String} or {JsonValueKind.True} or {JsonValueKind.False}"));
                         }
                     }
 
@@ -61,11 +59,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             throw new FormatException(string.Format(
                                 ErrorMessages.FeatureFlagInvalidJsonProperty,
-                                setting.Key,
                                 FeatureManagementConstants.IdJsonPropertyName,
-                                $"{JsonValueKind.String}",
-                                idElement.ValueKind
-                                ));
+                                setting.Key,
+                                JsonValueKind.String.ToString()));
                         }
 
                         id = idElement.GetString();
@@ -73,7 +69,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (isFeatureEnabled)
                     {
-                        if (!(root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out JsonElement conditionsElement) && conditionsElement.ValueKind == JsonValueKind.Object) || 
+                        if (!root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out JsonElement conditionsElement) || 
                             !(conditionsElement.TryGetProperty(FeatureManagementConstants.ClientFiltersJsonPropertyName, out JsonElement clientFiltersElement) && clientFiltersElement.ValueKind == JsonValueKind.Array) ||
                             clientFiltersElement.GetArrayLength() == 0)
                         {
@@ -81,13 +77,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         }
                         else
                         {
+                            if (conditionsElement.ValueKind != JsonValueKind.Object)
+                            {
+                                throw new FormatException(string.Format(
+                                    ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                    FeatureManagementConstants.ConditionsJsonPropertyName,
+                                    setting.Key,
+                                    JsonValueKind.Object.ToString()));
+                            }
+
+                            if (clientFiltersElement.ValueKind != JsonValueKind.Array)
+                            {
+                                throw new FormatException(string.Format(
+                                    ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                    FeatureManagementConstants.ClientFiltersJsonPropertyName,
+                                    setting.Key,
+                                    JsonValueKind.Array.ToString()));
+                            }
+
                             for (int i = 0; i < clientFiltersElement.GetArrayLength(); i++)
                             {
                                 JsonElement clientFilterElement = clientFiltersElement[i];
 
-                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement clientFilterNameElement) && clientFilterNameElement.ValueKind == JsonValueKind.String)
                                 {
-                                    string clientFilterName = nameElement.GetString();
+                                    if (clientFilterNameElement.ValueKind != JsonValueKind.String)
+                                    {
+                                        throw new FormatException(string.Format(
+                                            ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                            FeatureManagementConstants.NameJsonPropertyName,
+                                            setting.Key,
+                                            JsonValueKind.String.ToString()));
+                                    }
+
+                                    string clientFilterName = clientFilterNameElement.GetString();
 
                                     _featureFilterTracing.UpdateFeatureFilterTracing(clientFilterName);
 
@@ -96,6 +119,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                 if (clientFilterElement.TryGetProperty(FeatureManagementConstants.ParametersJsonPropertyName, out JsonElement parametersElement) && parametersElement.ValueKind == JsonValueKind.Object)
                                 {
+                                    if (parametersElement.ValueKind != JsonValueKind.Object)
+                                    {
+                                        throw new FormatException(string.Format(
+                                            ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                            FeatureManagementConstants.ParametersJsonPropertyName,
+                                            setting.Key,
+                                            JsonValueKind.Object.ToString()));
+                                    }
+
                                     foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(parametersElement))
                                     {
                                         keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Parameters}:{kvp.Key}", kvp.Value));
@@ -103,8 +135,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 }
                             }
 
-                            if (conditionsElement.TryGetProperty(FeatureManagementConstants.RequirementTypeJsonPropertyName, out JsonElement requirementTypeElement) && requirementTypeElement.ValueKind == JsonValueKind.String)
+                            if (conditionsElement.TryGetProperty(FeatureManagementConstants.RequirementTypeJsonPropertyName, out JsonElement requirementTypeElement))
                             {
+                                if (requirementTypeElement.ValueKind != JsonValueKind.String)
+                                {
+                                    throw new FormatException(string.Format(
+                                        ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                        FeatureManagementConstants.RequirementTypeJsonPropertyName,
+                                        setting.Key,
+                                        JsonValueKind.String.ToString()));
+                                }
+
                                 keyValues.Add(new KeyValuePair<string, string>(
                                     $"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.RequirementType}",
                                     requirementTypeElement.GetString()));
