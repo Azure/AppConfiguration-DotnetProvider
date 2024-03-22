@@ -25,50 +25,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             FeatureFlag featureFlag = new FeatureFlag();
 
-            var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(setting.Value));
-
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            while (reader.Read())
+            using (JsonDocument document = JsonDocument.Parse(setting.Value))
             {
-                if (reader.TokenType != JsonTokenType.PropertyName)
+                JsonElement root = document.RootElement;
+
+                if (root.TryGetProperty(FeatureManagementConstants.EnabledJsonPropertyName, out JsonElement value))
                 {
-                    continue;
+                    if (value.ValueKind == JsonValueKind.True)
+                    {
+                        featureFlag.Enabled = true;
+                    }
+                    else if (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out bool enabled))
+                    {
+                        featureFlag.Enabled = enabled;
+                    }
                 }
 
-                string propertyName = reader.GetString();
-
-                reader.Read();
-
-                switch (propertyName)
+                if (root.TryGetProperty(FeatureManagementConstants.IdJsonPropertyName, out value) && value.ValueKind == JsonValueKind.String)
                 {
-                    case FeatureManagementConstants.EnabledJsonPropertyName:
-                        if (reader.TokenType == JsonTokenType.True)
-                        {
-                            featureFlag.Enabled = true;
-                        }
-                        else if (reader.TokenType == JsonTokenType.String && bool.TryParse(reader.GetString(), out bool result))
-                        {
-                            featureFlag.Enabled = result;
-                        }
+                    featureFlag.Id = value.GetString();
+                }
 
-                        break;
-
-                    case FeatureManagementConstants.IdJsonPropertyName:
-                        if (reader.TokenType == JsonTokenType.String)
-                        {
-                            featureFlag.Id = reader.GetString();
-                        }
-
-                        break;
-
-                    case FeatureManagementConstants.ConditionsJsonPropertyName:
-                        
-
-                        break;
-
-                    default:
-                        break;
+                if (root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out value) && value.ValueKind == JsonValueKind.Object)
+                {
+                    
                 }
             }
 
