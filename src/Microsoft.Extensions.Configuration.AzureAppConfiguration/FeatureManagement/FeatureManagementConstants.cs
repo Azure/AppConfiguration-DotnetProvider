@@ -16,5 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string ConditionsJsonPropertyName = "conditions";
         public const string RequirementTypeJsonPropertyName = "requirement_type";
         public const string ClientFiltersJsonPropertyName = "client_filters";
+        public const string NameJsonPropertyName = "name";
+        public const string ParametersJsonPropertyName = "parameters";
     }
 }

@@ -5,7 +5,6 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,77 +22,111 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
-            FeatureFlag featureFlag = new FeatureFlag();
+            FeatureFlag featureFlag;
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            using (JsonDocument document = JsonDocument.Parse(setting.Value))
+            try
             {
-                JsonElement root = document.RootElement;
-
-                if (root.TryGetProperty(FeatureManagementConstants.EnabledJsonPropertyName, out JsonElement value))
+                using (JsonDocument document = JsonDocument.Parse(setting.Value))
                 {
-                    if (value.ValueKind == JsonValueKind.True)
+                    JsonElement root = document.RootElement;
+
+                    featureFlag = new FeatureFlag();
+
+                    if (root.TryGetProperty(FeatureManagementConstants.EnabledJsonPropertyName, out JsonElement enabledElement))
                     {
-                        featureFlag.Enabled = true;
-                    }
-                    else if (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out bool enabled))
-                    {
-                        featureFlag.Enabled = enabled;
-                    }
-                }
-
-                if (root.TryGetProperty(FeatureManagementConstants.IdJsonPropertyName, out value) && value.ValueKind == JsonValueKind.String)
-                {
-                    featureFlag.Id = value.GetString();
-                }
-
-                if (root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out value) && value.ValueKind == JsonValueKind.Object)
-                {
-                    
-                }
-            }
-
-            if (featureFlag.Enabled)
-            {
-                //if (featureFlag.Conditions?.ClientFilters == null)
-                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
-                {
-                    //
-                    // Always on
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", true.ToString()));
-                }
-                else
-                {
-                    //
-                    // Conditionally on based on feature filters
-                    for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
-                    {
-                        ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
-
-                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
-
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
-
-                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
+                        if (enabledElement.ValueKind == JsonValueKind.True)
                         {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
+                            featureFlag.Enabled = true;
+                        }
+                        else if (enabledElement.ValueKind == JsonValueKind.String && bool.TryParse(enabledElement.GetString(), out bool enabled))
+                        {
+                            featureFlag.Enabled = enabled;
                         }
                     }
 
-                    //
-                    // process RequirementType only when filters are not empty
-                    if (featureFlag.Conditions.RequirementType != null)
+                    if (root.TryGetProperty(FeatureManagementConstants.IdJsonPropertyName, out JsonElement idElement) && idElement.ValueKind == JsonValueKind.String)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>(
-                            $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}", 
-                            featureFlag.Conditions.RequirementType));
+                        featureFlag.Id = idElement.GetString();
+                    }
+
+                    if (root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out JsonElement conditionsElement) && conditionsElement.ValueKind == JsonValueKind.Object)
+                    {
+                        featureFlag.Conditions = new FeatureConditions();
+
+                        if (conditionsElement.TryGetProperty(FeatureManagementConstants.ClientFiltersJsonPropertyName, out JsonElement clientFiltersElement) && clientFiltersElement.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (JsonElement clientFilterElement in clientFiltersElement.EnumerateArray())
+                            {
+                                ClientFilter clientFilter = new ClientFilter();
+
+                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement nameElement) && nameElement.ValueKind == JsonValueKind.String)
+                                {
+                                    clientFilter.Name = nameElement.GetString();
+                                }
+
+                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.ParametersJsonPropertyName, out JsonElement parametersElement) && parametersElement.ValueKind == JsonValueKind.Object)
+                                {
+                                    clientFilter.Parameters = parametersElement;
+                                }
+
+                                featureFlag.Conditions.ClientFilters.Add(clientFilter);
+                            }
+                        }
+
+                        if (conditionsElement.TryGetProperty(FeatureManagementConstants.RequirementTypeJsonPropertyName, out JsonElement requirementTypeElement) && requirementTypeElement.ValueKind == JsonValueKind.String)
+                        {
+                            featureFlag.Conditions.RequirementType = requirementTypeElement.GetString();
+                        }
+                    }
+
+                    if (featureFlag.Enabled)
+                    {
+                        //if (featureFlag.Conditions?.ClientFilters == null)
+                        if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
+                        {
+                            //
+                            // Always on
+                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", true.ToString()));
+                        }
+                        else
+                        {
+                            //
+                            // Conditionally on based on feature filters
+                            for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
+                            {
+                                ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+
+                                _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+
+                                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
+
+                                foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
+                                {
+                                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
+                                }
+                            }
+
+                            //
+                            // process RequirementType only when filters are not empty
+                            if (featureFlag.Conditions.RequirementType != null)
+                            {
+                                keyValues.Add(new KeyValuePair<string, string>(
+                                    $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}",
+                                    featureFlag.Conditions.RequirementType));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
                     }
                 }
             }
-            else
+            catch (JsonException e)
             {
-                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
+                throw new FormatException(setting.Key, e);
             }
 
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);

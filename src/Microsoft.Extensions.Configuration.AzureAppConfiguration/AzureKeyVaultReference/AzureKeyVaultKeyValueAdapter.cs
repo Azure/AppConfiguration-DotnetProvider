@@ -34,7 +34,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             // Content validation
             try
             {
-                secretRef = JsonSerializer.Deserialize<KeyVaultSecretReference>(setting.Value);
+                using (JsonDocument document = JsonDocument.Parse(setting.Value))
+                {
+                    JsonElement root = document.RootElement;
+
+                    secretRef = new KeyVaultSecretReference();
+
+                    if (root.TryGetProperty(KeyVaultConstants.SecretReferenceUriJsonPropertyName, out JsonElement uriElement) && uriElement.ValueKind == JsonValueKind.String)
+                    {
+                        secretRef.Uri = uriElement.GetString();
+                    }
+                }
             }
             catch (JsonException e)
             {

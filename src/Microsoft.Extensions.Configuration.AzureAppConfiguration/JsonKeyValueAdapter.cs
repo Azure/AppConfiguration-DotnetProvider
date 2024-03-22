@@ -30,10 +30,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             string rootJson = $"{{\"{setting.Key}\":{setting.Value}}}";
-            JsonElement jsonData;
+
+            List<KeyValuePair<string, string>> keyValuePairs = new List<KeyValuePair<string, string>>();
+
             try
             {
-                jsonData = JsonSerializer.Deserialize<JsonElement>(rootJson);
+                using (JsonDocument document = JsonDocument.Parse(rootJson))
+                {
+                    keyValuePairs = new JsonFlattener().FlattenJson(document.RootElement);
+                }
             }
             catch (JsonException)
             {
@@ -41,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(new[] { new KeyValuePair<string, string>(setting.Key, setting.Value) });
             }
 
-            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(new JsonFlattener().FlattenJson(jsonData));
+            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValuePairs);
         }
 
         public bool CanProcess(ConfigurationSetting setting)
