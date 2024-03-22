@@ -10,6 +10,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string SectionName = "FeatureManagement";
         public const string EnabledFor = "EnabledFor";
         public const string RequirementType = "RequirementType";
+        public const string Name = "Name";
+        public const string Parameters = "Parameters";
 
         public const string EnabledJsonPropertyName = "enabled";
         public const string IdJsonPropertyName = "id";
