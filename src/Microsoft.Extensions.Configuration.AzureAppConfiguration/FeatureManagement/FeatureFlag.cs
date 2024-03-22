@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string Id { get; set; }
 
         [JsonPropertyName("enabled")]
-        public bool Enabled { get; set; }
+        public bool Enabled { get; set; } = false;
 
         [JsonPropertyName("conditions")]
         public FeatureConditions Conditions { get; set; }

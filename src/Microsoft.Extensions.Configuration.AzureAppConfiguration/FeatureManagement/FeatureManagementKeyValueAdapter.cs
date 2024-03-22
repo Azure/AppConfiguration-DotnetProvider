@@ -5,6 +5,7 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,17 +23,54 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
-            FeatureFlag featureFlag;
-            try
-            {
-                 featureFlag = JsonSerializer.Deserialize<FeatureFlag>(setting.Value);
-            }
-            catch (JsonException e)
-            {
-                throw new FormatException(setting.Key, e);
-            }
+            FeatureFlag featureFlag = new FeatureFlag();
+
+            var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(setting.Value));
 
             var keyValues = new List<KeyValuePair<string, string>>();
+
+            while (reader.Read())
+            {
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    continue;
+                }
+
+                string propertyName = reader.GetString();
+
+                reader.Read();
+
+                switch (propertyName)
+                {
+                    case FeatureManagementConstants.EnabledJsonPropertyName:
+                        if (reader.TokenType == JsonTokenType.True)
+                        {
+                            featureFlag.Enabled = true;
+                        }
+                        else if (reader.TokenType == JsonTokenType.String && bool.TryParse(reader.GetString(), out bool result))
+                        {
+                            featureFlag.Enabled = result;
+                        }
+
+                        break;
+
+                    case FeatureManagementConstants.IdJsonPropertyName:
+                        if (reader.TokenType == JsonTokenType.String)
+                        {
+                            featureFlag.Id = reader.GetString();
+                        }
+
+                        break;
+
+                    case FeatureManagementConstants.ConditionsJsonPropertyName:
+                        
+
+                        break;
+
+                    default:
+                        break;
+                }
+            }
 
             if (featureFlag.Enabled)
             {
