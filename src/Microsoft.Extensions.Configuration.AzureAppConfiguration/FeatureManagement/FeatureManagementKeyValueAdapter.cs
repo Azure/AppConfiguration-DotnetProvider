@@ -33,13 +33,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (root.TryGetProperty(FeatureManagementConstants.EnabledJsonPropertyName, out JsonElement enabledElement))
                     {
-                        if (enabledElement.ValueKind == JsonValueKind.True)
+                        if (enabledElement.ValueKind == JsonValueKind.True || enabledElement.ValueKind == JsonValueKind.False)
                         {
-                            isFeatureEnabled = true;
+                            isFeatureEnabled = enabledElement.GetBoolean();
                         }
                         else if (enabledElement.ValueKind == JsonValueKind.String && bool.TryParse(enabledElement.GetString(), out bool enabled))
                         {
                             isFeatureEnabled = enabled;
+                        }
+                        else
+                        {
+                            throw new FormatException(string.Format(
+                                ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                setting.Key,
+                                FeatureManagementConstants.EnabledJsonPropertyName,
+                                $"{JsonValueKind.String} or {JsonValueKind.True} or {JsonValueKind.False}",
+                                enabledElement.ValueKind
+                                ));
                         }
                     }
 
@@ -47,6 +57,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (root.TryGetProperty(FeatureManagementConstants.IdJsonPropertyName, out JsonElement idElement) && idElement.ValueKind == JsonValueKind.String)
                     {
+                        if (idElement.ValueKind != JsonValueKind.String)
+                        {
+                            throw new FormatException(string.Format(
+                                ErrorMessages.FeatureFlagInvalidJsonProperty,
+                                setting.Key,
+                                FeatureManagementConstants.IdJsonPropertyName,
+                                $"{JsonValueKind.String}",
+                                idElement.ValueKind
+                                ));
+                        }
+
                         id = idElement.GetString();
                     }
 
