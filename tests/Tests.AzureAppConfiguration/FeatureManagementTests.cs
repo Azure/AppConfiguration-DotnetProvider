@@ -9,7 +9,6 @@ using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -84,6 +83,93 @@ namespace Tests.AzureAppConfiguration
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+        List<ConfigurationSetting> _nullValuesFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
+            value: @"
+                            {
+                              ""id"": ""NullParameters"",
+                              ""description"": """",
+                              ""display_name"": ""Null Parameters"",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""client_filters"": [
+                                  {
+                                    ""name"": ""Filter"",
+                                    ""parameters"": null
+                                  }
+                                ]
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
+            value: @"
+                            {
+                              ""id"": ""NullConditions"",
+                              ""description"": """",
+                              ""display_name"": ""Null Conditions"",
+                              ""enabled"": true,
+                              ""conditions"": null
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature3",
+            value: @"
+                            {
+                              ""id"": ""NullClientFilters"",
+                              ""description"": """",
+                              ""display_name"": ""Null Client Filters"",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""client_filters"": null
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature4",
+            value: @"
+                            {
+                              ""id"": ""NoConditions"",
+                              ""description"": """",
+                              ""display_name"": ""No Conditions"",
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature5",
+            value: @"
+                            {
+                              ""id"": ""EmptyConditions"",
+                              ""description"": """",
+                              ""display_name"": ""Empty Conditions"",
+                              ""conditions"": {
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
 
         List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
@@ -475,6 +561,39 @@ namespace Tests.AzureAppConfiguration
             // Verify that the feature flag that did not match the specified label was not loaded
             Assert.Null(config["FeatureManagement:App2_Feature1"]);
             Assert.Null(config["FeatureManagement:App2_Feature2"]);
+        }
+
+        [Fact]
+        public void TestNullValuesForConditions()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_nullValuesFeatureFlagCollection));
+
+            var testClient = mockClient.Object;
+
+            // Makes sure that adapter properly processes values and doesn't throw an exception
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.Select(KeyFilter.Any);
+                    });
+                })
+                .Build();
+
+            Assert.Null(config["FeatureManagement:NullConditions:EnabledFor"]);
+            Assert.Equal("Filter", config["FeatureManagement:NullParameters:EnabledFor:0:Name"]);
+            Assert.Null(config["FeatureManagement:NullParameters:EnabledFor:0:Parameters"]);
+            Assert.Null(config["FeatureManagement:NullClientFilters:EnabledFor"]);
+            Assert.Null(config["FeatureManagement:NoConditions:EnabledFor"]);
+            Assert.Null(config["FeatureManagement:EmptyConditions:EnabledFor"]);
         }
 
         [Fact]

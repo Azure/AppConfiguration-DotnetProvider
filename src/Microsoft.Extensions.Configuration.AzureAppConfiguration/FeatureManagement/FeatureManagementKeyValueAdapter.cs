@@ -51,11 +51,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         }
                     }
 
-                    string id = "";
+                    string id = null;
 
                     if (root.TryGetProperty(FeatureManagementConstants.IdJsonPropertyName, out JsonElement idElement))
                     {
-                        if (idElement.ValueKind != JsonValueKind.String)
+                        if (idElement.ValueKind == JsonValueKind.String)
+                        {
+                            id = idElement.GetString();
+                        }
+                        else if (idElement.ValueKind != JsonValueKind.Null)
                         {
                             throw CreateFeatureFlagFormatException(
                                 FeatureManagementConstants.IdJsonPropertyName,
@@ -63,30 +67,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 idElement.ValueKind.ToString(),
                                 JsonValueKind.String.ToString());
                         }
-
-                        id = idElement.GetString();
                     }
 
                     if (isFeatureEnabled)
                     {
-                        if (!root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out JsonElement conditionsElement) || 
-                            !(conditionsElement.TryGetProperty(FeatureManagementConstants.ClientFiltersJsonPropertyName, out JsonElement clientFiltersElement)) ||
-                            clientFiltersElement.GetArrayLength() == 0)
-                        {
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}", true.ToString()));
-                        }
-                        else
-                        {
-                            if (conditionsElement.ValueKind != JsonValueKind.Object)
-                            {
-                                throw CreateFeatureFlagFormatException(
-                                    FeatureManagementConstants.ConditionsJsonPropertyName,
-                                    setting.Key,
-                                    conditionsElement.ValueKind.ToString(),
-                                    JsonValueKind.Object.ToString());
-                            }
+                        bool conditionsPresent = root.TryGetProperty(FeatureManagementConstants.ConditionsJsonPropertyName, out JsonElement conditionsElement);
 
-                            if (clientFiltersElement.ValueKind != JsonValueKind.Array)
+                        if (conditionsPresent &&
+                            conditionsElement.ValueKind != JsonValueKind.Object && 
+                            conditionsElement.ValueKind != JsonValueKind.Null)
+                        {
+                            throw CreateFeatureFlagFormatException(
+                                FeatureManagementConstants.ConditionsJsonPropertyName,
+                                setting.Key,
+                                conditionsElement.ValueKind.ToString(),
+                                JsonValueKind.Object.ToString());
+                        }
+
+                        conditionsPresent = conditionsElement.ValueKind != JsonValueKind.Null && conditionsElement.ValueKind != JsonValueKind.Undefined;
+
+                        bool clientFiltersPresent = false;
+
+                        JsonElement clientFiltersElement = default;
+
+                        if (conditionsPresent) 
+                        {
+                            clientFiltersPresent = conditionsElement.TryGetProperty(FeatureManagementConstants.ClientFiltersJsonPropertyName, out clientFiltersElement);
+
+                            if (clientFiltersPresent &&
+                                clientFiltersElement.ValueKind != JsonValueKind.Array && 
+                                clientFiltersElement.ValueKind != JsonValueKind.Null)
                             {
                                 throw CreateFeatureFlagFormatException(
                                     FeatureManagementConstants.ClientFiltersJsonPropertyName,
@@ -95,49 +105,73 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     JsonValueKind.Array.ToString());
                             }
 
-                            for (int i = 0; i < clientFiltersElement.GetArrayLength(); i++)
+                            if (clientFiltersElement.ValueKind == JsonValueKind.Array && clientFiltersElement.GetArrayLength() > 0)
                             {
-                                JsonElement clientFilterElement = clientFiltersElement[i];
+                                clientFiltersPresent = true;
+                            }
+                        }
 
-                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement clientFilterNameElement))
+                        if (!conditionsPresent || !clientFiltersPresent)
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}", true.ToString()));
+                        }
+                        else
+                        {
+                            if (clientFiltersElement.ValueKind == JsonValueKind.Array)
+                            {
+                                for (int i = 0; i < clientFiltersElement.GetArrayLength(); i++)
                                 {
-                                    if (clientFilterNameElement.ValueKind != JsonValueKind.String)
+                                    JsonElement clientFilterElement = clientFiltersElement[i];
+
+                                    if (clientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement clientFilterNameElement))
                                     {
-                                        throw CreateFeatureFlagFormatException(
-                                            FeatureManagementConstants.NameJsonPropertyName,
-                                            setting.Key,
-                                            clientFilterNameElement.ValueKind.ToString(),
-                                            JsonValueKind.String.ToString());
+                                        if (clientFilterNameElement.ValueKind == JsonValueKind.String)
+                                        {
+                                            string clientFilterName = clientFilterNameElement.GetString();
+
+                                            _featureFilterTracing.UpdateFeatureFilterTracing(clientFilterName);
+
+                                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Name}", clientFilterName));
+                                        }
+                                        else if (clientFilterNameElement.ValueKind != JsonValueKind.Null)
+                                        {
+                                            throw CreateFeatureFlagFormatException(
+                                                FeatureManagementConstants.NameJsonPropertyName,
+                                                setting.Key,
+                                                clientFilterNameElement.ValueKind.ToString(),
+                                                JsonValueKind.String.ToString());
+                                        }
                                     }
 
-                                    string clientFilterName = clientFilterNameElement.GetString();
-
-                                    _featureFilterTracing.UpdateFeatureFilterTracing(clientFilterName);
-
-                                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Name}", clientFilterName));
-                                }
-
-                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.ParametersJsonPropertyName, out JsonElement parametersElement))
-                                {
-                                    if (parametersElement.ValueKind != JsonValueKind.Object)
+                                    if (clientFilterElement.TryGetProperty(FeatureManagementConstants.ParametersJsonPropertyName, out JsonElement parametersElement))
                                     {
-                                        throw CreateFeatureFlagFormatException(
-                                            FeatureManagementConstants.ParametersJsonPropertyName,
-                                            setting.Key,
-                                            parametersElement.ValueKind.ToString(),
-                                            JsonValueKind.Object.ToString());
-                                    }
+                                        if (parametersElement.ValueKind != JsonValueKind.Object && 
+                                            parametersElement.ValueKind != JsonValueKind.Null)
+                                        {
+                                            throw CreateFeatureFlagFormatException(
+                                                FeatureManagementConstants.ParametersJsonPropertyName,
+                                                setting.Key,
+                                                parametersElement.ValueKind.ToString(),
+                                                JsonValueKind.Object.ToString());
+                                        }
 
-                                    foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(parametersElement))
-                                    {
-                                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Parameters}:{kvp.Key}", kvp.Value));
+                                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(parametersElement))
+                                        {
+                                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.EnabledFor}:{i}:{FeatureManagementConstants.Parameters}:{kvp.Key}", kvp.Value));
+                                        }
                                     }
                                 }
                             }
 
                             if (conditionsElement.TryGetProperty(FeatureManagementConstants.RequirementTypeJsonPropertyName, out JsonElement requirementTypeElement))
                             {
-                                if (requirementTypeElement.ValueKind != JsonValueKind.String)
+                                if (requirementTypeElement.ValueKind == JsonValueKind.String)
+                                {
+                                    keyValues.Add(new KeyValuePair<string, string>(
+                                        $"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.RequirementType}",
+                                        requirementTypeElement.GetString()));
+                                }
+                                else if (requirementTypeElement.ValueKind != JsonValueKind.Null)
                                 {
                                     throw CreateFeatureFlagFormatException(
                                         FeatureManagementConstants.RequirementTypeJsonPropertyName,
@@ -145,10 +179,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                         requirementTypeElement.ValueKind.ToString(),
                                         JsonValueKind.String.ToString());
                                 }
-
-                                keyValues.Add(new KeyValuePair<string, string>(
-                                    $"{FeatureManagementConstants.SectionName}:{id}:{FeatureManagementConstants.RequirementType}",
-                                    requirementTypeElement.GetString()));
                             }
                         }
                     }
