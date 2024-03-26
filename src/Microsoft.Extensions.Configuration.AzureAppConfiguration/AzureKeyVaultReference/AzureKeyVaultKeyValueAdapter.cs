@@ -38,8 +38,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 {
                     JsonElement root = document.RootElement;
 
-                    if (root.TryGetProperty(KeyVaultConstants.SecretReferenceUriJsonPropertyName, out JsonElement uriElement) && uriElement.ValueKind == JsonValueKind.String)
+                    if (root.TryGetProperty(KeyVaultConstants.SecretReferenceUriJsonPropertyName, out JsonElement uriElement))
                     {
+                        if (uriElement.ValueKind != JsonValueKind.String)
+                        {
+                            throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
+                        }
+
                         secretRefUri = uriElement.GetString();
                     }
                 }
