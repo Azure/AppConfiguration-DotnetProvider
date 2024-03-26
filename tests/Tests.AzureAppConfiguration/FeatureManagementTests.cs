@@ -84,7 +84,7 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        List<ConfigurationSetting> _nullValuesFeatureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _nullOrMissingConditionsFeatureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
@@ -564,14 +564,14 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TestNullValuesForConditions()
+        public void TestNullAndMissingValuesForConditions()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var cacheExpiration = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_nullValuesFeatureFlagCollection));
+                .Returns(new MockAsyncPageable(_nullOrMissingConditionsFeatureFlagCollection));
 
             var testClient = mockClient.Object;
 
