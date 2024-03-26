@@ -46,7 +46,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             throw CreateFeatureFlagFormatException(
                                 FeatureManagementConstants.EnabledJsonPropertyName,
                                 setting.Key,
-                                $"{JsonValueKind.String} or {JsonValueKind.True} or {JsonValueKind.False}");
+                                enabledElement.ValueKind.ToString(),
+                                $"{JsonValueKind.True} or {JsonValueKind.False}");
                         }
                     }
 
@@ -59,6 +60,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             throw CreateFeatureFlagFormatException(
                                 FeatureManagementConstants.IdJsonPropertyName,
                                 setting.Key,
+                                idElement.ValueKind.ToString(),
                                 JsonValueKind.String.ToString());
                         }
 
@@ -80,6 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 throw CreateFeatureFlagFormatException(
                                     FeatureManagementConstants.ConditionsJsonPropertyName,
                                     setting.Key,
+                                    conditionsElement.ValueKind.ToString(),
                                     JsonValueKind.Object.ToString());
                             }
 
@@ -88,6 +91,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 throw CreateFeatureFlagFormatException(
                                     FeatureManagementConstants.ClientFiltersJsonPropertyName,
                                     setting.Key,
+                                    clientFiltersElement.ValueKind.ToString(),
                                     JsonValueKind.Array.ToString());
                             }
 
@@ -102,6 +106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                         throw CreateFeatureFlagFormatException(
                                             FeatureManagementConstants.NameJsonPropertyName,
                                             setting.Key,
+                                            clientFilterNameElement.ValueKind.ToString(),
                                             JsonValueKind.String.ToString());
                                     }
 
@@ -119,6 +124,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                         throw CreateFeatureFlagFormatException(
                                             FeatureManagementConstants.ParametersJsonPropertyName,
                                             setting.Key,
+                                            parametersElement.ValueKind.ToString(),
                                             JsonValueKind.Object.ToString());
                                     }
 
@@ -136,6 +142,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     throw CreateFeatureFlagFormatException(
                                         FeatureManagementConstants.RequirementTypeJsonPropertyName,
                                         setting.Key,
+                                        requirementTypeElement.ValueKind.ToString(),
                                         JsonValueKind.String.ToString());
                                 }
 
@@ -177,13 +184,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return false;
         }
 
-        private FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string jsonValueKind)
+        private FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string foundJsonValueKind, string expectedJsonValueKind)
         {
             return new FormatException(string.Format(
                 ErrorMessages.FeatureFlagInvalidJsonProperty,
                 jsonPropertyName,
                 settingKey,
-                jsonValueKind));
+                foundJsonValueKind,
+                expectedJsonValueKind));
         }
     }
 }
