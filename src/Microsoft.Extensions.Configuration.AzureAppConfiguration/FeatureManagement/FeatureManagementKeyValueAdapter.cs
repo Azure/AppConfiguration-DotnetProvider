@@ -118,9 +118,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             for (int i = 0; i < clientFiltersElement.GetArrayLength(); i++)
                             {
-                                JsonElement clientFilterElement = clientFiltersElement[i];
+                                JsonElement currentClientFilterElement = clientFiltersElement[i];
 
-                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement clientFilterNameElement))
+                                if (currentClientFilterElement.TryGetProperty(FeatureManagementConstants.NameJsonPropertyName, out JsonElement clientFilterNameElement))
                                 {
                                     if (clientFilterNameElement.ValueKind == JsonValueKind.String)
                                     {
@@ -140,7 +140,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     }
                                 }
 
-                                if (clientFilterElement.TryGetProperty(FeatureManagementConstants.ParametersJsonPropertyName, out JsonElement parametersElement))
+                                if (currentClientFilterElement.TryGetProperty(FeatureManagementConstants.ParametersJsonPropertyName, out JsonElement parametersElement))
                                 {
                                     if (parametersElement.ValueKind != JsonValueKind.Object && 
                                         parametersElement.ValueKind != JsonValueKind.Null)
