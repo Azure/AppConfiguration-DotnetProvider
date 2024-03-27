@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private const string DefaultWhenEnabled = "DEFE";
         private const string UserAllocation = "USR";
         private const string GroupAllocation = "GRP";
-        private const string PercentileAllocation = "PRCT";
+        private const string PercentileAllocation = "PRCNT";
         private const string Seed = "SEED";
         private const string Delimiter = "+";
 
@@ -42,51 +42,71 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         }
 
         /// <summary>
-        /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
+        /// Returns a formatted string containing code names, indicating which allocation methods are used by the application.
         /// </summary>
-        /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
+        /// <returns>Formatted string like: "DEFD+DEFE+USR+GRP", "DEFD+PRCNT", etc. If no allocations are used, empty string will be returned.</returns>
         public override string ToString()
         {
-            if (!UsesAnyFeatureFilter())
+            if (!UsesAnyVariants())
             {
                 return string.Empty;
             }
 
             var sb = new StringBuilder();
 
-            if (UsesCustomFilter)
+            if (UsesDefaultWhenDisabled)
             {
-                sb.Append(CustomFilter);
+                sb.Append(DefaultWhenDisabled);
             }
 
-            if (UsesPercentageFilter)
+            if (UsesDefaultWhenEnabled)
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(FilterTypeDelimiter);
+                    sb.Append(Delimiter);
                 }
 
-                sb.Append(PercentageFilter);
+                sb.Append(DefaultWhenEnabled);
             }
 
-            if (UsesTimeWindowFilter)
+            if (UsesUserAllocation)
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(FilterTypeDelimiter);
+                    sb.Append(Delimiter);
                 }
 
-                sb.Append(TimeWindowFilter);
+                sb.Append(UserAllocation);
             }
 
-            if (UsesTargetingFilter)
+            if (UsesGroupAllocation)
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(FilterTypeDelimiter);
+                    sb.Append(Delimiter);
                 }
 
-                sb.Append(TargetingFilter);
+                sb.Append(GroupAllocation);
+            }
+
+            if (UsesPercentileAllocation)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(Delimiter);
+                }
+
+                sb.Append(PercentileAllocation);
+            }
+
+            if (UsesSeed)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(Delimiter);
+                }
+
+                sb.Append(Seed);
             }
 
             return sb.ToString();
