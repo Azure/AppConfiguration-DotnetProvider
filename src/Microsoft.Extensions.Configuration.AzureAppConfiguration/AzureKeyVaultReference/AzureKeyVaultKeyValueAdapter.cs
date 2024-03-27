@@ -29,12 +29,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
-            KeyVaultSecretReference secretRef;
+            string secretRefUri = "";
 
             // Content validation
             try
             {
-                secretRef = JsonSerializer.Deserialize<KeyVaultSecretReference>(setting.Value);
+                using (JsonDocument document = JsonDocument.Parse(setting.Value))
+                {
+                    JsonElement root = document.RootElement;
+
+                    if (root.TryGetProperty(KeyVaultConstants.SecretReferenceUriJsonPropertyName, out JsonElement uriElement))
+                    {
+                        if (uriElement.ValueKind != JsonValueKind.String)
+                        {
+                            throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
+                        }
+
+                        secretRefUri = uriElement.GetString();
+                    }
+                }
             }
             catch (JsonException e)
             {
@@ -42,9 +55,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             // Uri validation
-            if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
+            if (string.IsNullOrEmpty(secretRefUri) || !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
             {
-                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRef);
+                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
             }
 
             string secret;
@@ -55,11 +68,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
-                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRef);
+                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRefUri);
             }
             catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
-                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRef);
+                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRefUri);
             }
 
             return new KeyValuePair<string, string>[]
@@ -68,7 +81,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             };
         }
 
-        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, KeyVaultSecretReference secretRef = null)
+        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
         {
             return new KeyVaultReferenceException(message, inner)
             {
@@ -76,7 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 Label = setting.Label,
                 Etag = setting.ETag.ToString(),
                 ErrorCode = (inner as RequestFailedException)?.ErrorCode,
-                SecretIdentifier = secretRef?.Uri
+                SecretIdentifier = secretRefUri
             };
         }
 
