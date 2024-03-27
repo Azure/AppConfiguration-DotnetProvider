@@ -11,7 +11,6 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using Xunit;
 
@@ -240,7 +239,7 @@ namespace Tests.AzureAppConfiguration
             // 4. Contains the name and version of the App Configuration SDK package
             // 5. Contains the runtime information (target framework, OS description etc.) in the format set by the SDK
             // 6. Does not contain any additional components
-            string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(-preview(\.\d+)?)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
+            string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(\+[a-z0-9]+)?(-preview(\.\d+)?)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
             
             var response = new MockResponse(200);
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
@@ -258,7 +257,7 @@ namespace Tests.AzureAppConfiguration
 
             MockRequest request = mockTransport.SingleRequest;
             Assert.True(request.Headers.TryGetValue("User-Agent", out string userAgentHeader));
-            Assert.True(Regex.IsMatch(userAgentRegex, userAgentHeader), $"The user agent header '{userAgentHeader}' does not match the regex pattern '{userAgentRegex}'");
+            Assert.Matches(userAgentRegex, userAgentHeader);
         }
 
         [Fact]
