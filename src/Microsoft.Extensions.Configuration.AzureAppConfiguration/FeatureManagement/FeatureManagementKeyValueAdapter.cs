@@ -93,9 +93,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         if (conditionsPresent) 
                         {
-                            conditionsElement.TryGetProperty(FeatureManagementConstants.ClientFiltersJsonPropertyName, out clientFiltersElement);
+                            clientFiltersPresent = conditionsElement.TryGetProperty(FeatureManagementConstants.ClientFiltersJsonPropertyName, out clientFiltersElement);
 
-                            if (clientFiltersElement.ValueKind != JsonValueKind.Undefined &&
+                            if (clientFiltersPresent &&
                                 clientFiltersElement.ValueKind != JsonValueKind.Array && 
                                 clientFiltersElement.ValueKind != JsonValueKind.Null)
                             {
@@ -106,13 +106,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     JsonValueKind.Array.ToString());
                             }
 
-                            if (clientFiltersElement.ValueKind == JsonValueKind.Array && clientFiltersElement.GetArrayLength() > 0)
-                            {
-                                clientFiltersPresent = true;
-                            }
+                            // Only consider client filters present if it's a non-empty array
+                            clientFiltersPresent = clientFiltersElement.ValueKind == JsonValueKind.Array && clientFiltersElement.GetArrayLength() > 0;
                         }
 
-                        if (!conditionsPresent || !clientFiltersPresent)
+                        if (!clientFiltersPresent)
                         {
                             keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{id}", true.ToString()));
                         }
