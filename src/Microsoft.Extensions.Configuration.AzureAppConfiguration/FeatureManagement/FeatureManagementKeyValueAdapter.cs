@@ -16,11 +16,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
-        private FeatureFilterTracing _featureFilterTracing;
+        private FeatureFlagTracing _featureFlagTracing;
 
-        public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
+        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFilterTracing)
         {
-            _featureFilterTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
+            _featureFlagTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -56,7 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
-                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.EnabledFor}:{i}";
 
@@ -121,16 +121,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.DefaultWhenDisabled != null)
                 {
+                    _featureFlagTracing.UsesDefaultWhenDisabled = true;
+
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.DefaultWhenDisabled}", allocation.DefaultWhenDisabled));
                 }
 
                 if (allocation.DefaultWhenEnabled != null)
                 {
+                    _featureFlagTracing.UsesDefaultWhenEnabled = true;
+
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.DefaultWhenEnabled}", allocation.DefaultWhenEnabled));
                 }
 
                 if (allocation.User != null)
                 {
+                    _featureFlagTracing.UsesUserAllocation = true;
+
                     int i = 0;
 
                     foreach (FeatureUserAllocation userAllocation in allocation.User)
@@ -152,6 +158,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Group != null)
                 {
+                    _featureFlagTracing.UsesGroupAllocation = true;
+
                     int i = 0;
 
                     foreach (FeatureGroupAllocation groupAllocation in allocation.Group)
@@ -173,6 +181,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Percentile != null)
                 {
+                    _featureFlagTracing.UsesPercentileAllocation = true;
+
                     int i = 0;
 
                     foreach (FeaturePercentileAllocation percentileAllocation in allocation.Percentile)
@@ -189,6 +199,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Seed != null)
                 {
+                    _featureFlagTracing.UsesSeed = true;
+
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
             }
@@ -201,6 +213,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
+                    _featureFlagTracing.IsTelemetryEnabled = true;
+
                     if (telemetry.Metadata != null)
                     {
                         foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)

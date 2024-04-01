@@ -119,7 +119,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Indicates all types of feature filters used by the application.
         /// </summary>
-        internal FeatureFilterTracing FeatureFilterTracing { get; set; } = new FeatureFilterTracing();
+        internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
         /// <summary>
         /// Options used to configure provider startup.
@@ -135,7 +135,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
                 new JsonKeyValueAdapter(),
-                new FeatureManagementKeyValueAdapter(FeatureFilterTracing)
+                new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
         }
 
