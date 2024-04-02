@@ -111,6 +111,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     i++;
                 }
+
+                if (i > 0)
+                {
+                    _featureFlagTracing.IsAnyVariantPresent = true;
+                }
             }
 
             if (featureFlag.Allocation != null)

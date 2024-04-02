@@ -31,7 +31,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeatureFlagTelemetryEnabledTag = "FeatureFlagTelemetryEnabled";
-        public const string FeatureVariantsAllocationKey = "FeatureVariantsAllocation";
+        public const string FeatureFlagVariantsAllocationKey = "FeatureFlagVariantsAllocation";
+        public const string FeatureFlagVariantPresentTag = "FeatureFlagVariantPresent";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

@@ -42,6 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesPercentileAllocation { get; set; } = false;
         public bool UsesSeed { get; set; } = false;
         public bool IsTelemetryEnabled { get; set; } = false;
+        public bool IsAnyVariantPresent { get; set; } = false;
 
         public bool UsesAnyFeatureFilter()
         {
@@ -91,7 +92,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
         /// </summary>
         /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
-        public string CreateFeatureFiltersString()
+        public string CreateFiltersString()
         {
             if (!UsesAnyFeatureFilter())
             {
@@ -142,7 +143,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// Returns a formatted string containing code names, indicating which allocation methods are used by the application.
         /// </summary>
         /// <returns>Formatted string like: "DEFD+DEFE+USR+GRP", "DEFD+PRCNT", etc. If no allocations are used, empty string will be returned.</returns>
-        public string CreateFeatureVariantsAllocationString()
+        public string CreateVariantsAllocationString()
         {
             if (!UsesAnyVariantAllocation())
             {
