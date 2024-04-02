@@ -24,7 +24,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private const string GroupAllocation = "GRP";
         private const string PercentileAllocation = "PRCNT";
         private const string Seed = "SEED";
-        private const string Telemetry = "TLMTRY";
         private const string Delimiter = "+";
 
         // Built-in Feature Filter Names
