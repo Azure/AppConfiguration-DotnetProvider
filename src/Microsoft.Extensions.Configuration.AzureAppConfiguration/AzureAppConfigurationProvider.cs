@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly IConfigurationClientManager _configClientManager;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
-        private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+        private Dictionary<SettingSelector, IEnumerable<MatchConditions>> _watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
@@ -247,7 +247,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Avoid instance state modification
-                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
+                    Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings = null;
                     List<KeyValueChange> keyValueChanges = null;
                     List<KeyValueChange> changedKeyValuesCollection = null;
                     Dictionary<string, ConfigurationSetting> data = null;
@@ -271,16 +271,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 string watchedKey = changeWatcher.Key;
                                 string watchedLabel = changeWatcher.Label;
 
-                                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+                                SettingSelector watchedSettingSelector = new SettingSelector() { 
+                                    KeyFilter = watchedKey, 
+                                    LabelFilter = watchedLabel 
+                                };
 
                                 KeyValueChange change = default;
 
                                 //
                                 // Find if there is a change associated with watcher
-                                if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                                if (_watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions))
                                 {
                                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                        async () => change = await client.GetKeyValueChange(watchedSettingSelector, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                 }
                                 else
                                 {
@@ -348,7 +351,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (!refreshAll)
                     {
-                        watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
+                        watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>(_watchedSettings);
 
                         foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers.Concat(cacheExpiredMultiKeyWatchers))
                         {
