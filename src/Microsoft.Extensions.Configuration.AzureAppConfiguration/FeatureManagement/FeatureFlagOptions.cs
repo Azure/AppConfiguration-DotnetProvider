@@ -38,7 +38,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
-        [Obsolete("The CacheExpirationInterval property will be deprecated in a future release. Please use the new `SetFeatureFlagRefreshInterval` method instead. " +
+        [Obsolete("The " + nameof(CacheExpirationInterval) + " property is deprecated and will be removed in a future release. " + 
+            "Please use the new " + nameof(SetRefreshInterval) + " method instead. " +
             "Note that the usage has changed, but the functionality remains the same.")]
         public TimeSpan CacheExpirationInterval
         {

@@ -55,7 +55,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key until the cached value for that key has expired.
         /// </summary>
         /// <param name="cacheExpiration">Minimum time that must elapse before the cache is expired.</param>
-        [Obsolete("The SetCacheExpiration method will be deprecated in a future release. Please use the `SetRefreshInterval` method instead. " +
+        [Obsolete("The " + nameof(SetCacheExpiration) + " method is deprecated and will be removed in a future release. " +
+            "Please use the " + nameof(SetRefreshInterval) + " method instead. " +
             "Note that only the name of the method has changed, and the functionality remains the same.")]
         public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpiration)
         {
@@ -64,7 +65,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Sets the minimum time interval between consecutive refresh operations for the registered key-values. Default value is 30 seconds. Must be greater than 1 second.
-        /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key unless the refresh interval has elapsed since the key was last refreshed.
+        /// Refresh operations triggered using <see cref="IConfigurationRefresher"/> will not make any server requests unless the refresh interval has elapsed since the key was last refreshed.
         /// </summary>
         /// <param name="refreshInterval">Minimum time that must elapse between each refresh for a specific key.</param>
         public AzureAppConfigurationRefreshOptions SetRefreshInterval(TimeSpan refreshInterval)
