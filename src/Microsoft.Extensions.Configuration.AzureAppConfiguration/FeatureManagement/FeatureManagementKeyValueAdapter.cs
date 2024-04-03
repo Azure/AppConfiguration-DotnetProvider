@@ -47,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 FeatureManagementConstants.EnabledJsonPropertyName,
                                 setting.Key,
                                 enabledElement.ValueKind.ToString(),
-                                $"{JsonValueKind.True} or {JsonValueKind.False}");
+                                $"{JsonValueKind.True}' or '{JsonValueKind.False}");
                         }
                     }
 
