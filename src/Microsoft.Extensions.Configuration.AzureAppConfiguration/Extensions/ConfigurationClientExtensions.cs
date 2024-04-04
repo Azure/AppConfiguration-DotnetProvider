@@ -16,21 +16,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, SettingSelector selector, MatchConditions matchConditions, CancellationToken cancellationToken)
         {
-            if (setting == null)
+            if (selector == null)
             {
-                throw new ArgumentNullException(nameof(setting));
+                throw new ArgumentNullException(nameof(selector));
             }
 
-            if (string.IsNullOrEmpty(setting.Key))
+            if (matchConditions == null)
             {
-                throw new ArgumentNullException($"{nameof(setting)}.{nameof(setting.Key)}");
+                throw new ArgumentNullException(nameof(matchConditions));
             }
+
+            if (!matchConditions.IfNoneMatch.HasValue)
+            {
+                throw new ArgumentException("Must have valid IfNoneMatch header.", nameof(matchConditions));
+            }
+
+            ConfigurationSetting setting = new ConfigurationSetting(selector.KeyFilter, null, selector.LabelFilter, matchConditions.IfNoneMatch.Value);
 
             try
             {
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
+
                 if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
                 {
                     return new KeyValueChange
@@ -42,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     };
                 }
             }
-            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
+            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && matchConditions.IfNoneMatch.Value != default)
             {
                 return new KeyValueChange
                 {
@@ -60,6 +68,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Key = setting.Key,
                 Label = setting.Label
             };
+        }
+
+        public static async Task<bool> IsAnyKeyValueChanged(this ConfigurationClient client, SettingSelector selector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        {
+            if (selector == null)
+            {
+                throw new ArgumentNullException(nameof(selector));
+            }
+
+            if (matchConditions == null)
+            {
+                throw new ArgumentNullException(nameof(matchConditions));
+            }
+
+            if (!matchConditions.Any())
+            {
+                throw new ArgumentException("Requires at least one MatchConditions value.", nameof(matchConditions));
+            }
+
+            foreach (MatchConditions condition in matchConditions)
+            {
+                selector.MatchConditions.Add(condition);
+            }
+
+            await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages().ConfigureAwait(false))
+            {
+                Response response = page.GetRawResponse();
+
+                if (response.Status == (int)HttpStatusCode.OK)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(
