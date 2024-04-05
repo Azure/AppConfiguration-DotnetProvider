@@ -37,16 +37,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            string featureFlagPath = $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}";
+            // TODO how to get index of this flag?
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureManagementSectionName}:{_featureFlagIndex}";
+
+            keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Id}", featureFlag.Id));
+
+            keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Enabled}", featureFlag.Enabled.ToString()));
 
             if (featureFlag.Enabled)
             {
-                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Status}", FeatureManagementConstants.Conditional));
-
                 //if (featureFlag.Conditions?.ClientFilters == null)
                 if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
                 {
-                     keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.EnabledFor}:{0}:{FeatureManagementConstants.Name}", FeatureManagementConstants.AlwaysOnFilter));
+                     keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{0}:{FeatureManagementConstants.Name}", FeatureManagementConstants.AlwaysOnFilter));
                 }
                 else
                 {
@@ -58,7 +61,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
-                        string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.EnabledFor}:{i}";
+                        string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{i}";
 
                         keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:{FeatureManagementConstants.Name}", clientFilter.Name));
 
@@ -73,7 +76,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     if (featureFlag.Conditions.RequirementType != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>(
-                            $"{featureFlagPath}:{FeatureManagementConstants.RequirementType}", 
+                            $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.RequirementType}", 
                             featureFlag.Conditions.RequirementType));
                     }
                 }
