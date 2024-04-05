@@ -87,8 +87,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         internal List<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
 
-        internal TimeSpan FeatureFlagCacheExpirationInterval { get; private set; } = RefreshConstants.DefaultFeatureFlagsCacheExpirationInterval;
-
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
         /// </summary>
