@@ -107,6 +107,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
+            if (_options.RegisterAllEnabled)
+            {
+                foreach (KeyValueSelector kvSelector in _options.KeyValueSelectors)
+                {
+                    options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher
+                    {
+                        Key = kvSelector.KeyFilter,
+                        Label = kvSelector.LabelFilter,
+                        CacheExpirationInterval = options.RefreshOptions.CacheExpirationInterval
+                    });
+                }
+
+                foreach (KeyValueSelector featureFlagSelector in _options.FeatureFlagOptions.FeatureFlagSelectors)
+                {
+                    options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher
+                    {
+                        Key = featureFlagSelector.KeyFilter,
+                        Label = featureFlagSelector.LabelFilter,
+                        CacheExpirationInterval = options.FeatureFlagOptions.CacheExpirationInterval
+                    });
+                }
+            }
+
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
             if (watchers.Any())

@@ -28,6 +28,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private List<KeyValueSelector> _featureFlagSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         // The following set is sorted in descending order.
@@ -38,6 +39,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether enable replica discovery.
         /// </summary>
         public bool ReplicaDiscoveryEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Flag to indicate whether <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> has been called.
+        /// </summary>
+        internal bool RegisterAllEnabled { get; private set; } = false;
 
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
@@ -62,6 +68,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
+        /// The configured options for feature flags.
+        /// </summary>
+        internal FeatureFlagOptions FeatureFlagOptions { get; private set; } = new FeatureFlagOptions();
+
+        /// <summary>
+        /// The configured options for refresh.
+        /// </summary>
+        internal AzureAppConfigurationRefreshOptions RefreshOptions { get; private set; } = new AzureAppConfigurationRefreshOptions();
+
+        /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers;
@@ -69,7 +85,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+        internal List<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+
+        internal TimeSpan FeatureFlagCacheExpirationInterval { get; private set; } = RefreshConstants.DefaultFeatureFlagsCacheExpirationInterval;
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -225,6 +243,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
+
+            _featureFlagSelectors = options.FeatureFlagSelectors;
 
             if (options.FeatureFlagSelectors.Count() == 0)
             {
