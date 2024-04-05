@@ -338,7 +338,7 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         [Fact]
         public void UsesFeatureFlags()
