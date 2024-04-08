@@ -221,9 +221,9 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
         }
 
         [Fact]

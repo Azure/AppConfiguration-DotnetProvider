@@ -556,6 +556,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Reset old filter tracing in order to track the filter types present in the current response from server.
             _options.FeatureFilterTracing.ResetFeatureFilterTracing();
 
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                adapter.ResetState();
+            }
+
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;

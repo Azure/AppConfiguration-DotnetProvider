@@ -361,16 +361,16 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
-            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
-            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
-            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
-            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
-            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
-            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["feature_management:feature_flags:0:conditions:client_filters:1:name"]);
+            Assert.Equal("20", config["feature_management:feature_flags:0:conditions:client_filters:1:parameters:Percentage"]);
+            Assert.Equal("US", config["feature_management:feature_flags:0:conditions:client_filters:1:parameters:Region"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:2:name"]);
+            Assert.Equal("TimeWindow", config["feature_management:feature_flags:0:conditions:client_filters:3:name"]);
+            Assert.Equal("/Date(1578643200000)/", config["feature_management:feature_flags:0:conditions:client_filters:3:parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["feature_management:feature_flags:0:conditions:client_filters:3:parameters:End"]);
         }
 
         [Fact]
@@ -396,16 +396,16 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
-            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
-            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
-            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
-            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
-            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
-            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["feature_management:feature_flags:0:conditions:client_filters:1:name"]);
+            Assert.Equal("20", config["feature_management:feature_flags:0:conditions:client_filters:1:parameters:Percentage"]);
+            Assert.Equal("US", config["feature_management:feature_flags:0:conditions:client_filters:1:parameters:Region"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:2:name"]);
+            Assert.Equal("TimeWindow", config["feature_management:feature_flags:0:conditions:client_filters:3:name"]);
+            Assert.Equal("/Date(1578643200000)/", config["feature_management:feature_flags:0:conditions:client_filters:3:parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["feature_management:feature_flags:0:conditions:client_filters:3:parameters:End"]);
 
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
@@ -437,10 +437,10 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(cacheExpirationTimeSpan);
             refresher.RefreshAsync().Wait();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:1:conditions:client_filters:0:name"]);
         }
 
 
@@ -466,16 +466,16 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("RollOut", config["FeatureManagement:Beta:EnabledFor:1:Name"]);
-            Assert.Equal("20", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Percentage"]);
-            Assert.Equal("US", config["FeatureManagement:Beta:EnabledFor:1:Parameters:Region"]);
-            Assert.Equal("SuperUsers", config["FeatureManagement:Beta:EnabledFor:2:Name"]);
-            Assert.Equal("TimeWindow", config["FeatureManagement:Beta:EnabledFor:3:Name"]);
-            Assert.Equal("/Date(1578643200000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:Start"]);
-            Assert.Equal("/Date(1578686400000)/", config["FeatureManagement:Beta:EnabledFor:3:Parameters:End"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+            Assert.Equal("RollOut", config["feature_management:feature_flags:0:conditions:client_filters:1:name"]);
+            Assert.Equal("20", config["feature_management:feature_flags:0:conditions:client_filters:1:parameters:Percentage"]);
+            Assert.Equal("US", config["feature_management:feature_flags:0:conditions:client_filters:1:parameters:Region"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:2:name"]);
+            Assert.Equal("TimeWindow", config["feature_management:feature_flags:0:conditions:client_filters:3:name"]);
+            Assert.Equal("/Date(1578643200000)/", config["feature_management:feature_flags:0:conditions:client_filters:3:parameters:Start"]);
+            Assert.Equal("/Date(1578686400000)/", config["feature_management:feature_flags:0:conditions:client_filters:3:parameters:End"]);
 
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
@@ -505,10 +505,10 @@ namespace Tests.AzureAppConfiguration
 
             refresher.RefreshAsync().Wait();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Null(config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+            Assert.Null(config["feature_management:feature_flags:1:conditions:client_filters:0:name"]);
         }
 
         [Fact]
@@ -619,15 +619,15 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("AlwaysOn", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
-            Assert.Null(config["FeatureManagement:Feature1"]);
+            Assert.Null(config["feature_management:feature_flags:2"]);
 
             // Verify that the feature flag that did not match the specified label was not loaded
-            Assert.Null(config["FeatureManagement:App2_Feature1"]);
-            Assert.Null(config["FeatureManagement:App2_Feature2"]);
+            Assert.Null(config["feature_management:feature_flags:3"]);
+            Assert.Null(config["feature_management:feature_flags:4"]);
         }
 
         [Fact]
@@ -662,13 +662,17 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("AlwaysOn", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("AlwaysOn", config["feature_management:feature_flags:3:conditions:client_filters:0:name"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:3:id"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
-            Assert.Null(config["FeatureManagement:Feature1"]);
+            Assert.Null(config["feature_management:feature_flags:4"]);
         }
 
         [Fact]
@@ -703,7 +707,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
             // label: App1_Label has higher precedence
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
         }
 
         [Fact]
@@ -775,13 +780,17 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:3:id"]);
 
-            // Verify that the feature flag that did not start with the specified prefix was not loaded
-            Assert.Null(config["FeatureManagement:Feature1"]);
+            // Verify that the feature flag Feature1 did not start with the specified prefix was not loaded
+            Assert.Null(config["feature_management:feature_flags:4"]);
         }
 
         [Fact]
@@ -819,13 +828,18 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Loaded from prefix1 and label1
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
 
             // Loaded from label2
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("False", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:3:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:4:enabled"]);
+            Assert.Equal("Feature1", config["feature_management:feature_flags:4:id"]);
         }
 
         [Fact]
@@ -869,10 +883,14 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:3:id"]);
 
             // update the value of App1_Feature1 feature flag with label1
             featureFlagCollection[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -917,15 +935,18 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(cacheExpiration1);
             refresher.RefreshAsync().Wait();
 
-            Assert.Equal("Browser", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Chrome", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Edge", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:3:id"]);
 
             // even though App2_Feature3 feature flag has been added, its value should not be loaded in config because label2 cache has not expired
-            Assert.Null(config["FeatureManagement:App2_Feature3"]);
+            Assert.Null(config["feature_management:feature_flags:4"]);
         }
 
         [Fact]
@@ -962,11 +983,16 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:3:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:4:enabled"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:4:id"]);
 
             // update the value of App1_Feature1 feature flag with label1
             featureFlagCollection[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -996,11 +1022,16 @@ namespace Tests.AzureAppConfiguration
 
             // The cache expiration time for feature flags was overwritten by second call to UseFeatureFlags.
             // Sleeping for cacheExpiration1 time should not update feature flags.
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("Feature1", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Equal("App2_Feature1", config["feature_management:feature_flags:3:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:4:enabled"]);
+            Assert.Equal("App2_Feature2", config["feature_management:feature_flags:4:id"]);
         }
 
         [Fact]
@@ -1035,7 +1066,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("Disabled", config["FeatureManagement:Feature1:Status"]);
+            Assert.Equal("False", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("Feature1", config["feature_management:feature_flags:0:id"]);
 
             // update the value of Feature1 feature flag with App1_Label
             featureFlagCollection[2] = ConfigurationModelFactory.ConfigurationSetting(
@@ -1064,9 +1096,9 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(cacheExpiration);
             refresher.RefreshAsync().Wait();
 
-            Assert.Equal("Browser", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Chrome", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Edge", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
         }
 
         [Fact]
@@ -1106,7 +1138,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("MyFeature2", config["feature_management:feature_flags:0:id"]);
 
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
@@ -1131,7 +1164,8 @@ namespace Tests.AzureAppConfiguration
 
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
-            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Equal("AllUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("MyFeature", config["feature_management:feature_flags:0:id"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
             Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
 
@@ -1139,7 +1173,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
 
-            Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Null(config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
             Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
         }
@@ -1187,12 +1221,12 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
             refresher.TryRefreshAsync().Wait();
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
+            Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
         }
 
@@ -1278,7 +1312,8 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Equal("NoUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("MyFeature", config["feature_management:feature_flags:0:id"]);
 
             FirstKeyValue.Value = "newValue1";
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -1306,7 +1341,7 @@ namespace Tests.AzureAppConfiguration
             refresher.TryRefreshAsync().Wait();
 
             Assert.Equal("newValue1", config["TestKey1"]);
-            Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+            Assert.Equal("NoUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
         }
 
         [Fact]
@@ -1332,78 +1367,59 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:VariantsFeature1:EnabledFor:0:Name"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Variants:0:Name"]);
-            Assert.Equal("600px", config["FeatureManagement:VariantsFeature1:Variants:0:ConfigurationValue"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Variants:1:Name"]);
-            Assert.Equal("ShoppingCart:Small", config["FeatureManagement:VariantsFeature1:Variants:1:ConfigurationReference"]);
-            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature1:Variants:1:StatusOverride"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenDisabled"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenEnabled"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Variant"]);
-            Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:0"]);
-            Assert.Equal("John", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:1"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Variant"]);
-            Assert.Equal("Alice", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:0"]);
-            Assert.Equal("Bob", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:1"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Variant"]);
-            Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Groups:0"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Variant"]);
-            Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:0"]);
-            Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:1"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:Variant"]);
-            Assert.Equal("0", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:From"]);
-            Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:To"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:Variant"]);
-            Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:From"]);
-            Assert.Equal("100", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:To"]);
-            Assert.Equal("13992821", config["FeatureManagement:VariantsFeature1:Allocation:Seed"]);
+            Assert.Equal("VariantsFeature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:0:variants:0:name"]);
+            Assert.Equal("600px", config["feature_management:feature_flags:0:variants:0:configuration_value"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:0:variants:1:name"]);
+            Assert.Equal("ShoppingCart:Small", config["feature_management:feature_flags:0:variants:1:configuration_reference"]);
+            Assert.Equal("Disabled", config["feature_management:feature_flags:0:variants:1:status_override"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_disabled"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_enabled"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:0:allocation:user:0:variant"]);
+            Assert.Equal("Marsha", config["feature_management:feature_flags:0:allocation:user:0:users:0"]);
+            Assert.Equal("John", config["feature_management:feature_flags:0:allocation:user:0:users:1"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:user:1:variant"]);
+            Assert.Equal("Alice", config["feature_management:feature_flags:0:allocation:user:1:users:0"]);
+            Assert.Equal("Bob", config["feature_management:feature_flags:0:allocation:user:1:users:1"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:0:allocation:group:0:variant"]);
+            Assert.Equal("Ring1", config["feature_management:feature_flags:0:allocation:group:0:groups:0"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:group:1:variant"]);
+            Assert.Equal("Ring2", config["feature_management:feature_flags:0:allocation:group:1:groups:0"]);
+            Assert.Equal("Ring3", config["feature_management:feature_flags:0:allocation:group:1:groups:1"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:0:allocation:percentile:0:variant"]);
+            Assert.Equal("0", config["feature_management:feature_flags:0:allocation:percentile:0:from"]);
+            Assert.Equal("50", config["feature_management:feature_flags:0:allocation:percentile:0:to"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:percentile:1:variant"]);
+            Assert.Equal("50", config["feature_management:feature_flags:0:allocation:percentile:1:from"]);
+            Assert.Equal("100", config["feature_management:feature_flags:0:allocation:percentile:1:to"]);
+            Assert.Equal("13992821", config["feature_management:feature_flags:0:allocation:seed"]);
 
-            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature2:Status"]);
-            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Variants:0:Name"]);
-            Assert.Equal("Value1", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key1"]);
-            Assert.Equal("Value2", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key2:InsideKey2"]);
-            Assert.Equal("NumberVariant", config["FeatureManagement:VariantsFeature2:Variants:1:Name"]);
-            Assert.Equal("100", config["FeatureManagement:VariantsFeature2:Variants:1:ConfigurationValue"]);
-            Assert.Equal("NullVariant", config["FeatureManagement:VariantsFeature2:Variants:2:Name"]);
-            Assert.Equal("", config["FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"]);
+            Assert.Equal("VariantsFeature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:variants:0:name"]);
+            Assert.Equal("Value1", config["feature_management:feature_flags:1:variants:0:configuration_value:Key1"]);
+            Assert.Equal("Value2", config["feature_management:feature_flags:1:variants:0:configuration_value:Key2:InsideKey2"]);
+            Assert.Equal("NumberVariant", config["feature_management:feature_flags:1:variants:1:name"]);
+            Assert.Equal("100", config["feature_management:feature_flags:1:variants:1:configuration_value"]);
+            Assert.Equal("NullVariant", config["feature_management:feature_flags:1:variants:2:name"]);
+            Assert.Equal("", config["feature_management:feature_flags:1:variants:2:configuration_value"]);
             Assert.True(config
-                .GetSection("FeatureManagement:VariantsFeature2:Variants:2")
+                .GetSection("feature_management:feature_flags:1:variants:2")
                 .AsEnumerable()
                 .ToDictionary(x => x.Key, x => x.Value)
-                .ContainsKey("FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"));
-            Assert.Equal("MissingValueVariant", config["FeatureManagement:VariantsFeature2:Variants:3:Name"]);
-            Assert.Null(config["FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"]);
+                .ContainsKey("feature_management:feature_flags:1:variants:2:configuration_value"));
+            Assert.Equal("MissingValueVariant", config["feature_management:feature_flags:1:variants:3:name"]);
+            Assert.Null(config["feature_management:feature_flags:1:variants:3:configuration_value"]);
             Assert.False(config
-                .GetSection("FeatureManagement:VariantsFeature2:Variants:3")
+                .GetSection("feature_management:feature_flags:1:variants:3")
                 .AsEnumerable()
                 .ToDictionary(x => x.Key, x => x.Value)
-                .ContainsKey("FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"));
-            Assert.Equal("BooleanVariant", config["FeatureManagement:VariantsFeature2:Variants:4:Name"]);
-            Assert.Equal("True", config["FeatureManagement:VariantsFeature2:Variants:4:ConfigurationValue"]);
-            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenDisabled"]);
-            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenEnabled"]);
-        }
-
-        [Fact]
-        public void WithStatus()
-        {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_featureFlagCollection));
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags();
-                })
-                .Build();
-
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Conditional", config["FeatureManagement:Feature1:Status"]);
+                .ContainsKey("feature_management:feature_flags:1:variants:3:configuration_value"));
+            Assert.Equal("BooleanVariant", config["feature_management:feature_flags:1:variants:4:name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:1:variants:4:configuration_value"]);
+            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:allocation:default_when_disabled"]);
+            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:allocation:default_when_enabled"]);
         }
 
         [Fact]
@@ -1429,10 +1445,11 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
-            Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
-            Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
-            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:ETag"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:telemetry:enabled"]);
+            Assert.Equal("TelemetryFeature", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("Tag1Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag1"]);
+            Assert.Equal("Tag2Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag2"]);
+            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["feature_management:feature_flags:0:telemetry:metadata:ETag"]);
 
             byte[] featureFlagIdHash;
 
@@ -1446,8 +1463,8 @@ namespace Tests.AzureAppConfiguration
                 .Replace('+', '-')
                 .Replace('/', '_');
 
-            Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
-            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
+            Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
         }
 
 
@@ -1488,10 +1505,14 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Null(config["FeatureManagement:MyFeature2:RequirementType"]);
-            Assert.Null(config["FeatureManagement:Feature_NoFilters:RequirementType"]);
-            Assert.Equal("All", config["FeatureManagement:Feature_RequireAll:RequirementType"]);
-            Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
+            Assert.Null(config["feature_management:feature_flags:0:requirement_type"]);
+            Assert.Equal("MyFeature2", config["feature_management:feature_flags:0:id"]);
+            Assert.Null(config["feature_management:feature_flags:1:requirement_type"]);
+            Assert.Equal("Feature_NoFilters", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("All", config["feature_management:feature_flags:2:conditions:requirement_type"]);
+            Assert.Equal("Feature_RequireAll", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("Any", config["feature_management:feature_flags:3:conditions:requirement_type"]);
+            Assert.Equal("Feature_RequireAny", config["feature_management:feature_flags:3:id"]);
         }
 
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
