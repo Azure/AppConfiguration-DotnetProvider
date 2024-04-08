@@ -17,6 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private FeatureFilterTracing _featureFilterTracing;
+        private int _featureFlagIndex = 0;
 
         public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
         {
@@ -37,8 +38,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            // TODO how to get index of this flag?
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureManagementSectionName}:{_featureFlagIndex}";
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
+
+            _featureFlagIndex++;
 
             keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Id}", featureFlag.Id));
 
@@ -248,6 +250,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool NeedsRefresh()
         {
             return false;
+        }
+
+        public void ResetState()
+        {
+            _featureFlagIndex = 0;
+
+            return;
         }
 
         private static string CalculateFeatureFlagId(string key, string label)

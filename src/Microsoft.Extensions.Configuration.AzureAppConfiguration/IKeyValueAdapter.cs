@@ -18,5 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         void InvalidateCache(ConfigurationSetting setting = null);
 
         bool NeedsRefresh();
+
+        void ResetState();
     }
 }

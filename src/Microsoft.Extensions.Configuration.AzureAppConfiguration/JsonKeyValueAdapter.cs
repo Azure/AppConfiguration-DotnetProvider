@@ -99,5 +99,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return false;
         }
+
+        public void ResetState()
+        {
+            return;
+        }
     }
 }
