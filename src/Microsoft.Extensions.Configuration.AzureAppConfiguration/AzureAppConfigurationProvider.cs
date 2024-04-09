@@ -352,21 +352,47 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                             }
 
+                            if (!refreshAll && _options.RegisterAllEnabled)
+                            {
+                                foreach (KeyValueWatcher multiKeyWatcher in cacheExpiredMultiKeyWatchers)
+                                {
+                                    SettingSelector watchedSettingSelector = new SettingSelector()
+                                    {
+                                        KeyFilter = multiKeyWatcher.Key,
+                                        LabelFilter = multiKeyWatcher.Label
+                                    };
+
+                                    _watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions) {
+
+                                        await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                                            async () => refreshAll = await client.IsAnyKeyValueChanged(watchedSettingSelector, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                    }
+
+                                    if (refreshAll)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+
+                                if (!changedKeyValuesCollection.Any())
+                                {
+                                    logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
+                                }
+                            }
+
                             if (refreshAll)
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
+                                // or if RegisterAll was called and any loaded key-value changed
                                 data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
-                            }
-
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
-
-                            if (!changedKeyValuesCollection.Any())
-                            {
-                                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
                             }
                         },
                         cancellationToken)
