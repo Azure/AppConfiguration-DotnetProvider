@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, SettingSelector selector, MatchConditions matchConditions, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, SettingSelector selector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
         {
             if (selector == null)
             {
@@ -28,12 +28,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException(nameof(matchConditions));
             }
 
-            if (!matchConditions.IfNoneMatch.HasValue)
+            if (matchConditions.Count() != 1)
+            {
+                throw new ArgumentException("Requires exactly one MatchConditions value.", nameof(matchConditions));
+            }
+
+            MatchConditions condition = matchConditions.First();
+
+            if (condition.IfNoneMatch.HasValue)
             {
                 throw new ArgumentException("Must have valid IfNoneMatch header.", nameof(matchConditions));
             }
 
-            ConfigurationSetting setting = new ConfigurationSetting(selector.KeyFilter, null, selector.LabelFilter, matchConditions.IfNoneMatch.Value);
+            ConfigurationSetting setting = new ConfigurationSetting(selector.KeyFilter, null, selector.LabelFilter, condition.IfNoneMatch.Value);
 
             try
             {
@@ -50,7 +57,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     };
                 }
             }
-            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && matchConditions.IfNoneMatch.Value != default)
+            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && condition.IfNoneMatch.Value != default)
             {
                 return new KeyValueChange
                 {

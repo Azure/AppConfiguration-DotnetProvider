@@ -362,8 +362,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         LabelFilter = multiKeyWatcher.Label
                                     };
 
-                                    _watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions) {
-
+                                    if (_watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions)) 
+                                    {
                                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                                             async () => refreshAll = await client.IsAnyKeyValueChanged(watchedSettingSelector, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                     }
@@ -752,7 +752,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
-            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
+            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings = null;
 
             await ExecuteWithFailOverPolicyAsync(
                 clients,
@@ -870,21 +870,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return serverData;
         }
 
-        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, CancellationToken cancellationToken)
+        private async Task<Dictionary<SettingSelector, IEnumerable<MatchConditions>>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, CancellationToken cancellationToken)
         {
-            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>();
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
                 string watchedKey = changeWatcher.Key;
                 string watchedLabel = changeWatcher.Label;
-                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+
+                SettingSelector watchedSettingSelector = new SettingSelector()
+                {
+                    KeyFilter = watchedKey,
+                    LabelFilter = watchedLabel
+                };
 
                 // Skip the loading for the key-value in case it has already been loaded
                 if (existingSettings.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
-                    && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
+                    && watchedSettingSelector.KeyFilter == loadedKv.Key
+                    && watchedSettingSelector.LabelFilter == loadedKv.Label)
                 {
-                    watchedSettings[watchedKeyLabel] = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
+                    watchedSettings[watchedSettingSelector] = new List<MatchConditions>() { new MatchConditions() { IfNoneMatch = loadedKv.ETag } };
                     continue;
                 }
 
@@ -902,7 +908,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
-                    watchedSettings[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
+                    watchedSettings[watchedSettingSelector] = new List<MatchConditions>() { new MatchConditions() { IfNoneMatch = loadedKv.ETag } };
                     existingSettings[watchedKey] = watchedKv;
                 }
             }
