@@ -107,29 +107,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            if (_options.RegisterAllEnabled)
-            {
-                foreach (KeyValueSelector kvSelector in _options.KeyValueSelectors)
-                {
-                    options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher
-                    {
-                        Key = kvSelector.KeyFilter,
-                        Label = kvSelector.LabelFilter,
-                        CacheExpirationInterval = options.RefreshOptions.CacheExpirationInterval
-                    });
-                }
-
-                foreach (KeyValueSelector featureFlagSelector in _options.FeatureFlagOptions.FeatureFlagSelectors)
-                {
-                    options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher
-                    {
-                        Key = featureFlagSelector.KeyFilter,
-                        Label = featureFlagSelector.LabelFilter,
-                        CacheExpirationInterval = options.FeatureFlagOptions.CacheExpirationInterval
-                    });
-                }
-            }
-
             IEnumerable<KeyValueWatcher> watchers = options.ChangeWatchers.Union(options.MultiKeyWatchers);
 
             if (watchers.Any())
@@ -312,6 +289,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     // Load the key-value in case the previous load attempts had failed
 
+                                    ConfigurationSetting watchedKv = null;
+
                                     try
                                     {
                                         await CallWithRequestTracing(
@@ -362,7 +341,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         LabelFilter = multiKeyWatcher.Label
                                     };
 
-                                    if (_watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions)) 
+                                    if (_watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions))
                                     {
                                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                                             async () => refreshAll = await client.IsAnyKeyValueChanged(watchedSettingSelector, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
@@ -388,8 +367,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 // or if RegisterAll was called and any loaded key-value changed
-                                data = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                (data, watchedSettings) = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, watchedSettings, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
@@ -409,12 +388,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         foreach (KeyValueChange change in keyValueChanges.Concat(changedKeyValuesCollection))
                         {
-                            KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
+                            SettingSelector changeSelector = new SettingSelector()
+                            {
+                                KeyFilter = change.Key,
+                                LabelFilter = change.Label
+                            };
+
                             if (change.ChangeType == KeyValueChangeType.Modified)
                             {
                                 ConfigurationSetting setting = change.Current;
-                                ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                                watchedSettings[changeIdentifier] = settingCopy;
+                                watchedSettings[changeSelector] = new List<MatchConditions>() { new MatchConditions() { IfNoneMatch = setting.ETag } };
 
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                                 {
@@ -433,7 +416,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             else if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
                                 _mappedData.Remove(change.Key);
-                                watchedSettings.Remove(changeIdentifier);
+                                watchedSettings.Remove(changeSelector);
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
@@ -758,7 +741,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clients,
                 async (client) =>
                 {
-                    data = await LoadSelectedKeyValues(
+                    (data, watchedSettings) = await LoadSelectedKeyValues(
                         client,
                         cancellationToken)
                         .ConfigureAwait(false);
@@ -766,6 +749,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     watchedSettings = await LoadKeyValuesRegisteredForRefresh(
                         client,
                         data,
+                        watchedSettings,
                         cancellationToken)
                         .ConfigureAwait(false);
 
@@ -795,9 +779,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> LoadSelectedKeyValues(ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<(Dictionary<string, ConfigurationSetting>, Dictionary<SettingSelector, IEnumerable<MatchConditions>>)> LoadSelectedKeyValues(ConfigurationClient client, CancellationToken cancellationToken)
         {
             var serverData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>();
 
             // Use default query if there are no key-values specified for use other than the feature flags
             bool useDefaultQuery = !_options.KeyValueSelectors.Any(selector => selector.KeyFilter == null ||
@@ -812,28 +797,80 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     LabelFilter = LabelFilter.Null
                 };
 
+                List<MatchConditions> matchConditions = new List<MatchConditions>();
+
                 await CallWithRequestTracing(async () =>
                 {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+
+                    await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages().ConfigureAwait(false))
                     {
-                        serverData[setting.Key] = setting;
+                        foreach (ConfigurationSetting setting in page.Values)
+                        {
+                            serverData[setting.Key] = setting;
+                        }
+
+                        if (_options.RegisterAllEnabled)
+                        {
+                            matchConditions.Add(new MatchConditions { IfNoneMatch = page.GetRawResponse().Headers.ETag });
+                        }
                     }
                 }).ConfigureAwait(false);
+
+                if (_options.RegisterAllEnabled)
+                {
+                    watchedSettings[selector] = matchConditions;
+
+                    _options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher()
+                    {
+                        Key = selector.KeyFilter,
+                        Label = selector.LabelFilter,
+                        CacheExpirationInterval = _options.RefreshOptions.CacheExpirationInterval
+                    });
+                }
             }
 
             foreach (KeyValueSelector loadOption in _options.KeyValueSelectors)
             {
-                IAsyncEnumerable<ConfigurationSetting> settingsEnumerable;
-
                 if (string.IsNullOrEmpty(loadOption.SnapshotName))
                 {
-                    settingsEnumerable = client.GetConfigurationSettingsAsync(
-                        new SettingSelector
+                    var selector = new SettingSelector()
+                    {
+                        KeyFilter = loadOption.KeyFilter,
+                        LabelFilter = loadOption.LabelFilter
+                    };
+
+                    List<MatchConditions> matchConditions = new List<MatchConditions>();
+
+                    await CallWithRequestTracing(async () =>
+                    {
+                        AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+
+                        await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages().ConfigureAwait(false))
                         {
-                            KeyFilter = loadOption.KeyFilter,
-                            LabelFilter = loadOption.LabelFilter
-                        },
-                        cancellationToken);
+                            foreach (ConfigurationSetting setting in page.Values)
+                            {
+                                serverData[setting.Key] = setting;
+                            }
+
+                            if (_options.RegisterAllEnabled)
+                            {
+                                matchConditions.Add(new MatchConditions { IfNoneMatch = page.GetRawResponse().Headers.ETag });
+                            }
+                        }
+                    }).ConfigureAwait(false);
+
+                    if (_options.RegisterAllEnabled)
+                    {
+                        watchedSettings[selector] = matchConditions;
+
+                        _options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher()
+                        {
+                            Key = selector.KeyFilter,
+                            Label = selector.LabelFilter,
+                            CacheExpirationInterval = _options.RefreshOptions.CacheExpirationInterval
+                        });
+                    }
                 }
                 else
                 {
@@ -853,26 +890,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
                     }
 
-                    settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
+                    IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
                         loadOption.SnapshotName,
                         cancellationToken);
-                }
 
-                await CallWithRequestTracing(async () =>
-                {
-                    await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
+                    await CallWithRequestTracing(async () =>
                     {
-                        serverData[setting.Key] = setting;
-                    }
-                }).ConfigureAwait(false);
+                        await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
+                        {
+                            serverData[setting.Key] = setting;
+                        }
+                    }).ConfigureAwait(false);
+                }
             }
 
-            return serverData;
+            return (serverData, watchedSettings);
         }
 
-        private async Task<Dictionary<SettingSelector, IEnumerable<MatchConditions>>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, CancellationToken cancellationToken)
+        private async Task<Dictionary<SettingSelector, IEnumerable<MatchConditions>>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, Dictionary<SettingSelector, IEnumerable<MatchConditions>> existingWatchedSettings, CancellationToken cancellationToken)
         {
-            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>();
+            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>(existingWatchedSettings);
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
@@ -916,15 +953,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return watchedSettings;
         }
 
-        private Dictionary<KeyValueIdentifier, ConfigurationSetting> UpdateWatchedKeyValueCollections(Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings, IDictionary<string, ConfigurationSetting> existingSettings)
+        private Dictionary<SettingSelector, IEnumerable<MatchConditions>> UpdateWatchedKeyValueCollections(Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings, IDictionary<string, ConfigurationSetting> existingSettings)
         {
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            if (!_options.RegisterAllEnabled)
             {
-                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, existingSettings.Values);
-
-                foreach (ConfigurationSetting setting in currentKeyValues)
+                foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
                 {
-                    watchedSettings[new KeyValueIdentifier(setting.Key, setting.Label)] = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+                    IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, existingSettings.Values);
+
+                    foreach (ConfigurationSetting setting in currentKeyValues)
+                    {
+                        watchedSettings[new KeyValueIdentifier(setting.Key, setting.Label)] = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+                    }
                 }
             }
 

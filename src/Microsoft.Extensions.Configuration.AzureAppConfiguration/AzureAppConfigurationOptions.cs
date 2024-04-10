@@ -68,11 +68,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
-        /// The configured options for feature flags.
-        /// </summary>
-        internal FeatureFlagOptions FeatureFlagOptions { get; private set; } = new FeatureFlagOptions();
-
-        /// <summary>
         /// The configured options for refresh.
         /// </summary>
         internal AzureAppConfigurationRefreshOptions RefreshOptions { get; private set; } = new AzureAppConfigurationRefreshOptions();

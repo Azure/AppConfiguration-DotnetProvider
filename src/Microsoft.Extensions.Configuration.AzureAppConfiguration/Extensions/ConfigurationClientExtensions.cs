@@ -71,7 +71,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             return new KeyValueChange
             {
                 ChangeType = KeyValueChangeType.None,
-                Current = setting,
+                Current = null,
                 Key = setting.Key,
                 Label = setting.Label
             };
