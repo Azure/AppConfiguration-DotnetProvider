@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,12 +76,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public static string GetAssemblyVersion(string assemblyName)
+        public static Version GetAssemblyVersion(string assemblyName)
         {
             if (!string.IsNullOrEmpty(assemblyName))
             {
-                // Return the version using only the first 3 fields and remove additional characters
-                return AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version?.ToString(3).Trim('{', '}');
+                return AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version;
             }
 
             return null;

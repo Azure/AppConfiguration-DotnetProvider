@@ -1192,9 +1192,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+                    Version featureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
-                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                    Version featureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+
+                    if (featureManagementVersion != null)
+                    {
+                        // If the version is less than 3.2.0, log the schema version warning
+                        if (featureManagementVersion.Major <= 3 && featureManagementVersion.Minor <= 1)
+                        {
+                            _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
+                        }
+                    }
+
+                    // Return the version using only the first 3 fields and remove additional characters
+                    _requestTracingOptions.FeatureManagementVersion = featureManagementVersion?.ToString(3).Trim('{', '}');
+
+                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = featureManagementAspNetCoreVersion?.ToString(3).Trim('{', '}');
                 }
             }
         }
