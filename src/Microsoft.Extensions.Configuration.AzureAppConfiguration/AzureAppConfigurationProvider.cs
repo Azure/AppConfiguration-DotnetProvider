@@ -774,6 +774,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                 SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
+
+                if (_options.RegisterAllEnabled)
+                {
+                    foreach (SettingSelector selector in watchedSettings.Keys)
+                    {
+                        _options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher()
+                        {
+                            Key = selector.KeyFilter,
+                            Label = selector.LabelFilter,
+                            CacheExpirationInterval = _options.RefreshOptions.CacheExpirationInterval
+                        });
+                    }
+                }
+
                 _watchedSettings = watchedSettings;
                 _mappedData = mappedData;
             }
@@ -817,17 +831,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }).ConfigureAwait(false);
 
-                if (_options.RegisterAllEnabled)
-                {
-                    watchedSettings[selector] = matchConditions;
-
-                    _options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher()
-                    {
-                        Key = selector.KeyFilter,
-                        Label = selector.LabelFilter,
-                        CacheExpirationInterval = _options.RefreshOptions.CacheExpirationInterval
-                    });
-                }
+                watchedSettings[selector] = matchConditions;
             }
 
             foreach (KeyValueSelector loadOption in _options.KeyValueSelectors)
@@ -860,17 +864,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }).ConfigureAwait(false);
 
-                    if (_options.RegisterAllEnabled)
-                    {
-                        watchedSettings[selector] = matchConditions;
-
-                        _options.MultiKeyWatchers.AppendUnique(new KeyValueWatcher()
-                        {
-                            Key = selector.KeyFilter,
-                            Label = selector.LabelFilter,
-                            CacheExpirationInterval = _options.RefreshOptions.CacheExpirationInterval
-                        });
-                    }
+                    watchedSettings[selector] = matchConditions;
                 }
                 else
                 {
@@ -953,22 +947,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return watchedSettings;
         }
 
-        private Dictionary<SettingSelector, IEnumerable<MatchConditions>> UpdateWatchedKeyValueCollections(Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings, IDictionary<string, ConfigurationSetting> existingSettings)
+        private Dictionary<SettingSelector, IEnumerable<MatchConditions>> UpdateWatchedKeyValueCollections(Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings)
         {
+            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettingsCopy = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>();
+
             if (!_options.RegisterAllEnabled)
             {
                 foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
                 {
-                    IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, existingSettings.Values);
-
-                    foreach (ConfigurationSetting setting in currentKeyValues)
+                    var selector = new SettingSelector()
                     {
-                        watchedSettings[new KeyValueIdentifier(setting.Key, setting.Label)] = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
-                    }
+                        KeyFilter = changeWatcher.Key,
+                        LabelFilter = changeWatcher.Label
+                    };
+
+                    watchedSettingsCopy[selector] = watchedSettings[selector];
                 }
+            } else
+            {
+                return watchedSettings;
             }
 
-            return watchedSettings;
+            return watchedSettingsCopy;
         }
 
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
@@ -983,11 +983,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValueWatcher changeWatcher in multiKeyWatchers)
             {
-                IEnumerable<ConfigurationSetting> currentKeyValues = GetCurrentKeyValueCollection(changeWatcher.Key, changeWatcher.Label, _watchedSettings.Values);
-
                 keyValueChanges.AddRange(
                     await client.GetKeyValueChangeCollection(
-                        currentKeyValues,
+                        _watchedSettings,
                         new GetKeyValueChangeCollectionOptions
                         {
                             KeyFilter = changeWatcher.Key,
