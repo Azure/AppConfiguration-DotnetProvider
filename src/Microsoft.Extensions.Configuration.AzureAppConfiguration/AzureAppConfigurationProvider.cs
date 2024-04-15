@@ -985,7 +985,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 keyValueChanges.AddRange(
                     await client.GetKeyValueChangeCollection(
-                        _watchedSettings,
+                        watchedSettings,
                         new GetKeyValueChangeCollectionOptions
                         {
                             KeyFilter = changeWatcher.Key,
