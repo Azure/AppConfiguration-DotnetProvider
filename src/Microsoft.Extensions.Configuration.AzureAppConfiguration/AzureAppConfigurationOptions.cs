@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether load balancing is enabled.
         /// </summary>
-        public bool LoadBalancingEnabled { get; set; } = false;
+        public bool LoadBalancingEnabled { get; set; }
 
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.

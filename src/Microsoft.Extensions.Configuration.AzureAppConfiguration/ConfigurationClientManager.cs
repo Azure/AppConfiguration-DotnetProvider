@@ -71,6 +71,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
             _loadBalancingEnabled = loadBalancingEnabled;
 
+            // If load balancing is enabled, shuffle the passed in connection strings to randomize the endpoint used on startup
+            if (loadBalancingEnabled)
+            {
+                connectionStrings = connectionStrings.ToList().Shuffle();
+            }
+
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
@@ -106,6 +112,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
             _loadBalancingEnabled = loadBalancingEnabled;
 
+            // If load balancing is enabled, shuffle the passed in endpoints to randomize the endpoint used on startup
+            if (loadBalancingEnabled)
+            {
+                endpoints = endpoints.ToList().Shuffle();
+            }
+
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
 
@@ -137,12 +149,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
-            IEnumerable<ConfigurationClient> clients = new List<ConfigurationClient>();
-
-            if (!_loadBalancingEnabled || _dynamicClients == null || !_dynamicClients.Any())
-            {
-                clients = _clients.Select(c => c.Client);
-            }
+            // Treat the passed in endpoints as the highest priority clients
+            IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
 
             if (_dynamicClients != null && _dynamicClients.Any())
             {
@@ -278,8 +286,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (string host in OrderedHosts)
             {
-                if (!string.IsNullOrEmpty(host) && (_loadBalancingEnabled || 
-                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase))) &&
+                if (!string.IsNullOrEmpty(host) &&
+                    !_clients.Any(c => c.Endpoint.Host.Equals(host, StringComparison.OrdinalIgnoreCase)) &&
                     IsValidEndpoint(host))
                 {
                     var targetEndpoint = new Uri($"https://{host}");
