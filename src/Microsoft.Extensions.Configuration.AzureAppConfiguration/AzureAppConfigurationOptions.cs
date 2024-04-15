@@ -220,10 +220,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
 
-            if (options.CacheExpirationInterval < RefreshConstants.MinimumFeatureFlagsCacheExpirationInterval)
+            if (options.RefreshInterval < RefreshConstants.MinimumFeatureFlagRefreshInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationInterval), options.CacheExpirationInterval.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
+                throw new ArgumentOutOfRangeException(nameof(options.RefreshInterval), options.RefreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumFeatureFlagRefreshInterval.TotalMilliseconds));
             }
 
             if (options.FeatureFlagSelectors.Count() != 0 && options.Label != null)
@@ -252,8 +252,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = featureFlagFilter,
                     Label = labelFilter,
-                    // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
-                    CacheExpirationInterval = options.CacheExpirationInterval
+                    // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
+                    RefreshInterval = options.RefreshInterval
                 });
 
             }
@@ -386,7 +386,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
+                item.RefreshInterval = refreshOptions.RefreshInterval;
                 _changeWatchers.Add(item);
             }
 
