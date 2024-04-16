@@ -33,7 +33,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly TokenCredential _credential;
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
-        private readonly bool _loadBalancingEnabled;
         private readonly SrvLookupClient _srvLookupClient;
         private readonly string _validDomain;
 
@@ -69,7 +68,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
-            _loadBalancingEnabled = loadBalancingEnabled;
 
             // If load balancing is enabled, shuffle the passed in connection strings to randomize the endpoint used on startup
             if (loadBalancingEnabled)
@@ -110,7 +108,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _credential = credential;
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
-            _loadBalancingEnabled = loadBalancingEnabled;
 
             // If load balancing is enabled, shuffle the passed in endpoints to randomize the endpoint used on startup
             if (loadBalancingEnabled)

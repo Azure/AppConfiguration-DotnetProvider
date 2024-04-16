@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
-        /// Flag to indicate whether enable replica discovery.
+        /// Flag to indicate whether replica discovery is enabled.
         /// </summary>
         public bool ReplicaDiscoveryEnabled { get; set; } = true;
 
