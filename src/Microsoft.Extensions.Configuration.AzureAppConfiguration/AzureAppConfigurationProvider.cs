@@ -991,7 +991,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null)
+            if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
             {
                 int nextClientIndex = 0;
 
