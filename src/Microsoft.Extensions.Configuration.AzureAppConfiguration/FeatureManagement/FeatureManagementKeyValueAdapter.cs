@@ -28,6 +28,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             if (featureFlag != null)
             {
                 // TODO turn into configuration
+
+                // requirementtype
                 if (featureFlag.Conditions.ClientFilters.Count > 0)
                 {
 
@@ -348,7 +350,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                                                                 {
                                                                                     if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
                                                                                     {
-                                                                                        
+                                                                                        clientFilter.Parameters = JsonDocument.ParseValue(ref reader).RootElement;
                                                                                     }
                                                                                     else
                                                                                     {
