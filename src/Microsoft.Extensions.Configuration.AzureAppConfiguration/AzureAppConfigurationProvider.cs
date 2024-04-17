@@ -993,6 +993,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
             {
+                // Ensure consistent elements in clients list
+                clients = new List<ConfigurationClient>(clients);
+
                 int nextClientIndex = 0;
 
                 foreach (ConfigurationClient client in clients)
@@ -1005,11 +1008,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }
 
-                // We found the last successful client, so we'll rotate the list so that the next client is at the beginning
+                // If we found the last successful client, we'll rotate the list so that the next client is at the beginning
                 if (nextClientIndex < clients.Count())
                 {
                     clients = clients.Skip(nextClientIndex).Concat(clients.Take(nextClientIndex));
-                } 
+                }
             }
 
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
