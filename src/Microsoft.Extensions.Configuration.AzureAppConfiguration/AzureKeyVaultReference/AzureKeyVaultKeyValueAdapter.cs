@@ -29,30 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
-            string secretRefUri = "";
-
-            // Content validation
-            try
-            {
-                using (JsonDocument document = JsonDocument.Parse(setting.Value))
-                {
-                    JsonElement root = document.RootElement;
-
-                    if (root.TryGetProperty(KeyVaultConstants.SecretReferenceUriJsonPropertyName, out JsonElement uriElement))
-                    {
-                        if (uriElement.ValueKind != JsonValueKind.String)
-                        {
-                            throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
-                        }
-
-                        secretRefUri = uriElement.GetString();
-                    }
-                }
-            }
-            catch (JsonException e)
-            {
-                throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
-            }
+            string secretRefUri = ParseSecretReferenceUri(setting);
 
             // Uri validation
             if (string.IsNullOrEmpty(secretRefUri) || !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
@@ -114,6 +91,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public bool NeedsRefresh()
         {
             return _secretProvider.ShouldRefreshKeyVaultSecrets();
+        }
+
+        private string ParseSecretReferenceUri(ConfigurationSetting setting)
+        {
+            try
+            {
+                var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
+
+                if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
+                {
+                    if (reader.Read() && reader.TokenType == JsonTokenType.PropertyName && reader.GetString() == KeyVaultConstants.SecretReferenceUriJsonPropertyName)
+                    {
+                        if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                        {
+                            return reader.GetString();
+                        }
+                        else
+                        {
+                            throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
+                        }
+                    }
+                }
+            }
+            catch (JsonException e)
+            {
+                throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
+            }
+
+            return null;
         }
     }
 }
