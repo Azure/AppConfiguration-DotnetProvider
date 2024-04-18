@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            if (featureFlag != null)
+            if (!string.IsNullOrEmpty(featureFlag.Id))
             {
                 if (featureFlag.Enabled)
                 {
@@ -105,9 +105,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             try
             {
-                reader.Read();
-
-                if (reader.TokenType != JsonTokenType.StartObject)
+                if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
                     throw new FormatException(string.Format(ErrorMessages.FeatureFlagInvalidFormat, settingKey));
                 }
@@ -129,12 +127,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 {
                                     featureFlag.Id = reader.GetString();
                                 }
-                                else if (reader.TokenType == JsonTokenType.Null)
-                                {
-                                    // Effectively skips the feature flag if the Id is null
-                                    return null;
-                                }
-                                else
+                                else if (reader.TokenType != JsonTokenType.Null)
                                 {
                                     throw CreateFeatureFlagFormatException(
                                         FeatureManagementConstants.IdJsonPropertyName,
@@ -151,6 +144,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 if (reader.Read() && (reader.TokenType == JsonTokenType.False || reader.TokenType == JsonTokenType.True))
                                 {
                                     featureFlag.Enabled = reader.GetBoolean();
+                                }
+                                else if (reader.TokenType == JsonTokenType.String && bool.TryParse(reader.GetString(), out bool enabled))
+                                {
+                                    featureFlag.Enabled = enabled;
                                 }
                                 else
                                 {
@@ -187,6 +184,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             }
 
                         default:
+                            reader.Skip();
+
+                            if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
+                            {
+                                reader.Skip();
+                            }
+
                             break;
                     }
                 }
@@ -205,117 +209,140 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
             {
-                if (reader.TokenType == JsonTokenType.PropertyName)
+                if (reader.TokenType != JsonTokenType.PropertyName)
                 {
-                    string conditionsPropertyName = reader.GetString();
+                    continue;
+                }
 
-                    switch (conditionsPropertyName)
-                    {
-                        case FeatureManagementConstants.ClientFiltersJsonPropertyName:
+                string conditionsPropertyName = reader.GetString();
+
+                switch (conditionsPropertyName)
+                {
+                    case FeatureManagementConstants.ClientFiltersJsonPropertyName:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.Null)
                             {
-                                if (reader.Read() && reader.TokenType == JsonTokenType.Null)
+                                break;
+                            }
+                            else if (reader.TokenType == JsonTokenType.StartArray)
+                            {
+                                while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                 {
-                                    break;
-                                }
-                                else if (reader.TokenType == JsonTokenType.StartArray)
-                                {
-                                    while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                                    if (reader.TokenType == JsonTokenType.StartObject)
                                     {
-                                        if (reader.TokenType == JsonTokenType.StartObject)
-                                        {
-                                            ClientFilter clientFilter = new ClientFilter();
-
-                                            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                                            {
-                                                if (reader.TokenType == JsonTokenType.PropertyName)
-                                                {
-                                                    string clientFiltersPropertyName = reader.GetString();
-
-                                                    switch (clientFiltersPropertyName)
-                                                    {
-                                                        case FeatureManagementConstants.NameJsonPropertyName:
-                                                            {
-                                                                if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                                                                {
-                                                                    clientFilter.Name = reader.GetString();
-                                                                }
-                                                                else if (reader.TokenType != JsonTokenType.Null)
-                                                                {
-                                                                    throw CreateFeatureFlagFormatException(
-                                                                        FeatureManagementConstants.NameJsonPropertyName,
-                                                                        settingKey,
-                                                                        reader.TokenType.ToString(),
-                                                                        JsonTokenType.String.ToString());
-                                                                }
-
-                                                                break;
-                                                            }
-
-                                                        case FeatureManagementConstants.ParametersJsonPropertyName:
-                                                            {
-                                                                if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
-                                                                {
-                                                                    clientFilter.Parameters = JsonDocument.ParseValue(ref reader).RootElement;
-                                                                }
-                                                                else if (reader.TokenType != JsonTokenType.Null)
-                                                                {
-                                                                    throw CreateFeatureFlagFormatException(
-                                                                        FeatureManagementConstants.ParametersJsonPropertyName,
-                                                                        settingKey,
-                                                                        reader.TokenType.ToString(),
-                                                                        JsonTokenType.StartObject.ToString());
-                                                                }
-
-                                                                break;
-                                                            }
-
-                                                        default:
-                                                            break;
-                                                    }
-                                                }
-                                            }
-
-                                            featureConditions.ClientFilters.Add(clientFilter);
-                                        }
+                                        featureConditions.ClientFilters.Add(ParseClientFilter(ref reader, settingKey));
                                     }
                                 }
-                                else
-                                {
-                                    throw CreateFeatureFlagFormatException(
-                                        FeatureManagementConstants.ClientFiltersJsonPropertyName,
-                                        settingKey,
-                                        reader.TokenType.ToString(),
-                                        JsonTokenType.StartArray.ToString());
-                                }
-
-                                break;
                             }
-
-                        case FeatureManagementConstants.RequirementTypeJsonPropertyName:
+                            else
                             {
-                                if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                                {
-                                    featureConditions.RequirementType = reader.GetString();
-                                }
-                                else
-                                {
-                                    throw CreateFeatureFlagFormatException(
-                                        FeatureManagementConstants.RequirementTypeJsonPropertyName,
-                                        settingKey,
-                                        reader.TokenType.ToString(),
-                                        JsonTokenType.String.ToString());
-                                }
-
-                                break;
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.ClientFiltersJsonPropertyName,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.StartArray.ToString());
                             }
 
-                        default:
                             break;
-                    }
+                        }
+
+                    case FeatureManagementConstants.RequirementTypeJsonPropertyName:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                featureConditions.RequirementType = reader.GetString();
+                            }
+                            else
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.RequirementTypeJsonPropertyName,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.String.ToString());
+                            }
+
+                            break;
+                        }
+
+                    default:
+                        reader.Skip();
+
+                        if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
+                        {
+                            reader.Skip();
+                        }
+                            
+                        break;
                 }
             }
 
             return featureConditions;
+        }
+
+        private ClientFilter ParseClientFilter(ref Utf8JsonReader reader, string settingKey)
+        {
+            var clientFilter = new ClientFilter();
+
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+            {
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    continue;
+                }
+
+                string clientFiltersPropertyName = reader.GetString();
+
+                switch (clientFiltersPropertyName)
+                {
+                    case FeatureManagementConstants.NameJsonPropertyName:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                clientFilter.Name = reader.GetString();
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.NameJsonPropertyName,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.String.ToString());
+                            }
+
+                            break;
+                        }
+
+                    case FeatureManagementConstants.ParametersJsonPropertyName:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
+                            {
+                                clientFilter.Parameters = JsonDocument.ParseValue(ref reader).RootElement;
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.ParametersJsonPropertyName,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.StartObject.ToString());
+                            }
+
+                            break;
+                        }
+
+                    default:
+                        reader.Skip();
+
+                        if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
+                        {
+                            reader.Skip();
+                        }
+
+                        break;
+                }
+            }
+
+            return clientFilter;
         }
     }
 }

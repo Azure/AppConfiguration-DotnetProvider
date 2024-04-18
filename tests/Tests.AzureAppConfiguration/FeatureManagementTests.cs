@@ -168,7 +168,25 @@ namespace Tests.AzureAppConfiguration
                             ",
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature6",
+            value: @"
+                            {
+                              ""id"": ""InvalidStructure"",
+                              ""description"": """",
+                              ""display_name"": ""Invalid Structure"",
+                              ""ignored_object"": {
+                                ""id"": false
+                              },
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
         };
 
         List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>

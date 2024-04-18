@@ -99,9 +99,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
 
-                if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
+                if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
-                    if (reader.Read() && reader.TokenType == JsonTokenType.PropertyName && reader.GetString() == KeyVaultConstants.SecretReferenceUriJsonPropertyName)
+                    throw new FormatException(string.Format(ErrorMessages.KeyVaultSecretReferenceInvalidFormat, setting.Key));
+                }
+
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    if (reader.GetString() == KeyVaultConstants.SecretReferenceUriJsonPropertyName)
                     {
                         if (reader.Read() && reader.TokenType == JsonTokenType.String)
                         {
@@ -110,6 +120,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                         else
                         {
                             throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
+                        }
+                    }
+                    else
+                    {
+                        reader.Skip();
+
+                        if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
+                        {
+                            reader.Skip();
                         }
                     }
                 }
