@@ -993,9 +993,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
             {
-                // Ensure consistent elements in clients list
-                clients = new List<ConfigurationClient>(clients);
-
                 int nextClientIndex = 0;
 
                 foreach (ConfigurationClient client in clients)

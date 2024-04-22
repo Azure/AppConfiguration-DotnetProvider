@@ -46,8 +46,6 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                        .ReturnsAsync(Response.FromValue(kv, mockResponse));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
-            mockClient1.Setup(c => c.Equals(mockClient2)).Returns(false);
-            mockClient2.Setup(c => c.Equals(mockClient1)).Returns(false);
 
             ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
             ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
@@ -111,8 +109,6 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                        .ReturnsAsync(Response.FromValue(kv, mockResponse));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
-            mockClient1.Setup(c => c.Equals(mockClient2)).Returns(false);
-            mockClient2.Setup(c => c.Equals(mockClient1)).Returns(false);
 
             ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
             ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
