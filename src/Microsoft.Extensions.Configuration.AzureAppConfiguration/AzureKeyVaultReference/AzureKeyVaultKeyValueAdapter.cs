@@ -95,6 +95,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         private string ParseSecretReferenceUri(ConfigurationSetting setting)
         {
+            string secretRefUri = null;
+
             try
             {
                 var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
@@ -115,7 +117,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     {
                         if (reader.Read() && reader.TokenType == JsonTokenType.String)
                         {
-                            return reader.GetString();
+                            secretRefUri = reader.GetString();
                         }
                         else
                         {
@@ -125,11 +127,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     else
                     {
                         reader.Skip();
-
-                        if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
-                        {
-                            reader.Skip();
-                        }
                     }
                 }
             }
@@ -138,7 +135,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
             }
 
-            return null;
+            return secretRefUri;
         }
     }
 }

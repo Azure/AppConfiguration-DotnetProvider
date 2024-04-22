@@ -167,11 +167,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 {
                                     featureFlag.Conditions = ParseFeatureConditions(ref reader, settingKey);
                                 }
-                                else if (reader.TokenType == JsonTokenType.Null)
-                                {
-                                    break;
-                                }
-                                else
+                                else if (reader.TokenType != JsonTokenType.Null)
                                 {
                                     throw CreateFeatureFlagFormatException(
                                         FeatureManagementConstants.ConditionsJsonPropertyName,
@@ -185,11 +181,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         default:
                             reader.Skip();
-
-                            if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
-                            {
-                                reader.Skip();
-                            }
 
                             break;
                     }
@@ -266,11 +257,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     default:
                         reader.Skip();
-
-                        if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
-                        {
-                            reader.Skip();
-                        }
                             
                         break;
                 }
@@ -332,11 +318,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     default:
                         reader.Skip();
-
-                        if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
-                        {
-                            reader.Skip();
-                        }
 
                         break;
                 }

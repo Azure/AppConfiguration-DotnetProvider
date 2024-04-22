@@ -168,15 +168,18 @@ namespace Tests.AzureAppConfiguration
                             ",
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
 
+        List<ConfigurationSetting> _formatTestingFeatureFlagCollection = new List<ConfigurationSetting>
+        {
             ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature6",
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
             value: @"
                             {
-                              ""id"": ""InvalidStructure"",
-                              ""description"": """",
-                              ""display_name"": ""Invalid Structure"",
+                              ""id"": ""InvalidProperty"",
+                              ""description"": ""Should not throw an exception, invalid properties are skipped."",
+                              ""display_name"": ""Invalid Property"",
                               ""ignored_object"": {
                                 ""id"": false
                               },
@@ -187,9 +190,27 @@ namespace Tests.AzureAppConfiguration
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
+            value: @"
+                            {
+                              ""id"": ""InvalidProperty"",
+                              ""description"": ""Should not throw an exception, invalid properties are skipped"",
+                              ""display_name"": ""Invalid Property"",
+                              ""ignored_object"": {
+                                ""id"": false
+                              },
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List <ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
