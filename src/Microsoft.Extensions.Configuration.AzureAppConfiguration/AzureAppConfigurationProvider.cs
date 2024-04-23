@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Security;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -492,6 +493,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 return false;
             }
+            catch (FormatException fe)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToFormattingErrorMessage(fe.Message));
+
+                return false;
+            }
 
             return true;
         }
@@ -634,6 +641,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 exception is TimeoutException ||
                 exception is OperationCanceledException ||
                 exception is InvalidOperationException ||
+                exception is FormatException ||
                 ((exception as AggregateException)?.InnerExceptions?.Any(e =>
                     e is RequestFailedException ||
                     e is OperationCanceledException) ?? false)))
