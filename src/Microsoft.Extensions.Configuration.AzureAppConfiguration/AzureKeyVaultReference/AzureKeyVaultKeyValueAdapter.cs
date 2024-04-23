@@ -103,7 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
                 if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
-                    throw new FormatException(string.Format(ErrorMessages.KeyVaultSecretReferenceInvalidFormat, setting.Key));
+                    throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
                 }
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)

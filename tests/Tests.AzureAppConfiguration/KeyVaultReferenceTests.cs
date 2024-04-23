@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -80,6 +81,80 @@ namespace Tests.AzureAppConfiguration
                    ",
                 eTag : new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8"),
+        };
+
+        List<ConfigurationSetting> _invalidJsonKvCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"MissingClosingBracket",
+                value: @"
+                    {
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"MissingOpeningBracket",
+                value: @"
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                    }
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"MissingUriInRootJson",
+                value: @"
+                    {
+                        {
+                            ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                        }
+                    }
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"UriValueInsideObject",
+                value: @"
+                    {
+                        {
+                            ""uri"": {
+                                ""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                            }
+                        }
+                    }
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8")
+        };
+
+        List<ConfigurationSetting> _validJsonKvCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"AdditionalProperty1",
+                value: @"
+                    {
+                        ""additional_property"":""additional_property"",
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                    }
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"AdditionalProperty2",
+                value: @"
+                    {
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret"",
+                        ""additional_property"": {
+                            ""inside_property"": ""inside_property""
+                        }
+                    }
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8")
         };
 
         [Fact]
@@ -843,9 +918,6 @@ namespace Tests.AzureAppConfiguration
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
-            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Returns((string name, string version, CancellationToken cancellationToken) =>
-                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -874,6 +946,96 @@ namespace Tests.AzureAppConfiguration
 
             // Validate that 3 calls were made to fetch secrets from KeyVault because the secret cache had expired for only one secret. 
             mockSecretClient.Verify(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+        }
+
+
+        [Fact]
+        public void ThrowsWhenInvalidKeyVaultSecretReferenceJson()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _invalidJsonKvCollection.FirstOrDefault(s => s.Key == selector.KeyFilter);
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            };
+
+            var testClient = mockClient.Object;
+
+            foreach (ConfigurationSetting setting in _invalidJsonKvCollection)
+            {
+                void action() => new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select(setting.Key);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.Register(mockSecretClient.Object);
+                    });
+                })
+                .Build();
+
+                // Each of the secret references should throw an exception when parsed
+                Assert.Throws<KeyVaultReferenceException>(action);
+            }
+        }
+
+        [Fact]
+        public void AlternateValidKeyVaultSecretReferenceJsons()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _validJsonKvCollection.FirstOrDefault(s => s.Key == selector.KeyFilter);
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            };
+
+            var testClient = mockClient.Object;
+
+            foreach (ConfigurationSetting setting in _validJsonKvCollection)
+            {
+                var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select(setting.Key);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.Register(mockSecretClient.Object);
+                    });
+                })
+                .Build();
+
+                // Each of the secret references should work as normal and use the uri
+                Assert.Equal(_secretValue, config[setting.Key]);
+            }
         }
     }
 }
