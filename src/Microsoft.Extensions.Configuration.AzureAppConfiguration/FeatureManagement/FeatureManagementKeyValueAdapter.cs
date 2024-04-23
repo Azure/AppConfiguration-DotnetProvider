@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
             catch (JsonException e)
             {
-                throw new FormatException($"Failed to parse invalid feature flag Json. Key: '{setting.Key}'", e);
+                throw new FormatException($"Failed to parse invalid feature flag json. Key: '{setting.Key}'", e);
             }
 
             var keyValues = new List<KeyValuePair<string, string>>();
