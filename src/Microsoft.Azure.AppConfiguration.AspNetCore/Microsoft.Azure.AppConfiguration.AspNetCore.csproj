@@ -21,7 +21,7 @@
   <!-- Nuget Package Version Settings -->
 
   <PropertyGroup>
-    <OfficialVersion>8.0.0-preview</OfficialVersion>
+    <OfficialVersion>8.0.0-preview.2</OfficialVersion>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">

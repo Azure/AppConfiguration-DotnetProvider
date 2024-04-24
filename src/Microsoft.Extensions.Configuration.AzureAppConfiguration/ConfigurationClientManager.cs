@@ -54,7 +54,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public ConfigurationClientManager(
             IEnumerable<string> connectionStrings,
             ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled)
+            bool replicaDiscoveryEnabled,
+            bool loadBalancingEnabled)
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
@@ -67,6 +68,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+
+            // If load balancing is enabled, shuffle the passed in connection strings to randomize the endpoint used on startup
+            if (loadBalancingEnabled)
+            {
+                connectionStrings = connectionStrings.ToList().Shuffle();
+            }
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -84,7 +91,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IEnumerable<Uri> endpoints,
             TokenCredential credential,
             ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled)
+            bool replicaDiscoveryEnabled,
+            bool loadBalancingEnabled)
         {
             if (endpoints == null || !endpoints.Any())
             {
@@ -100,6 +108,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _credential = credential;
             _clientOptions = clientOptions;
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
+
+            // If load balancing is enabled, shuffle the passed in endpoints to randomize the endpoint used on startup
+            if (loadBalancingEnabled)
+            {
+                endpoints = endpoints.ToList().Shuffle();
+            }
 
             _validDomain = GetValidDomain(_endpoint);
             _srvLookupClient = new SrvLookupClient();
@@ -132,6 +146,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _ = DiscoverFallbackClients();
             }
 
+            // Treat the passed in endpoints as the highest priority clients
             IEnumerable<ConfigurationClient> clients = _clients.Select(c => c.Client);
 
             if (_dynamicClients != null && _dynamicClients.Any())
