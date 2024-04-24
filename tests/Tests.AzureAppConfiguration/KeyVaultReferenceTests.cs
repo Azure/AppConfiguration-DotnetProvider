@@ -918,6 +918,9 @@ namespace Tests.AzureAppConfiguration
 
             var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
             mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
