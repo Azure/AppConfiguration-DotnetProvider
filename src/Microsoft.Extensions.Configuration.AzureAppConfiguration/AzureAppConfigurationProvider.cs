@@ -334,7 +334,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             if (!refreshAll && _options.RegisterAllEnabled)
                             {
-                                foreach (KeyValueWatcher multiKeyWatcher in cacheExpiredMultiKeyWatchers)
+                                foreach (KeyValueWatcher multiKeyWatcher in refreshableMultiKeyWatchers)
                                 {
                                     SettingSelector watchedSettingSelector = new SettingSelector()
                                     {
@@ -345,7 +345,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     if (_watchedSettings.TryGetValue(watchedSettingSelector, out IEnumerable<MatchConditions> matchConditions))
                                     {
                                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                            async () => refreshAll = await client.IsAnyKeyValueChanged(watchedSettingSelector, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                            async () => refreshAll = await client.HasAnyKeyValueChanged(watchedSettingSelector, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                     }
 
                                     if (refreshAll)
@@ -370,7 +370,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // or if RegisterAll was called and any loaded key-value changed
                                 (data, watchedSettings) = await LoadSelectedKeyValues(client, cancellationToken).ConfigureAwait(false);
                                 watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, watchedSettings, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                                watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings);
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                 return;
                             }
@@ -754,7 +754,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         cancellationToken)
                         .ConfigureAwait(false);
 
-                    watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings, data);
+                    watchedSettings = UpdateWatchedKeyValueCollections(watchedSettings);
                 },
                 cancellationToken)
                 .ConfigureAwait(false);
@@ -784,7 +784,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             Key = selector.KeyFilter,
                             Label = selector.LabelFilter,
-                            CacheExpirationInterval = _options.RefreshOptions.CacheExpirationInterval
+                            RefreshInterval = _options.RefreshOptions.RefreshInterval
                         });
                     }
                 }
@@ -964,7 +964,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     watchedSettingsCopy[selector] = watchedSettings[selector];
                 }
-            } else
+            } 
+            else
             {
                 return watchedSettings;
             }

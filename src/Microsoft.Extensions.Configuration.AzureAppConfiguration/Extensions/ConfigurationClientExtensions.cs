@@ -77,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> IsAnyKeyValueChanged(this ConfigurationClient client, SettingSelector selector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        public static async Task<bool> HasAnyKeyValueChanged(this ConfigurationClient client, SettingSelector selector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
         {
             if (selector == null)
             {
@@ -126,9 +126,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException(nameof(options));
             }
 
-            if (keyValues == null)
+            if (watchedSettings == null)
             {
-                keyValues = Enumerable.Empty<ConfigurationSetting>();
+                watchedSettings = new Dictionary<SettingSelector, IEnumerable<MatchConditions>>();
             }
 
             if (options.KeyFilter == null)
@@ -136,17 +136,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 options.KeyFilter = string.Empty;
             }
 
-            if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
+            if (watchedSettings.Any(kvp => string.IsNullOrEmpty(kvp.Key.KeyFilter)))
             {
-                throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Key)}");
+                throw new ArgumentNullException($"{nameof(watchedSettings)}[].{nameof(ConfigurationSetting.Key)}");
             }
 
-            if (keyValues.Any(k => !string.Equals(k.Label.NormalizeNull(), options.Label.NormalizeNull())))
+            if (watchedSettings.Any(kvp => !string.Equals(kvp.Key.LabelFilter.NormalizeNull(), options.Label.NormalizeNull())))
             {
-                throw new ArgumentException("All key-values registered for refresh must use the same label.", $"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Label)}");
+                throw new ArgumentException("All key-values registered for refresh must use the same label.", $"{nameof(watchedSettings)}[].{nameof(ConfigurationSetting.Label)}");
             }
 
-            if (keyValues.Any(k => k.Label != null && k.Label.Contains("*")))
+            if (watchedSettings.Any(kvp => kvp.Key.LabelFilter != null && kvp.Key.LabelFilter.Contains("*")))
             {
                 throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Label)}");
             }
