@@ -71,12 +71,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     return false;
                 }
 
+                if (syncToken == null)
+                {
+                    return false;
+                }
+
                 pushNotification = new PushNotification()
                 {
                     SyncToken = syncToken,
                     EventType = eventGridEvent.EventType,
                     ResourceUri = resourceUri
                 };
+
                 return true;
             }
 

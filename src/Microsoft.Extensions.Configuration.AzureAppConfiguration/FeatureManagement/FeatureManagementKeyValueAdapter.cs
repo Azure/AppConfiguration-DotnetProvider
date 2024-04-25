@@ -223,9 +223,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     {
                                         ClientFilter clientFilter = ParseClientFilter(ref reader, settingKey);
 
-                                        if (clientFilter.Name != null &&
-                                            clientFilter.Parameters.ValueKind == JsonValueKind.Object &&
-                                            clientFilter.Parameters.EnumerateObject().Any())
+                                        if (clientFilter.Name != null ||
+                                            (clientFilter.Parameters.ValueKind == JsonValueKind.Object &&
+                                            clientFilter.Parameters.EnumerateObject().Any()))
                                         {
                                             featureConditions.ClientFilters.Add(clientFilter);
                                         }

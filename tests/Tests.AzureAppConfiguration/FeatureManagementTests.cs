@@ -167,6 +167,25 @@ namespace Tests.AzureAppConfiguration
                             ",
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "EmptyClientFilter",
+            value: @"
+                            {
+                              ""id"": ""EmptyClientFilter"",
+                              ""description"": """",
+                              ""display_name"": ""Empty Client Filter"",
+                              ""conditions"": {
+                                ""client_filters"": [
+                                    {}
+                                ]
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
@@ -195,12 +214,25 @@ namespace Tests.AzureAppConfiguration
                             {
                               ""id"": ""DuplicateProperty"",
                               ""description"": ""Should not throw an exception, last of duplicate properties will win."",
-                              ""ignored_object"": {
-                                ""id"": false
-                              },
                               ""enabled"": false,
                               ""enabled"": true,
                               ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "AllowNullRequirementType",
+            value: @"
+                            {
+                              ""id"": ""AllowNullRequirementType"",
+                              ""description"": ""Should not throw an exception, requirement type is allowed as null."",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""requirement_type"": null
+                              }
                             }
                             ",
             label: default,
@@ -707,6 +739,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["FeatureManagement:NullClientFilters:EnabledFor"]);
             Assert.Null(config["FeatureManagement:NoConditions:EnabledFor"]);
             Assert.Null(config["FeatureManagement:EmptyConditions:EnabledFor"]);
+            Assert.Null(config["FeatureManagement:EmptyClientFilter:EnabledFor"]);
         }
 
         [Fact]

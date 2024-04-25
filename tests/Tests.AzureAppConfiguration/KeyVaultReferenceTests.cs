@@ -154,6 +154,17 @@ namespace Tests.AzureAppConfiguration
                     }
                    ",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
+                contentType: KeyVaultConstants.ContentType + "; charset=utf-8"),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key:"DuplicateUri",
+                value: @"
+                    {
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/certificates/TestCertificate"",
+                        ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/TheTrialSecret""
+                    }
+                   ",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8")
         };
 
