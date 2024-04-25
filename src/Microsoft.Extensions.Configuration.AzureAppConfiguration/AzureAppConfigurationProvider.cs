@@ -356,7 +356,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                             else
                             {
-                                changedKeyValuesCollection = await GetRefreshedKeyValueCollections(refreshableMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+                                changedKeyValuesCollection = await GetRefreshedKeyValueCollections(refreshableMultiKeyWatchers, watchedSettings, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
 
                                 if (!changedKeyValuesCollection.Any())
                                 {
@@ -975,6 +975,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
             IEnumerable<KeyValueWatcher> multiKeyWatchers,
+            Dictionary<SettingSelector, IEnumerable<MatchConditions>> watchedSettings,
             ConfigurationClient client,
             StringBuilder logDebugBuilder,
             StringBuilder logInfoBuilder,
@@ -985,13 +986,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValueWatcher changeWatcher in multiKeyWatchers)
             {
+                SettingSelector selector = new SettingSelector()
+                {
+                    KeyFilter = changeWatcher.Key,
+                    LabelFilter = changeWatcher.Label.NormalizeNull()
+                };
+
                 keyValueChanges.AddRange(
                     await client.GetKeyValueChangeCollection(
-                        watchedSettings,
                         new GetKeyValueChangeCollectionOptions
                         {
-                            KeyFilter = changeWatcher.Key,
-                            Label = changeWatcher.Label.NormalizeNull(),
+                            Selector = selector,
+                            MatchConditions = watchedSettings[selector],
                             RequestTracingEnabled = _requestTracingEnabled,
                             RequestTracingOptions = _requestTracingOptions
                         },
