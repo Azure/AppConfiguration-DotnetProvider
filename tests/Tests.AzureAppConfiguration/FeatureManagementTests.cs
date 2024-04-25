@@ -14,11 +14,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using static System.Collections.Specialized.BitVector32;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -183,6 +181,24 @@ namespace Tests.AzureAppConfiguration
                               ""ignored_object"": {
                                 ""id"": false
                               },
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "DuplicateProperty",
+            value: @"
+                            {
+                              ""id"": ""DuplicateProperty"",
+                              ""description"": ""Should not throw an exception, last of duplicate properties will win."",
+                              ""ignored_object"": {
+                                ""id"": false
+                              },
+                              ""enabled"": false,
                               ""enabled"": true,
                               ""conditions"": {}
                             }
@@ -694,7 +710,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TestInvalidFeatureFlagFormatsThrowFormatException()
+        public void InvalidFeatureFlagFormatsThrowFormatException()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -735,7 +751,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TestMoreValidFeatureFlagFormats()
+        public void AlternateValidFeatureFlagFormats()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);

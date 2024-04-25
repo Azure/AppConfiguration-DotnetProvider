@@ -103,7 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
                 if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
-                    throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
+                    throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
                 }
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -121,7 +121,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                         }
                         else
                         {
-                            throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, null, null);
+                            throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
                         }
                     }
                     else
@@ -130,9 +130,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     }
                 }
             }
-            catch (JsonException e)
+            catch (Exception e) when (e is JsonException || e is InvalidOperationException)
             {
-                throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
+                throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, e, null);
             }
 
             return secretRefUri;

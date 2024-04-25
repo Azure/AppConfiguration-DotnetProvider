@@ -186,7 +186,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     }
                 }
             }
-            catch (JsonException e)
+            catch (Exception e) when (e is JsonException || e is InvalidOperationException)
             {
                 throw new FormatException(settingKey, e);
             }
@@ -221,7 +221,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 {
                                     if (reader.TokenType == JsonTokenType.StartObject)
                                     {
-                                        featureConditions.ClientFilters.Add(ParseClientFilter(ref reader, settingKey));
+                                        ClientFilter clientFilter = ParseClientFilter(ref reader, settingKey);
+
+                                        if (clientFilter.Name != null &&
+                                            clientFilter.Parameters.ValueKind == JsonValueKind.Object &&
+                                            clientFilter.Parameters.EnumerateObject().Any())
+                                        {
+                                            featureConditions.ClientFilters.Add(clientFilter);
+                                        }
                                     }
                                 }
                             }
@@ -243,7 +250,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 featureConditions.RequirementType = reader.GetString();
                             }
-                            else
+                            else if (reader.TokenType != JsonTokenType.Null)
                             {
                                 throw CreateFeatureFlagFormatException(
                                     FeatureManagementConstants.RequirementTypeJsonPropertyName,

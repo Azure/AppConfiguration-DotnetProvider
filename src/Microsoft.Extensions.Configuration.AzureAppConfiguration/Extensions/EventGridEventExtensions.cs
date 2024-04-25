@@ -31,29 +31,53 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
             {
-                JsonElement eventGridEventData;
+                string syncToken = null;
 
                 try
                 {
-                    eventGridEventData = JsonDocument.Parse(eventGridEvent.Data.ToString()).RootElement;
+                    var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(eventGridEvent.Data.ToString()));
+
+                    if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
+                    {
+                        return false;
+                    }
+
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    {
+                        if (reader.TokenType != JsonTokenType.PropertyName)
+                        {
+                            continue;
+                        }
+
+                        if (reader.GetString() == SyncTokenPropertyName)
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                syncToken = reader.GetString();
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            reader.Skip();
+                        }
+                    }
                 }
-                catch (JsonException)
+                catch (Exception e) when (e is JsonException || e is InvalidOperationException)
                 {
                     return false;
                 }
 
-                if (eventGridEventData.ValueKind == JsonValueKind.Object &&
-                    eventGridEventData.TryGetProperty(SyncTokenPropertyName, out JsonElement syncTokenJson) &&
-                    syncTokenJson.ValueKind == JsonValueKind.String)
+                pushNotification = new PushNotification()
                 {
-                    pushNotification = new PushNotification()
-                    {
-                        SyncToken = syncTokenJson.GetString(),
-                        EventType = eventGridEvent.EventType,
-                        ResourceUri = resourceUri
-                    };
-                    return true;
-                }
+                    SyncToken = syncToken,
+                    EventType = eventGridEvent.EventType,
+                    ResourceUri = resourceUri
+                };
+                return true;
             }
 
             return false;
