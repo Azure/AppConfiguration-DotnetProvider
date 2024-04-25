@@ -186,7 +186,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     }
                 }
             }
-            catch (Exception e) when (e is JsonException || e is InvalidOperationException)
+            catch (JsonException e)
             {
                 throw new FormatException(settingKey, e);
             }

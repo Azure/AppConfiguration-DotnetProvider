@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         }
                     }
                 }
-                catch (Exception e) when (e is JsonException || e is InvalidOperationException)
+                catch (JsonException e)
                 {
                     return false;
                 }

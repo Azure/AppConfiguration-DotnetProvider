@@ -130,7 +130,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     }
                 }
             }
-            catch (Exception e) when (e is JsonException || e is InvalidOperationException)
+            catch (JsonException e)
             {
                 throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, e, null);
             }
