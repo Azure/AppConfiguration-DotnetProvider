@@ -16,36 +16,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, SettingSelector selector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
         {
-            if (selector == null)
+            if (setting == null)
             {
-                throw new ArgumentNullException(nameof(selector));
+                throw new ArgumentNullException(nameof(setting));
             }
 
-            if (matchConditions == null)
+            if (string.IsNullOrEmpty(setting.Key))
             {
-                throw new ArgumentNullException(nameof(matchConditions));
+                throw new ArgumentNullException($"{nameof(setting)}.{nameof(setting.Key)}");
             }
-
-            if (matchConditions.Count() != 1)
-            {
-                throw new ArgumentException("Requires exactly one MatchConditions value.", nameof(matchConditions));
-            }
-
-            MatchConditions condition = matchConditions.First();
-
-            if (condition.IfNoneMatch.HasValue)
-            {
-                throw new ArgumentException("Must have valid IfNoneMatch header.", nameof(matchConditions));
-            }
-
-            ConfigurationSetting setting = new ConfigurationSetting(selector.KeyFilter, null, selector.LabelFilter, condition.IfNoneMatch.Value);
 
             try
             {
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-
                 if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
                 {
                     return new KeyValueChange
@@ -57,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     };
                 }
             }
-            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && condition.IfNoneMatch.Value != default)
+            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
             {
                 return new KeyValueChange
                 {
@@ -71,7 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             return new KeyValueChange
             {
                 ChangeType = KeyValueChangeType.None,
-                Current = null,
+                Current = setting,
                 Key = setting.Key,
                 Label = setting.Label
             };
