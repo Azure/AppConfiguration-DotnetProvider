@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         }
                     }
                 }
-                catch (JsonException e)
+                catch (JsonException)
                 {
                     return false;
                 }
