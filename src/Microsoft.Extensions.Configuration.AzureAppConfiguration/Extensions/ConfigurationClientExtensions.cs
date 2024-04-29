@@ -3,12 +3,10 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -95,86 +93,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             return false;
-        }
-
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(
-            this ConfigurationClient client,
-            GetKeyValueChangeCollectionOptions options,
-            StringBuilder logDebugBuilder,
-            StringBuilder logInfoBuilder,
-            Uri endpoint,
-            CancellationToken cancellationToken)
-        {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
-
-            if (options.Selector == null)
-            {
-                throw new ArgumentNullException($"{nameof(options)}.{nameof(options.Selector)}");
-            }
-
-            if (string.IsNullOrEmpty(options.Selector.KeyFilter))
-            {
-                throw new ArgumentNullException($"{nameof(options)}.{nameof(options.Selector)}.{nameof(SettingSelector.KeyFilter)}");
-            }
-
-            if (options.Selector.LabelFilter != null && options.Selector.LabelFilter.Contains("*"))
-            {
-                throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Selector)}.{nameof(options.Selector.LabelFilter)}");
-            }
-
-            bool hasKeyValueCollectionChanged = false;
-
-            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
-                async () => hasKeyValueCollectionChanged = await client.HasAnyKeyValueChanged(options.Selector, options.MatchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-
-            var changes = new List<KeyValueChange>();
-
-            if (!hasKeyValueCollectionChanged)
-            {
-                return changes;
-            }
-
-            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
-                async () =>
-                {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(options.Selector, cancellationToken).ConfigureAwait(false))
-                    {
-                        if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
-                        {
-                            changes.Add(new KeyValueChange
-                            {
-                                ChangeType = KeyValueChangeType.Modified,
-                                Key = setting.Key,
-                                Label = options.Label.NormalizeNull(),
-                                Current = setting
-                            });
-                            string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                            logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                            logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
-                        }
-
-                        eTagMap.Remove(setting.Key);
-                    }
-                }).ConfigureAwait(false);
-
-            foreach (var kvp in eTagMap)
-            {
-                changes.Add(new KeyValueChange
-                {
-                    ChangeType = KeyValueChangeType.Deleted,
-                    Key = kvp.Key,
-                    Label = options.Label.NormalizeNull(),
-                    Current = null
-                });
-                string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
-            }
-            
-            return changes;
         }
     }
 }

@@ -25,14 +25,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.RefreshFeatureFlagsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
-        public static string BuildFeatureFlagReadMessage(string key, string label, string endpoint)
+        public static string BuildFeatureFlagsUpdatedMessage()
         {
-            return $"{LoggingConstants.RefreshFeatureFlagRead} Key:'{key}' Label:'{label}' Endpoint:'{endpoint?.TrimEnd('/')}'";
-        }
-
-        public static string BuildFeatureFlagUpdatedMessage(string key)
-        {
-            return $"{LoggingConstants.RefreshFeatureFlagUpdated} Key:'{key}'";
+            
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)
