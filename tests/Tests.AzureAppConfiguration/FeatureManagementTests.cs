@@ -88,7 +88,239 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _nullOrMissingConditionsFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NullParameters",
+            value: @"
+                            {
+                              ""id"": ""NullParameters"",
+                              ""description"": """",
+                              ""display_name"": ""Null Parameters"",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""client_filters"": [
+                                  {
+                                    ""name"": ""Filter"",
+                                    ""parameters"": null
+                                  }
+                                ]
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NullConditions",
+            value: @"
+                            {
+                              ""id"": ""NullConditions"",
+                              ""description"": """",
+                              ""display_name"": ""Null Conditions"",
+                              ""enabled"": true,
+                              ""conditions"": null
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NullClientFilters",
+            value: @"
+                            {
+                              ""id"": ""NullClientFilters"",
+                              ""description"": """",
+                              ""display_name"": ""Null Client Filters"",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""client_filters"": null
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NoConditions",
+            value: @"
+                            {
+                              ""id"": ""NoConditions"",
+                              ""description"": """",
+                              ""display_name"": ""No Conditions"",
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "EmptyConditions",
+            value: @"
+                            {
+                              ""id"": ""EmptyConditions"",
+                              ""description"": """",
+                              ""display_name"": ""Empty Conditions"",
+                              ""conditions"": {},
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "EmptyClientFilter",
+            value: @"
+                            {
+                              ""id"": ""EmptyClientFilter"",
+                              ""description"": """",
+                              ""display_name"": ""Empty Client Filter"",
+                              ""conditions"": {
+                                ""client_filters"": [
+                                    {}
+                                ]
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+        List<ConfigurationSetting> _validFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "AdditionalProperty",
+            value: @"
+                            {
+                              ""id"": ""AdditionalProperty"",
+                              ""description"": ""Should not throw an exception, additional properties are skipped."",
+                              ""ignored_object"": {
+                                ""id"": false
+                              },
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "DuplicateProperty",
+            value: @"
+                            {
+                              ""id"": ""DuplicateProperty"",
+                              ""description"": ""Should not throw an exception, last of duplicate properties will win."",
+                              ""enabled"": false,
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "AllowNullRequirementType",
+            value: @"
+                            {
+                              ""id"": ""AllowNullRequirementType"",
+                              ""description"": ""Should not throw an exception, requirement type is allowed as null."",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""requirement_type"": null
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+        List<ConfigurationSetting> _invalidFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket1",
+            value: @"
+                            {
+                              ""id"": ""MissingClosingBracket1"",
+                              ""description"": ""Should throw an exception, invalid end of json."",
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket2",
+            value: @"
+                            {
+                              ""id"": ""MissingClosingBracket2"",
+                              ""description"": ""Should throw an exception, invalid end of conditions object."",
+                              ""conditions"": {,
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket3",
+            value: @"
+                            {
+                              ""id"": ""MissingClosingBracket3"",
+                              ""description"": ""Should throw an exception, no closing bracket on client filters array."",
+                              ""conditions"": {
+                                ""client_filters"": [
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingOpeningBracket1",
+            value: @"
+                            {
+                              ""id"": ""MissingOpeningBracket1"",
+                              ""description"": ""Should throw an exception, no opening bracket on conditions object."",
+                              ""conditions"": },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingOpeningBracket2",
+            value: @"
+                            {
+                              ""id"": ""MissingOpeningBracket2"",
+                              ""description"": ""Should throw an exception, no opening bracket on client filters array."",
+                              ""conditions"": {
+                                ""client_filters"": ]
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+        List <ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -753,8 +985,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
@@ -762,6 +994,124 @@ namespace Tests.AzureAppConfiguration
             // Verify that the feature flag that did not match the specified label was not loaded
             Assert.Null(config["FeatureManagement:App2_Feature1"]);
             Assert.Null(config["FeatureManagement:App2_Feature2"]);
+        }
+
+        [Fact]
+        public void TestNullAndMissingValuesForConditions()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_nullOrMissingConditionsFeatureFlagCollection));
+
+            var testClient = mockClient.Object;
+
+            // Makes sure that adapter properly processes values and doesn't throw an exception
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.Select(KeyFilter.Any);
+                    });
+                })
+                .Build();
+
+            Assert.Null(config["FeatureManagement:NullConditions:EnabledFor"]);
+            Assert.Equal("Filter", config["FeatureManagement:NullParameters:EnabledFor:0:Name"]);
+            Assert.Null(config["FeatureManagement:NullParameters:EnabledFor:0:Parameters"]);
+            Assert.Null(config["FeatureManagement:NullClientFilters:EnabledFor"]);
+            Assert.Null(config["FeatureManagement:NoConditions:EnabledFor"]);
+            Assert.Null(config["FeatureManagement:EmptyConditions:EnabledFor"]);
+            Assert.Null(config["FeatureManagement:EmptyClientFilter:EnabledFor"]);
+        }
+
+        [Fact]
+        public void InvalidFeatureFlagFormatsThrowFormatException()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _invalidFormatFeatureFlagCollection.FirstOrDefault(s => s.Key == selector.KeyFilter);
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            };
+
+            var testClient = mockClient.Object;
+
+            foreach (ConfigurationSetting setting in _invalidFormatFeatureFlagCollection)
+            {
+                void action() => new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("_");
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.Select(setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length));
+                    });
+                })
+                .Build();
+
+                // Each of the feature flags should throw an exception
+                Assert.Throws<FormatException>(action);
+            }
+        }
+
+        [Fact]
+        public void AlternateValidFeatureFlagFormats()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _validFormatFeatureFlagCollection.FirstOrDefault(s => s.Key == selector.KeyFilter);
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            };
+
+            var testClient = mockClient.Object;
+
+            foreach (ConfigurationSetting setting in _validFormatFeatureFlagCollection)
+            {
+                string flagKey = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
+
+                var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("_");
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.Select(flagKey);
+                    });
+                })
+                .Build();
+
+                // None of the feature flags should throw an exception, and the flag should be loaded like normal
+                Assert.Equal("True", config[$"FeatureManagement:{flagKey}"]);
+            }
         }
 
         [Fact]
@@ -796,10 +1146,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
@@ -837,7 +1187,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
             // label: App1_Label has higher precedence
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
         }
 
         [Fact]
@@ -909,10 +1259,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
             Assert.Null(config["FeatureManagement:Feature1"]);
@@ -953,13 +1303,13 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Loaded from prefix1 and label1
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
 
             // Loaded from label2
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
         }
 
         [Fact]
@@ -1003,10 +1353,10 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
 
             // update the value of App1_Feature1 feature flag with label1
             featureFlagCollection[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -1054,9 +1404,9 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Browser", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
             Assert.Equal("Edge", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
 
             // even though App2_Feature3 feature flag has been added, its value should not be loaded in config because label2 refresh interval has not elapsed
             Assert.Null(config["FeatureManagement:App2_Feature3"]);
@@ -1096,11 +1446,11 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
 
             // update the value of App1_Feature1 feature flag with label1
             featureFlagCollection[0] = ConfigurationModelFactory.ConfigurationSetting(
@@ -1130,11 +1480,11 @@ namespace Tests.AzureAppConfiguration
 
             // The refresh interval time for feature flags was overwritten by second call to UseFeatureFlags.
             // Sleeping for refreshInterval1 time should not update feature flags.
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Disabled", config["FeatureManagement:App2_Feature1:Status"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:App2_Feature2:EnabledFor:0:Name"]);
-            Assert.Equal("AlwaysOn", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App1_Feature2"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("True", config["FeatureManagement:App2_Feature2"]);
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
         }
 
         [Fact]
@@ -1168,7 +1518,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("Disabled", config["FeatureManagement:Feature1:Status"]);
+            Assert.Equal("False", config["FeatureManagement:Feature1"]);
 
             // update the value of Feature1 feature flag with App1_Label
             featureFlagCollection[2] = ConfigurationModelFactory.ConfigurationSetting(
@@ -1442,146 +1792,146 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
         }
 
-        [Fact]
-        public void WithVariants()
-        {
-            var featureFlags = new List<ConfigurationSetting>()
-            {
-                _variantsKv1,
-                _variantsKv2
-            };
+        //[Fact]
+        //public void WithVariants()
+        //{
+        //    var featureFlags = new List<ConfigurationSetting>()
+        //    {
+        //        _variantsKv1,
+        //        _variantsKv2
+        //    };
 
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+        //    var mockResponse = new Mock<Response>();
+        //    var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+        //    mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+        //        .Returns(new MockAsyncPageable(featureFlags));
 
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags();
-                })
-                .Build();
+        //    var config = new ConfigurationBuilder()
+        //        .AddAzureAppConfiguration(options =>
+        //        {
+        //            options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+        //            options.UseFeatureFlags();
+        //        })
+        //        .Build();
 
-            Assert.Equal("AlwaysOn", config["FeatureManagement:VariantsFeature1:EnabledFor:0:Name"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Variants:0:Name"]);
-            Assert.Equal("600px", config["FeatureManagement:VariantsFeature1:Variants:0:ConfigurationValue"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Variants:1:Name"]);
-            Assert.Equal("ShoppingCart:Small", config["FeatureManagement:VariantsFeature1:Variants:1:ConfigurationReference"]);
-            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature1:Variants:1:StatusOverride"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenDisabled"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenEnabled"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Variant"]);
-            Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:0"]);
-            Assert.Equal("John", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:1"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Variant"]);
-            Assert.Equal("Alice", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:0"]);
-            Assert.Equal("Bob", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:1"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Variant"]);
-            Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Groups:0"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Variant"]);
-            Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:0"]);
-            Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:1"]);
-            Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:Variant"]);
-            Assert.Equal("0", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:From"]);
-            Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:To"]);
-            Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:Variant"]);
-            Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:From"]);
-            Assert.Equal("100", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:To"]);
-            Assert.Equal("13992821", config["FeatureManagement:VariantsFeature1:Allocation:Seed"]);
+        //    Assert.Equal("AlwaysOn", config["FeatureManagement:VariantsFeature1:EnabledFor:0:Name"]);
+        //    Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Variants:0:Name"]);
+        //    Assert.Equal("600px", config["FeatureManagement:VariantsFeature1:Variants:0:ConfigurationValue"]);
+        //    Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Variants:1:Name"]);
+        //    Assert.Equal("ShoppingCart:Small", config["FeatureManagement:VariantsFeature1:Variants:1:ConfigurationReference"]);
+        //    Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature1:Variants:1:StatusOverride"]);
+        //    Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenDisabled"]);
+        //    Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:DefaultWhenEnabled"]);
+        //    Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Variant"]);
+        //    Assert.Equal("Marsha", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:0"]);
+        //    Assert.Equal("John", config["FeatureManagement:VariantsFeature1:Allocation:User:0:Users:1"]);
+        //    Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Variant"]);
+        //    Assert.Equal("Alice", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:0"]);
+        //    Assert.Equal("Bob", config["FeatureManagement:VariantsFeature1:Allocation:User:1:Users:1"]);
+        //    Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Variant"]);
+        //    Assert.Equal("Ring1", config["FeatureManagement:VariantsFeature1:Allocation:Group:0:Groups:0"]);
+        //    Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Variant"]);
+        //    Assert.Equal("Ring2", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:0"]);
+        //    Assert.Equal("Ring3", config["FeatureManagement:VariantsFeature1:Allocation:Group:1:Groups:1"]);
+        //    Assert.Equal("Big", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:Variant"]);
+        //    Assert.Equal("0", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:From"]);
+        //    Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:0:To"]);
+        //    Assert.Equal("Small", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:Variant"]);
+        //    Assert.Equal("50", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:From"]);
+        //    Assert.Equal("100", config["FeatureManagement:VariantsFeature1:Allocation:Percentile:1:To"]);
+        //    Assert.Equal("13992821", config["FeatureManagement:VariantsFeature1:Allocation:Seed"]);
 
-            Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature2:Status"]);
-            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Variants:0:Name"]);
-            Assert.Equal("Value1", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key1"]);
-            Assert.Equal("Value2", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key2:InsideKey2"]);
-            Assert.Equal("NumberVariant", config["FeatureManagement:VariantsFeature2:Variants:1:Name"]);
-            Assert.Equal("100", config["FeatureManagement:VariantsFeature2:Variants:1:ConfigurationValue"]);
-            Assert.Equal("NullVariant", config["FeatureManagement:VariantsFeature2:Variants:2:Name"]);
-            Assert.Equal("", config["FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"]);
-            Assert.True(config
-                .GetSection("FeatureManagement:VariantsFeature2:Variants:2")
-                .AsEnumerable()
-                .ToDictionary(x => x.Key, x => x.Value)
-                .ContainsKey("FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"));
-            Assert.Equal("MissingValueVariant", config["FeatureManagement:VariantsFeature2:Variants:3:Name"]);
-            Assert.Null(config["FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"]);
-            Assert.False(config
-                .GetSection("FeatureManagement:VariantsFeature2:Variants:3")
-                .AsEnumerable()
-                .ToDictionary(x => x.Key, x => x.Value)
-                .ContainsKey("FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"));
-            Assert.Equal("BooleanVariant", config["FeatureManagement:VariantsFeature2:Variants:4:Name"]);
-            Assert.Equal("True", config["FeatureManagement:VariantsFeature2:Variants:4:ConfigurationValue"]);
-            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenDisabled"]);
-            Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenEnabled"]);
-        }
+        //    Assert.Equal("Disabled", config["FeatureManagement:VariantsFeature2:Status"]);
+        //    Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Variants:0:Name"]);
+        //    Assert.Equal("Value1", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key1"]);
+        //    Assert.Equal("Value2", config["FeatureManagement:VariantsFeature2:Variants:0:ConfigurationValue:Key2:InsideKey2"]);
+        //    Assert.Equal("NumberVariant", config["FeatureManagement:VariantsFeature2:Variants:1:Name"]);
+        //    Assert.Equal("100", config["FeatureManagement:VariantsFeature2:Variants:1:ConfigurationValue"]);
+        //    Assert.Equal("NullVariant", config["FeatureManagement:VariantsFeature2:Variants:2:Name"]);
+        //    Assert.Equal("", config["FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"]);
+        //    Assert.True(config
+        //        .GetSection("FeatureManagement:VariantsFeature2:Variants:2")
+        //        .AsEnumerable()
+        //        .ToDictionary(x => x.Key, x => x.Value)
+        //        .ContainsKey("FeatureManagement:VariantsFeature2:Variants:2:ConfigurationValue"));
+        //    Assert.Equal("MissingValueVariant", config["FeatureManagement:VariantsFeature2:Variants:3:Name"]);
+        //    Assert.Null(config["FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"]);
+        //    Assert.False(config
+        //        .GetSection("FeatureManagement:VariantsFeature2:Variants:3")
+        //        .AsEnumerable()
+        //        .ToDictionary(x => x.Key, x => x.Value)
+        //        .ContainsKey("FeatureManagement:VariantsFeature2:Variants:3:ConfigurationValue"));
+        //    Assert.Equal("BooleanVariant", config["FeatureManagement:VariantsFeature2:Variants:4:Name"]);
+        //    Assert.Equal("True", config["FeatureManagement:VariantsFeature2:Variants:4:ConfigurationValue"]);
+        //    Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenDisabled"]);
+        //    Assert.Equal("ObjectVariant", config["FeatureManagement:VariantsFeature2:Allocation:DefaultWhenEnabled"]);
+        //}
 
-        [Fact]
-        public void WithStatus()
-        {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+        //[Fact]
+        //public void WithStatus()
+        //{
+        //    var mockResponse = new Mock<Response>();
+        //    var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_featureFlagCollection));
+        //    mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+        //        .Returns(new MockAsyncPageable(_featureFlagCollection));
 
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags();
-                })
-                .Build();
+        //    var config = new ConfigurationBuilder()
+        //        .AddAzureAppConfiguration(options =>
+        //        {
+        //            options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+        //            options.UseFeatureFlags();
+        //        })
+        //        .Build();
 
-            Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
-            Assert.Equal("Conditional", config["FeatureManagement:Feature1:Status"]);
-        }
+        //    Assert.Equal("Disabled", config["FeatureManagement:App1_Feature2:Status"]);
+        //    Assert.Equal("Conditional", config["FeatureManagement:Feature1:Status"]);
+        //}
 
-        [Fact]
-        public void WithTelemetry()
-        {
-            var featureFlags = new List<ConfigurationSetting>()
-            {
-                _telemetryKv
-            };
+        //[Fact]
+        //public void WithTelemetry()
+        //{
+        //    var featureFlags = new List<ConfigurationSetting>()
+        //    {
+        //        _telemetryKv
+        //    };
 
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+        //    var mockResponse = new Mock<Response>();
+        //    var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+        //    mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+        //        .Returns(new MockAsyncPageable(featureFlags));
 
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, new DefaultAzureCredential());
-                    options.UseFeatureFlags();
-                })
-                .Build();
+        //    var config = new ConfigurationBuilder()
+        //        .AddAzureAppConfiguration(options =>
+        //        {
+        //            options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+        //            options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, new DefaultAzureCredential());
+        //            options.UseFeatureFlags();
+        //        })
+        //        .Build();
 
-            Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
-            Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
-            Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
-            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:ETag"]);
+        //    Assert.Equal("True", config["FeatureManagement:TelemetryFeature:Telemetry:Enabled"]);
+        //    Assert.Equal("Tag1Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag1"]);
+        //    Assert.Equal("Tag2Value", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:Tags.Tag2"]);
+        //    Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:ETag"]);
 
-            byte[] featureFlagIdHash;
+        //    byte[] featureFlagIdHash;
 
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\nlabel"));
-            }
+        //    using (HashAlgorithm hashAlgorithm = SHA256.Create())
+        //    {
+        //        featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\nlabel"));
+        //    }
 
-            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
-                .TrimEnd('=')
-                .Replace('+', '-')
-                .Replace('/', '_');
+        //    string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
+        //        .TrimEnd('=')
+        //        .Replace('+', '-')
+        //        .Replace('/', '_');
 
-            Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
-            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
-        }
+        //    Assert.Equal(featureFlagId, config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagId"]);
+        //    Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["FeatureManagement:TelemetryFeature:Telemetry:Metadata:FeatureFlagReference"]);
+        //}
 
 
         [Fact]

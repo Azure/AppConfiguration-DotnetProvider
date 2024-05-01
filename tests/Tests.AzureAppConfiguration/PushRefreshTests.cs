@@ -170,10 +170,59 @@ namespace Tests.AzureAppConfiguration
 				"Microsoft.AppConfiguration.KeyValueModified", "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
                 )
+            },
+
+			// Test that last syncToken is used
+            {
+                "sn;BYRte4456",
+            new EventGridEvent(
+                "https://store2.resource.io/kv/searchQuery2",
+                "Microsoft.AppConfiguration.KeyValueModified", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\",\"syncToken\":\"sn;BYRte4456\"}")
+                )
             }
         };
 
-		ConfigurationSetting FirstKeyValue => _kvCollection.First();
+        Dictionary<string, EventGridEvent> _invalidFormatEventGridEvents = new Dictionary<string, EventGridEvent>
+        {
+			{
+				"sn;Vxujfidne",
+			new EventGridEvent(
+				"https://store1.resource.io/kv/searchQuery1",
+				"Microsoft.AppConfiguration.KeyValueModified", "2",
+				BinaryData.FromString("\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
+				)
+			},
+
+			{
+				"sn;AxRty78B",
+			new EventGridEvent(
+				"https://store1.resource.io/kv/searchQuery1",
+				"Microsoft.AppConfiguration.KeyValueModified", "2",
+				BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"")
+				)
+			},
+
+			{
+                "sn;Ttylmable",
+            new EventGridEvent(
+                "https://store1.resource.io/kv/searchQuery2",
+                "Microsoft.AppConfiguration.KeyValueDeleted", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"fake_property\":{\"syncToken\":\"sn;Ttylmable\"}}")
+                )
+            },
+
+            {
+                "sn;CRAle3342",
+            new EventGridEvent(
+                "https://store2.resource.io/kv/searchQuery2",
+                "Microsoft.AppConfiguration.KeyValueModified", "2",
+                BinaryData.FromString("{\"fake_property\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}}")
+                )
+            }
+        };
+
+        ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
         [Fact]
         public void ValidatePushNotificationCreation()
@@ -190,6 +239,17 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal(syncToken, pushNotification.SyncToken);
             }
 		}
+
+        [Fact]
+        public void InvalidPushNotificationCreation()
+        {
+            foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in _invalidFormatEventGridEvents)
+            {
+                EventGridEvent eventGridEvent = eventGridAndSync.Value;
+
+                Assert.False(eventGridEvent.TryCreatePushNotification(out PushNotification _));
+            }
+        }
 
         [Fact]
 		public void ProcessPushNotificationThrowsArgumentExceptions()
