@@ -2,7 +2,7 @@
   <Import Project="..\..\build\NugetProperties.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
     <Description>Microsoft.Azure.AppConfiguration.Functions.Worker allows developers to use the Microsoft Azure App Configuration service as a configuration source in their applications. This package adds additional features to the existing package Microsoft.Extensions.Configuration.AzureAppConfiguration for .NET Azure Functions running in an isolated process.</Description>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>
@@ -24,7 +24,7 @@
   <!-- Nuget Package Version Settings -->
 
   <PropertyGroup>
-    <OfficialVersion>7.1.0</OfficialVersion>
+    <OfficialVersion>7.2.0</OfficialVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
@@ -37,7 +37,8 @@
 
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\..\AzureAppConfigurationRules.ruleset</CodeAnalysisRuleSet>
-    <EnableNETAnalyzers>True</EnableNETAnalyzers>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
 </Project>
