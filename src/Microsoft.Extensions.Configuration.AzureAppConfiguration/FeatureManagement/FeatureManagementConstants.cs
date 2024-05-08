@@ -19,9 +19,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string ClientFilters = "client_filters";
         public const string Variants = "variants";
         public const string Allocation = "allocation";
-        public const string User = "user";
-        public const string Group = "group";
-        public const string Percentile = "percentile";
+        public const string UserAllocation = "user";
+        public const string GroupAllocation = "group";
+        public const string PercentileAllocation = "percentile";
         public const string Telemetry = "telemetry";
         public const string Metadata = "metadata";
         public const string RequirementType = "requirement_type";
