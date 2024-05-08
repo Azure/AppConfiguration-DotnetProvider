@@ -634,6 +634,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 featureAllocation.User = new List<FeatureUserAllocation>();
 
+                                int i = 0;
+
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                 {
                                     if (reader.TokenType == JsonTokenType.StartObject)
@@ -647,6 +649,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                             featureAllocation.User.Append(featureUserAllocation);
                                         }
                                     }
+                                    else if (reader.TokenType != JsonTokenType.Null)
+                                    {
+                                        throw CreateFeatureFlagFormatException(
+                                            $"{FeatureManagementConstants.UserAllocation}[{i}]",
+                                            settingKey,
+                                            reader.TokenType.ToString(),
+                                            JsonTokenType.StartObject.ToString());
+                                    }
+
+                                    i++;
                                 }
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
@@ -667,6 +679,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 featureAllocation.Group = new List<FeatureGroupAllocation>();
 
+                                int i = 0;
+
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                 {
                                     if (reader.TokenType == JsonTokenType.StartObject)
@@ -680,6 +694,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                             featureAllocation.Group.Append(featureGroupAllocation);
                                         }
                                     }
+                                    else if (reader.TokenType != JsonTokenType.Null)
+                                    {
+                                        throw CreateFeatureFlagFormatException(
+                                            $"{FeatureManagementConstants.GroupAllocation}[{i}]",
+                                            settingKey,
+                                            reader.TokenType.ToString(),
+                                            JsonTokenType.StartObject.ToString());
+                                    }
+
+                                    i++;
                                 }
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
@@ -700,18 +724,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 featureAllocation.Percentile = new List<FeaturePercentileAllocation>();
 
+                                int i = 0;
+
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                 {
                                     if (reader.TokenType == JsonTokenType.StartObject)
                                     {
                                         FeaturePercentileAllocation featurePercentileAllocation = ParseFeaturePercentileAllocation(ref reader, settingKey);
 
-                                        if (featurePercentileAllocation.Variant != null ||
-                                            ())
+                                        if (featurePercentileAllocation.Variant != null) //TODO condition for this?
                                         {
                                             featureAllocation.Percentile.Append(featurePercentileAllocation);
                                         }
                                     }
+                                    else if (reader.TokenType != JsonTokenType.Null)
+                                    {
+                                        throw CreateFeatureFlagFormatException(
+                                            $"{FeatureManagementConstants.PercentileAllocation}[{i}]",
+                                            settingKey,
+                                            reader.TokenType.ToString(),
+                                            JsonTokenType.StartObject.ToString());
+                                    }
+
+                                    i++;
                                 }
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
@@ -775,21 +810,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 featureUserAllocation.Users = new List<string>();
 
+                                int i = 0;
+
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                 {
                                     if (reader.TokenType == JsonTokenType.String)
                                     {
                                         featureUserAllocation.Users.Append(reader.GetString());
                                     }
+                                    else if (reader.TokenType != JsonTokenType.Null)
+                                    {
+                                        throw CreateFeatureFlagFormatException(
+                                            $"{FeatureManagementConstants.Users}[{i}]",
+                                            settingKey,
+                                            reader.TokenType.ToString(),
+                                            JsonTokenType.String.ToString());
+                                    }
+
+                                    i++;
                                 }
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
                                 throw CreateFeatureFlagFormatException(
-                                    FeatureManagementConstants.Variant,
+                                    FeatureManagementConstants.Users,
                                     settingKey,
                                     reader.TokenType.ToString(),
-                                    JsonTokenType.String.ToString());
+                                    JsonTokenType.StartArray.ToString());
                             }
 
                             break;
@@ -803,6 +850,170 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             return featureUserAllocation;
+        }
+
+        private FeatureGroupAllocation ParseFeatureGroupAllocation(ref Utf8JsonReader reader, string settingKey)
+        {
+            var featureGroupAllocation = new FeatureGroupAllocation();
+
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+            {
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    continue;
+                }
+
+                string groupAllocationPropertyName = reader.GetString();
+
+                switch (groupAllocationPropertyName)
+                {
+                    case FeatureManagementConstants.Variant:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                featureGroupAllocation.Variant = reader.GetString();
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.Variant,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.String.ToString());
+                            }
+
+                            break;
+                        }
+
+                    case FeatureManagementConstants.Groups:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
+                            {
+                                featureGroupAllocation.Groups = new List<string>();
+
+                                int i = 0;
+
+                                while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                                {
+                                    if (reader.TokenType == JsonTokenType.String)
+                                    {
+                                        featureGroupAllocation.Groups.Append(reader.GetString());
+                                    }
+                                    else if (reader.TokenType != JsonTokenType.Null)
+                                    {
+                                        throw CreateFeatureFlagFormatException(
+                                            $"{FeatureManagementConstants.Groups}[{i}]",
+                                            settingKey,
+                                            reader.TokenType.ToString(),
+                                            JsonTokenType.String.ToString());
+                                    }
+
+                                    i++;
+                                }
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.Groups,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.StartArray.ToString());
+                            }
+
+                            break;
+                        }
+
+                    default:
+                        reader.Skip();
+
+                        break;
+                }
+            }
+
+            return featureGroupAllocation;
+        }
+
+        private FeaturePercentileAllocation ParseFeaturePercentileAllocation(ref Utf8JsonReader reader, string settingKey)
+        {
+            var featurePercentileAllocation = new FeaturePercentileAllocation();
+
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+            {
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    continue;
+                }
+
+                string percentileAllocationPropertyName = reader.GetString();
+
+                switch (percentileAllocationPropertyName)
+                {
+                    case FeatureManagementConstants.Variant:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                featurePercentileAllocation.Variant = reader.GetString();
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.Variant,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.String.ToString());
+                            }
+
+                            break;
+                        }
+
+                    case FeatureManagementConstants.From:
+                        {
+                            if (reader.Read() && 
+                                ((reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out int from)) || 
+                                (reader.TokenType == JsonTokenType.String && int.TryParse(reader.GetString(), out from))))
+                            {
+                                featurePercentileAllocation.From = from;
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.From,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.Number.ToString());
+                            }
+
+                            break;
+                        }
+
+                    case FeatureManagementConstants.To:
+                        {
+                            if (reader.Read() &&
+                                ((reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out int to)) ||
+                                (reader.TokenType == JsonTokenType.String && int.TryParse(reader.GetString(), out to))))
+                            {
+                                featurePercentileAllocation.To = to;
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.To,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.Number.ToString());
+                            }
+
+                            break;
+                        }
+
+                    default:
+                        reader.Skip();
+
+                        break;
+                }
+            }
+
+            return featurePercentileAllocation;
         }
 
         private FeatureVariant ParseFeatureVariant(ref Utf8JsonReader reader, string settingKey)
