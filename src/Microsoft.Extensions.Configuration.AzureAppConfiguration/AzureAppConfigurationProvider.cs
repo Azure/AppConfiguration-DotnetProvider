@@ -29,13 +29,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
+        private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
-        private readonly TimeSpan MinCacheExpirationInterval;
+        private readonly TimeSpan MinRefreshInterval;
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
         private DateTimeOffset InitializationCacheExpires = default;
@@ -111,11 +112,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (watchers.Any())
             {
-                MinCacheExpirationInterval = watchers.Min(w => w.CacheExpirationInterval);
+                MinRefreshInterval = watchers.Min(w => w.RefreshInterval);
             }
             else
             {
-                MinCacheExpirationInterval = RefreshConstants.DefaultCacheExpirationInterval;
+                MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
             }
 
             // Enable request tracing if not opt-out
@@ -192,13 +193,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     EnsureFeatureManagementVersionInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
-                    IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
-                    IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
+                    IEnumerable<KeyValueWatcher> refreshableWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
+                    IEnumerable<KeyValueWatcher> refreshableMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
 
-                    // Skip refresh if mappedData is loaded, but none of the watchers or adapters cache is expired.
+                    // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
-                        !cacheExpiredWatchers.Any() &&
-                        !cacheExpiredMultiKeyWatchers.Any() &&
+                        !refreshableWatchers.Any() &&
+                        !refreshableMultiKeyWatchers.Any() &&
                         !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
                     {
                         return;
@@ -237,7 +238,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (InitializationCacheExpires < utcNow)
                         {
-                            InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
+                            InitializationCacheExpires = utcNow.Add(MinRefreshInterval);
 
                             await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                         }
@@ -266,7 +267,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             logDebugBuilder.Clear();
                             logInfoBuilder.Clear();
 
-                            foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
+                            foreach (KeyValueWatcher changeWatcher in refreshableWatchers)
                             {
                                 string watchedKey = changeWatcher.Key;
                                 string watchedLabel = changeWatcher.Label;
@@ -336,7 +337,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(refreshableMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
 
                             if (!changedKeyValuesCollection.Any())
                             {
@@ -350,9 +351,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
-                        foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers.Concat(cacheExpiredMultiKeyWatchers))
+                        foreach (KeyValueWatcher changeWatcher in refreshableWatchers.Concat(refreshableMultiKeyWatchers))
                         {
-                            UpdateCacheExpirationTime(changeWatcher);
+                            UpdateNextRefreshTime(changeWatcher);
                         }
 
                         foreach (KeyValueChange change in keyValueChanges.Concat(changedKeyValuesCollection))
@@ -401,10 +402,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             adapter.InvalidateCache();
                         }
 
-                        // Update the cache expiration time for all refresh registered settings and feature flags
+                        // Update the next refresh time for all refresh registered settings and feature flags
                         foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
                         {
-                            UpdateCacheExpirationTime(changeWatcher);
+                            UpdateNextRefreshTime(changeWatcher);
                         }
                     }
 
@@ -536,16 +537,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void SetDirty(TimeSpan? maxDelay)
         {
-            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
+            DateTimeOffset nextRefreshTime = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                changeWatcher.CacheExpires = cacheExpires;
+                changeWatcher.NextRefreshTime = nextRefreshTime;
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                changeWatcher.CacheExpires = cacheExpires;
+                changeWatcher.NextRefreshTime = nextRefreshTime;
             }
         }
 
@@ -727,10 +728,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 cancellationToken)
                 .ConfigureAwait(false);
 
-            // Update the cache expiration time for all refresh registered settings and feature flags
+            // Update the next refresh time for all refresh registered settings and feature flags
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
             {
-                UpdateCacheExpirationTime(changeWatcher);
+                UpdateNextRefreshTime(changeWatcher);
             }
 
             if (data != null)
@@ -985,10 +986,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher)
+        private void UpdateNextRefreshTime(KeyValueWatcher changeWatcher)
         {
-            TimeSpan cacheExpirationTime = changeWatcher.CacheExpirationInterval;
-            changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
+            changeWatcher.NextRefreshTime = DateTimeOffset.UtcNow.Add(changeWatcher.RefreshInterval);
         }
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
@@ -996,6 +996,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
+            if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
+            {
+                int nextClientIndex = 0;
+
+                foreach (ConfigurationClient client in clients)
+                {
+                    nextClientIndex++;
+
+                    if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
+                    {
+                        break;
+                    }
+                }
+
+                // If we found the last successful client, we'll rotate the list so that the next client is at the beginning
+                if (nextClientIndex < clients.Count())
+                {
+                    clients = clients.Skip(nextClientIndex).Concat(clients.Take(nextClientIndex));
+                }
+            }
+
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
@@ -1015,6 +1036,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
+
+                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
 
                     return result;
                 }
