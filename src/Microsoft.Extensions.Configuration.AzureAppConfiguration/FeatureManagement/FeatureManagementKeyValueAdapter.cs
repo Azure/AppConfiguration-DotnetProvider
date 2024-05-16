@@ -1195,7 +1195,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     else if (reader.TokenType != JsonTokenType.Null)
                                     {
                                         throw CreateFeatureFlagFormatException(
-                                            FeatureManagementConstants.Metadata,
+                                            metadataPropertyName,
                                             settingKey,
                                             reader.TokenType.ToString(),
                                             JsonTokenType.String.ToString());
