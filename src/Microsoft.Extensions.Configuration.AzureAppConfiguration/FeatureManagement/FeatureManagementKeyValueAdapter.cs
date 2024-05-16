@@ -82,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
             else
             {
-                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Status}", FeatureManagementConstants.Disabled));
+                //keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Status}", FeatureManagementConstants.Disabled));
             }
 
             if (featureFlag.Variants != null)
@@ -370,7 +370,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                                 {
-                                    featureFlag.Variants = new List<FeatureVariant>();
+                                    List<FeatureVariant> variants = new List<FeatureVariant>();
 
                                     while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                     {
@@ -380,10 +380,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                             if (featureVariant.Name != null)
                                             {
-                                                featureFlag.Variants.Append(featureVariant);
+                                                variants.Add(featureVariant);
                                             }
                                         }
                                     }
+
+                                    featureFlag.Variants = variants;
                                 }
                                 else if (reader.TokenType != JsonTokenType.Null)
                                 {
@@ -632,7 +634,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                             {
-                                featureAllocation.User = new List<FeatureUserAllocation>();
+                                List<FeatureUserAllocation> userAllocations = new List<FeatureUserAllocation>();
 
                                 int i = 0;
 
@@ -646,7 +648,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                             (featureUserAllocation.Users != null &&
                                             featureUserAllocation.Users.Any()))
                                         {
-                                            featureAllocation.User.Append(featureUserAllocation);
+                                            userAllocations.Add(featureUserAllocation);
                                         }
                                     }
                                     else if (reader.TokenType != JsonTokenType.Null)
@@ -660,6 +662,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                     i++;
                                 }
+
+                                featureAllocation.User = userAllocations;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
@@ -677,7 +681,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                             {
-                                featureAllocation.Group = new List<FeatureGroupAllocation>();
+                                List<FeatureGroupAllocation> groupAllocations = new List<FeatureGroupAllocation>();
 
                                 int i = 0;
 
@@ -691,7 +695,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                             (featureGroupAllocation.Groups != null &&
                                             featureGroupAllocation.Groups.Any()))
                                         {
-                                            featureAllocation.Group.Append(featureGroupAllocation);
+                                            groupAllocations.Add(featureGroupAllocation);
                                         }
                                     }
                                     else if (reader.TokenType != JsonTokenType.Null)
@@ -705,6 +709,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                     i++;
                                 }
+
+                                featureAllocation.Group = groupAllocations;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
@@ -722,7 +728,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                             {
-                                featureAllocation.Percentile = new List<FeaturePercentileAllocation>();
+                                List<FeaturePercentileAllocation> percentileAllocations = new List<FeaturePercentileAllocation>();
 
                                 int i = 0;
 
@@ -734,7 +740,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                         if (featurePercentileAllocation.Variant != null) //TODO condition for this?
                                         {
-                                            featureAllocation.Percentile.Append(featurePercentileAllocation);
+                                            percentileAllocations.Add(featurePercentileAllocation);
                                         }
                                     }
                                     else if (reader.TokenType != JsonTokenType.Null)
@@ -748,6 +754,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                     i++;
                                 }
+
+                                featureAllocation.Percentile = percentileAllocations;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
@@ -756,6 +764,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     settingKey,
                                     reader.TokenType.ToString(),
                                     JsonTokenType.StartArray.ToString());
+                            }
+
+                            break;
+                        }
+
+                    case FeatureManagementConstants.Seed:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                featureAllocation.Seed = reader.GetString();
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.Seed,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.String.ToString());
                             }
 
                             break;
@@ -808,7 +834,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                             {
-                                featureUserAllocation.Users = new List<string>();
+                                List<string> users = new List<string>();
 
                                 int i = 0;
 
@@ -816,7 +842,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 {
                                     if (reader.TokenType == JsonTokenType.String)
                                     {
-                                        featureUserAllocation.Users.Append(reader.GetString());
+                                        users.Add(reader.GetString());
                                     }
                                     else if (reader.TokenType != JsonTokenType.Null)
                                     {
@@ -829,6 +855,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                     i++;
                                 }
+
+                                featureUserAllocation.Users = users;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
@@ -889,7 +917,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                             {
-                                featureGroupAllocation.Groups = new List<string>();
+                                List<string> groups = new List<string>();
 
                                 int i = 0;
 
@@ -897,7 +925,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                 {
                                     if (reader.TokenType == JsonTokenType.String)
                                     {
-                                        featureGroupAllocation.Groups.Append(reader.GetString());
+                                        groups.Add(reader.GetString());
                                     }
                                     else if (reader.TokenType != JsonTokenType.Null)
                                     {
@@ -910,6 +938,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                     i++;
                                 }
+
+                                featureGroupAllocation.Groups = groups;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
@@ -1077,6 +1107,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             break;
                         }
 
+
+                    case FeatureManagementConstants.StatusOverride:
+                        {
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            {
+                                featureVariant.StatusOverride = reader.GetString();
+                            }
+                            else if (reader.TokenType != JsonTokenType.Null)
+                            {
+                                throw CreateFeatureFlagFormatException(
+                                    FeatureManagementConstants.StatusOverride,
+                                    settingKey,
+                                    reader.TokenType.ToString(),
+                                    JsonTokenType.String.ToString());
+                            }
+
+                            break;
+                        }
+
                     default:
                         reader.Skip();
 
@@ -1118,7 +1167,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     FeatureManagementConstants.Enabled,
                                     settingKey,
                                     reader.TokenType.ToString(),
-                                    JsonTokenType.String.ToString());
+                                    $"{JsonTokenType.True}' or '{JsonTokenType.False}");
                             }
 
                             break;
@@ -1126,21 +1175,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     case FeatureManagementConstants.Metadata:
                         {
-                            if (reader.Read() && (reader.TokenType == JsonTokenType.False || reader.TokenType == JsonTokenType.True))
+                            if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
                             {
-                                featureTelemetry.Enabled = reader.GetBoolean();
-                            }
-                            else if (reader.TokenType == JsonTokenType.String && bool.TryParse(reader.GetString(), out bool enabled))
-                            {
-                                featureTelemetry.Enabled = enabled;
+                                featureTelemetry.Metadata = new Dictionary<string, string>();
+
+                                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                                {
+                                    if (reader.TokenType != JsonTokenType.PropertyName)
+                                    {
+                                        continue;
+                                    }
+
+                                    string metadataPropertyName = reader.GetString();
+
+                                    if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                                    {
+                                        featureTelemetry.Metadata[metadataPropertyName] = reader.GetString();
+                                    }
+                                    else if (reader.TokenType != JsonTokenType.Null)
+                                    {
+                                        throw CreateFeatureFlagFormatException(
+                                            FeatureManagementConstants.Metadata,
+                                            settingKey,
+                                            reader.TokenType.ToString(),
+                                            JsonTokenType.String.ToString());
+                                    }
+                                }
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
                                 throw CreateFeatureFlagFormatException(
-                                    FeatureManagementConstants.Enabled,
+                                    FeatureManagementConstants.Metadata,
                                     settingKey,
                                     reader.TokenType.ToString(),
-                                    $"{JsonTokenType.True}' or '{JsonTokenType.False}");
+                                    JsonTokenType.StartObject.ToString());
                             }
 
                             break;

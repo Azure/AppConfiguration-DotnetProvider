@@ -38,7 +38,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string From = "from";
         public const string To = "to";
         public const string Seed = "seed";
-        public const string Status = "status";
 
         // Feature flag status values
         public const string Conditional = "Conditional";

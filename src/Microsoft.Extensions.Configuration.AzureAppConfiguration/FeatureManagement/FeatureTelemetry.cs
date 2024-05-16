@@ -10,6 +10,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         public bool Enabled { get; set; }
 
-        public IReadOnlyDictionary<string, string> Metadata { get; set; }
+        public IDictionary<string, string> Metadata { get; set; }
     }
 }
