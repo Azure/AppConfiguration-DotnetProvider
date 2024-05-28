@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
@@ -79,8 +80,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!string.IsNullOrEmpty(assemblyName))
             {
-                // Return the version using only the first 3 fields and remove additional characters
-                return AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version?.ToString(3).Trim('{', '}');
+                AssemblyInformationalVersionAttribute[] infoVersionAttributes = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?
+                    .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false) as AssemblyInformationalVersionAttribute[];
+                
+                if (infoVersionAttributes != null && infoVersionAttributes.Length == 1)
+                {
+                    string informationalVersion = infoVersionAttributes[0]?.InformationalVersion;
+
+                    if (string.IsNullOrEmpty(informationalVersion))
+                    {
+                        return null;
+                    }
+
+                    int plusIndex = informationalVersion.IndexOf('+');
+
+                    if (plusIndex != -1)
+                    {
+                        informationalVersion = informationalVersion.Substring(0, plusIndex);
+                    }
+
+                    return informationalVersion;
+                }
             }
 
             return null;
