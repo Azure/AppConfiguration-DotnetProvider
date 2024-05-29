@@ -704,7 +704,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void UsesEtagForFeatureFlagRefresh()
+        public void DoesNotUseEtagForFeatureFlagRefresh()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -725,7 +725,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
 
             refresher.TryRefreshAsync().Wait();
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -1265,16 +1265,14 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
-            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagsUpdatedMessage(), informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(RefreshInterval);
             refresher.TryRefreshAsync().Wait();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-            Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
-            Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
+            Assert.Contains(LogHelper.BuildFeatureFlagsUpdatedMessage(), informationalInvocation);
         }
 
         [Fact]

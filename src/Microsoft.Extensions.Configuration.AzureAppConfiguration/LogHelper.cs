@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Net;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class LogHelper
@@ -27,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildFeatureFlagsUpdatedMessage()
         {
-            
+            return LoggingConstants.RefreshFeatureFlagsUnchanged;
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)

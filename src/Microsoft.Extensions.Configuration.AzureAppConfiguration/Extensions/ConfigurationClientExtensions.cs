@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -60,13 +61,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HasAnyKeyValueChanged(this ConfigurationClient client, SettingSelector selector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        public static async Task<bool> HasAnyKeyValueChanged(this ConfigurationClient client, KeyValueIdentifier keyValueIdentifier, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
         {
-            if (selector == null)
-            {
-                throw new ArgumentNullException(nameof(selector));
-            }
-
             if (matchConditions == null)
             {
                 throw new ArgumentNullException(nameof(matchConditions));
@@ -76,6 +72,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 throw new ArgumentException("Requires at least one MatchConditions value.", nameof(matchConditions));
             }
+
+            SettingSelector selector = new SettingSelector
+            {
+                KeyFilter = keyValueIdentifier.Key,
+                LabelFilter = keyValueIdentifier.Label
+            };
 
             foreach (MatchConditions condition in matchConditions)
             {
