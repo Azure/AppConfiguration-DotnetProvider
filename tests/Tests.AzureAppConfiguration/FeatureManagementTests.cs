@@ -187,86 +187,88 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
 
-        private ConfigurationSetting _variantsKv1 = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature1",
-            value: @"
-                    {
-                        ""id"": ""VariantsFeature1"",
-                        ""description"": """",
-                        ""display_name"": ""Variants Feature 1"",
-                        ""enabled"": true,
-                        ""conditions"": {
-                        ""client_filters"": [
-                        ]
-                        },
-                        ""variants"": [
-		                {
-			                ""name"": ""Big"",
-			                ""configuration_value"": ""600px""
-		                },
-		                {
-			                ""name"": ""Small"",
-			                ""configuration_reference"": ""ShoppingCart:Small"",
-			                ""status_override"": ""Disabled""
-		                }
-	                    ],
-	                    ""allocation"": {
-		                    ""seed"": ""13992821"",
-		                    ""default_when_disabled"": ""Small"",
-		                    ""default_when_enabled"": ""Small"",
-		                    ""user"": [
-			                    {
-				                    ""variant"": ""Big"",
-				                    ""users"": [
-					                    ""Marsha"",
-                                        ""John""
-				                    ]
-			                    },
-                                {
-                                    ""variant"": ""Small"",
-                                    ""users"": [
-                                        ""Alice"",
-                                        ""Bob""
-                                    ]
-                                }   
-		                    ],
-		                    ""group"": [
-			                    {
-				                    ""variant"": ""Big"",
-				                    ""groups"": [
-					                    ""Ring1""
-				                    ]
-			                    },
-                                {
-                                    ""variant"": ""Small"",
-                                    ""groups"": [
-                                        ""Ring2"",
-                                        ""Ring3""
-                                    ]
-                                }
-		                    ],
-		                    ""percentile"": [
-			                    {
-				                    ""variant"": ""Big"",
-				                    ""from"": 0,
-				                    ""to"": 50
-			                    },
-                                {
-                                    ""variant"": ""Small"",
-                                    ""from"": 50,
-                                    ""to"": 100
-                                }
-		                    ]
-	                    }
-                    }
-                    ",
-            label: default,
-            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+        List<ConfigurationSetting> _variantFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature1",
+                value: @"
+                        {
+                            ""id"": ""VariantsFeature1"",
+                            ""description"": """",
+                            ""display_name"": ""Variants Feature 1"",
+                            ""enabled"": true,
+                            ""conditions"": {
+                            ""client_filters"": [
+                            ]
+                            },
+                            ""variants"": [
+		                    {
+			                    ""name"": ""Big"",
+			                    ""configuration_value"": ""600px""
+		                    },
+		                    {
+			                    ""name"": ""Small"",
+			                    ""configuration_reference"": ""ShoppingCart:Small"",
+			                    ""status_override"": ""Disabled""
+		                    }
+	                        ],
+	                        ""allocation"": {
+		                        ""seed"": ""13992821"",
+		                        ""default_when_disabled"": ""Small"",
+		                        ""default_when_enabled"": ""Small"",
+		                        ""user"": [
+			                        {
+				                        ""variant"": ""Big"",
+				                        ""users"": [
+					                        ""Marsha"",
+                                            ""John""
+				                        ]
+			                        },
+                                    {
+                                        ""variant"": ""Small"",
+                                        ""users"": [
+                                            ""Alice"",
+                                            ""Bob""
+                                        ]
+                                    }   
+		                        ],
+		                        ""group"": [
+			                        {
+				                        ""variant"": ""Big"",
+				                        ""groups"": [
+					                        ""Ring1""
+				                        ]
+			                        },
+                                    {
+                                        ""variant"": ""Small"",
+                                        ""groups"": [
+                                            ""Ring2"",
+                                            ""Ring3""
+                                        ]
+                                    }
+		                        ],
+		                        ""percentile"": [
+			                        {
+				                        ""variant"": ""Big"",
+				                        ""from"": 0,
+				                        ""to"": 50
+			                        },
+                                    {
+                                        ""variant"": ""Small"",
+                                        ""from"": 50,
+                                        ""to"": 100
+                                    }
+		                        ]
+	                        }
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
-        private ConfigurationSetting _variantsKv2 = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature2",
-            value: @"
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature2",
+                value: @"
                             {
                                 ""id"": ""VariantsFeature2"",
                                 ""description"": """",
@@ -308,34 +310,120 @@ namespace Tests.AzureAppConfiguration
 	                            }
                             }
                             ",
-            label: default,
-            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
 
-        private ConfigurationSetting _telemetryKv = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryFeature",
-            value: @"
-                    {
-                        ""id"": ""TelemetryFeature"",
-                        ""description"": """",
-                        ""display_name"": ""Telemetry Feature"",
-                        ""enabled"": true,
-                        ""conditions"": {
-                        ""client_filters"": [
-                        ]
-                        },
-                        ""telemetry"": {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature3",
+                value: @"
+                            {
+                                ""id"": ""VariantsFeature3"",
+                                ""description"": """",
+                                ""display_name"": ""Variants Feature 3"",
+                                ""enabled"": true,
+                                ""conditions"": {
+                                ""client_filters"": [
+                                ]
+                                },
+                                ""variants"": [
+		                        {
+			                        ""name"": ""NumberVariant"",
+			                        ""configuration_value"": 1
+		                        },
+		                        {
+			                        ""name"": ""NumberVariant"",
+			                        ""configuration_value"": 2
+		                        },
+		                        {
+			                        ""name"": ""OtherVariant"",
+			                        ""configuration_value"": ""Other""
+		                        }
+	                            ],
+                                ""allocation"": {
+                                    ""default_when_enabled"": ""OtherVariant"",
+                                    ""default_when_enabled"": ""NumberVariant""
+                                }
+                            }
+                            ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantsFeature4",
+                value: @"
+                            {
+                                ""id"": ""VariantsFeature4"",
+                                ""description"": """",
+                                ""display_name"": ""Variants Feature 4"",
+                                ""enabled"": true,
+                                ""conditions"": {
+                                ""client_filters"": [
+                                ]
+                                },
+                                ""variants"": null,
+	                            ""allocation"": null
+                            }
+                            ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+        List<ConfigurationSetting> _telemetryFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryFeature1",
+                value: @"
+                        {
+                            ""id"": ""TelemetryFeature1"",
+                            ""description"": """",
+                            ""display_name"": ""Telemetry Feature 1"",
                             ""enabled"": true,
-                            ""metadata"": {
-		                        ""Tags.Tag1"": ""Tag1Value"",
-		                        ""Tags.Tag2"": ""Tag2Value""
-	                        }
+                            ""conditions"": {
+                            ""client_filters"": [
+                            ]
+                            },
+                            ""telemetry"": {
+                                ""enabled"": true,
+                                ""metadata"": {
+		                            ""Tags.Tag1"": ""Tag1Value"",
+		                            ""Tags.Tag2"": ""Tag2Value""
+	                            }
+                            }
                         }
-                    }
-                    ",
-            label: "label",
-            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+                        ",
+                label: "label",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryFeature2",
+                value: @"
+                        {
+                            ""id"": ""TelemetryFeature2"",
+                            ""description"": """",
+                            ""display_name"": ""Telemetry Feature 2"",
+                            ""enabled"": true,
+                            ""conditions"": {
+                            ""client_filters"": [
+                            ]
+                            },
+                            ""telemetry"": {
+                                ""enabled"": false,
+                                ""enabled"": true,
+                                ""metadata"": {
+		                            ""Tags.Tag1"": ""Tag1Value"",
+		                            ""Tags.Tag1"": ""Tag2Value""
+	                            }
+                            }
+                        }
+                        ",
+                label: "label",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
 
         TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
@@ -360,6 +448,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -394,6 +484,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -435,6 +527,8 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
             refresher.RefreshAsync().Wait();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Edge", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -465,6 +559,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -506,6 +602,8 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(cacheExpirationInterval);
             refresher.RefreshAsync().Wait();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Edge", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -534,6 +632,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -573,6 +673,8 @@ namespace Tests.AzureAppConfiguration
 
             refresher.RefreshAsync().Wait();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -601,6 +703,8 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -640,6 +744,8 @@ namespace Tests.AzureAppConfiguration
 
             refresher.RefreshAsync().Wait();
 
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
             Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
@@ -1479,17 +1585,11 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void WithVariants()
         {
-            var featureFlags = new List<ConfigurationSetting>()
-            {
-                _variantsKv1,
-                _variantsKv2
-            };
-
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(new MockAsyncPageable(_variantFeatureFlagCollection));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -1552,21 +1652,29 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("True", config["feature_management:feature_flags:1:variants:4:configuration_value"]);
             Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:allocation:default_when_disabled"]);
             Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:allocation:default_when_enabled"]);
+
+            Assert.Equal("VariantsFeature3", config["feature_management:feature_flags:2:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:2:enabled"]);
+            Assert.Equal("NumberVariant", config["feature_management:feature_flags:2:allocation:default_when_enabled"]);
+            Assert.Equal("1", config["feature_management:feature_flags:2:variants:0:configuration_value"]);
+            Assert.Equal("2", config["feature_management:feature_flags:2:variants:1:configuration_value"]);
+            Assert.Equal("Other", config["feature_management:feature_flags:2:variants:2:configuration_value"]);
+            Assert.Equal("NumberVariant", config["feature_management:feature_flags:2:allocation:default_when_enabled"]);
+
+            Assert.Equal("VariantsFeature4", config["feature_management:feature_flags:3:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
+            Assert.Null(config["feature_management:feature_flags:3:variants"]);
+            Assert.Null(config["feature_management:feature_flags:3:allocation"]);
         }
 
         [Fact]
         public void WithTelemetry()
         {
-            var featureFlags = new List<ConfigurationSetting>()
-            {
-                _telemetryKv
-            };
-
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Returns(new MockAsyncPageable(_telemetryFeatureFlagCollection));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -1578,7 +1686,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("True", config["feature_management:feature_flags:0:telemetry:enabled"]);
-            Assert.Equal("TelemetryFeature", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("TelemetryFeature1", config["feature_management:feature_flags:0:id"]);
             Assert.Equal("Tag1Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag1"]);
             Assert.Equal("Tag2Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag2"]);
             Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["feature_management:feature_flags:0:telemetry:metadata:ETag"]);
@@ -1587,7 +1695,7 @@ namespace Tests.AzureAppConfiguration
 
             using (HashAlgorithm hashAlgorithm = SHA256.Create())
             {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature\nlabel"));
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1\nlabel"));
             }
 
             string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
@@ -1596,7 +1704,11 @@ namespace Tests.AzureAppConfiguration
                 .Replace('/', '_');
 
             Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
-            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature?label=label", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1?label=label", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
+
+            Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
+            Assert.Equal("TelemetryFeature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("Tag2Value", config["feature_management:feature_flags:1:telemetry:metadata:Tags.Tag1"]);
         }
 
 
