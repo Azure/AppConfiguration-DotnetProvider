@@ -46,11 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             if (featureFlag.Enabled)
             {
                 //if (featureFlag.Conditions?.ClientFilters == null)
-                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
-                {
-                     keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{0}:{FeatureManagementConstants.Name}", FeatureManagementConstants.AlwaysOnFilter));
-                }
-                else
+                if (featureFlag.Conditions?.ClientFilters != null && featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
                 {
                     //
                     // Conditionally on based on feature filters

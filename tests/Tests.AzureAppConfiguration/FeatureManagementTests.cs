@@ -858,7 +858,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded
@@ -901,13 +901,13 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("AlwaysOn", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
             Assert.Equal("App1_Feature1", config["feature_management:feature_flags:0:id"]);
             Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
             Assert.Equal("App1_Feature2", config["feature_management:feature_flags:1:id"]);
             Assert.Equal("False", config["feature_management:feature_flags:2:enabled"]);
             Assert.Equal("App2_Feature1", config["feature_management:feature_flags:2:id"]);
-            Assert.Equal("AlwaysOn", config["feature_management:feature_flags:3:conditions:client_filters:0:name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
             Assert.Equal("App2_Feature2", config["feature_management:feature_flags:3:id"]);
 
             // Verify that the feature flag that did not start with the specified prefix was not loaded

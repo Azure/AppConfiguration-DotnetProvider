@@ -46,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         // Default filters
         public const string AlwaysOnFilter = "AlwaysOn";
 
-        // Telemetry keys
+        // Telemetry metadata keys
         public const string ETag = "ETag";
         public const string FeatureFlagId = "FeatureFlagId";
         public const string FeatureFlagReference = "FeatureFlagReference";
