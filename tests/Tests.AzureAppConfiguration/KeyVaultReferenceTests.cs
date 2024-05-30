@@ -683,7 +683,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SecretIsReturnedFromCacheIfSecretCacheHasNotExpired()
+        public async Task SecretIsReturnedFromCacheIfSecretCacheHasNotExpired()
         {
             IConfigurationRefresher refresher = null;
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
@@ -745,7 +745,7 @@ namespace Tests.AzureAppConfiguration
             // Update sentinel key-value
             sentinelKv.Value = "Value2";
             Thread.Sleep(cacheExpirationTime);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Value2", config["Sentinel"]);
             Assert.Equal(_secretValue, config[_kv.Key]);
@@ -756,7 +756,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void CachedSecretIsInvalidatedWhenRefreshAllIsTrue()
+        public async Task CachedSecretIsInvalidatedWhenRefreshAllIsTrue()
         {
             IConfigurationRefresher refresher = null;
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
@@ -817,7 +817,7 @@ namespace Tests.AzureAppConfiguration
             // Update sentinel key-value to trigger refresh operation
             sentinelKv.Value = "Value2";
             Thread.Sleep(cacheExpirationTime);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Value2", config["Sentinel"]);
             Assert.Equal(_secretValue, config[_kv.Key]);
@@ -828,7 +828,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SecretIsReloadedFromKeyVaultWhenCacheExpires()
+        public async Task SecretIsReloadedFromKeyVaultWhenCacheExpires()
         {
             IConfigurationRefresher refresher = null;
             TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
@@ -862,7 +862,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the secret cache expire 
             Thread.Sleep(cacheExpirationTime);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config[_kv.Key]);
 
@@ -871,7 +871,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SecretsWithDefaultRefreshInterval()
+        public async Task SecretsWithDefaultRefreshInterval()
         {
             IConfigurationRefresher refresher = null;
             TimeSpan shortCacheExpirationTime = TimeSpan.FromSeconds(1);
@@ -906,7 +906,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the secret cache expire for both secrets 
             Thread.Sleep(shortCacheExpirationTime);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config["TK1"]);
             Assert.Equal(_secretValue, config["TK2"]);
@@ -916,7 +916,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SecretsWithDifferentRefreshIntervals()
+        public async Task SecretsWithDifferentRefreshIntervals()
         {
             IConfigurationRefresher refresher = null;
             TimeSpan shortCacheExpirationTime = TimeSpan.FromSeconds(1);
@@ -953,7 +953,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the secret cache expire for one secret 
             Thread.Sleep(shortCacheExpirationTime);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config["TK1"]);
             Assert.Equal(_secretValue, config["TK2"]);

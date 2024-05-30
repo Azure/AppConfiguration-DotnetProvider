@@ -286,7 +286,7 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void SyncTokenUpdatesCorrectNumberOfTimes()
+		public async Task SyncTokenUpdatesCorrectNumberOfTimes()
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
@@ -312,7 +312,7 @@ namespace Tests.AzureAppConfiguration
 			foreach (PushNotification pushNotification in _pushNotificationList)
 			{
 				refresher.ProcessPushNotification(pushNotification, TimeSpan.FromSeconds(0));
-				refresher.RefreshAsync().Wait();
+				await refresher.RefreshAsync();
 			}
 
 			var validNotificationKVWatcherCount = 8;
@@ -324,7 +324,7 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void RefreshAsyncUpdatesConfig()
+		public async Task RefreshAsyncUpdatesConfig()
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
@@ -351,7 +351,7 @@ namespace Tests.AzureAppConfiguration
 			FirstKeyValue.Value = "newValue1";
 
 			refresher.ProcessPushNotification(_pushNotificationList.First(), TimeSpan.FromSeconds(0));
-			refresher.RefreshAsync().Wait();
+			await refresher.RefreshAsync();
 
 			Assert.Equal("newValue1", config["TestKey1"]);
 		}
