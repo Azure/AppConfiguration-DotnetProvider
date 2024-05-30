@@ -15,8 +15,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -194,13 +196,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                         {
                             ""id"": ""VariantsFeature1"",
-                            ""description"": """",
-                            ""display_name"": ""Variants Feature 1"",
                             ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [
-                            ]
-                            },
                             ""variants"": [
 		                    {
 			                    ""name"": ""Big"",
@@ -271,13 +267,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                             {
                                 ""id"": ""VariantsFeature2"",
-                                ""description"": """",
-                                ""display_name"": ""Variants Feature 2"",
                                 ""enabled"": false,
-                                ""conditions"": {
-                                ""client_filters"": [
-                                ]
-                                },
                                 ""variants"": [
 		                        {
 			                        ""name"": ""ObjectVariant"",
@@ -319,13 +309,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                             {
                                 ""id"": ""VariantsFeature3"",
-                                ""description"": """",
-                                ""display_name"": ""Variants Feature 3"",
                                 ""enabled"": true,
-                                ""conditions"": {
-                                ""client_filters"": [
-                                ]
-                                },
                                 ""variants"": [
 		                        {
 			                        ""name"": ""NumberVariant"",
@@ -355,13 +339,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                             {
                                 ""id"": ""VariantsFeature4"",
-                                ""description"": """",
-                                ""display_name"": ""Variants Feature 4"",
                                 ""enabled"": true,
-                                ""conditions"": {
-                                ""client_filters"": [
-                                ]
-                                },
                                 ""variants"": null,
 	                            ""allocation"": null
                             }
@@ -378,13 +356,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                         {
                             ""id"": ""TelemetryFeature1"",
-                            ""description"": """",
-                            ""display_name"": ""Telemetry Feature 1"",
                             ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [
-                            ]
-                            },
                             ""telemetry"": {
                                 ""enabled"": true,
                                 ""metadata"": {
@@ -403,13 +375,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                         {
                             ""id"": ""TelemetryFeature2"",
-                            ""description"": """",
-                            ""display_name"": ""Telemetry Feature 2"",
                             ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [
-                            ]
-                            },
                             ""telemetry"": {
                                 ""enabled"": false,
                                 ""enabled"": true,
@@ -1730,9 +1696,9 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting>()
             {
                 _kv2,
-                FeatureWithRequirementType("Feature_NoFilters", "All", emptyFilters),
-                FeatureWithRequirementType("Feature_RequireAll", "All", nonEmptyFilters),
-                FeatureWithRequirementType("Feature_RequireAny", "Any", nonEmptyFilters)
+                CreateFeatureFlag("Feature_NoFilters", requirementType: "\"All\"", clientFiltersJsonString: emptyFilters),
+                CreateFeatureFlag("Feature_RequireAll", requirementType: "\"All\"", clientFiltersJsonString: nonEmptyFilters),
+                CreateFeatureFlag("Feature_RequireAny", requirementType: "\"Any\"", clientFiltersJsonString: nonEmptyFilters)
             };
 
             var mockResponse = new Mock<Response>();
@@ -1759,6 +1725,54 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Feature_RequireAny", config["feature_management:feature_flags:3:id"]);
         }
 
+        [Fact]
+        public void ThrowsOnIncorrectJsonTypes()
+        {
+            var settings = new List<ConfigurationSetting>()
+            {
+                CreateFeatureFlag("Feature1", variantsJsonString: @"[{""name"": 1}]"),
+                CreateFeatureFlag("Feature2", variantsJsonString: @"[{""configuration_reference"": true}]"),
+                CreateFeatureFlag("Feature3", variantsJsonString: @"[{""status_override"": []}]"),
+                CreateFeatureFlag("Feature4", seed: "{}"),
+                CreateFeatureFlag("Feature5", defaultWhenDisabled: "5"),
+                CreateFeatureFlag("Feature6", defaultWhenEnabled: "6"),
+                CreateFeatureFlag("Feature7", userJsonString: @"[{""variant"": []}]"),
+                CreateFeatureFlag("Feature8", userJsonString: @"[{""users"": [ {""name"": ""8""} ]}]"),
+                CreateFeatureFlag("Feature9", groupJsonString: @"[{""variant"": false}]"),
+                CreateFeatureFlag("Feature10", groupJsonString: @"[{""groups"": 10}]"),
+                CreateFeatureFlag("Feature11", percentileJsonString: @"[{""variant"": []}]"),
+                CreateFeatureFlag("Feature12", percentileJsonString: @"[{""from"": ""12""}]"),
+                CreateFeatureFlag("Feature13", percentileJsonString: @"[{""to"": {}}]"),
+                CreateFeatureFlag("Feature14", telemetryEnabled: "14"),
+                CreateFeatureFlag("Feature15", telemetryMetadataJsonString: @"{""key"": 15}"),
+                CreateFeatureFlag("Feature16", clientFiltersJsonString: @"[{""name"": 16}]"),
+                CreateFeatureFlag("Feature17", clientFiltersJsonString: @"{""key"": [{""name"": ""name"", ""parameters"": 17}]}"),
+                CreateFeatureFlag("Feature18", requirementType: "18")
+            };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            foreach (ConfigurationSetting setting in settings)
+            {
+                var featureFlags = new List<ConfigurationSetting> { setting };
+
+                mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                    .Returns(new MockAsyncPageable(featureFlags));
+
+                void action() => new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                        options.UseFeatureFlags();
+                    }).Build();
+
+                var exception = Assert.Throws<FormatException>(action);
+
+                Assert.False(exception.InnerException is JsonException);
+            }
+        }
+
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
@@ -1769,18 +1783,42 @@ namespace Tests.AzureAppConfiguration
             return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
         }
 
-        private ConfigurationSetting FeatureWithRequirementType(string featureId, string requirementType, string clientFiltersJsonString)
+        private ConfigurationSetting CreateFeatureFlag(string featureId,
+            string requirementType = "null",
+            string clientFiltersJsonString = "null",
+            string variantsJsonString = "null",
+            string seed = "null",
+            string defaultWhenDisabled = "null",
+            string defaultWhenEnabled = "null",
+            string userJsonString = "null",
+            string groupJsonString = "null",
+            string percentileJsonString = "null",
+            string telemetryEnabled = "null",
+            string telemetryMetadataJsonString = "null")
         {
             return ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + featureId,
                 value: $@"
                         {{
-                          ""id"": ""{featureId}"",
-                          ""enabled"": true,
-                          ""conditions"": {{
-                            ""requirement_type"": ""{requirementType}"",
-                            ""client_filters"": {clientFiltersJsonString}
-                          }}
+                            ""id"": ""{featureId}"",
+                            ""enabled"": true,
+                            ""conditions"": {{
+                              ""requirement_type"": {requirementType},
+                              ""client_filters"": {clientFiltersJsonString}
+                            }},
+                            ""variants"": {variantsJsonString},
+	                        ""allocation"": {{
+		                        ""seed"": {seed},
+		                        ""default_when_disabled"": {defaultWhenDisabled},
+		                        ""default_when_enabled"": {defaultWhenEnabled},
+		                        ""user"": {userJsonString},
+		                        ""group"": {groupJsonString},
+		                        ""percentile"": {percentileJsonString}
+	                        }},
+                            ""telemetry"": {{
+                                ""enabled"": {telemetryEnabled},
+                                ""metadata"": {telemetryMetadataJsonString}
+                            }}
                         }}
                         ",
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",

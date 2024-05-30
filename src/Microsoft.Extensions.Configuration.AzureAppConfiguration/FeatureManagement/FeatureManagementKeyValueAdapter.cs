@@ -734,7 +734,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     {
                                         FeaturePercentileAllocation featurePercentileAllocation = ParseFeaturePercentileAllocation(ref reader, settingKey);
 
-                                        if (featurePercentileAllocation.Variant != null) //TODO condition for this?
+                                        if (featurePercentileAllocation.Variant != null)
                                         {
                                             percentileAllocations.Add(featurePercentileAllocation);
                                         }
