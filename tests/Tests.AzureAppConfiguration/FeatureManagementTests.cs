@@ -452,7 +452,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void WatchesFeatureFlags()
+        public async Task WatchesFeatureFlags()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -513,7 +513,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the cache expire
             Thread.Sleep(cacheExpirationTimeSpan);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
@@ -523,7 +523,7 @@ namespace Tests.AzureAppConfiguration
 
 
         [Fact]
-        public void SkipRefreshIfCacheNotExpired()
+        public async Task SkipRefreshIfCacheNotExpired()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -581,7 +581,7 @@ namespace Tests.AzureAppConfiguration
 
             featureFlags.Add(_kv2);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
             Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
@@ -618,7 +618,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void QueriesFeatureFlags()
+        public async Task QueriesFeatureFlags()
         {
             var mockTransport = new MockTransport(req =>
             {
@@ -646,7 +646,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void UsesEtagForFeatureFlagRefresh()
+        public async Task UsesEtagForFeatureFlagRefresh()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -667,7 +667,7 @@ namespace Tests.AzureAppConfiguration
             // Sleep to let the cache expire
             Thread.Sleep(cacheExpirationTimeSpan);
 
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
 
@@ -1025,7 +1025,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
+        public async Task DifferentCacheExpirationsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1111,7 +1111,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the cache for feature flag with label1 expire
             Thread.Sleep(cacheExpiration1);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Browser", config["FeatureManagement:App1_Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:App1_Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
@@ -1125,7 +1125,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void OverwrittenCacheExpirationForSameFeatureFlagRegistrations()
+        public async Task OverwrittenCacheExpirationForSameFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1188,7 +1188,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(cacheExpiration1);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // The cache expiration time for feature flags was overwritten by second call to UseFeatureFlags.
             // Sleeping for cacheExpiration1 time should not update feature flags.
@@ -1200,7 +1200,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SelectAndRefreshSingleFeatureFlag()
+        public async Task SelectAndRefreshSingleFeatureFlag()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1258,7 +1258,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the cache for feature flag with label1 expire
             Thread.Sleep(cacheExpiration);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Browser", config["FeatureManagement:Feature1:EnabledFor:0:Name"]);
             Assert.Equal("Chrome", config["FeatureManagement:Feature1:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
