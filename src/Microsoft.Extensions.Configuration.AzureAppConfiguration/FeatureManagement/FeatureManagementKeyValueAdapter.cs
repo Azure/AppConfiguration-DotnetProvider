@@ -76,10 +76,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     }
                 }
             }
-            else
-            {
-                //keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Status}", FeatureManagementConstants.Disabled));
-            }
 
             if (featureFlag.Variants != null)
             {

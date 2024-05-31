@@ -1741,7 +1741,7 @@ namespace Tests.AzureAppConfiguration
                 CreateFeatureFlag("Feature9", groupJsonString: @"[{""variant"": false}]"),
                 CreateFeatureFlag("Feature10", groupJsonString: @"[{""groups"": 10}]"),
                 CreateFeatureFlag("Feature11", percentileJsonString: @"[{""variant"": []}]"),
-                CreateFeatureFlag("Feature12", percentileJsonString: @"[{""from"": ""12""}]"),
+                CreateFeatureFlag("Feature12", percentileJsonString: @"[{""from"": true}]"),
                 CreateFeatureFlag("Feature13", percentileJsonString: @"[{""to"": {}}]"),
                 CreateFeatureFlag("Feature14", telemetryEnabled: "14"),
                 CreateFeatureFlag("Feature15", telemetryMetadataJsonString: @"{""key"": 15}"),
