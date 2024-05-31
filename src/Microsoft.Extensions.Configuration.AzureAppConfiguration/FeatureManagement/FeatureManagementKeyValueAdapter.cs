@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
-            FeatureFlag featureFlag = ParseFeatureFlag($"Failed to parse invalid feature flag json. Key: '{setting.Key}'", setting.Value);
+            FeatureFlag featureFlag = ParseFeatureFlag(setting.Key, setting.Value);
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -188,7 +188,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
             catch (JsonException e)
             {
-                throw new FormatException(settingKey, e);
+                throw new FormatException(string.Format(ErrorMessages.FeatureFlagInvalidFormat, settingKey), e);
             }
 
             return featureFlag;
