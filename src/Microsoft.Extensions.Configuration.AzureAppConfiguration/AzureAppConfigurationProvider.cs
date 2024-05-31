@@ -352,7 +352,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     if (!_options.RegisterAllEnabled)
                                     {
-                                        keyValueChanges.AddRange(await RefreshKeyValueCollections(_options.MultiKeyWatchers, watchedCollections, client, cancellationToken).ConfigureAwait(false));
+                                        keyValueChanges.AddRange(await RefreshKeyValueCollections(_options.MultiKeyWatchers, _watchedCollections, client, cancellationToken).ConfigureAwait(false));
 
                                         logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
                                     }

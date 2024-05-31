@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core;
 using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
@@ -378,17 +379,25 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            string etag = "c3c231fd-39a0-4cb6-3237-4614474b92c1";
 
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+            var mockTransport = new MockTransport(req =>
+            {
+                var response = new MockResponse(200);
+                response.SetContent(SerializationHelpers.Serialize(featureFlags.ToArray(), TestHelpers.SerializeBatch));
+                response.AddHeader(new HttpHeader(HttpHeader.Names.ETag, new ETag(etag).ToString()));
+                return response;
+            });
+
+            var options = new AzureAppConfigurationOptions();
+            options.ClientOptions.Transport = mockTransport;
+            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ClientManager = clientManager;
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
 
                     refresher = options.GetRefresher();
@@ -429,6 +438,8 @@ namespace Tests.AzureAppConfiguration
                 label: default,
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+
+            etag = "c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f";
 
             featureFlags.Add(_kv2);
 
