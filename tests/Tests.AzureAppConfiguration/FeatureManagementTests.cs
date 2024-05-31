@@ -309,7 +309,7 @@ namespace Tests.AzureAppConfiguration
                 value: @"
                             {
                                 ""id"": ""VariantsFeature3"",
-                                ""enabled"": true,
+                                ""enabled"": ""true"",
                                 ""variants"": [
 		                        {
 			                        ""name"": ""NumberVariant"",
@@ -358,7 +358,7 @@ namespace Tests.AzureAppConfiguration
                             ""id"": ""TelemetryFeature1"",
                             ""enabled"": true,
                             ""telemetry"": {
-                                ""enabled"": true,
+                                ""enabled"": ""true"",
                                 ""metadata"": {
 		                            ""Tags.Tag1"": ""Tag1Value"",
 		                            ""Tags.Tag2"": ""Tag2Value""
