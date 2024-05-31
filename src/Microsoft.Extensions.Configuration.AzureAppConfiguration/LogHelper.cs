@@ -92,7 +92,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildRefreshFailedDueToFormattingErrorMessage(string exceptionMessage)
         {
-            return $"{LoggingConstants.RefreshFormattingError}\n{exceptionMessage}";
+            return $"{LoggingConstants.RefreshFailedDueToFormattingError}\n{exceptionMessage}";
         }
     }
 }
