@@ -88,7 +88,239 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _nullOrMissingConditionsFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NullParameters",
+            value: @"
+                            {
+                              ""id"": ""NullParameters"",
+                              ""description"": """",
+                              ""display_name"": ""Null Parameters"",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""client_filters"": [
+                                  {
+                                    ""name"": ""Filter"",
+                                    ""parameters"": null
+                                  }
+                                ]
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NullConditions",
+            value: @"
+                            {
+                              ""id"": ""NullConditions"",
+                              ""description"": """",
+                              ""display_name"": ""Null Conditions"",
+                              ""enabled"": true,
+                              ""conditions"": null
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NullClientFilters",
+            value: @"
+                            {
+                              ""id"": ""NullClientFilters"",
+                              ""description"": """",
+                              ""display_name"": ""Null Client Filters"",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""client_filters"": null
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "NoConditions",
+            value: @"
+                            {
+                              ""id"": ""NoConditions"",
+                              ""description"": """",
+                              ""display_name"": ""No Conditions"",
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "EmptyConditions",
+            value: @"
+                            {
+                              ""id"": ""EmptyConditions"",
+                              ""description"": """",
+                              ""display_name"": ""Empty Conditions"",
+                              ""conditions"": {},
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "EmptyClientFilter",
+            value: @"
+                            {
+                              ""id"": ""EmptyClientFilter"",
+                              ""description"": """",
+                              ""display_name"": ""Empty Client Filter"",
+                              ""conditions"": {
+                                ""client_filters"": [
+                                    {}
+                                ]
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+    List<ConfigurationSetting> _validFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "AdditionalProperty",
+            value: @"
+                            {
+                              ""id"": ""AdditionalProperty"",
+                              ""description"": ""Should not throw an exception, additional properties are skipped."",
+                              ""ignored_object"": {
+                                ""id"": false
+                              },
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "DuplicateProperty",
+            value: @"
+                            {
+                              ""id"": ""DuplicateProperty"",
+                              ""description"": ""Should not throw an exception, last of duplicate properties will win."",
+                              ""enabled"": false,
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "AllowNullRequirementType",
+            value: @"
+                            {
+                              ""id"": ""AllowNullRequirementType"",
+                              ""description"": ""Should not throw an exception, requirement type is allowed as null."",
+                              ""enabled"": true,
+                              ""conditions"": {
+                                ""requirement_type"": null
+                              }
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+        List<ConfigurationSetting> _invalidFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket1",
+            value: @"
+                            {
+                              ""id"": ""MissingClosingBracket1"",
+                              ""description"": ""Should throw an exception, invalid end of json."",
+                              ""enabled"": true,
+                              ""conditions"": {}
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket2",
+            value: @"
+                            {
+                              ""id"": ""MissingClosingBracket2"",
+                              ""description"": ""Should throw an exception, invalid end of conditions object."",
+                              ""conditions"": {,
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket3",
+            value: @"
+                            {
+                              ""id"": ""MissingClosingBracket3"",
+                              ""description"": ""Should throw an exception, no closing bracket on client filters array."",
+                              ""conditions"": {
+                                ""client_filters"": [
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingOpeningBracket1",
+            value: @"
+                            {
+                              ""id"": ""MissingOpeningBracket1"",
+                              ""description"": ""Should throw an exception, no opening bracket on conditions object."",
+                              ""conditions"": },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+            key: FeatureManagementConstants.FeatureFlagMarker + "MissingOpeningBracket2",
+            value: @"
+                            {
+                              ""id"": ""MissingOpeningBracket2"",
+                              ""description"": ""Should throw an exception, no opening bracket on client filters array."",
+                              ""conditions"": {
+                                ""client_filters"": ]
+                              },
+                              ""enabled"": true
+                            }
+                            ",
+            label: default,
+            contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+        };
+
+    List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -832,6 +1064,111 @@ namespace Tests.AzureAppConfiguration
             // Verify that the feature flag that did not match the specified label was not loaded
             Assert.Null(config["feature_management:feature_flags:3"]);
             Assert.Null(config["feature_management:feature_flags:4"]);
+        }
+
+        [Fact]
+        public void TestNullAndMissingValuesForConditions()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_nullOrMissingConditionsFeatureFlagCollection));
+
+            var testClient = mockClient.Object;
+
+            // Makes sure that adapter properly processes values and doesn't throw an exception
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.Select(KeyFilter.Any);
+                    });
+                })
+                .Build();
+
+            Assert.Equal("Filter", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Null(config["feature_management:feature_flags:0:conditions:client_filters:0:parameters"]);
+            Assert.Null(config["feature_management:feature_flags:1:conditions"]);
+            Assert.Null(config["feature_management:feature_flags:2:conditions"]);
+            Assert.Null(config["feature_management:feature_flags:3:conditions"]);
+            Assert.Null(config["feature_management:feature_flags:4:conditions"]);
+            Assert.Null(config["feature_management:feature_flags:5:conditions"]);
+        }
+
+        [Fact]
+        public void InvalidFeatureFlagFormatsThrowFormatException()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = _invalidFormatFeatureFlagCollection.FirstOrDefault(s => s.Key == selector.KeyFilter);
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            };
+
+            var testClient = mockClient.Object;
+
+            foreach (ConfigurationSetting setting in _invalidFormatFeatureFlagCollection)
+            {
+                void action() => new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Select("_");
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.Select(setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length));
+                    });
+                })
+                .Build();
+
+                // Each of the feature flags should throw an exception
+                Assert.Throws<FormatException>(action);
+            }
+        }
+
+        [Fact]
+        public void AlternateValidFeatureFlagFormats()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_validFormatFeatureFlagCollection));
+
+            var testClient = mockClient.Object;
+
+            var config = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(options =>
+            {
+                options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                options.UseFeatureFlags(ff =>
+                {
+                    ff.CacheExpirationInterval = cacheExpiration;
+                    ff.Select(KeyFilter.Any);
+                });
+            })
+            .Build();
+
+            // None of the feature flags should throw an exception, and the flag should be loaded like normal
+            Assert.Equal("True", config[$"feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:2:enabled"]);
         }
 
         [Fact]
