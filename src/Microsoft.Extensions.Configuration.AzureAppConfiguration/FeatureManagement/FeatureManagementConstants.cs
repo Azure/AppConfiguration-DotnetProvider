@@ -39,13 +39,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string To = "to";
         public const string Seed = "seed";
 
-        // Feature flag status values
-        public const string Conditional = "Conditional";
-        public const string Disabled = "Disabled";
-
-        // Default filters
-        public const string AlwaysOnFilter = "AlwaysOn";
-
         // Telemetry metadata keys
         public const string ETag = "ETag";
         public const string FeatureFlagId = "FeatureFlagId";
