@@ -80,27 +80,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!string.IsNullOrEmpty(assemblyName))
             {
-                AssemblyInformationalVersionAttribute[] infoVersionAttributes = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?
-                    .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false) as AssemblyInformationalVersionAttribute[];
+                AssemblyInformationalVersionAttribute infoVersionAttribute = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>();
                 
-                if (infoVersionAttributes != null && infoVersionAttributes.Length == 1)
+                string informationalVersion = infoVersionAttribute?.InformationalVersion;
+
+                if (string.IsNullOrEmpty(informationalVersion))
                 {
-                    string informationalVersion = infoVersionAttributes[0]?.InformationalVersion;
-
-                    if (string.IsNullOrEmpty(informationalVersion))
-                    {
-                        return null;
-                    }
-
-                    int plusIndex = informationalVersion.IndexOf('+');
-
-                    if (plusIndex != -1)
-                    {
-                        informationalVersion = informationalVersion.Substring(0, plusIndex);
-                    }
-
-                    return informationalVersion;
+                    return null;
                 }
+
+                int plusIndex = informationalVersion.IndexOf('+');
+
+                if (plusIndex != -1)
+                {
+                    informationalVersion = informationalVersion.Substring(0, plusIndex);
+                }
+
+                return informationalVersion;
             }
 
             return null;
