@@ -193,7 +193,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-    List<ConfigurationSetting> _validFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _validFormatFeatureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "AdditionalProperty",
@@ -320,7 +320,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-    List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -1300,7 +1300,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(() =>
                 {
                     return new MockAsyncPageable(_featureFlagCollection.Where(s =>
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) || 
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
                 });
 
