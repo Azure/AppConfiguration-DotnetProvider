@@ -80,24 +80,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!string.IsNullOrEmpty(assemblyName))
             {
-                AssemblyInformationalVersionAttribute infoVersionAttribute = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?
-                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-                
-                string informationalVersion = infoVersionAttribute?.InformationalVersion;
+                Assembly infoVersionAttribute = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName);
 
-                if (string.IsNullOrEmpty(informationalVersion))
+                if (infoVersionAttribute != null)
                 {
-                    return null;
+                    string informationalVersion = infoVersionAttribute.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+                    if (string.IsNullOrEmpty(informationalVersion))
+                    {
+                        return null;
+                    }
+
+                    // Commit information is appended to the informational version starting with a '+', so we remove
+                    // the commit information to get just the full name of the version.
+                    int plusIndex = informationalVersion.IndexOf('+');
+
+                    if (plusIndex != -1)
+                    {
+                        informationalVersion = informationalVersion.Substring(0, plusIndex);
+                    }
+
+                    return informationalVersion;
                 }
-
-                int plusIndex = informationalVersion.IndexOf('+');
-
-                if (plusIndex != -1)
-                {
-                    informationalVersion = informationalVersion.Substring(0, plusIndex);
-                }
-
-                return informationalVersion;
             }
 
             return null;
