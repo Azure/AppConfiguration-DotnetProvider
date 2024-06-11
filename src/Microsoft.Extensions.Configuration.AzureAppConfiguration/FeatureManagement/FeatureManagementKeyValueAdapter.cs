@@ -45,11 +45,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (featureFlag.Enabled)
             {
-                //if (featureFlag.Conditions?.ClientFilters == null)
                 if (featureFlag.Conditions?.ClientFilters != null && featureFlag.Conditions.ClientFilters.Any()) // workaround since we are not yet setting client filters to null
                 {
                     //
-                    // Conditionally on based on feature filters
+                    // Conditionally based on feature filters
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
@@ -260,7 +259,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         private FeatureFlag ParseFeatureFlag(string settingKey, string settingValue)
         {
-            FeatureFlag featureFlag = new FeatureFlag();
+            var featureFlag = new FeatureFlag();
 
             var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(settingValue));
 
@@ -366,6 +365,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                                     while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                                     {
+                                        int i = 0;
+
                                         if (reader.TokenType == JsonTokenType.StartObject)
                                         {
                                             FeatureVariant featureVariant = ParseFeatureVariant(ref reader, settingKey);
@@ -375,6 +376,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                                 variants.Add(featureVariant);
                                             }
                                         }
+                                        else if (reader.TokenType != JsonTokenType.Null)
+                                        {
+                                            throw CreateFeatureFlagFormatException(
+                                                $"{FeatureManagementConstants.Variants}[{i}]",
+                                                settingKey,
+                                                reader.TokenType.ToString(),
+                                                JsonTokenType.StartObject.ToString());
+                                        }
+
+                                        i++;
                                     }
 
                                     featureFlag.Variants = variants;

@@ -1222,7 +1222,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (featureManagementVersion != null)
                     {
                         // If the version is less than 3.2.0, log the schema version warning
-                        if (featureManagementVersion.Major < 3 || (featureManagementVersion.Major == 3 && featureManagementVersion.Minor <= 1))
+                        if (featureManagementVersion < new Version(3, 2, 0))
                         {
                             _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
                         }
