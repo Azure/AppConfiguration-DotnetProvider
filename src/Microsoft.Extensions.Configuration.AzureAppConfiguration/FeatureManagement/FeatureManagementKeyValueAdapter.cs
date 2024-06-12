@@ -172,9 +172,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.PercentileAllocation}:{i}:{FeatureManagementConstants.Variant}", percentileAllocation.Variant));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.PercentileAllocation}:{i}:{FeatureManagementConstants.From}", percentileAllocation.From.ToString()));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.PercentileAllocation}:{i}:{FeatureManagementConstants.From}", percentileAllocation.From?.ToString()));
 
-                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.PercentileAllocation}:{i}:{FeatureManagementConstants.To}", percentileAllocation.To.ToString()));
+                        keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.PercentileAllocation}:{i}:{FeatureManagementConstants.To}", percentileAllocation.To?.ToString()));
 
                         i++;
                     }
@@ -741,7 +741,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                     {
                                         FeaturePercentileAllocation featurePercentileAllocation = ParseFeaturePercentileAllocation(ref reader, settingKey);
 
-                                        if (featurePercentileAllocation.Variant != null)
+                                        if (featurePercentileAllocation.Variant != null ||
+                                            featurePercentileAllocation.From != null ||
+                                            featurePercentileAllocation.To != null)
                                         {
                                             percentileAllocations.Add(featurePercentileAllocation);
                                         }
