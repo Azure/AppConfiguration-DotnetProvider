@@ -142,7 +142,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyVariantAllocation())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagVariantsAllocationKey, requestTracingOptions.FeatureFlagTracing.CreateVariantsAllocationString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagAllocationKey, requestTracingOptions.FeatureFlagTracing.CreateVariantsAllocationString()));
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.IsAnyVariantPresent)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagHighestVariantsKey, ));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
@@ -168,11 +173,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.FeatureFlagTracing.IsTelemetryEnabled)
             {
                 correlationContextTags.Add(RequestTracingConstants.FeatureFlagTelemetryEnabledTag);
-            }
-
-            if (requestTracingOptions.FeatureFlagTracing.IsAnyVariantPresent)
-            {
-                correlationContextTags.Add(RequestTracingConstants.FeatureFlagVariantPresentTag);
             }
 
             var sb = new StringBuilder();
