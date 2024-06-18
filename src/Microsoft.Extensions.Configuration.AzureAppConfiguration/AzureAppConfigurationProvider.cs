@@ -1211,27 +1211,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!_isFeatureManagementVersionInspected)
             {
+                const string FeatureManagementMinimumVersion = "3.2.0";
+
                 _isFeatureManagementVersionInspected = true;
 
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-                    Version featureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
-
-                    Version featureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+                    string featureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                     if (featureManagementVersion != null)
                     {
                         // If the version is less than 3.2.0, log the schema version warning
-                        if (featureManagementVersion < new Version(3, 2, 0))
+                        if (Version.Parse(featureManagementVersion) < Version.Parse(FeatureManagementMinimumVersion))
                         {
                             _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
                         }
                     }
 
-                    // Return the version using only the first 3 fields and remove additional characters
-                    _requestTracingOptions.FeatureManagementVersion = featureManagementVersion?.ToString(3).Trim('{', '}');
+                    _requestTracingOptions.FeatureManagementVersion = featureManagementVersion;
 
-                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = featureManagementAspNetCoreVersion?.ToString(3).Trim('{', '}');
+                    _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
                 }
             }
         }

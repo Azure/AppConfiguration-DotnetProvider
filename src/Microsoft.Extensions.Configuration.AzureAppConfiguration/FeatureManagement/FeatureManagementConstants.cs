@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
     internal class FeatureManagementConstants
@@ -43,6 +44,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string ETag = "ETag";
         public const string FeatureFlagId = "FeatureFlagId";
         public const string FeatureFlagReference = "FeatureFlagReference";
-
     }
 }

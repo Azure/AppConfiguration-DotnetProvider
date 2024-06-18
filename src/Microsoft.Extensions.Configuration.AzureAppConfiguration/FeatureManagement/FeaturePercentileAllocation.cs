@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -9,8 +8,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         public string Variant { get; set; }
 
-        public double? From { get; set; }
+        public double From { get; set; }
 
-        public double? To { get; set; }
+        public double To { get; set; }
     }
 }
