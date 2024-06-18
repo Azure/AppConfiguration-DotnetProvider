@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshFailedToGetSettingsFromEndpoint = "Failed to get configuration settings from endpoint";
         public const string FailingOverToEndpoint = "Failing over to endpoint";
         public const string FeatureManagementMicrosoftSchemaVersionWarning = "Your application may be using an older version of " + 
-            "Microsoft.FeatureManagement that isn't compatible with this version of the App Configuration .NET provider. Please update " +
+            "Microsoft.FeatureManagement library that isn't compatible with Microsoft.Extensions.Configuration.AzureAppConfiguration. Please update " +
             "the Microsoft.FeatureManagement package to version 3.2.0 or later.";
     }
 }
