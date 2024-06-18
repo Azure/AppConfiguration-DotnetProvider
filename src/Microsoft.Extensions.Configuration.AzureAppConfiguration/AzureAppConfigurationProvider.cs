@@ -1219,13 +1219,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     string featureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
-                    if (featureManagementVersion != null)
+                    // If the version is less than 3.2.0, log the schema version warning
+                    if (featureManagementVersion != null && Version.Parse(featureManagementVersion) < Version.Parse(FeatureManagementMinimumVersion))
                     {
-                        // If the version is less than 3.2.0, log the schema version warning
-                        if (Version.Parse(featureManagementVersion) < Version.Parse(FeatureManagementMinimumVersion))
-                        {
-                            _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
-                        }
+                        _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
                     }
 
                     _requestTracingOptions.FeatureManagementVersion = featureManagementVersion;
