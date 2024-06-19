@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -139,6 +138,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyFeatureFilter())
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesAnyVariantConfiguration())
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagVariantConfigurationKey, requestTracingOptions.FeatureFlagTracing.CreateVariantConfigurationString()));
             }
 
             if (requestTracingOptions.FeatureFlagTracing.HighestVariants > 0)
