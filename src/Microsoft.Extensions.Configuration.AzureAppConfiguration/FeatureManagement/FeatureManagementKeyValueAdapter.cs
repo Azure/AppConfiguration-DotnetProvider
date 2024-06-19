@@ -240,7 +240,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return false;
         }
 
-        public void ResetState()
+        public void ProcessProviderRefresh(ConfigurationSetting setting = null)
         {
             _featureFlagIndex = 0;
 

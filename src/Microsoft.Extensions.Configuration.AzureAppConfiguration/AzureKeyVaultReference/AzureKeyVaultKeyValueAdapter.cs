@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return string.Equals(contentType, KeyVaultConstants.ContentType);
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void ProcessProviderRefresh(ConfigurationSetting setting = null)
         {
             if (setting == null)
             {

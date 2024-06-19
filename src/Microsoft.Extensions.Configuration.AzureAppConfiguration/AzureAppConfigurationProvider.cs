@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-                                adapter.InvalidateCache(change.Current);
+                                adapter.ProcessProviderRefresh(change.Current);
                             }
                         }
                     }
@@ -399,7 +399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Invalidate all the cached KeyVault secrets
                         foreach (IKeyValueAdapter adapter in _options.Adapters)
                         {
-                            adapter.InvalidateCache();
+                            adapter.ProcessProviderRefresh();
                         }
 
                         // Update the next refresh time for all refresh registered settings and feature flags
@@ -556,11 +556,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Reset old filter tracing in order to track the filter types present in the current response from server.
             _options.FeatureFilterTracing.ResetFeatureFilterTracing();
-
-            foreach (IKeyValueAdapter adapter in _options.Adapters)
-            {
-                adapter.ResetState();
-            }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -739,7 +734,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Invalidate all the cached KeyVault secrets
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
                 {
-                    adapter.InvalidateCache();
+                    adapter.ProcessProviderRefresh();
                 }
 
                 Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);

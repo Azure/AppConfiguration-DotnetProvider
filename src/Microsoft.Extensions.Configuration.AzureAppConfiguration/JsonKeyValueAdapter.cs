@@ -90,7 +90,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void ProcessProviderRefresh(ConfigurationSetting setting = null)
         {
             return;
         }

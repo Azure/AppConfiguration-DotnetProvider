@@ -15,10 +15,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         bool CanProcess(ConfigurationSetting setting);
 
-        void InvalidateCache(ConfigurationSetting setting = null);
+        void ProcessProviderRefresh(ConfigurationSetting setting = null);
 
         bool NeedsRefresh();
-
-        void ResetState();
     }
 }
