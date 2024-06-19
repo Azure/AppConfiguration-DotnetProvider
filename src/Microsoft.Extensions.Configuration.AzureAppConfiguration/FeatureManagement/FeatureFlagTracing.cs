@@ -18,12 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private const string PercentageFilter = "PRCNT";
         private const string TimeWindowFilter = "TIME";
         private const string TargetingFilter = "TRGT";
-        private const string DefaultWhenDisabled = "DEFD";
-        private const string DefaultWhenEnabled = "DEFE";
-        private const string UserAllocation = "USR";
-        private const string GroupAllocation = "GRP";
-        private const string PercentileAllocation = "PRCNT";
-        private const string Seed = "SEED";
         private const string Delimiter = "+";
 
         // Built-in Feature Filter Names
@@ -35,23 +29,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesPercentageFilter { get; set; } = false;
         public bool UsesTimeWindowFilter { get; set; } = false;
         public bool UsesTargetingFilter { get; set; } = false;
-        public bool UsesDefaultWhenDisabled { get; set; } = false;
-        public bool UsesDefaultWhenEnabled { get; set; } = false;
-        public bool UsesUserAllocation { get; set; } = false;
-        public bool UsesGroupAllocation { get; set; } = false;
-        public bool UsesPercentileAllocation { get; set; } = false;
         public bool UsesSeed { get; set; } = false;
         public bool IsTelemetryEnabled { get; set; } = false;
-        public bool IsAnyVariantPresent { get; set; } = false;
+        public int HighestVariants { get; set; }
 
         public bool UsesAnyFeatureFilter()
         {
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;
-        }
-
-        public bool UsesAnyVariantAllocation()
-        {
-            return UsesDefaultWhenDisabled || UsesDefaultWhenEnabled || UsesUserAllocation || UsesGroupAllocation || UsesPercentileAllocation;
         }
 
         public void ResetFeatureFlagTracing()
@@ -60,11 +44,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             UsesPercentageFilter = false;
             UsesTimeWindowFilter = false;
             UsesTargetingFilter = false;
-            UsesDefaultWhenDisabled = false;
-            UsesDefaultWhenEnabled = false;
-            UsesUserAllocation = false;
-            UsesGroupAllocation = false;
-            UsesPercentileAllocation = false;
             UsesSeed = false;
         }
 
@@ -85,6 +64,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             else
             {
                 UsesCustomFilter = true;
+            }
+        }
+
+        public void UpdateHighestVariants(int currentFlagTotalVariants)
+        {
+            if (currentFlagTotalVariants > HighestVariants)
+            {
+                HighestVariants = currentFlagTotalVariants;
             }
         }
 
@@ -134,77 +121,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
 
                 sb.Append(TargetingFilter);
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Returns a formatted string containing code names, indicating which allocation methods are used by the application.
-        /// </summary>
-        /// <returns>Formatted string like: "DEFD+DEFE+USR+GRP", "DEFD+PRCNT", etc. If no allocations are used, empty string will be returned.</returns>
-        public string CreateVariantsAllocationString()
-        {
-            if (!UsesAnyVariantAllocation())
-            {
-                return string.Empty;
-            }
-
-            var sb = new StringBuilder();
-
-            if (UsesDefaultWhenDisabled)
-            {
-                sb.Append(DefaultWhenDisabled);
-            }
-
-            if (UsesDefaultWhenEnabled)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(Delimiter);
-                }
-
-                sb.Append(DefaultWhenEnabled);
-            }
-
-            if (UsesUserAllocation)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(Delimiter);
-                }
-
-                sb.Append(UserAllocation);
-            }
-
-            if (UsesGroupAllocation)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(Delimiter);
-                }
-
-                sb.Append(GroupAllocation);
-            }
-
-            if (UsesPercentileAllocation)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(Delimiter);
-                }
-
-                sb.Append(PercentileAllocation);
-            }
-
-            if (UsesSeed)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(Delimiter);
-                }
-
-                sb.Append(Seed);
             }
 
             return sb.ToString();

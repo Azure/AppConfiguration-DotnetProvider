@@ -112,10 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     i++;
                 }
 
-                if (i > 0)
-                {
-                    _featureFlagTracing.IsAnyVariantPresent = true;
-                }
+                _featureFlagTracing.UpdateHighestVariants(i);
             }
 
             if (featureFlag.Allocation != null)
@@ -126,22 +123,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.DefaultWhenDisabled != null)
                 {
-                    _featureFlagTracing.UsesDefaultWhenDisabled = true;
-
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.DefaultWhenDisabled}", allocation.DefaultWhenDisabled));
                 }
 
                 if (allocation.DefaultWhenEnabled != null)
                 {
-                    _featureFlagTracing.UsesDefaultWhenEnabled = true;
-
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.DefaultWhenEnabled}", allocation.DefaultWhenEnabled));
                 }
 
                 if (allocation.User != null)
                 {
-                    _featureFlagTracing.UsesUserAllocation = true;
-
                     int i = 0;
 
                     foreach (FeatureUserAllocation userAllocation in allocation.User)
@@ -163,8 +154,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Group != null)
                 {
-                    _featureFlagTracing.UsesGroupAllocation = true;
-
                     int i = 0;
 
                     foreach (FeatureGroupAllocation groupAllocation in allocation.Group)
@@ -186,8 +175,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Percentile != null)
                 {
-                    _featureFlagTracing.UsesPercentileAllocation = true;
-
                     int i = 0;
 
                     foreach (FeaturePercentileAllocation percentileAllocation in allocation.Percentile)

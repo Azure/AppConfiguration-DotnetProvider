@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -140,14 +141,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
             }
 
-            if (requestTracingOptions.FeatureFlagTracing.UsesAnyVariantAllocation())
+            if (requestTracingOptions.FeatureFlagTracing.HighestVariants > 0)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagAllocationKey, requestTracingOptions.FeatureFlagTracing.CreateVariantsAllocationString()));
-            }
-
-            if (requestTracingOptions.FeatureFlagTracing.IsAnyVariantPresent)
-            {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagHighestVariantsKey, ));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagHighestVariantsKey, requestTracingOptions.FeatureFlagTracing.HighestVariants.ToString()));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
@@ -173,6 +169,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.FeatureFlagTracing.IsTelemetryEnabled)
             {
                 correlationContextTags.Add(RequestTracingConstants.FeatureFlagTelemetryEnabledTag);
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesSeed)
+            {
+                correlationContextTags.Add(RequestTracingConstants.FeatureFlagUsesSeedTag);
             }
 
             var sb = new StringBuilder();

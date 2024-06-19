@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeatureFlagTelemetryEnabledTag = "FFTelemetryEnabled";
-        public const string FeatureFlagAllocationKey = "FFUsesSeed";
+        public const string FeatureFlagUsesSeedTag = "FFUsesSeed";
         public const string FeatureFlagHighestVariantsKey = "FFHighestVariants";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
