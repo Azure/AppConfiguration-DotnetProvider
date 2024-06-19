@@ -93,11 +93,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.Name}", featureVariant.Name));
 
-                    if (featureVariant.ConfigurationValue.ValueKind != JsonValueKind.Undefined)
-                    {
-                        _featureFlagTracing.UsesVariantConfigurationValue = true;
-                    }
-
                     foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(featureVariant.ConfigurationValue))
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationValue}" +

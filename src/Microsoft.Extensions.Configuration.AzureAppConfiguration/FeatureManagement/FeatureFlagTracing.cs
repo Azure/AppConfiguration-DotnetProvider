@@ -18,8 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private const string PercentageFilter = "PRCNT";
         private const string TimeWindowFilter = "TIME";
         private const string TargetingFilter = "TRGT";
-        private const string VariantConfigurationValue = "VAL";
-        private const string VariantConfigurationReference = "REF";
         private const string Delimiter = "+";
 
         // Built-in Feature Filter Names
@@ -33,18 +31,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesTargetingFilter { get; set; } = false;
         public bool UsesSeed { get; set; } = false;
         public bool IsTelemetryEnabled { get; set; } = false;
-        public bool UsesVariantConfigurationValue { get; set; } = false;
         public bool UsesVariantConfigurationReference { get; set; } = false;
         public int HighestVariants { get; set; }
 
         public bool UsesAnyFeatureFilter()
         {
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;
-        }
-
-        public bool UsesAnyVariantConfiguration()
-        {
-            return UsesVariantConfigurationValue || UsesVariantConfigurationReference;
         }
 
         public void ResetFeatureFlagTracing()
@@ -130,32 +122,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
 
                 sb.Append(TargetingFilter);
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Returns a formatted string containing code names, indicating which types of variant configuration are used by feature flags.
-        /// </summary>
-        /// <returns>Formatted string like: "VAL+REF", or just "VAL" or "REF". If no variant configuration is ever set, returns an empty string.</returns>
-        public string CreateVariantConfigurationString()
-        {
-            var sb = new StringBuilder();
-
-            if (UsesVariantConfigurationValue)
-            {
-                sb.Append(VariantConfigurationValue);
-            }
-
-            if (UsesVariantConfigurationReference)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(Delimiter);
-                }
-
-                sb.Append(VariantConfigurationReference);
             }
 
             return sb.ToString();

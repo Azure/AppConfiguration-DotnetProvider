@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagTelemetryEnabledTag = "FFTelemetryEnabled";
         public const string FeatureFlagUsesSeedTag = "FFUsesSeed";
         public const string FeatureFlagHighestVariantsKey = "FFHighestVariants";
-        public const string FeatureFlagVariantConfigurationKey = "FFVariantConfig";
+        public const string FeatureFlagUsesVariantConfigurationReferenceTag = "FFUsesVariantConfigRef";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

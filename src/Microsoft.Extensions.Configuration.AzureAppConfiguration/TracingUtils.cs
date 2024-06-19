@@ -140,11 +140,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
             }
 
-            if (requestTracingOptions.FeatureFlagTracing.UsesAnyVariantConfiguration())
-            {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagVariantConfigurationKey, requestTracingOptions.FeatureFlagTracing.CreateVariantConfigurationString()));
-            }
-
             if (requestTracingOptions.FeatureFlagTracing.HighestVariants > 0)
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagHighestVariantsKey, requestTracingOptions.FeatureFlagTracing.HighestVariants.ToString()));
@@ -178,6 +173,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (requestTracingOptions.FeatureFlagTracing.UsesSeed)
             {
                 correlationContextTags.Add(RequestTracingConstants.FeatureFlagUsesSeedTag);
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesVariantConfigurationReference)
+            {
+                correlationContextTags.Add(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
             }
 
             var sb = new StringBuilder();
