@@ -424,7 +424,8 @@ namespace Tests.AzureAppConfiguration
                 .Returns(true);
             mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(_kv, It.IsAny<Uri>(), It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
                 .Throws(new KeyVaultReferenceException("Key vault error", null));
-            mockKeyValueAdapter.Setup(adapter => adapter.ProcessProviderRefresh(null));
+            mockKeyValueAdapter.Setup(adapter => adapter.OnConfigurationRefresh(null));
+            mockKeyValueAdapter.Setup(adapter => adapter.OnConfigurationUpdated());
 
             new ConfigurationBuilder()
             .AddAzureAppConfiguration(options =>

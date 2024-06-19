@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-                                adapter.ProcessProviderRefresh(change.Current);
+                                adapter.OnConfigurationRefresh(change.Current);
                             }
                         }
                     }
@@ -399,7 +399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Invalidate all the cached KeyVault secrets
                         foreach (IKeyValueAdapter adapter in _options.Adapters)
                         {
-                            adapter.ProcessProviderRefresh();
+                            adapter.OnConfigurationRefresh();
                         }
 
                         // Update the next refresh time for all refresh registered settings and feature flags
@@ -734,7 +734,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Invalidate all the cached KeyVault secrets
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
                 {
-                    adapter.ProcessProviderRefresh();
+                    adapter.OnConfigurationRefresh();
                 }
 
                 Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
@@ -912,6 +912,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             // Set the application data for the configuration provider
             Data = data;
+
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                adapter.OnConfigurationUpdated();
+            }
 
             // Notify that the configuration has been updated
             OnReload();

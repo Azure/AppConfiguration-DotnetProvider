@@ -15,7 +15,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         bool CanProcess(ConfigurationSetting setting);
 
-        void ProcessProviderRefresh(ConfigurationSetting setting = null);
+        void OnConfigurationRefresh(ConfigurationSetting setting = null);
+
+        void OnConfigurationUpdated();
 
         bool NeedsRefresh();
     }

@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return string.Equals(contentType, KeyVaultConstants.ContentType);
         }
 
-        public void ProcessProviderRefresh(ConfigurationSetting setting = null)
+        public void OnConfigurationRefresh(ConfigurationSetting setting = null)
         {
             if (setting == null)
             {
@@ -96,6 +96,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 _secretProvider.RemoveSecretFromCache(setting.Key);
             }
+        }
+
+        public void OnConfigurationUpdated()
+        {
+            return;
         }
 
         public bool NeedsRefresh()
