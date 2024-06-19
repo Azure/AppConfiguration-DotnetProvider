@@ -990,8 +990,8 @@ namespace Tests.AzureAppConfiguration
         public void RefreshTests_AzureAppConfigurationRefresherProviderReturnsRefreshers()
         {
             IConfiguration configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(optionsInitializer, optional: true)
-                .AddAzureAppConfiguration(optionsInitializer, optional: true)
+                .AddAzureAppConfiguration(OptionsInitializer, optional: true)
+                .AddAzureAppConfiguration(OptionsInitializer, optional: true)
                 .Build();
 
             IConfigurationRefresherProvider refresherProvider = new AzureAppConfigurationRefresherProvider(configuration, NullLoggerFactory.Instance);
@@ -1080,7 +1080,7 @@ namespace Tests.AzureAppConfiguration
         }
 #endif
 
-        private void optionsInitializer(AzureAppConfigurationOptions options)
+        private void OptionsInitializer(AzureAppConfigurationOptions options)
         {
             options.ConfigureStartupOptions(startupOptions =>
             {
