@@ -107,10 +107,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             return _secretProvider.ShouldRefreshKeyVaultSecrets();
         }
-
-        public void ResetState()
-        {
-            return;
-        }
     }
 }
