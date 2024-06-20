@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Core;
+using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Logging;
@@ -120,8 +121,8 @@ namespace Tests.AzureAppConfiguration
             {
                 ConfigurationSetting kv = ConfigurationModelFactory
                     .ConfigurationSetting(
-                        key: setting.GetProperty("key").ToString(), 
-                        value: setting.GetProperty("value").GetRawText(), 
+                        key: setting.GetProperty("key").ToString(),
+                        value: setting.GetProperty("value").GetRawText(),
                         contentType: setting.GetProperty("contentType").ToString());
                 _kvCollection.Add(kv);
             }
@@ -157,7 +158,7 @@ namespace Tests.AzureAppConfiguration
         public async override IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
 #pragma warning restore 1998
         {
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new Mock<Response>().Object);
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(200));
 
         }
     }

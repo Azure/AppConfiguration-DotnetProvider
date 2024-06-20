@@ -100,6 +100,10 @@ namespace Azure.Core.Testing
 
         public override Response GetRawResponse()
         {
+            var response = new MockResponse(200);
+
+            response.AddHeader(new HttpHeader("ETag", new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1").ToString()));
+
             throw new NotImplementedException();
         }
     }
