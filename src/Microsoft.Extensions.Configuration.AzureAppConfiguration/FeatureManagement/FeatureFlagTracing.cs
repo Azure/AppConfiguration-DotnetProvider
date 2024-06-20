@@ -18,7 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private const string PercentageFilter = "PRCNT";
         private const string TimeWindowFilter = "TIME";
         private const string TargetingFilter = "TRGT";
-        private const string Delimiter = "+";
 
         // Built-in Feature Filter Names
         private readonly List<string> PercentageFilterNames = new List<string> { "Percentage", "Microsoft.Percentage", "PercentageFilter", "Microsoft.PercentageFilter" };
@@ -30,13 +29,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesTimeWindowFilter { get; set; } = false;
         public bool UsesTargetingFilter { get; set; } = false;
         public bool UsesSeed { get; set; } = false;
-        public bool IsTelemetryEnabled { get; set; } = false;
+        public bool UsesTelemetry { get; set; } = false;
         public bool UsesVariantConfigurationReference { get; set; } = false;
         public int MaxVariants { get; set; }
 
         public bool UsesAnyFeatureFilter()
         {
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;
+        }
+
+        public bool AnyTracingFeaturesUsed()
+        {
+            return UsesSeed || UsesTelemetry || UsesVariantConfigurationReference;
         }
 
         public void ResetFeatureFlagTracing()
@@ -98,7 +102,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(Delimiter);
+                    sb.Append(RequestTracingConstants.Delimiter);
                 }
 
                 sb.Append(PercentageFilter);
@@ -108,7 +112,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(Delimiter);
+                    sb.Append(RequestTracingConstants.Delimiter);
                 }
 
                 sb.Append(TimeWindowFilter);
@@ -118,7 +122,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(Delimiter);
+                    sb.Append(RequestTracingConstants.Delimiter);
                 }
 
                 sb.Append(TargetingFilter);

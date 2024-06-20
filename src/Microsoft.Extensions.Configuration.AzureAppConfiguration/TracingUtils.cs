@@ -142,10 +142,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.MaxVariants > 0)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagHighestVariantsKey, requestTracingOptions.FeatureFlagTracing.HighestVariants.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagMaxVariantsKey, requestTracingOptions.FeatureFlagTracing.MaxVariants.ToString()));
             }
 
-
+            if (requestTracingOptions.FeatureFlagTracing.AnyTracingFeaturesUsed())
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, CreateFeaturesString(requestTracingOptions)));
+            }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
             {
@@ -190,8 +193,38 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return sb.ToString();
-        }
+        } 
 
-        private 
+        private static string CreateFeaturesString(RequestTracingOptions requestTracingOptions)
+        {
+            var sb = new StringBuilder();
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesSeed)
+            {
+                sb.Append(RequestTracingConstants.FeatureFlagUsesSeedTag);
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesVariantConfigurationReference)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesTelemetry)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesTelemetryTag);
+            }
+
+            return sb.ToString();
+        }
     }
 }

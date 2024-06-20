@@ -30,10 +30,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
         public const string ReplicaCountKey = "ReplicaCount";
-        public const string FeatureFlagTelemetryEnabledTag = "FFTelemetryEnabled";
-        public const string FeatureFlagUsesSeedTag = "FFUsesSeed";
-        public const string FeatureFlagHighestVariantsKey = "FFHighestVariants";
-        public const string FeatureFlagUsesVariantConfigurationReferenceTag = "FFUsesVariantConfigRef";
+        public const string FeatureFlagUsesTelemetryTag = "FFTelemetry";
+        public const string FeatureFlagUsesSeedTag = "FFSeed";
+        public const string FeatureFlagMaxVariantsKey = "MaxVariants";
+        public const string FeatureFlagUsesVariantConfigurationReferenceTag = "FFConfigRef";
+        public const string FeaturesKey = "Features";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
@@ -41,5 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
+
+        public const string Delimiter = "+";
     }
 }

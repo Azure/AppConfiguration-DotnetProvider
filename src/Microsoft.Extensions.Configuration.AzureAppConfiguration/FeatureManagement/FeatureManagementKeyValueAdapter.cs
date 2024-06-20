@@ -114,7 +114,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     i++;
                 }
 
-                _featureFlagTracing.UpdateHighestVariants(i);
+                _featureFlagTracing.UpdateMaxVariants(i);
             }
 
             if (featureFlag.Allocation != null)
@@ -207,7 +207,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
-                    _featureFlagTracing.IsTelemetryEnabled = true;
+                    _featureFlagTracing.UsesTelemetry = true;
 
                     if (telemetry.Metadata != null)
                     {
