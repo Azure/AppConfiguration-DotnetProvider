@@ -261,7 +261,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             data = null;
                             watchedSettings = null;
-                            watchedCollections = null;
+                            watchedCollections = _watchedCollections;
                             keyValueChanges = new List<KeyValueChange>();
                             refreshAll = false;
                             Uri endpoint = _configClientManager.GetEndpointForClient(client);
@@ -336,7 +336,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     KeyValueIdentifier watchedKeyValueIdentifier = new KeyValueIdentifier(multiKeyWatcher.Key, multiKeyWatcher.Label);
 
-                                    if (_watchedCollections.TryGetValue(watchedKeyValueIdentifier, out IEnumerable<MatchConditions> matchConditions))
+                                    if (watchedCollections.TryGetValue(watchedKeyValueIdentifier, out IEnumerable<MatchConditions> matchConditions))
                                     {
                                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                                             async () => hasWatchedCollectionsChanged = await client.HasAnyKeyValueChanged(watchedKeyValueIdentifier, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
@@ -352,7 +352,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     if (!_options.RegisterAllEnabled)
                                     {
-                                        keyValueChanges.AddRange(await RefreshKeyValueCollections(_options.MultiKeyWatchers, _watchedCollections, client, cancellationToken).ConfigureAwait(false));
+                                        keyValueChanges.AddRange(await RefreshKeyValueCollections(_options.MultiKeyWatchers, watchedCollections, client, cancellationToken).ConfigureAwait(false));
 
                                         logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
                                     }
