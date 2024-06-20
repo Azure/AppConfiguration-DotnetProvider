@@ -28,7 +28,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
-        private List<KeyValueSelector> _featureFlagSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         // The following set is sorted in descending order.
@@ -241,8 +240,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-
-            _featureFlagSelectors = options.FeatureFlagSelectors;
 
             if (options.FeatureFlagSelectors.Count() == 0)
             {
