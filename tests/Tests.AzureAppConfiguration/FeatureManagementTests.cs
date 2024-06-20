@@ -618,7 +618,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task QueriesFeatureFlags()
+        public void QueriesFeatureFlags()
         {
             var mockTransport = new MockTransport(req =>
             {
@@ -1266,7 +1266,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectFeatureFlagLoggedIfModifiedOrRemovedDuringRefresh()
+        public async Task ValidateCorrectFeatureFlagLoggedIfModifiedOrRemovedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
@@ -1326,14 +1326,14 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
             Assert.Contains(LogHelper.BuildFeatureFlagUpdatedMessage("myFeature1"), informationalInvocation);
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(CacheExpirationTime);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Null(config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
@@ -1341,7 +1341,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateFeatureFlagsUnchangedLogged()
+        public async Task ValidateFeatureFlagsUnchangedLogged()
         {
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
@@ -1387,13 +1387,13 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
         }
 
         [Fact]
-        public void MapTransformFeatureFlagWithRefresh()
+        public async Task MapTransformFeatureFlagWithRefresh()
         {
             ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
@@ -1499,7 +1499,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(CacheExpirationTime);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
