@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return string.Equals(contentType, KeyVaultConstants.ContentType);
         }
 
-        public void OnConfigurationRefresh(ConfigurationSetting setting = null)
+        public void OnChangeDetected(ConfigurationSetting setting = null)
         {
             if (setting == null)
             {
@@ -98,7 +98,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public void OnConfigurationUpdated()
+        public void OnConfigUpdated()
         {
             return;
         }

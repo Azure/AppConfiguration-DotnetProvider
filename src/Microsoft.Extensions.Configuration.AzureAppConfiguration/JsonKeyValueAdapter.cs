@@ -90,12 +90,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public void OnConfigurationRefresh(ConfigurationSetting setting = null)
+        public void OnChangeDetected(ConfigurationSetting setting = null)
         {
             return;
         }
 
-        public void OnConfigurationUpdated()
+        public void OnConfigUpdated()
         {
             return;
         }
