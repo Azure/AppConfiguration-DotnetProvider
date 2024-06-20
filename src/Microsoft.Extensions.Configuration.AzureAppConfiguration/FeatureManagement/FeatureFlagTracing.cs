@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesSeed { get; set; } = false;
         public bool IsTelemetryEnabled { get; set; } = false;
         public bool UsesVariantConfigurationReference { get; set; } = false;
-        public int HighestVariants { get; set; }
+        public int MaxVariants { get; set; }
 
         public bool UsesAnyFeatureFilter()
         {
@@ -68,11 +68,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
-        public void UpdateHighestVariants(int currentFlagTotalVariants)
+        public void UpdateMaxVariants(int currentFlagTotalVariants)
         {
-            if (currentFlagTotalVariants > HighestVariants)
+            if (currentFlagTotalVariants > MaxVariants)
             {
-                HighestVariants = currentFlagTotalVariants;
+                MaxVariants = currentFlagTotalVariants;
             }
         }
 
