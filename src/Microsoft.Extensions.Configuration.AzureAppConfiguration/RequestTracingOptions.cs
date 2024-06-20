@@ -33,9 +33,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public int ReplicaCount { get; set; } = 0;
 
         /// <summary>
-        /// Type of feature filters used by the application.
+        /// Information about feature flags in the application, like filter and variant usage.
         /// </summary>
-        public FeatureFilterTracing FilterTracing { get; set; } = new FeatureFilterTracing();
+        public FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
         /// <summary>
         /// Version of the Microsoft.FeatureManagement assembly, if present in the application.
