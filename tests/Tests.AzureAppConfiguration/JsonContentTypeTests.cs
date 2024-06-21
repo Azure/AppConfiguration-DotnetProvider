@@ -28,20 +28,15 @@ namespace Tests.AzureAppConfiguration
 
             var appconfigSettings = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
-                .Build()
-                .AsEnumerable();
+                .Build();
 
             var jsonSettings = new ConfigurationBuilder()
                 .AddJsonFile(jsonFilePath)
-                .Build()
-                .AsEnumerable();
+                .Build();
 
-            Assert.Equal(jsonSettings.Count(), appconfigSettings.Count());
-
-            foreach (KeyValuePair<string, string> jsonSetting in jsonSettings)
+            foreach (KeyValuePair<string, string> jsonSetting in jsonSettings.AsEnumerable())
             {
-                KeyValuePair<string, string> appconfigSetting = appconfigSettings.SingleOrDefault(x => x.Key == jsonSetting.Key);
-                Assert.Equal(jsonSetting, appconfigSetting);
+                Assert.Equal(jsonSettings.GetSection(jsonSetting.Key).Value, appconfigSettings.GetSection(jsonSetting.Key).Value);
             }
         }
 

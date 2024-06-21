@@ -29,22 +29,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// returns the keyname and actual value
         public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
-            KeyVaultSecretReference secretRef;
-
-            // Content validation
-            try
-            {
-                secretRef = JsonSerializer.Deserialize<KeyVaultSecretReference>(setting.Value);
-            }
-            catch (JsonException e)
-            {
-                throw CreateKeyVaultReferenceException("Invalid Key Vault reference.", setting, e, null);
-            }
+            string secretRefUri = ParseSecretReferenceUri(setting);
 
             // Uri validation
-            if (string.IsNullOrEmpty(secretRef.Uri) || !Uri.TryCreate(secretRef.Uri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
+            if (string.IsNullOrEmpty(secretRefUri) || !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
             {
-                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRef);
+                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
             }
 
             string secret;
@@ -55,11 +45,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
-                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRef);
+                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRefUri);
             }
             catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
-                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRef);
+                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRefUri);
             }
 
             return new KeyValuePair<string, string>[]
@@ -68,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             };
         }
 
-        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, KeyVaultSecretReference secretRef = null)
+        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
         {
             return new KeyVaultReferenceException(message, inner)
             {
@@ -76,7 +66,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 Label = setting.Label,
                 Etag = setting.ETag.ToString(),
                 ErrorCode = (inner as RequestFailedException)?.ErrorCode,
-                SecretIdentifier = secretRef?.Uri
+                SecretIdentifier = secretRefUri
             };
         }
 
@@ -106,6 +96,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public bool NeedsRefresh()
         {
             return _secretProvider.ShouldRefreshKeyVaultSecrets();
+        }
+
+        private string ParseSecretReferenceUri(ConfigurationSetting setting)
+        {
+            string secretRefUri = null;
+
+            try
+            {
+                var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
+
+                if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
+                }
+
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    if (reader.GetString() == KeyVaultConstants.SecretReferenceUriJsonPropertyName)
+                    {
+                        if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                        {
+                            secretRefUri = reader.GetString();
+                        }
+                        else
+                        {
+                            throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
+                        }
+                    }
+                    else
+                    {
+                        reader.Skip();
+                    }
+                }
+            }
+            catch (JsonException e)
+            {
+                throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, e, null);
+            }
+
+            return secretRefUri;
         }
     }
 }
