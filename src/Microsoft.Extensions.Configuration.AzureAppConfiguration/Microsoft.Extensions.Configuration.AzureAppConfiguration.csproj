@@ -48,7 +48,7 @@
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\..\AzureAppConfigurationRules.ruleset</CodeAnalysisRuleSet>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <IsAotCompatible>true</IsAotCompatible>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
   </PropertyGroup>
   
 </Project>
