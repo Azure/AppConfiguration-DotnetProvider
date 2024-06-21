@@ -434,7 +434,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
             catch (JsonException e)
             {
-                throw new FormatException(settingKey, e);
+                throw new FormatException(string.Format(ErrorMessages.FeatureFlagInvalidFormat, settingKey), e);
             }
 
             return featureFlag;
