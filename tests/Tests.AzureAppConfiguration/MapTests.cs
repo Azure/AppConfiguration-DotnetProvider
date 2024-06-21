@@ -130,7 +130,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapTransformWithRefresh()
+        public async Task MapTransformWithRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -183,7 +183,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapTransformSettingKeyWithRefresh()
+        public async Task MapTransformSettingKeyWithRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -233,7 +233,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapTransformSettingLabelWithRefresh()
+        public async Task MapTransformSettingLabelWithRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -281,7 +281,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapTransformSettingCreateDuplicateKeyWithRefresh()
+        public async Task MapTransformSettingCreateDuplicateKeyWithRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -329,7 +329,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapCreateNewSettingWithRefresh()
+        public async Task MapCreateNewSettingWithRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -450,7 +450,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void MapTransformSettingKeyWithLogAndRefresh()
+        public async Task MapTransformSettingKeyWithLogAndRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();

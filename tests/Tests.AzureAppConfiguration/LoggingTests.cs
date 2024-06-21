@@ -55,7 +55,7 @@ namespace Tests.AzureAppConfiguration
         TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         [Fact]
-        public void ValidateExceptionLoggedDuringRefresh()
+        public async Task ValidateExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -99,7 +99,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateUnauthorizedExceptionLoggedDuringRefresh()
+        public async Task ValidateUnauthorizedExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -141,7 +141,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateInvalidOperationExceptionLoggedDuringRefresh()
+        public async Task ValidateInvalidOperationExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -183,7 +183,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateKeyVaultExceptionLoggedDuringRefresh()
+        public async Task ValidateKeyVaultExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
 
@@ -248,7 +248,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateAggregateExceptionWithInnerOperationCanceledExceptionLoggedDuringRefresh()
+        public async Task ValidateAggregateExceptionWithInnerOperationCanceledExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -290,7 +290,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateOperationCanceledExceptionLoggedDuringRefresh()
+        public async Task ValidateOperationCanceledExceptionLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -326,14 +326,14 @@ namespace Tests.AzureAppConfiguration
 
             using var cancellationSource = new CancellationTokenSource();
             cancellationSource.Cancel();
-            refresher.TryRefreshAsync(cancellationSource.Token).Wait();
+            await refresher.TryRefreshAsync(cancellationSource.Token);
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
             Assert.Contains(LoggingConstants.RefreshCanceledError, warningInvocation);
         }
 
         [Fact]
-        public void ValidateFailoverToDifferentEndpointMessageLoggedAfterFailover()
+        public async Task ValidateFailoverToDifferentEndpointMessageLoggedAfterFailover()
         {
             IConfigurationRefresher refresher = null;
             var mockClient1 = GetMockConfigurationClient();
@@ -400,7 +400,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateConfigurationUpdatedSuccessLoggedDuringRefresh()
+        public async Task ValidateConfigurationUpdatedSuccessLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -442,7 +442,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectEndpointLoggedOnConfigurationUpdate()
+        public async Task ValidateCorrectEndpointLoggedOnConfigurationUpdate()
         {
             IConfigurationRefresher refresher = null;
             var mockClient1 = new Mock<ConfigurationClient>();
@@ -491,7 +491,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectKeyValueLoggedDuringRefresh()
+        public async Task ValidateCorrectKeyValueLoggedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -540,7 +540,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectKeyVaultSecretLoggedDuringRefresh()
+        public async Task ValidateCorrectKeyVaultSecretLoggedDuringRefresh()
         {
             string _secretValue = "SecretValue from KeyVault";
             Uri vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");

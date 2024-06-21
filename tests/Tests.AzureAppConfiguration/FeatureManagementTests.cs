@@ -320,7 +320,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List <ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -660,7 +660,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void WatchesFeatureFlags()
+        public async Task WatchesFeatureFlags()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -722,7 +722,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the refresh interval elapse
             Thread.Sleep(RefreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
             Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
@@ -733,7 +733,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void WatchesFeatureFlagsUsingCacheExpirationInterval()
+        public async Task WatchesFeatureFlagsUsingCacheExpirationInterval()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -797,7 +797,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the cache expire
             Thread.Sleep(cacheExpirationInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
             Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
@@ -808,7 +808,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SkipRefreshIfRefreshIntervalHasNotElapsed()
+        public async Task SkipRefreshIfRefreshIntervalHasNotElapsed()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -868,7 +868,7 @@ namespace Tests.AzureAppConfiguration
 
             featureFlags.Add(_kv2);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
             Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
@@ -879,7 +879,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SkipRefreshIfCacheExpirationIntervalHasNotElapsed()
+        public async Task SkipRefreshIfCacheExpirationIntervalHasNotElapsed()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
@@ -939,7 +939,7 @@ namespace Tests.AzureAppConfiguration
 
             featureFlags.Add(_kv2);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
             Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
@@ -1006,7 +1006,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void UsesEtagForFeatureFlagRefresh()
+        public async Task UsesEtagForFeatureFlagRefresh()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -1026,7 +1026,7 @@ namespace Tests.AzureAppConfiguration
             // Sleep to wait for refresh interval to elapse
             Thread.Sleep(RefreshInterval);
 
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
 
@@ -1101,6 +1101,36 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void AlternateValidFeatureFlagFormats()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var cacheExpiration = TimeSpan.FromSeconds(1);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_validFormatFeatureFlagCollection));
+
+            var testClient = mockClient.Object;
+
+            var config = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(options =>
+            {
+                options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                options.UseFeatureFlags(ff =>
+                {
+                    ff.CacheExpirationInterval = cacheExpiration;
+                    ff.Select(KeyFilter.Any);
+                });
+            })
+            .Build();
+
+            // None of the feature flags should throw an exception, and the flag should be loaded like normal
+            Assert.Equal("True", config[$"feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:1:enabled"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:2:enabled"]);
+        }
+
+        [Fact]
         public void InvalidFeatureFlagFormatsThrowFormatException()
         {
             var mockResponse = new Mock<Response>();
@@ -1139,36 +1169,6 @@ namespace Tests.AzureAppConfiguration
                 // Each of the feature flags should throw an exception
                 Assert.Throws<FormatException>(action);
             }
-        }
-
-        [Fact]
-        public void AlternateValidFeatureFlagFormats()
-        {
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var cacheExpiration = TimeSpan.FromSeconds(1);
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(_validFormatFeatureFlagCollection));
-
-            var testClient = mockClient.Object;
-
-            var config = new ConfigurationBuilder()
-            .AddAzureAppConfiguration(options =>
-            {
-                options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
-                options.UseFeatureFlags(ff =>
-                {
-                    ff.CacheExpirationInterval = cacheExpiration;
-                    ff.Select(KeyFilter.Any);
-                });
-            })
-            .Build();
-
-            // None of the feature flags should throw an exception, and the flag should be loaded like normal
-            Assert.Equal("True", config[$"feature_management:feature_flags:0:enabled"]);
-            Assert.Equal("True", config[$"feature_management:feature_flags:1:enabled"]);
-            Assert.Equal("True", config[$"feature_management:feature_flags:2:enabled"]);
         }
 
         [Fact]
@@ -1384,7 +1384,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void DifferentRefreshIntervalsForMultipleFeatureFlagRegistrations()
+        public async Task DifferentRefreshIntervalsForMultipleFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1474,7 +1474,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the refresh interval for feature flag with label1 elapse
             Thread.Sleep(refreshInterval1);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
@@ -1491,7 +1491,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void OverwrittenRefreshIntervalForSameFeatureFlagRegistrations()
+        public async Task OverwrittenRefreshIntervalForSameFeatureFlagRegistrations()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1559,7 +1559,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(refreshInterval1);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // The refresh interval time for feature flags was overwritten by second call to UseFeatureFlags.
             // Sleeping for refreshInterval1 time should not update feature flags.
@@ -1576,7 +1576,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void SelectAndRefreshSingleFeatureFlag()
+        public async Task SelectAndRefreshSingleFeatureFlag()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1634,7 +1634,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the refresh interval for feature flag with label1 elapse
             Thread.Sleep(RefreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("Chrome", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
@@ -1642,7 +1642,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateCorrectFeatureFlagLoggedIfModifiedOrRemovedDuringRefresh()
+        public async Task ValidateCorrectFeatureFlagLoggedIfModifiedOrRemovedDuringRefresh()
         {
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
@@ -1703,7 +1703,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             Assert.Equal("AllUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Equal("MyFeature", config["feature_management:feature_flags:0:id"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
@@ -1711,7 +1711,7 @@ namespace Tests.AzureAppConfiguration
 
             featureFlags.RemoveAt(0);
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Null(config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagReadMessage("myFeature1", null, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
@@ -1719,7 +1719,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ValidateFeatureFlagsUnchangedLogged()
+        public async Task ValidateFeatureFlagsUnchangedLogged()
         {
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
@@ -1765,13 +1765,13 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             Assert.Equal("SuperUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagsUnchangedMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
         }
 
         [Fact]
-        public void MapTransformFeatureFlagWithRefresh()
+        public async Task MapTransformFeatureFlagWithRefresh()
         {
             ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
@@ -1878,7 +1878,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
