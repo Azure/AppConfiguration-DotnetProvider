@@ -90,7 +90,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void OnChangeDetected(ConfigurationSetting setting = null)
+        {
+            return;
+        }
+
+        public void OnConfigUpdated()
         {
             return;
         }

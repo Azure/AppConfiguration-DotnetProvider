@@ -89,5 +89,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return $"{LoggingConstants.FallbackClientLookupError}\n{exceptionMessage}";
         }
+
+        public static string BuildFeatureManagementMicrosoftSchemaVersionWarningMessage()
+        {
+            return LoggingConstants.FeatureManagementMicrosoftSchemaVersionWarning;
+        }
     }
 }
