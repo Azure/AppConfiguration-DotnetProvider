@@ -743,14 +743,14 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
-            var cacheExpirationInterval = TimeSpan.FromSeconds(1);
+            var refreshInterval = TimeSpan.FromSeconds(1);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationInterval);
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(refreshInterval));
 
                     refresher = options.GetRefresher();
                 })
@@ -796,7 +796,7 @@ namespace Tests.AzureAppConfiguration
             featureFlags.Add(_kv2);
 
             // Sleep to let the cache expire
-            Thread.Sleep(cacheExpirationInterval);
+            Thread.Sleep(refreshInterval);
             await refresher.RefreshAsync();
 
             Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
@@ -1071,7 +1071,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var cacheExpiration = TimeSpan.FromSeconds(1);
+            var refreshInterval = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_nullOrMissingConditionsFeatureFlagCollection));
@@ -1085,7 +1085,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.SetRefreshInterval(refreshInterval);
                         ff.Select(KeyFilter.Any);
                     });
                 })
@@ -1118,7 +1118,7 @@ namespace Tests.AzureAppConfiguration
                 options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                 options.UseFeatureFlags(ff =>
                 {
-                    ff.CacheExpirationInterval = cacheExpiration;
+                    ff.RefreshInterval = cacheExpiration;
                     ff.Select(KeyFilter.Any);
                 });
             })
@@ -1135,7 +1135,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var cacheExpiration = TimeSpan.FromSeconds(1);
+            var refreshInterval = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
@@ -1160,7 +1160,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.SetRefreshInterval(refreshInterval);
                         ff.Select(setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length));
                     });
                 })

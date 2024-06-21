@@ -92,7 +92,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
             Assert.Contains(LoggingConstants.RefreshFailedError, warningInvocation);
@@ -134,7 +134,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
             
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
             Assert.Contains(LoggingConstants.RefreshFailedDueToAuthenticationError, warningInvocation);
@@ -176,7 +176,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
             Assert.Contains(LoggingConstants.RefreshFailedError, warningInvocation);
@@ -242,7 +242,7 @@ namespace Tests.AzureAppConfiguration
             // Update sentinel key-value to trigger refreshAll operation
             sentinelKv.Value = "UpdatedSentinelValue";
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Contains(LoggingConstants.RefreshFailedDueToKeyVaultError + "\nNo key vault credential or secret resolver callback configured, and no matching secret client could be found.", warningInvocation);
         }
@@ -283,7 +283,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
             Assert.Contains(LoggingConstants.RefreshFailedError, warningInvocation);
@@ -381,7 +381,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Contains(LogHelper.BuildFailoverMessage(TestHelpers.PrimaryConfigStoreEndpoint.ToString(), TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
@@ -393,7 +393,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "TestValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Contains(LogHelper.BuildLastEndpointFailedMessage(TestHelpers.SecondaryConfigStoreEndpoint.ToString()), warningInvocation);
@@ -435,7 +435,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Contains(LogHelper.BuildConfigurationUpdatedMessage(), invocation);
@@ -484,7 +484,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             // We should see the second client's endpoint logged since the first client is backed off
             Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, _kvCollection[0].Key, _kvCollection[0].Label, TestHelpers.SecondaryConfigStoreEndpoint.ToString().TrimEnd('/')), invocation);
@@ -531,7 +531,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Contains(LogHelper.BuildKeyValueReadMessage(KeyValueChangeType.Modified, _kvCollection[0].Key, _kvCollection[0].Label, TestHelpers.PrimaryConfigStoreEndpoint.ToString().TrimEnd('/')), verboseInvocation);
@@ -594,7 +594,7 @@ namespace Tests.AzureAppConfiguration
                     }
                    ";
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
             Assert.Contains(LogHelper.BuildKeyVaultSecretReadMessage(_kvr.Key, _kvr.Label), verboseInvocation);
             Assert.Contains(LogHelper.BuildKeyVaultSettingUpdatedMessage(_kvr.Key), informationalInvocation);
         }

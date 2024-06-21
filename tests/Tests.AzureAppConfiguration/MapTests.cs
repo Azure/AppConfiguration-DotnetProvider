@@ -176,7 +176,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1 mapped first", config["TestKey1"]);
             Assert.Equal("TestValue2 second", config["TestKey2"]);
@@ -226,7 +226,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection.Last().Value = "newValue2";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
             Assert.Equal("newValue2", config["TestKey2"]);
@@ -274,7 +274,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection.Last().Value = "newValue2";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1 changed", config["TestKey1"]);
             Assert.Equal("newValue2 changed", config["TestKey2"]);
@@ -322,7 +322,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("TestValue2 changed", config["TestKey2"]);
             Assert.Null(config["TestKey1"]);
@@ -367,7 +367,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("mappedValue1", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
@@ -508,7 +508,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection.Last().Value = "newValue2";
 
             Thread.Sleep(RefreshInterval);
-            refresher.TryRefreshAsync().Wait();
+            await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1 changed", config["newTestKey1"]);
             Assert.Equal("newValue2", config["TestKey2"]);

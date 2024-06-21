@@ -746,7 +746,7 @@ namespace Tests.AzureAppConfiguration
             // Update sentinel key-value
             sentinelKv.Value = "Value2";
             Thread.Sleep(refreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Value2", config["Sentinel"]);
             Assert.Equal(_secretValue, config[_kv.Key]);
@@ -818,7 +818,7 @@ namespace Tests.AzureAppConfiguration
             // Update sentinel key-value to trigger refresh operation
             sentinelKv.Value = "Value2";
             Thread.Sleep(refreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("Value2", config["Sentinel"]);
             Assert.Equal(_secretValue, config[_kv.Key]);
@@ -863,7 +863,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the secret cache expire 
             Thread.Sleep(refreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config[_kv.Key]);
 
@@ -907,7 +907,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the secret cache expire for both secrets 
             Thread.Sleep(shortRefreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config["TK1"]);
             Assert.Equal(_secretValue, config["TK2"]);
@@ -954,7 +954,7 @@ namespace Tests.AzureAppConfiguration
 
             // Sleep to let the secret cache expire for one secret 
             Thread.Sleep(shortRefreshInterval);
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config["TK1"]);
             Assert.Equal(_secretValue, config["TK2"]);
