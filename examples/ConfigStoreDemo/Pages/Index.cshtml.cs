@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
 
     public class IndexModel : PageModel
     {
-        private Settings settings;
+        private readonly Settings settings;
 
         public IndexModel(IOptionsSnapshot<Settings> options)
         {

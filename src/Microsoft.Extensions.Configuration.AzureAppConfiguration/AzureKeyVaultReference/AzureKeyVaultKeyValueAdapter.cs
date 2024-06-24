@@ -1,15 +1,15 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
-using Azure.Data.AppConfiguration;
-using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Data.AppConfiguration;
+using Azure.Security.KeyVault.Secrets;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             };
         }
 
-        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
+        private KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
         {
             return new KeyVaultReferenceException(message, inner)
             {

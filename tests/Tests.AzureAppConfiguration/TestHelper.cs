@@ -1,12 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
-using Azure.Core;
-using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Logging;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,10 +8,16 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Core;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace Tests.AzureAppConfiguration
 {
-    class TestHelpers
+    internal class TestHelpers
     {
         public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://azure.azconfig.io");
         public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://azure---wus.azconfig.io");
@@ -84,8 +84,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     json.WriteString(tag.Key, tag.Value);
                 }
+
                 json.WriteEndObject();
             }
+
             if (setting.ETag != default)
                 json.WriteString("etag", setting.ETag.ToString());
             if (setting.LastModified.HasValue)
@@ -103,6 +105,7 @@ namespace Tests.AzureAppConfiguration
             {
                 SerializeSetting(ref json, item);
             }
+
             json.WriteEndArray();
             json.WriteEndObject();
         }
@@ -150,7 +153,7 @@ namespace Tests.AzureAppConfiguration
         }
     }
 
-    class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
+    internal class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
     {
         private readonly List<ConfigurationSetting> _collection;
 
@@ -168,7 +171,7 @@ namespace Tests.AzureAppConfiguration
         }
     }
 
-    class MockPageable : Pageable<ConfigurationSetting>
+    internal class MockPageable : Pageable<ConfigurationSetting>
     {
         private readonly List<ConfigurationSetting> _collection;
 

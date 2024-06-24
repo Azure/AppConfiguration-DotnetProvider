@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {

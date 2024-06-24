@@ -1,15 +1,15 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Core;
-using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration;
+using Moq;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -47,7 +47,6 @@ namespace Tests.AzureAppConfiguration
             // Act and Assert
             Assert.Throws<ArgumentException>(action);
         }
-
 
         [Fact]
         public void ConnectTests_UsesParametersFromLatestConnectCall()

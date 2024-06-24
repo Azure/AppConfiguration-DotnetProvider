@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="inner">The exception that is the cause of the current exception, or a null reference (Nothing in Visual Basic) if no inner exception is specified.        /// </param>
         public KeyVaultReferenceException(string message,
                                            Exception inner)
-         :base(string.Empty, inner)
+         : base(string.Empty, inner)
         {
             _message = message;
         }
@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         ///Gets a message that describes the current exception.
         ///Returns The error message that explains the reason for the exception, or an empty string("").
         /// </summary>
-        public override string  Message => $"{_message} ErrorCode:'{ErrorCode}' Key:'{Key}' Label:'{Label}' Etag:'{Etag}' SecretIdentifier:'{SecretIdentifier}'";
+        public override string Message => $"{_message} ErrorCode:'{ErrorCode}' Key:'{Key}' Label:'{Label}' Etag:'{Etag}' SecretIdentifier:'{SecretIdentifier}'";
 
         /// <summary>
         /// The key of the Key Vault reference that caused the exception.
@@ -56,5 +56,4 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public string ErrorCode { get; set; }
     }
-
 }

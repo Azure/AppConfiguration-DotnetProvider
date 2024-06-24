@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public async Task<IEnumerable<SrvRecord>> QueryAsync(string host, CancellationToken cancellationToken)
         {
             string originSrvDns = $"{TcpOrigin}.{host}";
-            
+
             IEnumerable<SrvRecord> originRecords = await InternalQueryAsync(originSrvDns, cancellationToken).ConfigureAwait(false);
 
             if (originRecords == null || originRecords.Count() == 0)

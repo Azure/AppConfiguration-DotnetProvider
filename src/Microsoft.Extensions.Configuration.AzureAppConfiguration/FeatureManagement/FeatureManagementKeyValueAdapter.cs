@@ -1,19 +1,19 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Data.AppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Data.AppConfiguration;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
-        private FeatureFilterTracing _featureFilterTracing;
+        private readonly FeatureFilterTracing _featureFilterTracing;
 
         public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
         {
@@ -264,7 +264,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     default:
                         reader.Skip();
-                            
+
                         break;
                 }
             }

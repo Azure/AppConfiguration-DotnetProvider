@@ -12,7 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
-            _optionsProvider = () => {
+            _optionsProvider = () =>
+            {
                 var options = new AzureAppConfigurationOptions();
                 optionsInitializer(options);
                 return options;

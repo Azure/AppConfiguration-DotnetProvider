@@ -1,15 +1,15 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.AppConfiguration.AspNetCore;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Xunit;
 using static Tests.AzureAppConfiguration.AspNetCore.TestHelper;
 
@@ -17,7 +17,7 @@ namespace Tests.AzureAppConfiguration.AspNetCore
 {
     public class RefreshMiddlewareTests
     {
-        List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey1",

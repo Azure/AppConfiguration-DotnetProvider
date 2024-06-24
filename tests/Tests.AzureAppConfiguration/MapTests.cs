@@ -1,25 +1,25 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Xunit;
-using Azure.Data.AppConfiguration;
-using Azure;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using System.Diagnostics.Tracing;
 using System.Linq;
-using Azure.Core.Testing;
-using Moq;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Security.KeyVault.Secrets;
+using Azure;
 using Azure.Core.Diagnostics;
-using System.Diagnostics.Tracing;
+using Azure.Core.Testing;
+using Azure.Data.AppConfiguration;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Moq;
+using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
     public class MapTests
     {
-        List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey1",
@@ -35,8 +35,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
                 contentType: "text")
         };
-
-        ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
+        private readonly ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
         key: "TestKey3",
         value: @"
                         {
@@ -45,14 +44,13 @@ namespace Tests.AzureAppConfiguration
         eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
         contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
 
-        ConfigurationSetting FirstKeyValue => _kvCollection.First();
-        ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
+        private ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
-
-        string _certValue = "Certificate Value from KeyVault";
-        string _secretValue = "SecretValue from KeyVault";
-        Uri _vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
+        private readonly ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
+        private readonly TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        private readonly string _certValue = "Certificate Value from KeyVault";
+        private readonly string _secretValue = "SecretValue from KeyVault";
+        private readonly Uri _vaultUri = new Uri("https://keyvault-theclassics.vault.azure.net");
 
         [Fact]
         public void MapTransformKeyValue()
@@ -71,6 +69,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " mapped";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -82,6 +81,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " second";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                 })
@@ -113,16 +113,17 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                     options.Map((setting) =>
                         {
-                        if (setting.ContentType != KeyVaultConstants.ContentType + "; charset=utf-8")
-                        {
-                            setting.Value = @"
+                            if (setting.ContentType != KeyVaultConstants.ContentType + "; charset=utf-8")
+                            {
+                                setting.Value = @"
                                             {
                                                 ""uri"":""https://keyvault-theclassics.vault.azure.net/certificates/TestCertificate""
                                             }";
-                            setting.ContentType = KeyVaultConstants.ContentType + "; charset=utf-8";
-                        }
-                        return new ValueTask<ConfigurationSetting>(setting);
-                    });
+                                setting.ContentType = KeyVaultConstants.ContentType + "; charset=utf-8";
+                            }
+
+                            return new ValueTask<ConfigurationSetting>(setting);
+                        });
                 })
                 .Build();
 
@@ -152,6 +153,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " mapped";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -163,6 +165,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " second";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
 
@@ -205,6 +208,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Key = "newTestKey1";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -212,6 +216,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -255,6 +260,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Label = "newLabel";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -262,6 +268,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -303,6 +310,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Key = "TestKey2";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -310,6 +318,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -356,6 +365,7 @@ namespace Tests.AzureAppConfiguration
                                         eTag: new ETag("changed"),
                                         contentType: "text");
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -402,6 +412,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value = _secretValue;
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -426,7 +437,6 @@ namespace Tests.AzureAppConfiguration
                 .Returns((string name, string version, CancellationToken cancellationToken) =>
                     Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
 
-
             var config = new ConfigurationBuilder()
             .AddAzureAppConfiguration(options =>
             {
@@ -440,6 +450,7 @@ namespace Tests.AzureAppConfiguration
                         setting.Value = secret.Value;
                         setting.ContentType = "text";
                     }
+
                     return setting;
                 });
                 refresher = options.GetRefresher();
@@ -466,6 +477,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -487,6 +499,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Key = "newTestKey1";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -494,6 +507,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -539,7 +553,7 @@ namespace Tests.AzureAppConfiguration
                 }
 
                 var newSetting = _kvCollection.FirstOrDefault(s => (s.ETag == setting.ETag) || (s.Key == setting.Key && s.Label == setting.Label));
-                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var unchanged = newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value;
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
             }

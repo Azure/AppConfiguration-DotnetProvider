@@ -1,6 +1,12 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Tracing;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Azure;
 using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
@@ -10,19 +16,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Tracing;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
     public class FeatureManagementTests
     {
-        private ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
+        private readonly ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
             value: @"
                     {
@@ -63,7 +63,7 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
-        private ConfigurationSetting _kv2 = ConfigurationModelFactory.ConfigurationSetting(
+        private readonly ConfigurationSetting _kv2 = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
             value: @"
                     {
@@ -83,8 +83,7 @@ namespace Tests.AzureAppConfiguration
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
-
-        List<ConfigurationSetting> _nullOrMissingConditionsFeatureFlagCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _nullOrMissingConditionsFeatureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "NullParameters",
@@ -189,7 +188,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-        List<ConfigurationSetting> _validFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _validFormatFeatureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "AdditionalProperty",
@@ -239,8 +238,7 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
-
-        List<ConfigurationSetting> _invalidFormatFeatureFlagCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _invalidFormatFeatureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "MissingClosingBracket1",
@@ -315,8 +313,7 @@ namespace Tests.AzureAppConfiguration
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
-
-        List <ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -408,15 +405,13 @@ namespace Tests.AzureAppConfiguration
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
         };
-
-        ConfigurationSetting FirstKeyValue = ConfigurationModelFactory.ConfigurationSetting(
+        private readonly ConfigurationSetting FirstKeyValue = ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey1",
                 label: "label",
                 value: "TestValue1",
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                 contentType: "text");
-
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        private readonly TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
         [Fact]
         public void UsesFeatureFlags()
@@ -520,7 +515,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
         }
-
 
         [Fact]
         public async Task SkipRefreshIfCacheNotExpired()
@@ -950,7 +944,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(() =>
                 {
                     return new MockAsyncPageable(_featureFlagCollection.Where(s =>
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) || 
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
                 });
 
@@ -1285,6 +1279,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -1467,6 +1462,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -1548,12 +1544,12 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Any", config["FeatureManagement:Feature_RequireAny:RequirementType"]);
         }
 
-        Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+        private Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
         }
 
-        Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+        private Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
         {
             return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
         }

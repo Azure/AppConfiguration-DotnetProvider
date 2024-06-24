@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Core;
-using Azure.Core.Pipeline;
 using System;
 using System.Threading.Tasks;
+using Azure.Core;
+using Azure.Core.Pipeline;
 
 namespace Tests.AzureAppConfiguration
 {

@@ -144,7 +144,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             var rand = new Random();
 
-            double jitter = ratio * (rand.NextDouble() * 2 - 1);
+            double jitter = ratio * ((rand.NextDouble() * 2) - 1);
 
             double interval = timeSpan.TotalMilliseconds * (1 + jitter);
 

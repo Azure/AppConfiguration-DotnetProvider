@@ -1,12 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
-using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -19,21 +13,27 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
-        private bool _optional;
+        private readonly bool _optional;
         private bool _isInitialLoadComplete = false;
         private bool _isFeatureManagementVersionInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
-        private AzureAppConfigurationOptions _options;
+        private readonly AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
-        private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
+        private readonly Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
         private readonly TimeSpan MinCacheExpirationInterval;
 
@@ -125,6 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
             }
             catch (SecurityException) { }
+
             _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
 
             if (_requestTracingEnabled)
@@ -208,7 +209,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Filter clients based on their backoff status
-                    clients = clients.Where(client => 
+                    clients = clients.Where(client =>
                     {
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
@@ -320,7 +321,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         refreshAll = true;
                                         break;
                                     }
-                                } else
+                                }
+                                else
                                 {
                                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                                 }
@@ -697,7 +699,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     return false;
                 }
-                
+
                 throw;
             }
 

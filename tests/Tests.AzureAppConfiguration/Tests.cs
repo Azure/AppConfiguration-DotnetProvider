@@ -1,6 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
@@ -8,21 +12,16 @@ using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
     public class Tests
     {
-        ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "newTestValue1", "test",
+        private readonly ConfigurationSetting _kv = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "newTestValue1", "test",
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c6"),
             contentType: "text");
-
-        List<ConfigurationSetting> _kvCollectionPageOne = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _kvCollectionPageOne = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", "label",
                 eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
@@ -240,7 +239,7 @@ namespace Tests.AzureAppConfiguration
             // 5. Contains the runtime information (target framework, OS description etc.) in the format set by the SDK
             // 6. Does not contain any additional components
             string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(\+[a-z0-9]+)?(-preview(\.\d+)?)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
-            
+
             var response = new MockResponse(200);
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 

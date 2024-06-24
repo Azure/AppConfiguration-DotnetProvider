@@ -2,18 +2,18 @@
 // Licensed under the MIT license.
 //
 
-using Azure.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Azure.Identity;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplicationWithFailOver
 {
-    class Program
+    internal class Program
     {
-        static IConfiguration Configuration { get; set; }
+        private static IConfiguration Configuration { get; set; }
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             Configure();
 

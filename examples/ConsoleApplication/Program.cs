@@ -3,19 +3,20 @@
 //
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
     using System;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 
-    class Program
+    internal class Program
     {
-        static IConfiguration Configuration { get; set; }
-        static IConfigurationRefresher _refresher;
+        private static IConfiguration Configuration { get; set; }
 
-        static void Main(string[] args)
+        private static IConfigurationRefresher _refresher;
+
+        private static void Main(string[] args)
         {
             Configure();
 

@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+using System.Linq;
 using Azure;
 using Azure.Core;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Linq;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration

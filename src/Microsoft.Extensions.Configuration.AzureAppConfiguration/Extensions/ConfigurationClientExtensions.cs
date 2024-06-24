@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
-using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +8,9 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
@@ -116,7 +116,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                 async () =>
                 {
-                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                     {
                         if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                         {

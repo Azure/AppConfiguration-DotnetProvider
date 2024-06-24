@@ -1,13 +1,13 @@
-﻿using Azure;
-using Azure.Data.AppConfiguration;
-using Moq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Azure;
+using Azure.Data.AppConfiguration;
+using Moq;
 
 namespace Tests.AzureAppConfiguration.AspNetCore
 {
-    class TestHelper
+    internal class TestHelper
     {
         public static string CreateMockEndpointString()
         {

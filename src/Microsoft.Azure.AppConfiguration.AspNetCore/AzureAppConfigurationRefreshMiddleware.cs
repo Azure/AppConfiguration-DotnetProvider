@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 
 namespace Microsoft.Azure.AppConfiguration.AspNetCore
 {

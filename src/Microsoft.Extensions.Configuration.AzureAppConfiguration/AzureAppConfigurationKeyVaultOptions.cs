@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure.Core;
-using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Azure.Core;
+using Azure.Security.KeyVault.Secrets;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Logging;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class Logger
     {
-        ILogger _logger;
+        private readonly ILogger _logger;
 
         public Logger() { }
 

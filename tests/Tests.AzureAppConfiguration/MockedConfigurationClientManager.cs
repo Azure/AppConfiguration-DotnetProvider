@@ -2,18 +2,18 @@
 // Licensed under the MIT license.
 //
 
-using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 
 namespace Tests.AzureAppConfiguration
 {
     internal class MockedConfigurationClientManager : IConfigurationClientManager
     {
-        IList<ConfigurationClientWrapper> _clients;
-        IList<ConfigurationClientWrapper> _autoFailoverClients;
+        private readonly IList<ConfigurationClientWrapper> _clients;
+        private readonly IList<ConfigurationClientWrapper> _autoFailoverClients;
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
@@ -63,7 +63,8 @@ namespace Tests.AzureAppConfiguration
         {
             var result = new List<ConfigurationClient>();
 
-            foreach (var client in _clients) {
+            foreach (var client in _clients)
+            {
                 result.Add(client.Client);
             }
 
