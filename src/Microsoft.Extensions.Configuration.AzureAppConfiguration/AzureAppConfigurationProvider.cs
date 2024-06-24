@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-                                adapter.InvalidateCache(change.Current);
+                                adapter.OnChangeDetected(change.Current);
                             }
                         }
                     }
@@ -399,7 +399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Invalidate all the cached KeyVault secrets
                         foreach (IKeyValueAdapter adapter in _options.Adapters)
                         {
-                            adapter.InvalidateCache();
+                            adapter.OnChangeDetected();
                         }
 
                         // Update the next refresh time for all refresh registered settings and feature flags
@@ -490,6 +490,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     throw;
                 }
+
+                return false;
+            }
+            catch (FormatException fe)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToFormattingErrorMessage(fe.Message));
 
                 return false;
             }
@@ -635,6 +641,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 exception is TimeoutException ||
                 exception is OperationCanceledException ||
                 exception is InvalidOperationException ||
+                exception is FormatException ||
                 ((exception as AggregateException)?.InnerExceptions?.Any(e =>
                     e is RequestFailedException ||
                     e is OperationCanceledException) ?? false)))
@@ -734,7 +741,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Invalidate all the cached KeyVault secrets
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
                 {
-                    adapter.InvalidateCache();
+                    adapter.OnChangeDetected();
                 }
 
                 Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
@@ -912,6 +919,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             // Set the application data for the configuration provider
             Data = data;
+
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                adapter.OnConfigUpdated();
+            }
 
             // Notify that the configuration has been updated
             OnReload();
@@ -1206,11 +1218,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!_isFeatureManagementVersionInspected)
             {
+                const string FeatureManagementMinimumVersion = "3.2.0";
+
                 _isFeatureManagementVersionInspected = true;
 
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+                    string featureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
+
+                    // If the version is less than 3.2.0, log the schema version warning
+                    if (featureManagementVersion != null && Version.Parse(featureManagementVersion) < Version.Parse(FeatureManagementMinimumVersion))
+                    {
+                        _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
+                    }
+
+                    _requestTracingOptions.FeatureManagementVersion = featureManagementVersion;
 
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
                 }
