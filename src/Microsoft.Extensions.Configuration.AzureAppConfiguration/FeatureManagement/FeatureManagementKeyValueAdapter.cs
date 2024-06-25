@@ -320,11 +320,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private bool IsMicrosoftSchema(FeatureFlag featureFlag)
-        {
-            return featureFlag.Allocation != null || featureFlag.Variants != null || featureFlag.Telemetry != null;
-        }
-
         private FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string foundJsonValueKind, string expectedJsonValueKind)
         {
             return new FormatException(string.Format(
