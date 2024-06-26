@@ -24,6 +24,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The Type of Event which triggered the <see cref="PushNotification"/>.
         /// </summary>
         public string EventType { get; set; }
-
-	}
+    }
 }

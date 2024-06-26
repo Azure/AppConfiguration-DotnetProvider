@@ -18,7 +18,7 @@ namespace Tests.AzureAppConfiguration
 {
     public class FailOverTests
     {
-        readonly ConfigurationSetting kv = ConfigurationModelFactory.ConfigurationSetting(key: "TestKey1", label: "label", value: "TestValue1",
+        private readonly ConfigurationSetting kv = ConfigurationModelFactory.ConfigurationSetting(key: "TestKey1", label: "label", value: "TestValue1",
                                                                                           eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
                                                                                           contentType: "text");
 
@@ -72,7 +72,7 @@ namespace Tests.AzureAppConfiguration
                     });
 
                     options.ReplicaDiscoveryEnabled = false;
-                   
+
                     refresher = options.GetRefresher();
                 });
 
@@ -210,7 +210,7 @@ namespace Tests.AzureAppConfiguration
 
             // Wait for client 1 backoff to end
             Thread.Sleep(2500);
-            
+
             await refresher.RefreshAsync();
 
             // The first client should have been called now with refresh after the backoff time ends

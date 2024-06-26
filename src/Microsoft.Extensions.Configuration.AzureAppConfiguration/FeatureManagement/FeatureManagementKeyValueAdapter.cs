@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
-        private FeatureFilterTracing _featureFilterTracing;
+        private readonly FeatureFilterTracing _featureFilterTracing;
 
         public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
         {
@@ -264,7 +264,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     default:
                         reader.Skip();
-                            
+
                         break;
                 }
             }

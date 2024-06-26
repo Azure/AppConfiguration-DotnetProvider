@@ -9,11 +9,11 @@ using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplicationWithFailOver
 {
-    class Program
+    internal class Program
     {
-        static IConfiguration Configuration { get; set; }
+        private static IConfiguration Configuration { get; set; }
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             Configure();
 

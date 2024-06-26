@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             };
         }
 
-        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
+        private KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
         {
             return new KeyVaultReferenceException(message, inner)
             {

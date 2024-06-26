@@ -23,16 +23,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
-        private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
-        private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+        private readonly List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
+        private readonly List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
-        private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
-        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
-        private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
+        private readonly List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
+        private readonly List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private readonly IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
-        private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
+        private readonly SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
         /// Flag to indicate whether enable replica discovery.

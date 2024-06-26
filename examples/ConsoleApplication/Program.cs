@@ -10,12 +10,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
     using System.Threading;
     using System.Threading.Tasks;
 
-    class Program
+    internal class Program
     {
-        static IConfiguration Configuration { get; set; }
-        static IConfigurationRefresher _refresher;
+        private static IConfiguration Configuration { get; set; }
 
-        static void Main(string[] args)
+        private static IConfigurationRefresher _refresher;
+
+        private static void Main(string[] args)
         {
             Configure();
 

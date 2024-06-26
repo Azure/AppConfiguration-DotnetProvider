@@ -146,7 +146,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            if (_replicaDiscoveryEnabled && 
+            if (_replicaDiscoveryEnabled &&
                 now >= _lastFallbackClientRefreshAttempt + MinimalClientRefreshInterval)
             {
                 _lastFallbackClientRefreshAttempt = now;
@@ -262,9 +262,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Honor with the DNS based service discovery protocol, but shuffle the results first to ensure hosts can be picked randomly,
             // Srv lookup does retrieve trailing dot in the host name, just trim it.
-            IEnumerable<string> OrderedHosts = srvTargetHosts.Any() ?
-                srvTargetHosts.ToList().Shuffle().SortSrvRecords().Select(r => $"{r.Target.Value.TrimEnd('.')}") :
-                Enumerable.Empty<string>();
+            IEnumerable<string> OrderedHosts = srvTargetHosts.Any()
+                ? srvTargetHosts.ToList().Shuffle().SortSrvRecords().Select(r => $"{r.Target.Value.TrimEnd('.')}")
+                : Enumerable.Empty<string>();
 
             foreach (string host in OrderedHosts)
             {
@@ -274,9 +274,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
-                    var configClient = _credential == null ?
-                        new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions) :
-                        new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
+                    var configClient = _credential == null
+                        ? new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions)
+                        : new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
 
                     newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
                 }
@@ -320,7 +320,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void Dispose()
         {
-            if (!_isDisposed) 
+            if (!_isDisposed)
             {
                 _cancellationTokenSource.Cancel();
 

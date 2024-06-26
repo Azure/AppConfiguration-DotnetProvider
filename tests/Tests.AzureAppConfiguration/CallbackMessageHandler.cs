@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
-    class CallbackMessageHandler : HttpMessageHandler
+    internal class CallbackMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
 

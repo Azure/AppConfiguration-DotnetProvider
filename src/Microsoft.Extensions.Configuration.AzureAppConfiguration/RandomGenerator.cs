@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    static class RandomGenerator
+    internal static class RandomGenerator
     {
         private static readonly Random _global = new Random();
         private static readonly ThreadLocal<Random> _rnd = new ThreadLocal<Random>(() =>

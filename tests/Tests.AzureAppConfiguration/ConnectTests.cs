@@ -48,7 +48,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Throws<ArgumentException>(action);
         }
 
-
         [Fact]
         public void ConnectTests_UsesParametersFromLatestConnectCall()
         {

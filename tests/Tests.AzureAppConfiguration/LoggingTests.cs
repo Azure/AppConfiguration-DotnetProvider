@@ -23,7 +23,7 @@ namespace Tests.AzureAppConfiguration
 {
     public class LoggingTests
     {
-        List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey1",
@@ -40,9 +40,9 @@ namespace Tests.AzureAppConfiguration
                 contentType: "text")
         };
 
-        ConfigurationSetting FirstKeyValue => _kvCollection.First();
-        ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
-        ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
+        private ConfigurationSetting FirstKeyValue => _kvCollection.First();
+        private readonly ConfigurationSetting sentinelKv = new ConfigurationSetting("SentinelKey", "SentinelValue");
+        private readonly ConfigurationSetting _kvr = ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey3",
                 label: "label3",
                 value: @"
@@ -51,8 +51,7 @@ namespace Tests.AzureAppConfiguration
                         }",
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
-
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        private readonly TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
 
         [Fact]
         public async Task ValidateExceptionLoggedDuringRefresh()
@@ -132,7 +131,7 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
-            
+
             Thread.Sleep(CacheExpirationTime);
             await refresher.TryRefreshAsync();
 
@@ -505,6 +504,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -558,6 +558,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -621,8 +622,8 @@ namespace Tests.AzureAppConfiguration
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
-                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var newSetting = _kvCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+                var unchanged = newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value;
                 var response = new MockResponse(unchanged ? 304 : 200);
                 return Response.FromValue(newSetting, response);
             }

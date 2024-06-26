@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Tests.AzureAppConfiguration.AspNetCore
 {
-    class TestHelper
+    internal class TestHelper
     {
         public static string CreateMockEndpointString()
         {

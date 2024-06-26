@@ -32,6 +32,7 @@ namespace Azure.Core.Testing
                 {
                     _headers.Remove("Content-Length");
                 }
+
                 base.Content = value;
             }
         }

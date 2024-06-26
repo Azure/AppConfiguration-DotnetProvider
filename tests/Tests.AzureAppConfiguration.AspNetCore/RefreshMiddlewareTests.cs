@@ -17,7 +17,7 @@ namespace Tests.AzureAppConfiguration.AspNetCore
 {
     public class RefreshMiddlewareTests
     {
-        List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+        private readonly List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: "TestKey1",

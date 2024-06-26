@@ -88,9 +88,9 @@ namespace Azure.Core.Testing
         }
     }
 
-    class MockResponse<T> : Response<T>
+    internal class MockResponse<T> : Response<T>
     {
-        private T _value;
+        private readonly T _value;
         public override T Value => _value;
 
         public MockResponse(T value)
