@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Messaging.EventGrid;
 using System;
 using System.Text.Json;
-using Azure.Messaging.EventGrid;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {

@@ -2,13 +2,13 @@
 // Licensed under the MIT license.
 //
 
-using System;
-using System.Linq;
 using Microsoft.Azure.AppConfiguration.Functions.Worker;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Linq;
 
 namespace Microsoft.Extensions.Hosting
 {

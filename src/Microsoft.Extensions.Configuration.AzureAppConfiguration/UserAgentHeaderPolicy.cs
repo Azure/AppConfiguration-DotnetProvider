@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Core;
+using Azure.Core.Pipeline;
 using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
-using Azure.Core;
-using Azure.Core.Pipeline;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

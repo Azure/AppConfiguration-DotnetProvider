@@ -2,6 +2,11 @@
 // Licensed under the MIT license.
 //
 
+using Azure.Core;
+using Azure.Data.AppConfiguration;
+using DnsClient;
+using DnsClient.Protocol;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,11 +14,6 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Core;
-using Azure.Data.AppConfiguration;
-using DnsClient;
-using DnsClient.Protocol;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

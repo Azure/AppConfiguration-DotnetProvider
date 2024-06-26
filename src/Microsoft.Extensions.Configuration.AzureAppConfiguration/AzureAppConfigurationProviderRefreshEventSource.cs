@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System.Diagnostics.Tracing;
 using Azure.Core.Diagnostics;
+using System.Diagnostics.Tracing;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {

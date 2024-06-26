@@ -1,10 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
@@ -12,6 +8,10 @@ using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration

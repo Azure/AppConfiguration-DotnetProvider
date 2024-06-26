@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 //
 
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 
 namespace Tests.AzureAppConfiguration
 {

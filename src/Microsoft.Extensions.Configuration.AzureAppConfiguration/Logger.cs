@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
