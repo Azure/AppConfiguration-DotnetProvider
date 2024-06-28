@@ -44,5 +44,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string ETag = "ETag";
         public const string FeatureFlagId = "FeatureFlagId";
         public const string FeatureFlagReference = "FeatureFlagReference";
+
+        // Dotnet schema keys
+        public const string DotnetSchemaSectionName = "FeatureManagement";
+        public const string DotnetSchemaEnabledFor = "EnabledFor";
+        public const string DotnetSchemaRequirementType = "RequirementType";
     }
 }
