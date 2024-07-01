@@ -665,7 +665,7 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            string etag = "c3c231fd-39a0-4cb6-3237-4614474b92c1";
+            string etag = "\"c3c231fd-39a0-4cb6-3237-4614474b92c1\"";
 
             var mockTransport = new MockTransport(req =>
             {
@@ -1017,7 +1017,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void DoesNotUseEtagForFeatureFlagRefresh()
+        public async Task DoesNotUseEtagForFeatureFlagRefresh()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -1038,7 +1038,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
 
             await refresher.TryRefreshAsync();
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
         }
 
         [Fact]
