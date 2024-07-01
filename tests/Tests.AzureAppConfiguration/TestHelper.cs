@@ -165,7 +165,6 @@ namespace Tests.AzureAppConfiguration
 #pragma warning restore 1998
         {
             yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(200));
-
         }
     }
 
@@ -180,7 +179,7 @@ namespace Tests.AzureAppConfiguration
 
         public override IEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
         {
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new Mock<Response>().Object);
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(200));
         }
     }
 }
