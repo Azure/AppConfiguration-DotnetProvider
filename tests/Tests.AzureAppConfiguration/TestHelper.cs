@@ -116,16 +116,22 @@ namespace Tests.AzureAppConfiguration
         public static List<ConfigurationSetting> LoadJsonSettingsFromFile(string path)
         {
             List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>();
-            var valueArray = JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(path)).EnumerateArray();
-            foreach (var setting in valueArray)
+
+            using (JsonDocument document = JsonDocument.Parse(File.ReadAllText(path)))
             {
-                ConfigurationSetting kv = ConfigurationModelFactory
-                    .ConfigurationSetting(
-                        key: setting.GetProperty("key").ToString(),
-                        value: setting.GetProperty("value").GetRawText(),
-                        contentType: setting.GetProperty("contentType").ToString());
-                _kvCollection.Add(kv);
+                var valueArray = document.RootElement.EnumerateArray();
+
+                foreach (var setting in valueArray)
+                {
+                    ConfigurationSetting kv = ConfigurationModelFactory
+                        .ConfigurationSetting(
+                            key: setting.GetProperty("key").ToString(),
+                            value: setting.GetProperty("value").GetRawText(),
+                            contentType: setting.GetProperty("contentType").ToString());
+                    _kvCollection.Add(kv);
+                }
             }
+
             return _kvCollection;
         }
 

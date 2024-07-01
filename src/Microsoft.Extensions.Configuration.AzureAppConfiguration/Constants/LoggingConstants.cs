@@ -15,6 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshFailedDueToKeyVaultError = "A refresh operation failed while resolving a Key Vault reference.";
         public const string PushNotificationUnregisteredEndpoint = "Ignoring the push notification received for the unregistered endpoint";
         public const string FallbackClientLookupError = "Failed to perform fallback client lookup.";
+        public const string RefreshFailedDueToFormattingError = "A refresh operation failed due to a formatting error.";
 
         // Successful update, debug log level
         public const string RefreshKeyValueRead = "Key-value read from App Configuration.";
@@ -32,5 +33,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshSkippedNoClientAvailable = "Refresh skipped because no endpoint is accessible.";
         public const string RefreshFailedToGetSettingsFromEndpoint = "Failed to get configuration settings from endpoint";
         public const string FailingOverToEndpoint = "Failing over to endpoint";
+        public const string FeatureManagementMicrosoftSchemaVersionWarning = "Your application may be using an older version of " + 
+            "Microsoft.FeatureManagement library that isn't compatible with Microsoft.Extensions.Configuration.AzureAppConfiguration. Please update " +
+            "the Microsoft.FeatureManagement package to version 3.2.0 or later.";
     }
 }

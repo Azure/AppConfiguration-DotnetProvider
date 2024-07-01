@@ -28,20 +28,15 @@ namespace Tests.AzureAppConfiguration
 
             var appconfigSettings = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
-                .Build()
-                .AsEnumerable();
+                .Build();
 
             var jsonSettings = new ConfigurationBuilder()
                 .AddJsonFile(jsonFilePath)
-                .Build()
-                .AsEnumerable();
+                .Build();
 
-            Assert.Equal(jsonSettings.Count(), appconfigSettings.Count());
-
-            foreach (KeyValuePair<string, string> jsonSetting in jsonSettings)
+            foreach (KeyValuePair<string, string> jsonSetting in jsonSettings.AsEnumerable())
             {
-                KeyValuePair<string, string> appconfigSetting = appconfigSettings.SingleOrDefault(x => x.Key == jsonSetting.Key);
-                Assert.Equal(jsonSetting, appconfigSetting);
+                Assert.Equal(jsonSettings.GetSection(jsonSetting.Key).Value, appconfigSettings.GetSection(jsonSetting.Key).Value);
             }
         }
 
@@ -221,9 +216,9 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
                 .Build();
 
-            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
-            Assert.Equal("Safari", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+            Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:1"]);
         }
 
         [Fact]
