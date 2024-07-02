@@ -1007,6 +1007,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }).ConfigureAwait(false);
             }
 
+            HashSet<string> existingSettings = new HashSet<string>();
+
+            foreach (KeyValueChange change in keyValueChanges)
+            {
+                existingSettings.Add(change.Key);
+            }
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in _mappedData)
+            {
+                if (!existingSettings.Contains(kvp.Key))
+                {
+                    keyValueChanges.Add(new KeyValueChange()
+                    {
+                        Key = kvp.Value.Key,
+                        Label = kvp.Value.Label.NormalizeNull(),
+                        Current = kvp.Value,
+                        ChangeType = KeyValueChangeType.Deleted
+                    });
+                }
+            }
+
             return keyValueChanges;
         }
 

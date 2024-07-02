@@ -9,8 +9,11 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -153,18 +156,55 @@ namespace Tests.AzureAppConfiguration
 
     class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
     {
-        private readonly List<ConfigurationSetting> _collection;
+        private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
+        private int _status;
 
         public MockAsyncPageable(List<ConfigurationSetting> collection)
         {
-            _collection = collection;
+            foreach (ConfigurationSetting setting in collection)
+            {
+                var newSetting = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+
+                newSetting.ContentType = setting.ContentType;
+
+                _collection.Add(newSetting);
+            }
+
+            _status = 304;
+        }
+
+        public void UpdateFeatureFlags(List<ConfigurationSetting> newCollection)
+        {
+            if (_collection.All(setting => newCollection.Any(newSetting => 
+                setting.Key == newSetting.Key &&
+                setting.Value == newSetting.Value &&
+                setting.Label == newSetting.Label &&
+                setting.ETag == newSetting.ETag)))
+            {
+                _status = 304;
+            }
+            else
+            {
+                _status = 200;
+
+                _collection.Clear();
+
+                foreach (ConfigurationSetting setting in newCollection)
+                {
+                    var newSetting = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
+
+                    newSetting.ContentType = setting.ContentType;
+
+                    _collection.Add(newSetting);
+                }
+            }
         }
 
 #pragma warning disable 1998
         public async override IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
 #pragma warning restore 1998
         {
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(200));
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
         }
     }
 

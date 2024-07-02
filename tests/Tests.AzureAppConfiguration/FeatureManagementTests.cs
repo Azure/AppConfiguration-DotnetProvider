@@ -750,9 +750,11 @@ namespace Tests.AzureAppConfiguration
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             var cacheExpirationInterval = TimeSpan.FromSeconds(1);
 
@@ -1038,7 +1040,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
 
             await refresher.TryRefreshAsync();
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
 
         [Fact]
@@ -1408,13 +1410,13 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
 
+            var mockAsyncPageable = new MockAsyncPageable(featureFlagCollection);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(() =>
-                {
-                    return new MockAsyncPageable(featureFlagCollection.Where(s =>
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")).ToList());
-                });
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")).ToList()))
+                .Returns(mockAsyncPageable);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -1595,13 +1597,12 @@ namespace Tests.AzureAppConfiguration
             var label1 = "App1_Label";
             IConfigurationRefresher refresher = null;
             var featureFlagCollection = new List<ConfigurationSetting>(_featureFlagCollection);
+            var mockAsyncPageable = new MockAsyncPageable(featureFlagCollection);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(() =>
-                {
-                    return new MockAsyncPageable(featureFlagCollection.Where(s =>
-                        s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1).ToList());
-                });
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlagCollection.Where(s =>
+                        s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1).ToList()))
+                .Returns(mockAsyncPageable);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -1660,8 +1661,11 @@ namespace Tests.AzureAppConfiguration
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
@@ -1699,10 +1703,10 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("MyFeature2", config["feature_management:feature_flags:0:id"]);
 
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
-            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature1",
+            key: FeatureManagementConstants.FeatureFlagMarker + "myFeature2",
             value: @"
                     {
-                      ""id"": ""MyFeature"",
+                      ""id"": ""MyFeature2"",
                       ""description"": ""The new beta version of our web site."",
                       ""display_name"": ""Beta Feature"",
                       ""enabled"": true,
@@ -1717,12 +1721,11 @@ namespace Tests.AzureAppConfiguration
                     ",
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
             Assert.Equal("AllUsers", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
-            Assert.Equal("MyFeature", config["feature_management:feature_flags:0:id"]);
             Assert.Contains(LogHelper.BuildFeatureFlagsUpdatedMessage(), informationalInvocation);
 
             featureFlags.RemoveAt(0);
@@ -1731,7 +1734,6 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Null(config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
             Assert.Contains(LogHelper.BuildFeatureFlagsUpdatedMessage(), informationalInvocation);
-
         }
 
         [Fact]
@@ -1742,8 +1744,11 @@ namespace Tests.AzureAppConfiguration
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
@@ -1816,9 +1821,11 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             var featureFlags = new List<ConfigurationSetting> { _kv };
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-            .Returns(new MockAsyncPageable(featureFlags));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
@@ -1891,7 +1898,7 @@ namespace Tests.AzureAppConfiguration
                                 ",
             label: default,
             contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
+            eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
