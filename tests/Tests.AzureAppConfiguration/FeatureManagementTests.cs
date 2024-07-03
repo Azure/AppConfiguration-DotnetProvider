@@ -725,9 +725,7 @@ namespace Tests.AzureAppConfiguration
                         ",
                 label: default,
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f"));
-
-            etag = "c3c231fd-39a0-4cb6-3237-4614474b92c1" + "f";
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             featureFlags.Add(_kv2);
 

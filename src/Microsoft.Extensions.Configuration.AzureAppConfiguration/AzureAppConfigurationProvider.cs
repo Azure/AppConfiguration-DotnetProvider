@@ -979,8 +979,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValueWatcher changeWatcher in multiKeyWatchers)
             {
-                KeyValueIdentifier keyValueIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
-
                 SettingSelector selector = new SettingSelector()
                 {
                     KeyFilter = changeWatcher.Key,
@@ -989,7 +987,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 List<MatchConditions> matchConditions = new List<MatchConditions>();
 
-                foreach (MatchConditions condition in watchedCollections[keyValueIdentifier])
+                foreach (MatchConditions condition in watchedCollections[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)])
                 {
                     matchConditions.Add(condition);
                 }

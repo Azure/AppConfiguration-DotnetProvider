@@ -28,7 +28,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildFeatureFlagsUpdatedMessage()
         {
-            return LoggingConstants.RefreshFeatureFlagsUnchanged;
+            return LoggingConstants.RefreshFeatureFlagsUpdated;
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)
