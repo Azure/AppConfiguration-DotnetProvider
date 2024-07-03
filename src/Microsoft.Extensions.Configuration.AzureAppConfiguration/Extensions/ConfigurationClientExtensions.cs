@@ -79,12 +79,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 LabelFilter = keyValueIdentifier.Label
             };
 
-            foreach (MatchConditions condition in matchConditions)
-            {
-                selector.MatchConditions.Add(condition);
-            }
-
-            await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages().ConfigureAwait(false))
+            await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages(matchConditions).ConfigureAwait(false))
             {
                 Response response = page.GetRawResponse();
 

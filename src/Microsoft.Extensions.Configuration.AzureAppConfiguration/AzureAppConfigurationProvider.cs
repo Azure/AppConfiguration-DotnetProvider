@@ -987,14 +987,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     LabelFilter = changeWatcher.Label.NormalizeNull()
                 };
 
+                List<MatchConditions> matchConditions = new List<MatchConditions>();
+
                 foreach (MatchConditions condition in watchedCollections[keyValueIdentifier])
                 {
-                    selector.MatchConditions.Add(condition);
+                    matchConditions.Add(condition);
                 }
 
                 await CallWithRequestTracing(async () =>
                 {
-                    await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages().ConfigureAwait(false))
+                    await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages(matchConditions).ConfigureAwait(false))
                     {
                         keyValueChanges.AddRange(page.Values.Select(setting => new KeyValueChange()
                         {
