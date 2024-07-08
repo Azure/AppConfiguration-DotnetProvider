@@ -53,11 +53,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                                  setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
-        {
-            return;
-        }
-
         public bool NeedsRefresh()
         {
             return false;
@@ -97,11 +92,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                             _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
-                            keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}:Name", clientFilter.Name));
+                            string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
+
+                            keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Name", clientFilter.Name));
 
                             foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
                             {
-                                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
+                                keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Parameters:{kvp.Key}", kvp.Value));
                             }
                         }
 
