@@ -18,7 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private FeatureFilterTracing _featureFilterTracing;
         private int _featureFlagIndex = 0;
-        private bool _isMicrosoftSchema;
 
         public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
         {
@@ -27,13 +26,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
-            _isMicrosoftSchema = false;
-
             FeatureFlag featureFlag = ParseFeatureFlag(setting.Key, setting.Value);
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            if (_isMicrosoftSchema)
+            // Check if we need to process the feature flag using the microsoft schema
+            if (featureFlag.Variants != null || featureFlag.Allocation != null || featureFlag.Telemetry != null)
             {
                 keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
             }
@@ -74,50 +72,52 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
-            if (!string.IsNullOrEmpty(featureFlag.Id))
+            if (string.IsNullOrEmpty(featureFlag.Id))
             {
-                string featureFlagPath = $"{FeatureManagementConstants.DotnetSchemaSectionName}:{featureFlag.Id}";
+                return keyValues;
+            }
 
-                if (featureFlag.Enabled)
+            string featureFlagPath = $"{FeatureManagementConstants.DotnetSchemaSectionName}:{featureFlag.Id}";
+
+            if (featureFlag.Enabled)
+            {
+                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any())
                 {
-                    if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any())
-                    {
-                        keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
-                    }
-                    else
-                    {
-                        for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
-                        {
-                            ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
-
-                            _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
-
-                            string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
-
-                            keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Name", clientFilter.Name));
-
-                            foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
-                            {
-                                keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Parameters:{kvp.Key}", kvp.Value));
-                            }
-                        }
-
-                        //
-                        // process RequirementType only when filters are not empty
-                        if (featureFlag.Conditions.RequirementType != null)
-                        {
-                            keyValues.Add(new KeyValuePair<string, string>(
-                                $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaRequirementType}",
-                                featureFlag.Conditions.RequirementType));
-                        }
-                    }
+                    keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
                 }
                 else
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}", false.ToString()));
+                    for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
+                    {
+                        ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+
+                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+
+                        string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
+
+                        keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Name", clientFilter.Name));
+
+                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Parameters:{kvp.Key}", kvp.Value));
+                        }
+                    }
+
+                    //
+                    // process RequirementType only when filters are not empty
+                    if (featureFlag.Conditions.RequirementType != null)
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>(
+                            $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaRequirementType}",
+                            featureFlag.Conditions.RequirementType));
+                    }
                 }
             }
-
+            else
+            {
+                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}", false.ToString()));
+            }
+            
             return keyValues;
         }
 
@@ -411,8 +411,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         case FeatureManagementConstants.Allocation:
                             {
-                                _isMicrosoftSchema = true;
-
                                 if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
                                 {
                                     featureFlag.Allocation = ParseFeatureAllocation(ref reader, settingKey);
@@ -431,8 +429,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         case FeatureManagementConstants.Variants:
                             {
-                                _isMicrosoftSchema = true;
-
                                 if (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
                                 {
                                     List<FeatureVariant> variants = new List<FeatureVariant>();
@@ -478,8 +474,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                         case FeatureManagementConstants.Telemetry:
                             {
-                                _isMicrosoftSchema = true;
-
                                 if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
                                 {
                                     featureFlag.Telemetry = ParseFeatureTelemetry(ref reader, settingKey);
