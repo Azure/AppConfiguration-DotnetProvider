@@ -1923,10 +1923,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Other", config["feature_management:feature_flags:2:variants:2:configuration_value"]);
             Assert.Equal("NumberVariant", config["feature_management:feature_flags:2:allocation:default_when_enabled"]);
 
-            Assert.Equal("VariantsFeature4", config["feature_management:feature_flags:3:id"]);
-            Assert.Equal("True", config["feature_management:feature_flags:3:enabled"]);
-            Assert.Null(config["feature_management:feature_flags:3:variants"]);
-            Assert.Null(config["feature_management:feature_flags:3:allocation"]);
+            Assert.Equal("True", config["FeatureManagement:VariantsFeature4"]);
         }
 
         [Fact]
