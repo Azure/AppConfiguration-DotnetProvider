@@ -746,7 +746,6 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
@@ -823,11 +822,13 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
@@ -894,11 +895,13 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(featureFlags));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()

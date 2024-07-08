@@ -156,8 +156,8 @@ namespace Tests.AzureAppConfiguration
 
     class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
     {
-        private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
-        private int _status;
+        private static readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
+        private static int _status;
 
         public MockAsyncPageable(List<ConfigurationSetting> collection)
         {
@@ -202,6 +202,16 @@ namespace Tests.AzureAppConfiguration
 
 #pragma warning disable 1998
         public async override IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
+#pragma warning restore 1998
+        {
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
+        }
+    }
+
+    public static class  MockConfigurationClientExtensions
+    {
+#pragma warning disable 1998
+        public static async IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(this AsyncPageable<ConfigurationSetting> asyncPageable, IEnumerable<MatchConditions> matchConditions, string continuationToken = null, int? pageSizeHint = null)
 #pragma warning restore 1998
         {
             yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
