@@ -1056,7 +1056,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
-#if NET7_0
+#if NET8_0
         [Fact]
         public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
         {
