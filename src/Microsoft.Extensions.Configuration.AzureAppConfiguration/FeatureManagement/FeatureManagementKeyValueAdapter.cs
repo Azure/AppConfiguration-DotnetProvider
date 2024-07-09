@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             var keyValues = new List<KeyValuePair<string, string>>();
 
             // Check if we need to process the feature flag using the microsoft schema
-            if (featureFlag.Variants != null || featureFlag.Allocation != null || featureFlag.Telemetry != null)
+            if ((featureFlag.Variants != null && featureFlag.Variants.Any()) || featureFlag.Allocation != null || featureFlag.Telemetry != null)
             {
                 keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
             }
