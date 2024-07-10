@@ -91,7 +91,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
-                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
 
