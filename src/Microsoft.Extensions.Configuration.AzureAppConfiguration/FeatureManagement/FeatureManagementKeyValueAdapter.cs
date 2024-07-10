@@ -202,7 +202,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     i++;
                 }
 
-                _featureFlagTracing.UpdateMaxVariants(i);
+                _featureFlagTracing.NotifyMaxVariants(i);
             }
 
             if (featureFlag.Allocation != null)

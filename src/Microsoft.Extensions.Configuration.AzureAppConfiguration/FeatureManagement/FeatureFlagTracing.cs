@@ -50,6 +50,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             UsesTimeWindowFilter = false;
             UsesTargetingFilter = false;
             UsesSeed = false;
+            UsesTelemetry = false;
+            UsesVariantConfigurationReference = false;
+            MaxVariants = 0;
         }
 
         public void UpdateFeatureFilterTracing(string filterName)
@@ -72,7 +75,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
-        public void UpdateMaxVariants(int currentFlagTotalVariants)
+        public void NotifyMaxVariants(int currentFlagTotalVariants)
         {
             if (currentFlagTotalVariants > MaxVariants)
             {
