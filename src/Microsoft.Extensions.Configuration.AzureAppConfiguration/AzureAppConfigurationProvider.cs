@@ -1218,21 +1218,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!_isFeatureManagementVersionInspected)
             {
-                const string FeatureManagementMinimumVersion = "3.2.0";
-
                 _isFeatureManagementVersionInspected = true;
 
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-                    string featureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
-
-                    // If the version is less than 3.2.0, log the schema version warning
-                    if (featureManagementVersion != null && Version.Parse(featureManagementVersion) < Version.Parse(FeatureManagementMinimumVersion))
-                    {
-                        _logger.LogWarning(LogHelper.BuildFeatureManagementMicrosoftSchemaVersionWarningMessage());
-                    }
-
-                    _requestTracingOptions.FeatureManagementVersion = featureManagementVersion;
+                    _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
                 }
