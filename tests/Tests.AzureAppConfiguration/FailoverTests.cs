@@ -23,7 +23,7 @@ namespace Tests.AzureAppConfiguration
                                                                                           contentType: "text");
 
         [Fact]
-        public void FailOverTests_ReturnsAllClientsIfAllBackedOff()
+        public async Task FailOverTests_ReturnsAllClientsIfAllBackedOff()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -68,7 +68,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     options.ReplicaDiscoveryEnabled = false;
@@ -85,7 +85,7 @@ namespace Tests.AzureAppConfiguration
             // Assert the inner request failed exceptions
             Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // The client manager should have called RefreshClients when all clients were backed off
             Assert.Equal(1, configClientManager.RefreshClientsCalled);
@@ -133,7 +133,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -144,7 +144,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void FailOverTests_BackoffStateIsUpdatedOnSuccessfulRequest()
+        public async Task FailOverTests_BackoffStateIsUpdatedOnSuccessfulRequest()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -193,13 +193,13 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
                 }).Build();
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // The first client should not have been called during refresh
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
@@ -211,7 +211,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for client 1 backoff to end
             Thread.Sleep(2500);
             
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // The first client should have been called now with refresh after the backoff time ends
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
@@ -258,7 +258,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     refresher = options.GetRefresher();
                 })
@@ -272,7 +272,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.azconfig.io") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.True(configClientManager.IsValidEndpoint("azure.azconfig.io"));
             Assert.True(configClientManager.IsValidEndpoint("appconfig.azconfig.io"));
@@ -287,7 +288,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.appconfig.azure.com") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.True(configClientManager2.IsValidEndpoint("azure.appconfig.azure.com"));
             Assert.True(configClientManager2.IsValidEndpoint("azure.z1.appconfig.azure.com"));
@@ -302,7 +304,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.azconfig-test.io") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
@@ -311,7 +314,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.False(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
             Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
@@ -325,7 +329,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://azure.azconfig.io") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             var clients = configClientManager.GetClients();
 
@@ -372,7 +377,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();

@@ -170,10 +170,59 @@ namespace Tests.AzureAppConfiguration
 				"Microsoft.AppConfiguration.KeyValueModified", "2",
                 BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}")
                 )
+            },
+
+			// Test that last syncToken is used
+            {
+                "sn;BYRte4456",
+            new EventGridEvent(
+                "https://store2.resource.io/kv/searchQuery2",
+                "Microsoft.AppConfiguration.KeyValueModified", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\",\"syncToken\":\"sn;BYRte4456\"}")
+                )
             }
         };
 
-		ConfigurationSetting FirstKeyValue => _kvCollection.First();
+        Dictionary<string, EventGridEvent> _invalidFormatEventGridEvents = new Dictionary<string, EventGridEvent>
+        {
+			{
+				"sn;Vxujfidne",
+			new EventGridEvent(
+				"https://store1.resource.io/kv/searchQuery1",
+				"Microsoft.AppConfiguration.KeyValueModified", "2",
+				BinaryData.FromString("\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"}")
+				)
+			},
+
+			{
+				"sn;AxRty78B",
+			new EventGridEvent(
+				"https://store1.resource.io/kv/searchQuery1",
+				"Microsoft.AppConfiguration.KeyValueModified", "2",
+				BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;Vxujfidne\"")
+				)
+			},
+
+			{
+                "sn;Ttylmable",
+            new EventGridEvent(
+                "https://store1.resource.io/kv/searchQuery2",
+                "Microsoft.AppConfiguration.KeyValueDeleted", "2",
+                BinaryData.FromString("{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"fake_property\":{\"syncToken\":\"sn;Ttylmable\"}}")
+                )
+            },
+
+            {
+                "sn;CRAle3342",
+            new EventGridEvent(
+                "https://store2.resource.io/kv/searchQuery2",
+                "Microsoft.AppConfiguration.KeyValueModified", "2",
+                BinaryData.FromString("{\"fake_property\":{\"key\":\"searchQuery1\",\"etag\":\"etagValue1\",\"syncToken\":\"sn;CRAle3342\"}}")
+                )
+            }
+        };
+
+        ConfigurationSetting FirstKeyValue => _kvCollection.First();
 
         [Fact]
         public void ValidatePushNotificationCreation()
@@ -192,6 +241,17 @@ namespace Tests.AzureAppConfiguration
 		}
 
         [Fact]
+        public void InvalidPushNotificationCreation()
+        {
+            foreach (KeyValuePair<string, EventGridEvent> eventGridAndSync in _invalidFormatEventGridEvents)
+            {
+                EventGridEvent eventGridEvent = eventGridAndSync.Value;
+
+                Assert.False(eventGridEvent.TryCreatePushNotification(out PushNotification _));
+            }
+        }
+
+        [Fact]
 		public void ProcessPushNotificationThrowsArgumentExceptions()
         {
 			var mockResponse = new Mock<Response>();
@@ -207,7 +267,7 @@ namespace Tests.AzureAppConfiguration
 					options.ConfigureRefresh(refreshOptions =>
 					{
 						refreshOptions.Register("TestKey1", "label")
-							.SetCacheExpiration(TimeSpan.FromDays(30));
+							.SetRefreshInterval(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
@@ -226,7 +286,7 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void SyncTokenUpdatesCorrectNumberOfTimes()
+		public async Task SyncTokenUpdatesCorrectNumberOfTimes()
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
@@ -243,7 +303,7 @@ namespace Tests.AzureAppConfiguration
 					options.ConfigureRefresh(refreshOptions =>
 					{
 						refreshOptions.Register("TestKey1", "label")
-							.SetCacheExpiration(TimeSpan.FromDays(30));
+							.SetRefreshInterval(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
@@ -252,7 +312,7 @@ namespace Tests.AzureAppConfiguration
 			foreach (PushNotification pushNotification in _pushNotificationList)
 			{
 				refresher.ProcessPushNotification(pushNotification, TimeSpan.FromSeconds(0));
-				refresher.RefreshAsync().Wait();
+				await refresher.RefreshAsync();
 			}
 
 			var validNotificationKVWatcherCount = 8;
@@ -264,7 +324,7 @@ namespace Tests.AzureAppConfiguration
 		}
 
 		[Fact]
-		public void RefreshAsyncUpdatesConfig()
+		public async Task RefreshAsyncUpdatesConfig()
 		{
 			// Arrange
 			var mockResponse = new Mock<Response>();
@@ -280,7 +340,7 @@ namespace Tests.AzureAppConfiguration
 					options.ConfigureRefresh(refreshOptions =>
 					{
 						refreshOptions.Register("TestKey1", "label")
-							.SetCacheExpiration(TimeSpan.FromDays(30));
+							.SetRefreshInterval(TimeSpan.FromDays(30));
 					});
 					refresher = options.GetRefresher();
 				})
@@ -291,7 +351,7 @@ namespace Tests.AzureAppConfiguration
 			FirstKeyValue.Value = "newValue1";
 
 			refresher.ProcessPushNotification(_pushNotificationList.First(), TimeSpan.FromSeconds(0));
-			refresher.RefreshAsync().Wait();
+			await refresher.RefreshAsync();
 
 			Assert.Equal("newValue1", config["TestKey1"]);
 		}
