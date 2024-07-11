@@ -665,25 +665,17 @@ namespace Tests.AzureAppConfiguration
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            string etag = "\"c3c231fd-39a0-4cb6-3237-4614474b92c1\"";
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            var mockTransport = new MockTransport(req =>
-            {
-                var response = new MockResponse(200);
-                response.SetContent(SerializationHelpers.Serialize(featureFlags.ToArray(), TestHelpers.SerializeBatch));
-                response.AddHeader(new HttpHeader(HttpHeader.Names.ETag, new ETag(etag).ToString()));
-                return response;
-            });
-
-            var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
-            var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(featureFlags));
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = clientManager;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
 
                     refresher = options.GetRefresher();
