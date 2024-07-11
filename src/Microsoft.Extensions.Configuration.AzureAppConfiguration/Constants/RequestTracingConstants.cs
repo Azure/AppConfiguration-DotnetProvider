@@ -34,7 +34,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagUsesSeedTag = "Seed";
         public const string FeatureFlagMaxVariantsKey = "MaxVariants";
         public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
-        public const string FeaturesKey = "Features";
         public const string FeatureFlagFeaturesKey = "FFFeatures";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
