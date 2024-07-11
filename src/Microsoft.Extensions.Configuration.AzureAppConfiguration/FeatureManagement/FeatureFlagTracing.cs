@@ -133,5 +133,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             return sb.ToString();
         }
+
+        public string CreateFeaturesString()
+        {
+            var sb = new StringBuilder();
+
+            if (UsesSeed)
+            {
+                sb.Append(RequestTracingConstants.FeatureFlagUsesSeedTag);
+            }
+
+            if (UsesVariantConfigurationReference)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
+            }
+
+            if (UsesTelemetry)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesTelemetryTag);
+            }
+
+            return sb.ToString();
+        }
     }
 }
