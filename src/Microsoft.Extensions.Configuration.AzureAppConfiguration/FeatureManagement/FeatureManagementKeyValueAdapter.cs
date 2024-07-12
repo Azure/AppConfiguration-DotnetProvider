@@ -30,9 +30,104 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var keyValues = new List<KeyValuePair<string, string>>();
 
+            // Check if we need to process the feature flag using the microsoft schema
+            if ((featureFlag.Variants != null && featureFlag.Variants.Any()) || featureFlag.Allocation != null || featureFlag.Telemetry != null)
+            {
+                keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
+            }
+            else
+            {
+                keyValues = ProcessDotnetSchemaFeatureFlag(featureFlag, setting, endpoint);
+            }
+
+            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+        }
+
+        public bool CanProcess(ConfigurationSetting setting)
+        {
+            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+
+            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
+                                 setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+        }
+
+        public bool NeedsRefresh()
+        {
+            return false;
+        }
+
+        public void OnChangeDetected(ConfigurationSetting setting = null)
+        {
+            return;
+        }
+
+        public void OnConfigUpdated()
+        {
+            _featureFlagIndex = 0;
+
+            return;
+        }
+
+        private List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint)
+        {
+            var keyValues = new List<KeyValuePair<string, string>>();
+
             if (string.IsNullOrEmpty(featureFlag.Id))
             {
-                return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+                return keyValues;
+            }
+
+            string featureFlagPath = $"{FeatureManagementConstants.DotnetSchemaSectionName}:{featureFlag.Id}";
+
+            if (featureFlag.Enabled)
+            {
+                if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any())
+                {
+                    keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
+                }
+                else
+                {
+                    for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
+                    {
+                        ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
+
+                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+
+                        string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
+
+                        keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Name", clientFilter.Name));
+
+                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Parameters:{kvp.Key}", kvp.Value));
+                        }
+                    }
+
+                    //
+                    // process RequirementType only when filters are not empty
+                    if (featureFlag.Conditions.RequirementType != null)
+                    {
+                        keyValues.Add(new KeyValuePair<string, string>(
+                            $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaRequirementType}",
+                            featureFlag.Conditions.RequirementType));
+                    }
+                }
+            }
+            else
+            {
+                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}", false.ToString()));
+            }
+            
+            return keyValues;
+        }
+
+        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint)
+        {
+            var keyValues = new List<KeyValuePair<string, string>>();
+
+            if (string.IsNullOrEmpty(featureFlag.Id))
+            {
+                return keyValues;
             }
 
             string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
@@ -53,7 +148,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
-                            _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{i}";
 
@@ -70,7 +165,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     if (featureFlag.Conditions.RequirementType != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>(
-                            $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.RequirementType}", 
+                            $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.RequirementType}",
                             featureFlag.Conditions.RequirementType));
                     }
                 }
@@ -219,37 +314,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
             }
 
-            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
-        }
-
-        public bool CanProcess(ConfigurationSetting setting)
-        {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
-
-            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                                 setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
-        }
-
-        public void InvalidateCache(ConfigurationSetting setting = null)
-        {
-            return;
-        }
-
-        public bool NeedsRefresh()
-        {
-            return false;
-        }
-
-        public void OnChangeDetected(ConfigurationSetting setting = null)
-        {
-            return;
-        }
-
-        public void OnConfigUpdated()
-        {
-            _featureFlagIndex = 0;
-
-            return;
+            return keyValues;
         }
 
         private FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string foundJsonValueKind, string expectedJsonValueKind)
