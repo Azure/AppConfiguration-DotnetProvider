@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -845,7 +846,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }).ConfigureAwait(false);
 
-                watchedCollections[new KeyValueIdentifier(selector.KeyFilter, selector.LabelFilter)] = matchConditions;
+                watchedCollections[new KeyValueIdentifier(KeyFilter.Any, LabelFilter.Null)] = matchConditions;
             }
 
             foreach (KeyValueSelector loadOption in _options.KeyValueSelectors)
@@ -875,7 +876,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }).ConfigureAwait(false);
 
-                    watchedCollections[new KeyValueIdentifier(selector.KeyFilter, selector.LabelFilter)] = matchConditions;
+                    watchedCollections[new KeyValueIdentifier(loadOption.KeyFilter, loadOption.LabelFilter)] = matchConditions;
                 }
                 else
                 {
@@ -957,14 +958,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedCollectionsCopy = new Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>>();
            
-            foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+            if (!_options.RefreshOptions.RegisterAllEnabled)
             {
-                KeyValueIdentifier watchedIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
+                foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
+                {
+                    KeyValueIdentifier watchedIdentifier = new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label);
 
-                watchedCollectionsCopy[watchedIdentifier] = watchedCollections[watchedIdentifier];
+                    watchedCollectionsCopy[watchedIdentifier] = watchedCollections[watchedIdentifier];
+                }
+
+                return watchedCollectionsCopy;
             }
 
-            return watchedCollectionsCopy;
+            return watchedCollections;
         }
 
         private async Task<List<KeyValueChange>> RefreshKeyValueCollections(
@@ -985,13 +991,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     KeyFilter = changeWatcher.Key,
                     LabelFilter = changeWatcher.Label
                 };
-
-                List<MatchConditions> matchConditions = new List<MatchConditions>();
-
-                foreach (MatchConditions condition in watchedCollections[new KeyValueIdentifier(changeWatcher.Key, changeWatcher.Label)])
-                {
-                    matchConditions.Add(condition);
-                }
 
                 await CallWithRequestTracing(async () =>
                 {
