@@ -40,11 +40,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool ReplicaDiscoveryEnabled { get; set; } = true;
 
         /// <summary>
-        /// Flag to indicate whether <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> has been called.
-        /// </summary>
-        internal bool RegisterAllEnabled { get; private set; } = false;
-
-        /// <summary>
         /// Flag to indicate whether load balancing is enabled.
         /// </summary>
         public bool LoadBalancingEnabled { get; set; }
@@ -84,7 +79,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal List<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+        internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -399,6 +394,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 item.RefreshInterval = refreshOptions.RefreshInterval;
                 _changeWatchers.Add(item);
             }
+
+            RefreshOptions = refreshOptions;
 
             return this;
         }

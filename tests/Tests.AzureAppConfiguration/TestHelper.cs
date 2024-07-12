@@ -156,8 +156,8 @@ namespace Tests.AzureAppConfiguration
 
     class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
     {
-        private static readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
-        private static int _status;
+        private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
+        private int _status;
 
         public MockAsyncPageable(List<ConfigurationSetting> collection)
         {
@@ -169,13 +169,14 @@ namespace Tests.AzureAppConfiguration
 
                 _collection.Add(newSetting);
             }
+            //_collection = collection;
 
-            _status = 304;
+            _status = 200;
         }
 
         public void UpdateFeatureFlags(List<ConfigurationSetting> newCollection)
         {
-            if (_collection.All(setting => newCollection.Any(newSetting => 
+            if (_collection.All(setting => newCollection.Any(newSetting =>
                 setting.Key == newSetting.Key &&
                 setting.Value == newSetting.Value &&
                 setting.Label == newSetting.Label &&
