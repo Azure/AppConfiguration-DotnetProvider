@@ -117,7 +117,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             IList<KeyValuePair<string, string>> correlationContextKeyValues = new List<KeyValuePair<string, string>>();
             IList<string> correlationContextTags = new List<string>();
-            
+
             correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
 
             if (requestTracingOptions.ReplicaCount > 0)
@@ -162,7 +162,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var sb = new StringBuilder();
 
-            foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)
+            foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)
             {
                 if (sb.Length > 0)
                 {

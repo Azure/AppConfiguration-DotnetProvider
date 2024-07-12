@@ -316,7 +316,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-        List <ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -520,7 +520,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Edge", config["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
         }
-
 
         [Fact]
         public async Task SkipRefreshIfCacheNotExpired()
@@ -950,7 +949,7 @@ namespace Tests.AzureAppConfiguration
                 .Returns(() =>
                 {
                     return new MockAsyncPageable(_featureFlagCollection.Where(s =>
-                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) || 
+                        (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2)).ToList());
                 });
 
@@ -1285,6 +1284,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -1467,6 +1467,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
