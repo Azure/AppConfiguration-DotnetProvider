@@ -513,7 +513,6 @@ namespace Tests.AzureAppConfiguration
                             setting.Value += " changed";
                         }
 
-
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
