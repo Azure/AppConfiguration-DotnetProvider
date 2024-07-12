@@ -9,9 +9,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using Xunit;
-using static Tests.AzureAppConfiguration.AspNetCore.TestHelper;
 
 namespace Tests.AzureAppConfiguration.AspNetCore
 {
