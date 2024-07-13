@@ -160,9 +160,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
-            if (requestTracingOptions.IsSignalrUsed)
+            if (requestTracingOptions.IsSignalRUsed)
             {
-                correlationContextTags.Add(RequestTracingConstants.SignalrUsedTag);
+                correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
             }
 
             var sb = new StringBuilder();

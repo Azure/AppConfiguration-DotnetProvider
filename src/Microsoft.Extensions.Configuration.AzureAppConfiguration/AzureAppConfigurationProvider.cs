@@ -1198,9 +1198,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
 
-                    if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalrAssemblyName) != null)
+                    if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalRAssemblyName) != null)
                     {
-                        _requestTracingOptions.IsSignalrUsed = true;
+                        _requestTracingOptions.IsSignalRUsed = true;
                     }
                 }
             }
