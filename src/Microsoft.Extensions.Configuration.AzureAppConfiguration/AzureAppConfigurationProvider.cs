@@ -349,7 +349,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                     else
                                     {
-                                        keyValueChanges.AddRange(await RefreshKeyValueCollections(_selectedKeyValueWatchers, watchedSelectedKeyValueCollections, _mappedData, client, cancellationToken).ConfigureAwait(false));
+                                        keyValueChanges.AddRange(await GetRefreshedKeyValueCollections(_selectedKeyValueWatchers, watchedSelectedKeyValueCollections, _mappedData, client, cancellationToken).ConfigureAwait(false));
 
                                         logInfoBuilder.Append(LogHelper.BuildSelectedKeyValueCollectionsUpdatedMessage());
                                     }
@@ -363,7 +363,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                                 else
                                 {
-                                    keyValueChanges.AddRange(await RefreshKeyValueCollections(_options.FeatureFlagWatchers, watchedFeatureFlagCollections, _mappedData, client, cancellationToken).ConfigureAwait(false));
+                                    keyValueChanges.AddRange(await GetRefreshedKeyValueCollections(_options.FeatureFlagWatchers, watchedFeatureFlagCollections, _mappedData, client, cancellationToken).ConfigureAwait(false));
 
                                     logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
                                 }
@@ -970,7 +970,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return watchedSettings;
         }
 
-        private async Task<List<KeyValueChange>> RefreshKeyValueCollections(
+        private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
             IEnumerable<KeyValueWatcher> FeatureFlagWatchers,
             Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedCollections,
             IDictionary<string, ConfigurationSetting> existingSettings,
