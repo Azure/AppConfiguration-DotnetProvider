@@ -22,12 +22,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshKeyVaultSecretRead = "Secret read from Key Vault for key-value.";
         public const string RefreshFeatureFlagRead = "Feature flag read from App Configuration.";
         public const string RefreshFeatureFlagsUnchanged = "Feature flags read from App Configuration. Change:'None'";
+        public const string RefreshSelectedKeyValuesCollectionsUnchanged = "Selected key-value collections read from App Configuration. Change:'None'";
 
         // Successful update, information log level
         public const string RefreshConfigurationUpdatedSuccess = "Configuration reloaded.";
         public const string RefreshKeyValueSettingUpdated = "Setting updated.";
         public const string RefreshKeyVaultSettingUpdated = "Setting updated from Key Vault.";
         public const string RefreshFeatureFlagsUpdated = "Feature flags updated.";
+        public const string RefreshSelectedKeyValuesCollectionsUpdated = "Selected key-value collections updated.";
 
         // Other
         public const string RefreshSkippedNoClientAvailable = "Refresh skipped because no endpoint is accessible.";

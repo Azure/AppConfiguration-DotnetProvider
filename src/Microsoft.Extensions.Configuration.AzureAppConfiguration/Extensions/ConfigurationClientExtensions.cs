@@ -61,16 +61,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HasAnyKeyValueChanged(this ConfigurationClient client, KeyValueIdentifier keyValueIdentifier, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<MatchConditions>> GetNewMatchConditions(this ConfigurationClient client, KeyValueIdentifier keyValueIdentifier, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
                 throw new ArgumentNullException(nameof(matchConditions));
-            }
-
-            if (!matchConditions.Any())
-            {
-                throw new ArgumentException("Requires at least one MatchConditions value.", nameof(matchConditions));
             }
 
             SettingSelector selector = new SettingSelector
@@ -79,17 +74,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 LabelFilter = keyValueIdentifier.Label
             };
 
+            bool hasCollectionChanged = false;
+
+            List<MatchConditions> newMatchConditions = new List<MatchConditions>();
+
             await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages(matchConditions).ConfigureAwait(false))
             {
                 Response response = page.GetRawResponse();
 
+                newMatchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
+
                 if (response.Status == (int)HttpStatusCode.OK)
                 {
-                    return true;
+                    hasCollectionChanged = true;
                 }
             }
 
-            return false;
+            if (hasCollectionChanged || (!newMatchConditions.Any() && matchConditions.Any()))
+            {
+                return newMatchConditions;
+            }
+
+            return null;
         }
     }
 }

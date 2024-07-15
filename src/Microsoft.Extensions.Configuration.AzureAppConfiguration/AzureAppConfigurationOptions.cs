@@ -24,10 +24,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
         private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
-        private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _featureFlagWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private List<KeyValueSelector> _featureFlagSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
 
         // The following set is sorted in descending order.
@@ -67,6 +68,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
+        /// A collection of <see cref="KeyValueSelector"/>.
+        /// </summary>
+        internal IEnumerable<KeyValueSelector> FeatureFlagSelectors => _featureFlagSelectors;
+
+        /// <summary>
         /// The configured options for refresh.
         /// </summary>
         internal AzureAppConfigurationRefreshOptions RefreshOptions { get; private set; } = new AzureAppConfigurationRefreshOptions();
@@ -79,7 +85,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+        internal IEnumerable<KeyValueWatcher> FeatureFlagWatchers => _featureFlagWatchers;
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -251,16 +257,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
 
-                Select(featureFlagFilter, labelFilter);
+                _featureFlagSelectors.AppendUnique(new KeyValueSelector
+                {
+                    KeyFilter = featureFlagFilter,
+                    LabelFilter = labelFilter
+                });
 
-                _multiKeyWatchers.AppendUnique(new KeyValueWatcher
+                _featureFlagWatchers.AppendUnique(new KeyValueWatcher
                 {
                     Key = featureFlagFilter,
                     Label = labelFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
-
             }
 
             return this;

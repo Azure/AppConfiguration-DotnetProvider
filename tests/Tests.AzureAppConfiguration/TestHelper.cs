@@ -169,7 +169,6 @@ namespace Tests.AzureAppConfiguration
 
                 _collection.Add(newSetting);
             }
-            //_collection = collection;
 
             _status = 200;
         }
