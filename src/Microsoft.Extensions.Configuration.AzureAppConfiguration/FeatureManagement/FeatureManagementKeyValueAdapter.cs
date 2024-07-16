@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
 
-        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFilterTracing)
+        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing )
         {
             _featureFlagTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
         }
