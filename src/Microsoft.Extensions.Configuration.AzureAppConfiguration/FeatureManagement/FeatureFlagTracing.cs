@@ -38,7 +38,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;
         }
 
-        public bool AnyTracingFeaturesUsed()
+        public bool UsesAnyTracingFeature()
         {
             return UsesSeed || UsesTelemetry || UsesVariantConfigurationReference;
         }

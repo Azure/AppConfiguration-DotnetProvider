@@ -19,9 +19,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
 
-        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing )
+        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
-            _featureFlagTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
+            _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)

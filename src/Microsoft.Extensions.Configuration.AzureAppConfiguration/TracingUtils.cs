@@ -166,7 +166,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagMaxVariantsKey, requestTracingOptions.FeatureFlagTracing.MaxVariants.ToString()));
             }
 
-            if (requestTracingOptions.FeatureFlagTracing.AnyTracingFeaturesUsed())
+            if (requestTracingOptions.FeatureFlagTracing.UsesAnyTracingFeature())
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFeaturesKey, requestTracingOptions.FeatureFlagTracing.CreateFeaturesString()));
             }
