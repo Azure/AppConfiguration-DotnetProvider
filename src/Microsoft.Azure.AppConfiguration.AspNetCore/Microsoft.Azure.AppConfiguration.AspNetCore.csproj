@@ -38,8 +38,4 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
-  </PropertyGroup>
-
 </Project>

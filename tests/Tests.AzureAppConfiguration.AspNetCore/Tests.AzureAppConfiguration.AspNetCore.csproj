@@ -25,8 +25,4 @@
     <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.AspNetCore\Microsoft.Azure.AppConfiguration.AspNetCore.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
-  </PropertyGroup>
-  
 </Project>
