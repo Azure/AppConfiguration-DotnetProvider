@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
-        private bool _isFeatureManagementVersionInspected;
+        private bool _isAssemblyInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
         private Uri _lastSuccessfulEndpoint;
@@ -190,7 +190,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for tracing
-                    EnsureFeatureManagementVersionInspected();
+                    EnsureAssemblyInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> refreshableWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
@@ -1214,17 +1214,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private void EnsureFeatureManagementVersionInspected()
+        private void EnsureAssemblyInspected()
         {
-            if (!_isFeatureManagementVersionInspected)
+            if (!_isAssemblyInspected)
             {
-                _isFeatureManagementVersionInspected = true;
+                _isAssemblyInspected = true;
 
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
                     _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+
+                    if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalRAssemblyName) != null)
+                    {
+                        _requestTracingOptions.IsSignalRUsed = true;
+                    }
                 }
             }
         }
