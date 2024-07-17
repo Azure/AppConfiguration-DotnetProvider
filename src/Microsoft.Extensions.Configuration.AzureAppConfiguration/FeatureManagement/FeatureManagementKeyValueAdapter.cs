@@ -16,12 +16,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
-        private FeatureFilterTracing _featureFilterTracing;
+        private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
 
-        public FeatureManagementKeyValueAdapter(FeatureFilterTracing featureFilterTracing)
+        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
-            _featureFilterTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
+            _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -91,7 +91,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
-                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
 
@@ -148,7 +148,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         ClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
 
-                        _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{i}";
 
@@ -189,6 +189,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (featureVariant.ConfigurationReference != null)
                     {
+                        _featureFlagTracing.UsesVariantConfigurationReference = true;
+
                         keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationReference}", featureVariant.ConfigurationReference));
                     }
 
@@ -199,6 +201,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     i++;
                 }
+
+                _featureFlagTracing.NotifyMaxVariants(i);
             }
 
             if (featureFlag.Allocation != null)
@@ -277,6 +281,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Seed != null)
                 {
+                    _featureFlagTracing.UsesSeed = true;
+
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
             }
@@ -289,6 +295,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
+                    _featureFlagTracing.UsesTelemetry = true;
+
                     if (telemetry.Metadata != null)
                     {
                         foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)

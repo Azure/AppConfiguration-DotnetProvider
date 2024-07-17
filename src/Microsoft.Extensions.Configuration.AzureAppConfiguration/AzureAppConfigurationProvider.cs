@@ -560,8 +560,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Reset old filter tracing in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTracing.ResetFeatureFilterTracing();
+            // Reset old feature flag tracing in order to track the information present in the current response from server.
+            _options.FeatureFlagTracing.ResetFeatureFlagTracing();
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -968,7 +968,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTracing = _options.FeatureFilterTracing
+                FeatureFlagTracing = _options.FeatureFlagTracing
             };
         }
 
