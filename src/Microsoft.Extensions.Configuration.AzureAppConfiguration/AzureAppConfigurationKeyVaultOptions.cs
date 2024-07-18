@@ -33,9 +33,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Sets the client options used when connecting to key vaults that have no registered <see cref="SecretClient"/>
+        /// Sets the client options used when connecting to key vaults that have no registered <see cref="SecretClient"/>. 
+        /// The client options will not affect <see cref="SecretClient"/> instances registered via <see cref="Register(SecretClient)"/>.
         /// </summary>
-        /// <param name="clientOptions">Default secret client options</param>
+        /// <param name="clientOptions">Default secret client options.</param>
         public AzureAppConfigurationKeyVaultOptions SetClientOptions(SecretClientOptions clientOptions)
         {
             ClientOptions = clientOptions;
