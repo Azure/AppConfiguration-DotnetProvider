@@ -97,7 +97,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register("TestKey1", "label")
-                               .SetCacheExpiration(TimeSpan.FromSeconds(60));
+                               .SetRefreshInterval(TimeSpan.FromSeconds(60));
                     });
                 })
                 .Build();
@@ -119,7 +119,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey2", "label")
                             .Register("TestKey3", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(60));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(60));
                     });
                 })
                 .Build();
@@ -130,7 +130,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshIsSkippedIfCacheIsNotExpired()
+        public async Task RefreshTests_RefreshIsSkippedIfCacheIsNotExpired()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -142,7 +142,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(10));
                     });
 
                     refresher = options.GetRefresher();
@@ -152,13 +152,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
         [Fact]
-        public void RefreshTests_RefreshIsSkippedIfKvNotInSelectAndCacheIsNotExpired()
+        public async Task RefreshTests_RefreshIsSkippedIfKvNotInSelectAndCacheIsNotExpired()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClientSelectKeyLabel();
@@ -171,7 +171,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(10));
                     });
 
                     refresher = options.GetRefresher();
@@ -181,13 +181,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
         [Fact]
-        public void RefreshTests_RefreshIsNotSkippedIfCacheIsExpired()
+        public async Task RefreshTests_RefreshIsNotSkippedIfCacheIsExpired()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -200,7 +200,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -213,13 +213,13 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("newValue", config["TestKey1"]);
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllFalseDoesNotUpdateEntireConfiguration()
+        public async Task RefreshTests_RefreshAllFalseDoesNotUpdateEntireConfiguration()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
@@ -233,7 +233,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label") // refreshAll: false
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -249,7 +249,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.NotEqual("newValue", config["TestKey2"]);
@@ -257,7 +257,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllTrueUpdatesEntireConfiguration()
+        public async Task RefreshTests_RefreshAllTrueUpdatesEntireConfiguration()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
@@ -271,7 +271,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -287,7 +287,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("newValue", config["TestKey2"]);
@@ -295,7 +295,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllTrueRemovesDeletedConfiguration()
+        public async Task RefreshTests_RefreshAllTrueRemovesDeletedConfiguration()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
@@ -342,7 +342,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -359,7 +359,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
@@ -367,7 +367,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllForNonExistentSentinelDoesNothing()
+        public async Task RefreshTests_RefreshAllForNonExistentSentinelDoesNothing()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
@@ -415,7 +415,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey1", "label")
                                       .Register("NonExistentKey", refreshAll: true)
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -433,7 +433,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // Validate that key-values registered for refresh were updated
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -444,7 +444,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
+        public async void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var requestCount = 0;
@@ -489,7 +489,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -505,7 +505,8 @@ namespace Tests.AzureAppConfiguration
             var task1 = Task.Run(() => WaitAndRefresh(refresher, 1500));
             var task2 = Task.Run(() => WaitAndRefresh(refresher, 3000));
             var task3 = Task.Run(() => WaitAndRefresh(refresher, 4500));
-            Task.WaitAll(task1, task2, task3);
+
+            await Task.WhenAll(task1, task2, task3);
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal(2, requestCount);
@@ -525,7 +526,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -548,7 +549,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_TryRefreshAsyncReturnsFalseOnRequestFailedException()
+        public async Task RefreshTests_TryRefreshAsyncReturnsFalseOnRequestFailedException()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -561,7 +562,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -577,14 +578,14 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            bool result = refresher.TryRefreshAsync().Result;
+            bool result = await refresher.TryRefreshAsync();
             Assert.False(result);
 
             Assert.NotEqual("newValue", config["TestKey1"]);
         }
 
         [Fact]
-        public void RefreshTests_TryRefreshAsyncUpdatesConfigurationAndReturnsTrueOnSuccess()
+        public async Task RefreshTests_TryRefreshAsyncUpdatesConfigurationAndReturnsTrueOnSuccess()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -597,7 +598,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -610,14 +611,14 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            bool result = refresher.TryRefreshAsync().Result;
+            bool result = await refresher.TryRefreshAsync();
             Assert.True(result);
 
             Assert.Equal("newValue", config["TestKey1"]);
         }
 
         [Fact]
-        public void RefreshTests_TryRefreshAsyncReturnsFalseForAuthenticationFailedException()
+        public async Task RefreshTests_TryRefreshAsyncReturnsFalseForAuthenticationFailedException()
         {
             IConfigurationRefresher refresher = null;
             var mockResponse = new Mock<Response>();
@@ -640,7 +641,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -654,13 +655,13 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(1500);
 
             // First call to GetConfigurationSettingAsync does not throw
-            Assert.True(refresher.TryRefreshAsync().Result);
+            Assert.True(await refresher.TryRefreshAsync());
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
             // Second call to GetConfigurationSettingAsync throws KeyVaultReferenceException
-            Assert.False(refresher.TryRefreshAsync().Result);
+            Assert.False(await refresher.TryRefreshAsync());
         }
 
         [Fact]
@@ -693,7 +694,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -735,7 +736,7 @@ namespace Tests.AzureAppConfiguration
                 options.ConfigureRefresh(refreshOptions =>
                 {
                     refreshOptions.Register("TestKey1", "label")
-                        .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                        .SetRefreshInterval(TimeSpan.FromSeconds(1));
                 });
 
                 refresher = options.GetRefresher();
@@ -774,7 +775,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_SentinelKeyNotUpdatedOnRefreshAllFailure()
+        public async Task RefreshTests_SentinelKeyNotUpdatedOnRefreshAllFailure()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
@@ -811,7 +812,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -827,7 +828,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            bool firstRefreshResult = refresher.TryRefreshAsync().Result;
+            bool firstRefreshResult = await refresher.TryRefreshAsync();
             Assert.False(firstRefreshResult);
 
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -837,7 +838,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            bool secondRefreshResult = refresher.TryRefreshAsync().Result;
+            bool secondRefreshResult = await refresher.TryRefreshAsync();
             Assert.True(secondRefreshResult);
 
             Assert.Equal("newValue", config["TestKey1"]);
@@ -846,7 +847,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllTrueForOverwrittenSentinelUpdatesEntireConfiguration()
+        public async Task RefreshTests_RefreshAllTrueForOverwrittenSentinelUpdatesEntireConfiguration()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
@@ -861,7 +862,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKeyWithMultipleLabels", "label1", refreshAll: true)
                                       .Register("TestKeyWithMultipleLabels", "label2")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -878,7 +879,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             Assert.Equal("newValue", config["TestKey1"]);
             Assert.Equal("newValue", config["TestKey2"]);
@@ -887,7 +888,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
+        public async Task RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
@@ -903,7 +904,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
                                       .Register("TestKeyWithMultipleLabels", "label2")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -920,7 +921,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // Validate that refresh registered key-value was updated
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -930,7 +931,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshRegisteredKvOverwritesSelectedKv()
+        public async Task RefreshTests_RefreshRegisteredKvOverwritesSelectedKv()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             ConfigurationSetting refreshAllRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
@@ -945,7 +946,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -963,7 +964,7 @@ namespace Tests.AzureAppConfiguration
             // Wait for the cache to expire
             Thread.Sleep(1500);
 
-            refresher.RefreshAsync().Wait();
+            await refresher.RefreshAsync();
 
             // Validate that only the refresh registered key-value was updated
             Assert.Equal("TestValue1", config["TestKey1"]);
@@ -1013,7 +1014,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ConfigureRefresh(refreshOptions =>
                     {
-                        refreshOptions.SetCacheExpiration(TimeSpan.FromSeconds(1));
+                        refreshOptions.SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                 })
                 .Build();
@@ -1034,7 +1035,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -1055,7 +1056,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
-#if NET7_0
+#if NET8_0
         [Fact]
         public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
         {

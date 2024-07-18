@@ -57,7 +57,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
                        {
                            refresh.Register("AppName")
                                   .Register("Language", refreshAll: true)
-                                  .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                                  .SetRefreshInterval(TimeSpan.FromSeconds(10));
                        });
 
                 // Get an instance of the refresher that can be used to refresh data

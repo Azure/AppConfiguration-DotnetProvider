@@ -26,16 +26,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private bool _optional;
         private bool _isInitialLoadComplete = false;
-        private bool _isFeatureManagementVersionInspected;
+        private bool _isAssemblyInspected;
         private readonly bool _requestTracingEnabled;
         private readonly IConfigurationClientManager _configClientManager;
+        private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
 
-        private readonly TimeSpan MinCacheExpirationInterval;
+        private readonly TimeSpan MinRefreshInterval;
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
         private DateTimeOffset InitializationCacheExpires = default;
@@ -111,11 +112,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (watchers.Any())
             {
-                MinCacheExpirationInterval = watchers.Min(w => w.CacheExpirationInterval);
+                MinRefreshInterval = watchers.Min(w => w.RefreshInterval);
             }
             else
             {
-                MinCacheExpirationInterval = RefreshConstants.DefaultCacheExpirationInterval;
+                MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
             }
 
             // Enable request tracing if not opt-out
@@ -189,16 +190,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 try
                 {
                     // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for tracing
-                    EnsureFeatureManagementVersionInspected();
+                    EnsureAssemblyInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
-                    IEnumerable<KeyValueWatcher> cacheExpiredWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
-                    IEnumerable<KeyValueWatcher> cacheExpiredMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.CacheExpires);
+                    IEnumerable<KeyValueWatcher> refreshableWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
+                    IEnumerable<KeyValueWatcher> refreshableMultiKeyWatchers = _options.MultiKeyWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
 
-                    // Skip refresh if mappedData is loaded, but none of the watchers or adapters cache is expired.
+                    // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
-                        !cacheExpiredWatchers.Any() &&
-                        !cacheExpiredMultiKeyWatchers.Any() &&
+                        !refreshableWatchers.Any() &&
+                        !refreshableMultiKeyWatchers.Any() &&
                         !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
                     {
                         return;
@@ -237,7 +238,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (InitializationCacheExpires < utcNow)
                         {
-                            InitializationCacheExpires = utcNow.Add(MinCacheExpirationInterval);
+                            InitializationCacheExpires = utcNow.Add(MinRefreshInterval);
 
                             await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                         }
@@ -266,7 +267,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             logDebugBuilder.Clear();
                             logInfoBuilder.Clear();
 
-                            foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers)
+                            foreach (KeyValueWatcher changeWatcher in refreshableWatchers)
                             {
                                 string watchedKey = changeWatcher.Key;
                                 string watchedLabel = changeWatcher.Label;
@@ -336,7 +337,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 return;
                             }
 
-                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(cacheExpiredMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
+                            changedKeyValuesCollection = await GetRefreshedKeyValueCollections(refreshableMultiKeyWatchers, client, logDebugBuilder, logInfoBuilder, endpoint, cancellationToken).ConfigureAwait(false);
 
                             if (!changedKeyValuesCollection.Any())
                             {
@@ -350,9 +351,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
-                        foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers.Concat(cacheExpiredMultiKeyWatchers))
+                        foreach (KeyValueWatcher changeWatcher in refreshableWatchers.Concat(refreshableMultiKeyWatchers))
                         {
-                            UpdateCacheExpirationTime(changeWatcher);
+                            UpdateNextRefreshTime(changeWatcher);
                         }
 
                         foreach (KeyValueChange change in keyValueChanges.Concat(changedKeyValuesCollection))
@@ -387,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-                                adapter.InvalidateCache(change.Current);
+                                adapter.OnChangeDetected(change.Current);
                             }
                         }
                     }
@@ -398,13 +399,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Invalidate all the cached KeyVault secrets
                         foreach (IKeyValueAdapter adapter in _options.Adapters)
                         {
-                            adapter.InvalidateCache();
+                            adapter.OnChangeDetected();
                         }
 
-                        // Update the cache expiration time for all refresh registered settings and feature flags
+                        // Update the next refresh time for all refresh registered settings and feature flags
                         foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
                         {
-                            UpdateCacheExpirationTime(changeWatcher);
+                            UpdateNextRefreshTime(changeWatcher);
                         }
                     }
 
@@ -492,6 +493,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 return false;
             }
+            catch (FormatException fe)
+            {
+                _logger.LogWarning(LogHelper.BuildRefreshFailedDueToFormattingErrorMessage(fe.Message));
+
+                return false;
+            }
 
             return true;
         }
@@ -536,16 +543,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void SetDirty(TimeSpan? maxDelay)
         {
-            DateTimeOffset cacheExpires = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
+            DateTimeOffset nextRefreshTime = AddRandomDelay(DateTimeOffset.UtcNow, maxDelay ?? DefaultMaxSetDirtyDelay);
 
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers)
             {
-                changeWatcher.CacheExpires = cacheExpires;
+                changeWatcher.NextRefreshTime = nextRefreshTime;
             }
 
             foreach (KeyValueWatcher changeWatcher in _options.MultiKeyWatchers)
             {
-                changeWatcher.CacheExpires = cacheExpires;
+                changeWatcher.NextRefreshTime = nextRefreshTime;
             }
         }
 
@@ -553,8 +560,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var applicationData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            // Reset old filter tracing in order to track the filter types present in the current response from server.
-            _options.FeatureFilterTracing.ResetFeatureFilterTracing();
+            // Reset old feature flag tracing in order to track the information present in the current response from server.
+            _options.FeatureFlagTracing.ResetFeatureFlagTracing();
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -634,6 +641,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 exception is TimeoutException ||
                 exception is OperationCanceledException ||
                 exception is InvalidOperationException ||
+                exception is FormatException ||
                 ((exception as AggregateException)?.InnerExceptions?.Any(e =>
                     e is RequestFailedException ||
                     e is OperationCanceledException) ?? false)))
@@ -722,10 +730,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 cancellationToken)
                 .ConfigureAwait(false);
 
-            // Update the cache expiration time for all refresh registered settings and feature flags
+            // Update the next refresh time for all refresh registered settings and feature flags
             foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.MultiKeyWatchers))
             {
-                UpdateCacheExpirationTime(changeWatcher);
+                UpdateNextRefreshTime(changeWatcher);
             }
 
             if (data != null)
@@ -733,7 +741,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Invalidate all the cached KeyVault secrets
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
                 {
-                    adapter.InvalidateCache();
+                    adapter.OnChangeDetected();
                 }
 
                 Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
@@ -912,6 +920,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Set the application data for the configuration provider
             Data = data;
 
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                adapter.OnConfigUpdated();
+            }
+
             // Notify that the configuration has been updated
             OnReload();
         }
@@ -955,7 +968,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTracing = _options.FeatureFilterTracing
+                FeatureFlagTracing = _options.FeatureFlagTracing
             };
         }
 
@@ -980,10 +993,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        private void UpdateCacheExpirationTime(KeyValueWatcher changeWatcher)
+        private void UpdateNextRefreshTime(KeyValueWatcher changeWatcher)
         {
-            TimeSpan cacheExpirationTime = changeWatcher.CacheExpirationInterval;
-            changeWatcher.CacheExpires = DateTimeOffset.UtcNow.Add(cacheExpirationTime);
+            changeWatcher.NextRefreshTime = DateTimeOffset.UtcNow.Add(changeWatcher.RefreshInterval);
         }
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
@@ -991,6 +1003,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
+            if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
+            {
+                int nextClientIndex = 0;
+
+                foreach (ConfigurationClient client in clients)
+                {
+                    nextClientIndex++;
+
+                    if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
+                    {
+                        break;
+                    }
+                }
+
+                // If we found the last successful client, we'll rotate the list so that the next client is at the beginning
+                if (nextClientIndex < clients.Count())
+                {
+                    clients = clients.Skip(nextClientIndex).Concat(clients.Take(nextClientIndex));
+                }
+            }
+
             using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
@@ -1010,6 +1043,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
+
+                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
 
                     return result;
                 }
@@ -1179,17 +1214,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentKeyValues;
         }
 
-        private void EnsureFeatureManagementVersionInspected()
+        private void EnsureAssemblyInspected()
         {
-            if (!_isFeatureManagementVersionInspected)
+            if (!_isAssemblyInspected)
             {
-                _isFeatureManagementVersionInspected = true;
+                _isAssemblyInspected = true;
 
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
                     _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+
+                    if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalRAssemblyName) != null)
+                    {
+                        _requestTracingOptions.IsSignalRUsed = true;
+                    }
                 }
             }
         }
