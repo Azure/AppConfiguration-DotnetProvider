@@ -59,7 +59,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.True(config["TestKey1"] == "TestValue1");
-            Assert.True(config["tEsTkEy1"] == "TestValue2");    // Case-insensitive
+            Assert.True(config["tEsTkEy1"] == "TestValue1");    // Case-insensitive
         }
 
         [Fact]
