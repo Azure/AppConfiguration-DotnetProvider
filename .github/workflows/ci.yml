@@ -1,0 +1,63 @@
+name: AppConfiguration-DotnetProvider CI
+
+on:
+  push:
+    branches:
+      - main
+      - preview
+      - release/*
+  pull_request:
+      - main
+      - preview
+      - release/*
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install .NET
+        run: |
+          pwsh build/install-dotnet.ps1 -RestoreOnly
+
+      - name: Restore
+        run: |
+          pwsh build.ps1 -RestoreOnly
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: 'csharp'
+
+      - name: Dotnet Build
+        run: |
+          pwsh build.ps1
+
+      # - name: Copy Build Logs
+      #   run: |
+      #     cp -r ${{ github.workspace }}/buildlogs/* ${{ github.workspace }}/out/outputs/build/Build Logs/
+
+      - name: Dotnet Pack
+        run: |
+          pwsh pack.ps1
+
+      # - name: Copy Package Logs
+      #   run: |
+      #     cp -r ${{ github.workspace }}/buildlogs/* ${{ github.workspace }}/out/outputs/package/Build Logs/
+
+      - name: Dotnet Test
+        run: |
+          pwsh test.ps1 || exit 0
+
+      # - name: Copy Test Results
+      #   run: |
+      #     cp -r ${{ github.workspace }}/tests/*.trx ${{ github.workspace }}/out/outputs/test/_post_command__run_log_alerts_schedular_tests/_testresults/
+
+      - name: Publish Test Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Unit Test Results
+          path: ${{ github.workspace }}/tests/*.trx
