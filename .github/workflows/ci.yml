@@ -36,25 +36,13 @@ jobs:
         run: |
           pwsh build.ps1
 
-      # - name: Copy Build Logs
-      #   run: |
-      #     cp -r ${{ github.workspace }}/buildlogs/* ${{ github.workspace }}/out/outputs/build/Build Logs/
-
       - name: Dotnet Pack
         run: |
           pwsh pack.ps1
 
-      # - name: Copy Package Logs
-      #   run: |
-      #     cp -r ${{ github.workspace }}/buildlogs/* ${{ github.workspace }}/out/outputs/package/Build Logs/
-
       - name: Dotnet Test
         run: |
           pwsh test.ps1 || exit 0
-
-      # - name: Copy Test Results
-      #   run: |
-      #     cp -r ${{ github.workspace }}/tests/*.trx ${{ github.workspace }}/out/outputs/test/_post_command__run_log_alerts_schedular_tests/_testresults/
 
       - name: Publish Test Results
         uses: actions/upload-artifact@v2
