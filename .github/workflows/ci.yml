@@ -12,6 +12,9 @@ on:
       - preview
       - release/*
 
+permissions:
+  security-events: write
+
 jobs:
   build:
     runs-on: windows-latest
