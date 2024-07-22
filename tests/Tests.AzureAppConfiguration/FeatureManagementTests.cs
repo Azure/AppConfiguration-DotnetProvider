@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -661,15 +662,22 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task WatchesFeatureFlags()
         {
+            var mockResponse = new MockResponse(200);
+
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            var mockResponse = new Mock<Response>();
+            Page<ConfigurationSetting> page = Page<ConfigurationSetting>.FromValues(
+                featureFlags.ToArray(),
+                "continuationToken",
+                mockResponse);
+
+            AsyncPageable<ConfigurationSetting> asyncPageable = AsyncPageable<ConfigurationSetting>
+                .FromPages(new[] { page });
+
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
-                .Returns(mockAsyncPageable);
+                .Returns(asyncPageable);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
