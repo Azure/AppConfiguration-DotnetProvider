@@ -32,7 +32,7 @@ jobs:
           pwsh build.ps1 -RestoreOnly
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: 'csharp'
 
@@ -49,7 +49,7 @@ jobs:
           pwsh test.ps1 || exit 0
 
       - name: Publish Test Results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: Unit Test Results
           path: ${{ github.workspace }}/tests/**/*.trx
