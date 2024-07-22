@@ -55,4 +55,4 @@ jobs:
           path: ${{ github.workspace }}/tests/**/*.trx
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
