@@ -125,6 +125,28 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void JsonContentTypeTests_EnableEnableStrictJsonParsing()
+        {
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "TestKey1",
+                    value: "True",
+                    contentType: "application/json")
+            };
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+
+            var builder = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => 
+                {
+                    options.ClientManager = mockClientManager;
+                    options.EnableStrictJsonParsing();
+                });
+
+             var ex = Assert.Throws<FormatException>(() => builder.Build());
+        }
+
+        [Fact]
         public void JsonContentTypeTests_OverwriteValuesForDuplicateKeysAfterFlatteningJson()
         {
             List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>

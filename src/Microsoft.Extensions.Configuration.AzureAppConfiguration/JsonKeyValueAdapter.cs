@@ -16,6 +16,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class JsonKeyValueAdapter : IKeyValueAdapter
     {
+        public static bool ThrowOnInvalidJson { get; set; } = false;
+
         private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[] 
         {
             FeatureManagementConstants.ContentType,
@@ -42,7 +44,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (JsonException)
             {
-                // If the value is not a valid JSON, treat it like regular string value
+                if (ThrowOnInvalidJson)
+                {
+                    throw new FormatException($"Invalid JSON value for key '{setting.Key}' with content type '{setting.ContentType}'. Please ensure the value is properly formatted JSON.");
+                }
+
+                logger.LogWarning($"Invalid JSON value for key '{setting.Key}' with content type '{setting.ContentType}'. Treated as a string value.");
+
                 return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(new[] { new KeyValuePair<string, string>(setting.Key, setting.Value) });
             }
 
