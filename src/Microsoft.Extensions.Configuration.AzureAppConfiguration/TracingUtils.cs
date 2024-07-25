@@ -191,6 +191,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
+            if (requestTracingOptions.IsSignalRUsed)
+            {
+                correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)

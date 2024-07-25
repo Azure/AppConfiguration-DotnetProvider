@@ -35,6 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagMaxVariantsKey = "MaxVariants";
         public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
         public const string FeatureFlagFeaturesKey = "FFFeatures";
+        public const string SignalRUsedTag = "UsesSignalR";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
@@ -42,6 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
+        public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
 
         public const string Delimiter = "+";
     }
