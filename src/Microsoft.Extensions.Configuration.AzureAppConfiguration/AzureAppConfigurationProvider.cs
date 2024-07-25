@@ -186,6 +186,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Ensure that concurrent threads do not simultaneously execute refresh operation.
             if (Interlocked.Exchange(ref _networkOperationsInProgress, 1) == 0)
             {
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.IsFailoverRequest = false;
+                }
+
                 try
                 {
                     // FeatureManagement assemblies may not be loaded on provider startup, so version information is gathered upon first refresh for tracing
@@ -206,6 +211,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
+                    int totalClientCount = clients.Count();
+
                     //
                     // Filter clients based on their backoff status
                     clients = clients.Where(client => 
@@ -222,6 +229,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return clientBackoffStatus.BackoffEndTime <= utcNow;
                     }
                     );
+
+                    if (clients.Count() < totalClientCount && _requestTracingEnabled && _requestTracingOptions != null)
+                    {
+                        _requestTracingOptions.IsFailoverRequest = true;
+                    }
 
                     if (!clients.Any())
                     {
@@ -594,6 +606,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             int postFixedWindowAttempts = 0;
 
             var startupExceptions = new List<Exception>();
+
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.IsFailoverRequest = false;
+            }
 
             try
             {
@@ -1006,8 +1023,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
 
-            _requestTracingOptions.IsFailoverRequest = false;
-
             while (true)
             {
                 bool success = false;
@@ -1081,7 +1096,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 previousEndpoint = currentEndpoint;
 
-                _requestTracingOptions.IsFailoverRequest = true;
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.IsFailoverRequest = true;
+                }
             }
         }
 
