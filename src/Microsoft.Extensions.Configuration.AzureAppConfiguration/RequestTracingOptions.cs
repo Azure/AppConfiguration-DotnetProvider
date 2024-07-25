@@ -51,5 +51,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Microsoft.AspNetCore.SignalR assembly is present in the application.
         /// </summary>
         public bool IsSignalRUsed { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether replica discovery is enabled.
+        /// </summary>
+        public bool IsReplicaDiscoveryEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether the request is triggered by a failover.
+        /// </summary>
+        public bool IsFailoverRequest { get; set; } = false;
     }
 }

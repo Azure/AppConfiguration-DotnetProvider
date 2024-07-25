@@ -31,6 +31,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
         public const string ReplicaCountKey = "ReplicaCount";
         public const string SignalRUsedTag = "UsesSignalR";
+        public const string ReplicaDiscoveryEnabledTag = "UsesReplicaDiscovery";
+        public const string IsFailoverRequestTag = "FailoverRequest";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

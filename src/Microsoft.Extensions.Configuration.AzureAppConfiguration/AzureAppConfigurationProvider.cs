@@ -962,7 +962,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FilterTracing = _options.FeatureFilterTracing
+                FilterTracing = _options.FeatureFilterTracing,
+                IsReplicaDiscoveryEnabled = _options.ReplicaDiscoveryEnabled
             };
         }
 
@@ -1004,6 +1005,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
             ConfigurationClient currentClient;
+
+            _requestTracingOptions.IsFailoverRequest = false;
 
             while (true)
             {
@@ -1077,6 +1080,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 previousEndpoint = currentEndpoint;
+
+                _requestTracingOptions.IsFailoverRequest = true;
             }
         }
 
