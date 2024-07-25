@@ -1389,7 +1389,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (watchedKeyValueCollections.TryGetValue(watchedKeyValueIdentifier, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => newMatchConditions = await client.GetNewMatchConditions(watchedKeyValueIdentifier, matchConditions, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => newMatchConditions = await client.GetNewMatchConditions(watchedKeyValueIdentifier, matchConditions, _options.PageableManager, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
                 if (newMatchConditions != null)

@@ -208,18 +208,11 @@ namespace Tests.AzureAppConfiguration
         }
     }
 
-    public static class MockConfigurationClientExtensions
+    internal class MockConfigurationSettingPageableManager : ConfigurationSettingPageableManager
     {
-        public static async IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(
-            this AsyncPageable<ConfigurationSetting> instance,
-            IEnumerable<MatchConditions> matches,
-            string continuationToken = null,
-            int? pageHint = null)
+        public override IAsyncEnumerable<Page<ConfigurationSetting>> GetPages(AsyncPageable<ConfigurationSetting> pageable, IEnumerable<MatchConditions> matchConditions)
         {
-            await foreach (var page in instance.AsPages())
-            {
-                yield return page;
-            }
+            return pageable.AsPages();
         }
     }
 

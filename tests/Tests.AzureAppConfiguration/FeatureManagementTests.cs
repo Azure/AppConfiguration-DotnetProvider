@@ -666,24 +666,20 @@ namespace Tests.AzureAppConfiguration
 
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
-            Page<ConfigurationSetting> page = Page<ConfigurationSetting>.FromValues(
-                featureFlags.ToArray(),
-                "continuationToken",
-                mockResponse);
-
-            AsyncPageable<ConfigurationSetting> asyncPageable = AsyncPageable<ConfigurationSetting>
-                .FromPages(new[] { page });
+            var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(asyncPageable);
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
 
                     refresher = options.GetRefresher();

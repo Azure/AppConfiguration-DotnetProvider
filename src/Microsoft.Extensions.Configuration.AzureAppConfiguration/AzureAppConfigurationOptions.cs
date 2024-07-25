@@ -113,6 +113,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
+        /// An optional class used to process pageable results from Azure App Configuration.
+        /// </summary>
+        /// <remarks>This property is only set outside of this class if it's used for unit testing.</remarks>
+        internal ConfigurationSettingPageableManager PageableManager { get; set; } = new ConfigurationSettingPageableManager();
+
+        /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
         /// </summary>
         internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
