@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesPercentageFilter { get; set; } = false;
         public bool UsesTimeWindowFilter { get; set; } = false;
         public bool UsesTargetingFilter { get; set; } = false;
-       
+
         public bool UsesAnyFeatureFilter()
         {
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;

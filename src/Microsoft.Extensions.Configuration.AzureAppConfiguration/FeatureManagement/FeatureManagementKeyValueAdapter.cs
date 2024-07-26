@@ -264,7 +264,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     default:
                         reader.Skip();
-                            
+
                         break;
                 }
             }

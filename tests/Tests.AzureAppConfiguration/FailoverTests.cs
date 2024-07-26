@@ -72,7 +72,7 @@ namespace Tests.AzureAppConfiguration
                     });
 
                     options.ReplicaDiscoveryEnabled = false;
-                   
+
                     refresher = options.GetRefresher();
                 });
 
@@ -210,7 +210,7 @@ namespace Tests.AzureAppConfiguration
 
             // Wait for client 1 backoff to end
             Thread.Sleep(2500);
-            
+
             await refresher.RefreshAsync();
 
             // The first client should have been called now with refresh after the backoff time ends

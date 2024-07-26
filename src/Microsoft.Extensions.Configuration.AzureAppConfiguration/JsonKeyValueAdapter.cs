@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class JsonKeyValueAdapter : IKeyValueAdapter
     {
-        private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[] 
+        private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[]
         {
             FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
