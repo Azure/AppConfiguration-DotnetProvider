@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,10 +24,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The time after which feature flags can be refreshed.  Must be greater than or equal to 1 second.
         /// </summary>
-        internal TimeSpan RefreshInterval 
+        internal TimeSpan RefreshInterval
         {
             get { return _refreshInterval; }
-            set { _refreshInterval = value; } 
+            set { _refreshInterval = value; }
         }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
-        [Obsolete("The " + nameof(CacheExpirationInterval) + " property is deprecated and will be removed in a future release. " + 
+        [Obsolete("The " + nameof(CacheExpirationInterval) + " property is deprecated and will be removed in a future release. " +
             "Please use the new " + nameof(SetRefreshInterval) + " method instead. " +
             "Note that the usage has changed, but the functionality remains the same.")]
         public TimeSpan CacheExpirationInterval

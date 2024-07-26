@@ -117,7 +117,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}", false.ToString()));
             }
-            
+
             return keyValues;
         }
 
@@ -1076,8 +1076,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     case FeatureManagementConstants.From:
                         {
-                            if (reader.Read() && 
-                                ((reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out int from)) || 
+                            if (reader.Read() &&
+                                ((reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out int from)) ||
                                 (reader.TokenType == JsonTokenType.String && int.TryParse(reader.GetString(), out from))))
                             {
                                 featurePercentileAllocation.From = from;
@@ -1184,7 +1184,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                             break;
                         }
-
 
                     case FeatureManagementConstants.StatusOverride:
                         {
