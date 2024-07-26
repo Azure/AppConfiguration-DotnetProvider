@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             KeyVaultConstants.ContentType
         };
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -95,7 +95,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void OnChangeDetected(ConfigurationSetting setting = null)
+        {
+            return;
+        }
+
+        public void OnConfigUpdated()
         {
             return;
         }

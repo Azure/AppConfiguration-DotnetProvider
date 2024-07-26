@@ -97,7 +97,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register("TestKey1", "label")
-                               .SetCacheExpiration(TimeSpan.FromSeconds(60));
+                               .SetRefreshInterval(TimeSpan.FromSeconds(60));
                     });
                 })
                 .Build();
@@ -119,7 +119,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey2", "label")
                             .Register("TestKey3", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(60));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(60));
                     });
                 })
                 .Build();
@@ -142,7 +142,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(10));
                     });
 
                     refresher = options.GetRefresher();
@@ -171,7 +171,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(10));
                     });
 
                     refresher = options.GetRefresher();
@@ -200,7 +200,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -233,7 +233,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label") // refreshAll: false
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -271,7 +271,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -342,7 +342,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -415,7 +415,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKey1", "label")
                                       .Register("NonExistentKey", refreshAll: true)
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -489,7 +489,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -526,7 +526,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -562,7 +562,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -598,7 +598,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -641,7 +641,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -694,7 +694,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -736,7 +736,7 @@ namespace Tests.AzureAppConfiguration
                 options.ConfigureRefresh(refreshOptions =>
                 {
                     refreshOptions.Register("TestKey1", "label")
-                        .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                        .SetRefreshInterval(TimeSpan.FromSeconds(1));
                 });
 
                 refresher = options.GetRefresher();
@@ -812,7 +812,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", refreshAll: true)
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -862,7 +862,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKeyWithMultipleLabels", "label1", refreshAll: true)
                                       .Register("TestKeyWithMultipleLabels", "label2")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -904,7 +904,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
                                       .Register("TestKeyWithMultipleLabels", "label2")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -946,7 +946,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKeyWithMultipleLabels", "label1")
-                                      .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                                      .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -1014,7 +1014,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ConfigureRefresh(refreshOptions =>
                     {
-                        refreshOptions.SetCacheExpiration(TimeSpan.FromSeconds(1));
+                        refreshOptions.SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                 })
                 .Build();
@@ -1035,7 +1035,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -1056,7 +1056,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
-#if NET7_0
+#if NET8_0
         [Fact]
         public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()
         {

@@ -51,7 +51,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"),
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
 
-        TimeSpan CacheExpirationTime = TimeSpan.FromSeconds(1);
+        TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         [Fact]
         public async Task ValidateExceptionLoggedDuringRefresh()
@@ -80,7 +80,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -90,7 +90,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
@@ -122,7 +122,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -132,7 +132,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
@@ -164,7 +164,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -174,7 +174,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
@@ -230,7 +230,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("SentinelKey", refreshAll: true)
-                                      .SetCacheExpiration(CacheExpirationTime);
+                                      .SetRefreshInterval(RefreshInterval);
                     });
                     refresher = options.GetRefresher();
                 })
@@ -240,7 +240,7 @@ namespace Tests.AzureAppConfiguration
 
             // Update sentinel key-value to trigger refreshAll operation
             sentinelKv.Value = "UpdatedSentinelValue";
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.Contains(LoggingConstants.RefreshFailedDueToKeyVaultError + "\nNo key vault credential or secret resolver callback configured, and no matching secret client could be found.", warningInvocation);
@@ -271,7 +271,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -281,7 +281,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.NotEqual("newValue1", config["TestKey1"]);
@@ -311,7 +311,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -321,7 +321,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
 
             using var cancellationSource = new CancellationTokenSource();
             cancellationSource.Cancel();
@@ -367,7 +367,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -379,7 +379,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -391,7 +391,7 @@ namespace Tests.AzureAppConfiguration
 
             FirstKeyValue.Value = "TestValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -423,7 +423,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -433,7 +433,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -473,7 +473,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -482,7 +482,7 @@ namespace Tests.AzureAppConfiguration
 
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             // We should see the second client's endpoint logged since the first client is backed off
@@ -520,7 +520,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", false).Register("TestKey2", false)
-                            .SetCacheExpiration(CacheExpirationTime);
+                            .SetRefreshInterval(RefreshInterval);
                     });
 
                     refresher = options.GetRefresher();
@@ -530,7 +530,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
 
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
             Assert.Equal("newValue1", config["TestKey1"]);
@@ -580,9 +580,9 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label", true)
-                                      .SetCacheExpiration(CacheExpirationTime);
+                                      .SetRefreshInterval(RefreshInterval);
                     });
-                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(CacheExpirationTime));
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(RefreshInterval));
                     refresher = options.GetRefresher();
                 })
                 .Build();
@@ -594,7 +594,7 @@ namespace Tests.AzureAppConfiguration
                         ""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/Password3/6db5a48680104dda9097b1e6d859e553""
                     }
                    ";
-            Thread.Sleep(CacheExpirationTime);
+            Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
             Assert.Contains(LogHelper.BuildKeyVaultSecretReadMessage(_kvr.Key, _kvr.Label), verboseInvocation);
             Assert.Contains(LogHelper.BuildKeyVaultSettingUpdatedMessage(_kvr.Key), informationalInvocation);
