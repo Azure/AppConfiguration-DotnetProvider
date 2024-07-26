@@ -36,6 +36,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
         public const string FeatureFlagFeaturesKey = "FFFeatures";
         public const string SignalRUsedTag = "UsesSignalR";
+        public const string ReplicaDiscoveryEnabledTag = "UsesReplicaDiscovery";
+        public const string IsFailoverRequestTag = "FailoverRequest";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

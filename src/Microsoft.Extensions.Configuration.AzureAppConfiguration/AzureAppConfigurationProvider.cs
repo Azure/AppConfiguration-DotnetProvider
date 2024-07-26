@@ -1003,6 +1003,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.IsFailoverRequest = false;
+            }
+
             if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
             {
                 int nextClientIndex = 0;
@@ -1105,6 +1110,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 previousEndpoint = currentEndpoint;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.IsFailoverRequest = true;
+                }
             }
         }
 

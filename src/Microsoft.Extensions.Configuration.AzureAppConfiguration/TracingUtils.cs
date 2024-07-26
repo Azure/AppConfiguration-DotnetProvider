@@ -196,6 +196,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
             }
 
+            if (requestTracingOptions.IsReplicaDiscoveryEnabled)
+            {
+                correlationContextTags.Add(RequestTracingConstants.ReplicaDiscoveryEnabledTag);
+            }
+
+            if (requestTracingOptions.IsFailoverRequest)
+            {
+                correlationContextTags.Add(RequestTracingConstants.IsFailoverRequestTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)
