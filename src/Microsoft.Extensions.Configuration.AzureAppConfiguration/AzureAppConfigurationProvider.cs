@@ -851,7 +851,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
-                    await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages().ConfigureAwait(false))
+                    await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
                     {
                         foreach (ConfigurationSetting setting in page.Values)
                         {
@@ -881,7 +881,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
-                        await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages().ConfigureAwait(false))
+                        await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
                         {
                             foreach (ConfigurationSetting setting in page.Values)
                             {
@@ -991,7 +991,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 await CallWithRequestTracing(async () =>
                 {
-                    await foreach (Page<ConfigurationSetting> page in client.GetConfigurationSettingsAsync(selector, cancellationToken).AsPages().ConfigureAwait(false))
+                    AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+
+                    await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
                     {
                         keyValueChanges.AddRange(page.Values.Select(setting => new KeyValueChange()
                         {

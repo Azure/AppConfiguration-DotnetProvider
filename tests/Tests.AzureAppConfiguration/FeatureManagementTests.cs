@@ -752,6 +752,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = cacheExpirationInterval);
 
                     refresher = options.GetRefresher();
@@ -823,6 +824,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(TimeSpan.FromSeconds(10)));
 
                     refresher = options.GetRefresher();
@@ -892,6 +894,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.CacheExpirationInterval = TimeSpan.FromSeconds(10));
 
                     refresher = options.GetRefresher();
@@ -1002,15 +1005,20 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task DoesNotUseEtagForFeatureFlagRefresh()
         {
+            var mockAsyncPageable = new MockAsyncPageable(new List<ConfigurationSetting> { _kv });
+
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
+                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(new List<ConfigurationSetting> { _kv }))
+                .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
 
                     refresher = options.GetRefresher();
@@ -1021,7 +1029,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
 
             await refresher.TryRefreshAsync();
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
         }
 
         [Fact]
@@ -1041,6 +1049,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(ff =>
                     {
                         ff.SetRefreshInterval(RefreshInterval);
@@ -1402,6 +1411,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(ff =>
                     {
                         ff.SetRefreshInterval(refreshInterval1);
@@ -1571,6 +1581,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(ff =>
                     {
                         ff.SetRefreshInterval(RefreshInterval);
@@ -1656,6 +1667,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
                     refresher = options.GetRefresher();
                 })
@@ -1733,6 +1745,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
                     options.ConfigureRefresh(refreshOptions =>
                     {
