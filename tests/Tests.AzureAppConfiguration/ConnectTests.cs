@@ -7,7 +7,6 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -47,7 +46,6 @@ namespace Tests.AzureAppConfiguration
             // Act and Assert
             Assert.Throws<ArgumentException>(action);
         }
-
 
         [Fact]
         public void ConnectTests_UsesParametersFromLatestConnectCall()

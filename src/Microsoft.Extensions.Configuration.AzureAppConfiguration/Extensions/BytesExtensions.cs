@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System.Text;
 using System;
+using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {

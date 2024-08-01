@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string AzureWebAppEnvironmentVariable = "WEBSITE_SITE_NAME";
         public const string ContainerAppEnvironmentVariable = "CONTAINER_APP_NAME";
         public const string KubernetesEnvironmentVariable = "KUBERNETES_PORT";
-        
+
         public const string AspNetCoreEnvironmentVariable = "ASPNETCORE_ENVIRONMENT";
         public const string DotNetCoreEnvironmentVariable = "DOTNET_ENVIRONMENT";
         public const string DevelopmentEnvironmentName = "Development";

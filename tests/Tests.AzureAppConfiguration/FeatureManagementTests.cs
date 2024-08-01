@@ -322,7 +322,7 @@ namespace Tests.AzureAppConfiguration
             eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
-        List <ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
+        List<ConfigurationSetting> _featureFlagCollection = new List<ConfigurationSetting>
         {
             ConfigurationModelFactory.ConfigurationSetting(
                 key: FeatureManagementConstants.FeatureFlagMarker + "App1_Feature1",
@@ -1655,6 +1655,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -1842,6 +1843,7 @@ namespace Tests.AzureAppConfiguration
                                 }
                                 ";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -2005,7 +2007,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TelemetryFeature2", config["feature_management:feature_flags:1:id"]);
             Assert.Equal("Tag2Value", config["feature_management:feature_flags:1:telemetry:metadata:Tags.Tag1"]);
         }
-
 
         [Fact]
         public void WithRequirementType()

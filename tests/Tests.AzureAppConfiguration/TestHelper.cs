@@ -88,8 +88,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     json.WriteString(tag.Key, tag.Value);
                 }
+
                 json.WriteEndObject();
             }
+
             if (setting.ETag != default)
                 json.WriteString("etag", setting.ETag.ToString());
             if (setting.LastModified.HasValue)
@@ -107,6 +109,7 @@ namespace Tests.AzureAppConfiguration
             {
                 SerializeSetting(ref json, item);
             }
+
             json.WriteEndArray();
             json.WriteEndObject();
         }

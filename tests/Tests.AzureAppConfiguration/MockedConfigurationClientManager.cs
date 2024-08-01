@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
@@ -63,7 +62,8 @@ namespace Tests.AzureAppConfiguration
         {
             var result = new List<ConfigurationClient>();
 
-            foreach (var client in _clients) {
+            foreach (var client in _clients)
+            {
                 result.Add(client.Client);
             }
 

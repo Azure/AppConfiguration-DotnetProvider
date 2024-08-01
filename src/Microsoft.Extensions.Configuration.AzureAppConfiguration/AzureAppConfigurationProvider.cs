@@ -128,6 +128,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
             }
             catch (SecurityException) { }
+
             _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
 
             if (_requestTracingEnabled)
@@ -213,7 +214,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Filter clients based on their backoff status
-                    clients = clients.Where(client => 
+                    clients = clients.Where(client =>
                     {
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
@@ -327,7 +328,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         refreshAll = true;
                                         break;
                                     }
-                                } else
+                                }
+                                else
                                 {
                                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                                 }
@@ -748,7 +750,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     return false;
                 }
-                
+
                 throw;
             }
 

@@ -9,7 +9,6 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -132,7 +131,7 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("TestValue1", config["TestKey1"]);
             FirstKeyValue.Value = "newValue1";
-            
+
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
@@ -507,6 +506,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -560,6 +560,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
