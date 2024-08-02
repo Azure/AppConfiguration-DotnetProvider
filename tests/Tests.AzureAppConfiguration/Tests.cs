@@ -246,7 +246,7 @@ namespace Tests.AzureAppConfiguration
             var response2 = new MockResponse(200);
             response2.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
-            var mockTransport = new MockTransport(response1);
+            var mockTransport = new MockTransport(response1, response2);
             var options = new AzureAppConfigurationOptions();
             options.ClientOptions.Transport = mockTransport;
 
