@@ -82,6 +82,6 @@ namespace Azure.Core.Testing
             }
         }
 
-        public MockRequest SingleRequest => Requests.Single();
+        public MockRequest SingleRequest => Requests.First();
     }
 }
