@@ -70,7 +70,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // Ensure client 1 was used for startup
-            mockClient1.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+            mockClient1.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
 
             Thread.Sleep(RefreshInterval);
             await refresher.RefreshAsync();
@@ -134,7 +134,7 @@ namespace Tests.AzureAppConfiguration
                 }).Build();
 
             // Ensure client 2 was used for startup
-            mockClient2.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+            mockClient2.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
 
             Thread.Sleep(TimeSpan.FromSeconds(2));
             await refresher.RefreshAsync();

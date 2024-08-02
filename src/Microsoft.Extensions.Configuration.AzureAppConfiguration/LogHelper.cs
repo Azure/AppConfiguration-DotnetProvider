@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal static class LogHelper
@@ -25,14 +26,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.RefreshFeatureFlagsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
-        public static string BuildFeatureFlagReadMessage(string key, string label, string endpoint)
+        public static string BuildFeatureFlagsUpdatedMessage()
         {
-            return $"{LoggingConstants.RefreshFeatureFlagRead} Key:'{key}' Label:'{label}' Endpoint:'{endpoint?.TrimEnd('/')}'";
+            return LoggingConstants.RefreshFeatureFlagsUpdated;
         }
 
-        public static string BuildFeatureFlagUpdatedMessage(string key)
+        public static string BuildSelectedKeyValueCollectionsUnchangedMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshFeatureFlagUpdated} Key:'{key}'";
+            return $"{LoggingConstants.RefreshSelectedKeyValuesCollectionsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
+        }
+
+        public static string BuildSelectedKeyValueCollectionsUpdatedMessage()
+        {
+            return LoggingConstants.RefreshSelectedKeyValuesCollectionsUpdated;
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)
