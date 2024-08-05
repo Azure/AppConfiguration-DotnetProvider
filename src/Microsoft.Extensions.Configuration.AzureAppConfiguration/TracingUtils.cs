@@ -196,14 +196,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
             }
 
-            if (requestTracingOptions.IsReplicaDiscoveryEnabled)
+            if (requestTracingOptions.IsLoadBalancingEnabled)
             {
-                correlationContextTags.Add(RequestTracingConstants.ReplicaDiscoveryEnabledTag);
+                correlationContextTags.Add(RequestTracingConstants.LoadBalancingEnabledTag);
             }
 
             if (requestTracingOptions.IsFailoverRequest)
             {
-                correlationContextTags.Add(RequestTracingConstants.IsFailoverRequestTag);
+                correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);
             }
 
             var sb = new StringBuilder();

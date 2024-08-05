@@ -53,9 +53,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsSignalRUsed { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether replica discovery is enabled.
+        /// Flag to indicate whether load balancing is enabled.
         /// </summary>
-        public bool IsReplicaDiscoveryEnabled { get; set; } = false;
+        public bool IsLoadBalancingEnabled { get; set; } = false;
 
         /// <summary>
         /// Flag to indicate whether the request is triggered by a failover.
