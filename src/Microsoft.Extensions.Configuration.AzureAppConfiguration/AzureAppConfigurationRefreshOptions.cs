@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         internal TimeSpan RefreshInterval { get; private set; } = RefreshConstants.DefaultRefreshInterval;
         internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
-        
+
         /// <summary>
         /// Register the specified individual key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
