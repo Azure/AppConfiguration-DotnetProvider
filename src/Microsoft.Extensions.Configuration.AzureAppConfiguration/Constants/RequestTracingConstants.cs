@@ -27,16 +27,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureManagementVersionKey = "FMVer";
         public const string FeatureManagementAspNetCoreVersionKey = "FMANCVer";
         public const string DevEnvironmentValue = "Dev";
-        public const string KeyVaultConfiguredTag = "UsesKeyVault";
-        public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeatureFlagUsesTelemetryTag = "Telemetry";
         public const string FeatureFlagUsesSeedTag = "Seed";
         public const string FeatureFlagMaxVariantsKey = "MaxVariants";
         public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
         public const string FeatureFlagFeaturesKey = "FFFeatures";
-        public const string SignalRUsedTag = "UsesSignalR";
-        public const string LoadBalancingEnabledTag = "UsesLoadBalancing";
+        public const string FeaturesKey = "Features";
+        public const string KeyVaultConfiguredTag = "KV";
+        public const string KeyVaultRefreshConfiguredTag = "KVRefresh";
+        public const string LoadBalancingEnabledTag = "LB";
+        public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "FailoverRequest";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";

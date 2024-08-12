@@ -181,24 +181,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
             }
 
-            if (requestTracingOptions.IsKeyVaultConfigured)
+            if (requestTracingOptions.UsesAnyTracingFeature())
             {
-                correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
-            }
-
-            if (requestTracingOptions.IsKeyVaultRefreshConfigured)
-            {
-                correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
-            }
-
-            if (requestTracingOptions.IsSignalRUsed)
-            {
-                correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
-            }
-
-            if (requestTracingOptions.IsLoadBalancingEnabled)
-            {
-                correlationContextTags.Add(RequestTracingConstants.LoadBalancingEnabledTag);
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
             }
 
             if (requestTracingOptions.IsFailoverRequest)

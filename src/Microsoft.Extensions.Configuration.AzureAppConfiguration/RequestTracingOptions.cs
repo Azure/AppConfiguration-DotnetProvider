@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -61,5 +62,52 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether the request is triggered by a failover.
         /// </summary>
         public bool IsFailoverRequest { get; set; } = false;
+
+        public bool UsesAnyTracingFeature()
+        {
+            return IsKeyVaultConfigured || IsKeyVaultRefreshConfigured || IsLoadBalancingEnabled || IsSignalRUsed;
+        }
+
+        public string CreateFeaturesString()
+        {
+            var sb = new StringBuilder();
+
+            if (IsKeyVaultConfigured)
+            {
+                sb.Append(RequestTracingConstants.KeyVaultConfiguredTag);
+            }
+
+            if (IsKeyVaultRefreshConfigured)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
+            }
+
+            if (IsLoadBalancingEnabled)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.LoadBalancingEnabledTag);
+            }
+
+            if (IsSignalRUsed)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.SignalRUsedTag);
+            }
+
+            return sb.ToString();
+        }
     }
 }
