@@ -118,7 +118,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             client = new SecretClient(
                 new Uri(secretUri.GetLeftPart(UriPartial.Authority)),
                 _keyVaultOptions.Credential,
-                _keyVaultOptions.ClientOptions ?? new SecretClientOptions());
+                _keyVaultOptions.ClientOptions);
 
             _secretClients.Add(keyVaultId, client);
 

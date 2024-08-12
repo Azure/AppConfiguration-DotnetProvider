@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
+using Azure.Data.AppConfiguration;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class AzureAppConfigurationKeyVaultOptions
     {
         internal TokenCredential Credential;
-        internal SecretClientOptions ClientOptions;
+        internal SecretClientOptions ClientOptions = new SecretClientOptions();
         internal List<SecretClient> SecretClients = new List<SecretClient>();
         internal Func<Uri, ValueTask<string>> SecretResolver;
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
@@ -36,10 +37,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Configures the client options used when connecting to key vaults that have no registered <see cref="SecretClient"/>. 
         /// The client options will not affect <see cref="SecretClient"/> instances registered via <see cref="Register(SecretClient)"/>.
         /// </summary>
-        /// <param name="clientOptions">Default secret client options.</param>
-        public AzureAppConfigurationKeyVaultOptions ConfigureClientOptions(SecretClientOptions clientOptions)
+        /// <param name="configure">A callback used to configure secret client options.</param>
+        public AzureAppConfigurationKeyVaultOptions ConfigureClientOptions(Action<SecretClientOptions> configure)
         {
-            ClientOptions = clientOptions;
+            configure?.Invoke(ClientOptions);
             return this;
         }
 
