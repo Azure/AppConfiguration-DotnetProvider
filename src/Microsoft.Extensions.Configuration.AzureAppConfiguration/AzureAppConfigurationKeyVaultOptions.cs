@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Data.AppConfiguration;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
