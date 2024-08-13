@@ -63,11 +63,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public bool IsFailoverRequest { get; set; } = false;
 
+        /// <summary>
+        /// Checks whether any tracing feature is used.
+        /// </summary>
+        /// <returns>True if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
             return IsLoadBalancingEnabled || IsSignalRUsed;
         }
 
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by the application.
+        /// </summary>
+        /// <returns>Formatted string like: "LB+SignalR". If no tracing feature are used, empty string will be returned.</returns>
         public string CreateFeaturesString()
         {
             var sb = new StringBuilder();
