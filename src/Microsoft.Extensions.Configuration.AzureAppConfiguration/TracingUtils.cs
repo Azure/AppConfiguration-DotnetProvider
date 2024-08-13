@@ -186,6 +186,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
             }
 
+            if (requestTracingOptions.IsKeyVaultConfigured)
+            {
+                correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
+            }
+
+            if (requestTracingOptions.IsKeyVaultRefreshConfigured)
+            {
+                correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
+            }
+
             if (requestTracingOptions.IsFailoverRequest)
             {
                 correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);

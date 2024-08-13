@@ -65,35 +65,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public bool UsesAnyTracingFeature()
         {
-            return IsKeyVaultConfigured || IsKeyVaultRefreshConfigured || IsLoadBalancingEnabled || IsSignalRUsed;
+            return IsLoadBalancingEnabled || IsSignalRUsed;
         }
 
         public string CreateFeaturesString()
         {
             var sb = new StringBuilder();
 
-            if (IsKeyVaultConfigured)
-            {
-                sb.Append(RequestTracingConstants.KeyVaultConfiguredTag);
-            }
-
-            if (IsKeyVaultRefreshConfigured)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
-            }
-
             if (IsLoadBalancingEnabled)
             {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
                 sb.Append(RequestTracingConstants.LoadBalancingEnabledTag);
             }
 
