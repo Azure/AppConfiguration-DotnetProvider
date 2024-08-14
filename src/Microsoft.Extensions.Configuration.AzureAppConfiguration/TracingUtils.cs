@@ -227,6 +227,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by the application.
+        /// </summary>
+        /// <returns>Formatted string like: "LB+SignalR". If no tracing features are used, empty string will be returned.</returns>
         private static string CreateFeaturesString(RequestTracingOptions requestTracingOptions)
         {
             var sb = new StringBuilder();
@@ -249,6 +253,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by feature flags.
+        /// </summary>
+        /// <returns>Formatted string like: "Seed+ConfigRef+Telemnetry". If no tracing features are used, empty string will be returned.</returns>
         private static string CreateFeatureFlagFeaturesString(FeatureFlagTracing featureFlagTracing)
         {
             var sb = new StringBuilder();
@@ -284,7 +292,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
         /// </summary>
-        /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
+        /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT". If no filters are used, empty string will be returned.</returns>
         private static string CreateFiltersString(FeatureFlagTracing featureFlagTracing)
         {
             var sb = new StringBuilder();
