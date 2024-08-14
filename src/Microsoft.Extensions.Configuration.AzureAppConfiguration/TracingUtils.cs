@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -158,7 +159,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFilterTypeKey, CreateFiltersString(requestTracingOptions.FeatureFlagTracing)));
             }
 
             if (requestTracingOptions.FeatureFlagTracing.MaxVariants > 0)
@@ -168,7 +169,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyTracingFeature())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFeaturesKey, requestTracingOptions.FeatureFlagTracing.CreateFeaturesString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFeaturesKey, CreateFeatureFlagFeaturesString(requestTracingOptions.FeatureFlagTracing)));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
@@ -183,7 +184,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.UsesAnyTracingFeature())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, CreateFeaturesString(requestTracingOptions)));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)
@@ -221,6 +222,106 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append($"{tag}");
+            }
+
+            return sb.ToString();
+        }
+
+        private static string CreateFeaturesString(RequestTracingOptions requestTracingOptions)
+        {
+            var sb = new StringBuilder();
+
+            if (requestTracingOptions.IsLoadBalancingEnabled)
+            {
+                sb.Append(RequestTracingConstants.LoadBalancingEnabledTag);
+            }
+
+            if (requestTracingOptions.IsSignalRUsed)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.SignalRUsedTag);
+            }
+
+            return sb.ToString();
+        }
+
+        private static string CreateFeatureFlagFeaturesString(FeatureFlagTracing featureFlagTracing)
+        {
+            var sb = new StringBuilder();
+
+            if (featureFlagTracing.UsesSeed)
+            {
+                sb.Append(RequestTracingConstants.FeatureFlagUsesSeedTag);
+            }
+
+            if (featureFlagTracing.UsesVariantConfigurationReference)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
+            }
+
+            if (featureFlagTracing.UsesTelemetry)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesTelemetryTag);
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
+        /// </summary>
+        /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
+        private static string CreateFiltersString(FeatureFlagTracing featureFlagTracing)
+        {
+            var sb = new StringBuilder();
+
+            if (featureFlagTracing.UsesCustomFilter)
+            {
+                sb.Append(RequestTracingConstants.CustomFilter);
+            }
+
+            if (featureFlagTracing.UsesPercentageFilter)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.PercentageFilter);
+            }
+
+            if (featureFlagTracing.UsesTimeWindowFilter)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.TimeWindowFilter);
+            }
+
+            if (featureFlagTracing.UsesTargetingFilter)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.TargetingFilter);
             }
 
             return sb.ToString();
