@@ -84,6 +84,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
         public string CreateFiltersString()
         {
+            if (!UsesAnyFeatureFilter())
+            {
+                return string.Empty;
+            }
+
             var sb = new StringBuilder();
 
             if (UsesCustomFilter)
