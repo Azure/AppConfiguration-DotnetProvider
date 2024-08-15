@@ -159,7 +159,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFilterTypeKey, CreateFiltersString(requestTracingOptions.FeatureFlagTracing)));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
             }
 
             if (requestTracingOptions.FeatureFlagTracing.MaxVariants > 0)
@@ -169,7 +169,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyTracingFeature())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFeaturesKey, CreateFeatureFlagFeaturesString(requestTracingOptions.FeatureFlagTracing)));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFeaturesKey, requestTracingOptions.FeatureFlagTracing.CreateFeaturesString()));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
@@ -184,7 +184,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.UsesAnyTracingFeature())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, CreateFeaturesString(requestTracingOptions)));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)
@@ -222,114 +222,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append($"{tag}");
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Returns a formatted string containing code names, indicating which tracing features are used by the application.
-        /// </summary>
-        /// <returns>Formatted string like: "LB+SignalR". If no tracing features are used, empty string will be returned.</returns>
-        private static string CreateFeaturesString(RequestTracingOptions requestTracingOptions)
-        {
-            var sb = new StringBuilder();
-
-            if (requestTracingOptions.IsLoadBalancingEnabled)
-            {
-                sb.Append(RequestTracingConstants.LoadBalancingEnabledTag);
-            }
-
-            if (requestTracingOptions.IsSignalRUsed)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.SignalRUsedTag);
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Returns a formatted string containing code names, indicating which tracing features are used by feature flags.
-        /// </summary>
-        /// <returns>Formatted string like: "Seed+ConfigRef+Telemnetry". If no tracing features are used, empty string will be returned.</returns>
-        private static string CreateFeatureFlagFeaturesString(FeatureFlagTracing featureFlagTracing)
-        {
-            var sb = new StringBuilder();
-
-            if (featureFlagTracing.UsesSeed)
-            {
-                sb.Append(RequestTracingConstants.FeatureFlagUsesSeedTag);
-            }
-
-            if (featureFlagTracing.UsesVariantConfigurationReference)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
-            }
-
-            if (featureFlagTracing.UsesTelemetry)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.FeatureFlagUsesTelemetryTag);
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
-        /// </summary>
-        /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT". If no filters are used, empty string will be returned.</returns>
-        private static string CreateFiltersString(FeatureFlagTracing featureFlagTracing)
-        {
-            var sb = new StringBuilder();
-
-            if (featureFlagTracing.UsesCustomFilter)
-            {
-                sb.Append(RequestTracingConstants.CustomFilter);
-            }
-
-            if (featureFlagTracing.UsesPercentageFilter)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.PercentageFilter);
-            }
-
-            if (featureFlagTracing.UsesTimeWindowFilter)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.TimeWindowFilter);
-            }
-
-            if (featureFlagTracing.UsesTargetingFilter)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.TargetingFilter);
             }
 
             return sb.ToString();

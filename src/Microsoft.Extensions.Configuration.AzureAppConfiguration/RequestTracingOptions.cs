@@ -71,5 +71,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return IsLoadBalancingEnabled || IsSignalRUsed;
         }
+
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by the application.
+        /// </summary>
+        /// <returns>Formatted string like: "LB+SignalR". If no tracing features are used, empty string will be returned.</returns>
+        public string CreateFeaturesString()
+        {
+            var sb = new StringBuilder();
+
+            if (IsLoadBalancingEnabled)
+            {
+                sb.Append(RequestTracingConstants.LoadBalancingEnabledTag);
+            }
+
+            if (IsSignalRUsed)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.SignalRUsedTag);
+            }
+
+            return sb.ToString();
+        }
     }
 }
