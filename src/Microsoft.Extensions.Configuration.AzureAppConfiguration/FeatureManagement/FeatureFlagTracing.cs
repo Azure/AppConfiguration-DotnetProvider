@@ -135,6 +135,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <returns>Formatted string like: "Seed+ConfigRef+Telemnetry". If no tracing features are used, empty string will be returned.</returns>
         public string CreateFeaturesString()
         {
+            if (!UsesAnyTracingFeature())
+            {
+                return string.Empty;
+            }
+
             var sb = new StringBuilder();
 
             if (UsesSeed)
