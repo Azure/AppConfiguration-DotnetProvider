@@ -132,7 +132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// Returns a formatted string containing code names, indicating which tracing features are used by feature flags.
         /// </summary>
-        /// <returns>Formatted string like: "Seed+ConfigRef+Telemnetry". If no tracing features are used, empty string will be returned.</returns>
+        /// <returns>Formatted string like: "Seed+ConfigRef+Telemetry". If no tracing features are used, empty string will be returned.</returns>
         public string CreateFeaturesString()
         {
             if (!UsesAnyTracingFeature())
