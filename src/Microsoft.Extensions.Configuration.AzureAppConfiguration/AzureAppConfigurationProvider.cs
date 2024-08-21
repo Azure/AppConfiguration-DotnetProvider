@@ -349,10 +349,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         .ConfigureAwait(false);
 
                     Debug.Assert(keyValueChanges != null);
-                    Debug.Assert(changedKeyValuesCollection != null);
 
                     if (!refreshAll)
                     {
+                        Debug.Assert(changedKeyValuesCollection != null);
+
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
                         foreach (KeyValueWatcher changeWatcher in cacheExpiredWatchers.Concat(cacheExpiredMultiKeyWatchers))
@@ -399,7 +400,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     else
                     {
                         Debug.Assert(data != null);
-                        Debug.Assert(watchedSettings != null);
 
                         _mappedData = await MapConfigurationSettings(data!).ConfigureAwait(false);
 
