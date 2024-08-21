@@ -42,19 +42,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
-        internal IEnumerable<string> ConnectionStrings { get; private set; }
+        internal IEnumerable<string>? ConnectionStrings { get; private set; }
 
         /// <summary>
         /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal IEnumerable<Uri> Endpoints { get; private set; }
+        internal IEnumerable<Uri>? Endpoints { get; private set; }
 
         /// <summary>
         /// The credential used to connect to the Azure App Configuration.
         /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
-        internal TokenCredential Credential { get; private set; }
+        internal TokenCredential? Credential { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
@@ -77,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<IKeyValueAdapter> Adapters
         {
             get => _adapters;
-            set => _adapters = value?.ToList();
+            set => _adapters = value.ToList();
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
         /// <remarks>This property is used only for unit testing.</remarks>
-        internal IConfigurationClientManager ClientManager { get; set; }
+        internal IConfigurationClientManager? ClientManager { get; set; }
 
         /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
@@ -158,7 +158,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
+        public AzureAppConfigurationOptions Select(string keyFilter, string? labelFilter = LabelFilter.Null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -177,10 +177,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _kvSelectors.AppendUnique(new KeyValueSelector
-            {
-                KeyFilter = keyFilter,
-                LabelFilter = labelFilter
-            });
+            (
+                keyFilter: keyFilter,
+                labelFilter: labelFilter!
+            ));
             return this;
         }
 
@@ -196,10 +196,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(name));
             }
 
-            _kvSelectors.AppendUnique(new KeyValueSelector
-            {
-                SnapshotName = name
-            });
+            _kvSelectors.AppendUnique(new KeyValueSelector(snapshotName: name));
 
             return this;
         }
@@ -210,7 +207,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
-        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
+        public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions>? configure = null)
         {
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
@@ -230,10 +227,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 // Select clause is not present
                 options.FeatureFlagSelectors.Add(new KeyValueSelector
-                {
-                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
-                });
+                (
+                    keyFilter: FeatureManagementConstants.FeatureFlagMarker + "*",
+                    labelFilter: options.Label == null ? LabelFilter.Null : options.Label
+                ));
             }
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
@@ -241,12 +238,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
 
-                Select(featureFlagFilter, labelFilter);
+                Select(featureFlagFilter!, labelFilter!);
 
                 _multiKeyWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    Key = featureFlagFilter,
-                    Label = labelFilter,
+                    Key = featureFlagFilter!,
+                    Label = labelFilter!,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
                     CacheExpirationInterval = options.CacheExpirationInterval
                 });

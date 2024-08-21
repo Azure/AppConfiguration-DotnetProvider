@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 {
     class Program
     {
-        static IConfiguration Configuration { get; set; }
+        static IConfiguration? Configuration { get; set; }
 
         static void Main(string[] args)
         {
@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             IConfiguration configuration = builder.Build();
 
             IConfigurationSection endpointsSection = configuration.GetSection("AppConfig:Endpoints");
-            IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
+            IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value!));
 
             if (endpoints == null || !endpoints.Any())
             {

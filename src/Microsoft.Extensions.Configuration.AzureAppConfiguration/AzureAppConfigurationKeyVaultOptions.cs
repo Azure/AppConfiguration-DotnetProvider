@@ -5,6 +5,7 @@ using Azure.Core;
 using Azure.Security.KeyVault.Secrets;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -14,10 +15,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationKeyVaultOptions
     {
-        internal TokenCredential Credential;
+        internal TokenCredential? Credential;
         internal SecretClientOptions ClientOptions = new SecretClientOptions();
         internal List<SecretClient> SecretClients = new List<SecretClient>();
-        internal Func<Uri, ValueTask<string>> SecretResolver;
+        internal Func<Uri, ValueTask<string>>? SecretResolver;
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
         internal TimeSpan? DefaultSecretRefreshInterval = null;
         internal bool IsKeyVaultRefreshConfigured = false;
@@ -26,6 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
         /// </summary>
         /// <param name="credential">Default token credentials.</param>
+        [MemberNotNull(nameof(Credential))]
         public AzureAppConfigurationKeyVaultOptions SetCredential(TokenCredential credential)
         {
             Credential = credential;
@@ -57,6 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Sets the callback used to resolve key vault references that have no registered <see cref="SecretClient"/>.
         /// </summary>
         /// <param name="secretResolver">A callback that maps the <see cref="Uri"/> of the key vault secret to its value.</param>
+        [MemberNotNull(nameof(SecretResolver))]
         public AzureAppConfigurationKeyVaultOptions SetSecretResolver(Func<Uri, ValueTask<string>> secretResolver)
         {
             if (secretResolver == null)

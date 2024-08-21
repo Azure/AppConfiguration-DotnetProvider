@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
 {
     public class AboutModel : PageModel
     {
-        public string Message { get; set; }
+        public string? Message { get; set; }
 
         public void OnGet()
         {

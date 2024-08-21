@@ -17,7 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The App Configuration endpoint.
         /// </summary>
-        Uri AppConfigurationEndpoint { get; }
+        Uri? AppConfigurationEndpoint { get; }
 
         /// <summary>
         /// Refreshes the data from App Configuration asynchronously.

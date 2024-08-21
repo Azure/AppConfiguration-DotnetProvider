@@ -3,6 +3,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 
@@ -10,16 +11,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class JsonFlattener
     {
-        private readonly List<KeyValuePair<string, string>> _data = new List<KeyValuePair<string, string>>();
+        private readonly List<KeyValuePair<string, string?>> _data = new List<KeyValuePair<string, string?>>();
         private readonly Stack<string> _context = new Stack<string>();
-        private string _currentPath;
+        private string? _currentPath;
 
-        public List<KeyValuePair<string, string>> FlattenJson(JsonElement rootElement)
+        public List<KeyValuePair<string, string?>> FlattenJson(JsonElement rootElement)
         {
             VisitJsonElement(rootElement);
             return _data;
         }
 
+        [MemberNotNull(nameof(_currentPath))]
         private void VisitJsonProperty(JsonProperty property)
         {
             EnterContext(property.Name);
@@ -54,7 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 case JsonValueKind.True:
                 case JsonValueKind.False:
                 case JsonValueKind.Null:
-                    _data.Add(new KeyValuePair<string, string>(_currentPath, element.ToString()));
+                    _data.Add(new KeyValuePair<string, string?>(_currentPath!, element.ToString()));
                     break;
 
                 default:
@@ -62,12 +64,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
+        [MemberNotNull(nameof(_currentPath))]
         private void EnterContext(string context)
         {
             _context.Push(context);
             _currentPath = ConfigurationPath.Combine(_context.Reverse());
         }
 
+        [MemberNotNull(nameof(_currentPath))]
         private void ExitContext()
         {
             _context.Pop();

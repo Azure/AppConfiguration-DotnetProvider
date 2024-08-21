@@ -6,10 +6,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureFlag
     {
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         public bool Enabled { get; set; }
 
-        public FeatureConditions Conditions { get; set; }
+        public FeatureConditions? Conditions { get; set; }
     }
 }

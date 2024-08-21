@@ -40,12 +40,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Version of the Microsoft.FeatureManagement assembly, if present in the application.
         /// </summary>
-        public string FeatureManagementVersion { get; set; }
+        public string? FeatureManagementVersion { get; set; }
 
         /// <summary>
         /// Version of the Microsoft.FeatureManagement.AspNetCore assembly, if present in the application.
         /// </summary>
-        public string FeatureManagementAspNetCoreVersion { get; set; }
+        public string? FeatureManagementAspNetCoreVersion { get; set; }
 
         /// <summary>
         /// Flag to indicate whether Microsoft.AspNetCore.SignalR assembly is present in the application.

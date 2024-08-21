@@ -26,7 +26,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                     var settings = config.AddJsonFile("appsettings.json").Build();
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(settings["connection_string"])
+                        var connectionString = settings["connection_string"];
+                        if (string.IsNullOrEmpty(connectionString))
+                        {
+                            throw new InvalidOperationException("Connection string not found");
+                        }
+
+                        options.Connect(connectionString)
                                .ConfigureRefresh(refresh =>
                                {
                                    refresh.Register("Settings:BackgroundColor")

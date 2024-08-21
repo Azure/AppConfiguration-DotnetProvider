@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             try
             {
-                string envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
+                string? envType = Environment.GetEnvironmentVariable(RequestTracingConstants.AspNetCoreEnvironmentVariable) ??
                                     Environment.GetEnvironmentVariable(RequestTracingConstants.DotNetCoreEnvironmentVariable);
                 if (envType != null && envType.Equals(RequestTracingConstants.DevelopmentEnvironmentName, StringComparison.OrdinalIgnoreCase))
                 {
@@ -75,7 +75,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public static string GetAssemblyVersion(string assemblyName)
+        public static string? GetAssemblyVersion(string? assemblyName)
         {
             if (!string.IsNullOrEmpty(assemblyName))
             {
@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return null;
         }
 
-        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions requestTracingOptions, Func<Task> clientCall)
+        public static async Task CallWithRequestTracing(bool tracingEnabled, RequestType requestType, RequestTracingOptions? requestTracingOptions, Func<Task> clientCall)
         {
             string correlationContextHeader = "";
 
@@ -115,39 +115,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static string CreateCorrelationContextHeader(RequestType requestType, RequestTracingOptions requestTracingOptions)
         {
-            IList<KeyValuePair<string, string>> correlationContextKeyValues = new List<KeyValuePair<string, string>>();
+            IList<KeyValuePair<string, string?>> correlationContextKeyValues = new List<KeyValuePair<string, string?>>();
             IList<string> correlationContextTags = new List<string>();
 
-            correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
+            correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
 
             if (requestTracingOptions.ReplicaCount > 0)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.ReplicaCountKey, requestTracingOptions.ReplicaCount.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.ReplicaCountKey, requestTracingOptions.ReplicaCount.ToString()));
             }
 
             if (requestTracingOptions.HostType != HostType.Unidentified)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.HostTypeKey, Enum.GetName(typeof(HostType), requestTracingOptions.HostType)));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.HostTypeKey, Enum.GetName(typeof(HostType), requestTracingOptions.HostType)));
             }
 
             if (requestTracingOptions.IsDevEnvironment)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
             if (requestTracingOptions.FilterTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTracing.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTracing.ToString()));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementVersionKey, requestTracingOptions.FeatureManagementVersion));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.FeatureManagementVersionKey, requestTracingOptions.FeatureManagementVersion));
             }
 
             if (requestTracingOptions.FeatureManagementAspNetCoreVersion != null)
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string?>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
             }
 
             if (requestTracingOptions.IsKeyVaultConfigured)
@@ -167,7 +167,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var sb = new StringBuilder();
 
-            foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)
+            foreach (KeyValuePair<string, string?> kvp in correlationContextKeyValues)
             {
                 if (sb.Length > 0)
                 {

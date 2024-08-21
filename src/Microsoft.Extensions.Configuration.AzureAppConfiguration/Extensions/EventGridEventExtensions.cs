@@ -3,6 +3,7 @@
 //
 using Azure.Messaging.EventGrid;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
@@ -20,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         /// <param name="eventGridEvent"> EventGridEvent from EventGrid</param>
         /// <param name="pushNotification"> If this method returns true, the pushNotification  object contains details populated from eventGridEvent. If this method returns false, the pushNotification object is null. </param>
         /// <returns></returns>
-        public static bool TryCreatePushNotification(this EventGridEvent eventGridEvent, out PushNotification pushNotification)
+        public static bool TryCreatePushNotification(this EventGridEvent eventGridEvent, [NotNullWhen(true)] out PushNotification? pushNotification)
         {
             pushNotification = null;
 
@@ -29,9 +30,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return false;
             }
 
-            if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri resourceUri))
+            if (Uri.TryCreate(eventGridEvent.Subject, UriKind.Absolute, out Uri? resourceUri))
             {
-                string syncToken = null;
+                string? syncToken = null;
 
                 try
                 {

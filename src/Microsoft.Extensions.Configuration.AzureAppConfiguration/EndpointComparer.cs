@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class EndpointComparer : IEqualityComparer<Uri>
     {
-        public bool Equals(Uri endpoint1, Uri endpoint2)
+        public bool Equals(Uri? endpoint1, Uri? endpoint2)
         {
             return Uri.Compare(endpoint1,
                                endpoint2,
@@ -17,12 +17,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                StringComparison.OrdinalIgnoreCase) == 0;
         }
 
-        public int GetHashCode(Uri obj)
+        public int GetHashCode(Uri? obj)
         {
             if (obj is Uri uri)
             {
                 // Have to convert the normalizedHost to lower case to ensure case insensetive comparison. string.GetHashCode(StringComparison.OrdinalIgnoreCase) isn't available in netstandard2.0
-                string componentsToHash = uri.GetComponents(UriComponents.NormalizedHost | UriComponents.Port, UriFormat.SafeUnescaped)?.ToLower();
+                string? componentsToHash = uri.GetComponents(UriComponents.NormalizedHost | UriComponents.Port, UriFormat.SafeUnescaped)?.ToLower();
                 return componentsToHash != null ? componentsToHash.GetHashCode() : -1;
             }
 

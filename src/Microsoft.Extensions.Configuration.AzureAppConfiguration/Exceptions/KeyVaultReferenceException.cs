@@ -18,8 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="inner">The exception that is the cause of the current exception, or a null reference (Nothing in Visual Basic) if no inner exception is specified.        /// </param>
-        public KeyVaultReferenceException(string message,
-                                           Exception inner)
+        public KeyVaultReferenceException(string message, Exception? inner)
          : base(string.Empty, inner)
         {
             _message = message;
@@ -34,26 +33,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The key of the Key Vault reference that caused the exception.
         /// </summary>
-        public string Key { get; set; }
+        public string? Key { get; set; }
 
         /// <summary>
         /// The label of the Key Vault reference that caused the exception.
         /// </summary>
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
         /// <summary>
         /// The etag of the Key Vault reference that caused the exception.
         /// </summary>
-        public string Etag { get; set; }
+        public string? Etag { get; set; }
 
         /// <summary>
         /// The secret identifier used by the Azure Key Vault reference that caused the exception.
         /// </summary>
-        public string SecretIdentifier { get; set; }
+        public string? SecretIdentifier { get; set; }
 
         /// <summary>
         /// The error code, if available, describing the cause of the exception. 
         /// </summary>
-        public string ErrorCode { get; set; }
+        public string? ErrorCode { get; set; }
     }
 }
