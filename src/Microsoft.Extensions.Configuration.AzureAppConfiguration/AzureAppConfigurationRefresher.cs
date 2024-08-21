@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,9 +10,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationRefresher : IConfigurationRefresher
     {
-        private AzureAppConfigurationProvider _provider = null;
+        private AzureAppConfigurationProvider? _provider = null;
 
-        public Uri AppConfigurationEndpoint { get; private set; } = null;
+        public Uri? AppConfigurationEndpoint { get; private set; } = null;
 
         public void SetProvider(AzureAppConfigurationProvider provider)
         {
@@ -42,6 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _provider.ProcessPushNotification(pushNotification, maxDelay);
         }
 
+        [MemberNotNull(nameof(_provider))]
         private void ThrowIfNullProvider(string operation)
         {
             if (_provider == null)

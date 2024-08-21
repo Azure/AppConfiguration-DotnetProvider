@@ -15,15 +15,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// Label of the key-value in App Configuration.
         /// </summary>
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
-        public KeyValueIdentifier(string key, string label)
+        public KeyValueIdentifier(string key, string? label)
         {
             Key = key;
             Label = label.NormalizeNull();
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is KeyValueIdentifier keyLabel)
             {

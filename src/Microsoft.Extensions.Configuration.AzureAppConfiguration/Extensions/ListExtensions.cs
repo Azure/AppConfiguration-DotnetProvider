@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException(nameof(item));
             }
 
-            T existingItem = items.FirstOrDefault(s => Equals(s, item));
+            T? existingItem = items.FirstOrDefault(s => Equals(s, item));
 
             if (existingItem != null)
             {

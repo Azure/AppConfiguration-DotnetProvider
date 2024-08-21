@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The label that feature flags will be selected from.
         /// </summary>
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
@@ -69,10 +69,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             string featureFlagPrefix = FeatureManagementConstants.FeatureFlagMarker + featureFlagFilter;
 
             FeatureFlagSelectors.AppendUnique(new KeyValueSelector
-            {
-                KeyFilter = featureFlagPrefix,
-                LabelFilter = labelFilter
-            });
+            (
+                keyFilter: featureFlagPrefix,
+                labelFilter: labelFilter
+            ));
 
             return this;
         }

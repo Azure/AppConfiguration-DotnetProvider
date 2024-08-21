@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static double NextDouble()
         {
-            return _rnd.Value.NextDouble();
+            return _rnd.Value!.NextDouble();
         }
     }
 }

@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             KeyVaultConstants.ContentType
         };
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string?>>> ProcessKeyValue(ConfigurationSetting setting, Logger? logger, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             string rootJson = $"{{\"{setting.Key}\":{setting.Value}}}";
 
-            List<KeyValuePair<string, string>> keyValuePairs = new List<KeyValuePair<string, string>>();
+            List<KeyValuePair<string, string?>> keyValuePairs = new List<KeyValuePair<string, string?>>();
 
             try
             {
@@ -43,10 +43,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             catch (JsonException)
             {
                 // If the value is not a valid JSON, treat it like regular string value
-                return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(new[] { new KeyValuePair<string, string>(setting.Key, setting.Value) });
+                return Task.FromResult<IEnumerable<KeyValuePair<string, string?>>>(new[] { new KeyValuePair<string, string?>(setting.Key, setting.Value) });
             }
 
-            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValuePairs);
+            return Task.FromResult<IEnumerable<KeyValuePair<string, string?>>>(keyValuePairs);
         }
 
         public bool CanProcess(ConfigurationSetting setting)
@@ -95,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void InvalidateCache(ConfigurationSetting? setting = null)
         {
             return;
         }

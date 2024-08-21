@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            IConfigurationProvider provider = null;
+            IConfigurationProvider? provider = null;
 
             try
             {

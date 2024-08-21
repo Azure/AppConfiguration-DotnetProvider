@@ -11,12 +11,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// Key of the key-value to be watched.
         /// </summary>
-        public string Key { get; set; }
+        public required string Key { get; set; }
 
         /// <summary>
         /// Label of the key-value to be watched.
         /// </summary>
-        public string Label { get; set; }
+        public required string Label { get; set; }
 
         /// <summary>
         /// A flag to refresh all key-values.
@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// </summary>
         public DateTimeOffset CacheExpires { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is KeyValueWatcher kvWatcher)
             {

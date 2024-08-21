@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             UsesTargetingFilter = false;
         }
 
-        public void UpdateFeatureFilterTracing(string filterName)
+        public void UpdateFeatureFilterTracing(string? filterName)
         {
             if (PercentageFilterNames.Any(name => string.Equals(name, filterName, StringComparison.OrdinalIgnoreCase)))
             {

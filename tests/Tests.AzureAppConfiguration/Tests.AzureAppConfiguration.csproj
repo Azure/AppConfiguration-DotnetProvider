@@ -8,6 +8,7 @@
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
     <IsPackable>false</IsPackable>
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

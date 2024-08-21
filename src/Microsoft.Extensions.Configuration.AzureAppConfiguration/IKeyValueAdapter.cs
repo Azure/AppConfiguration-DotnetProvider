@@ -10,11 +10,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IKeyValueAdapter
     {
-        Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken);
+        Task<IEnumerable<KeyValuePair<string, string?>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken);
 
         bool CanProcess(ConfigurationSetting setting);
 
-        void InvalidateCache(ConfigurationSetting setting = null);
+        void InvalidateCache(ConfigurationSetting? setting = null);
 
         bool NeedsRefresh();
     }

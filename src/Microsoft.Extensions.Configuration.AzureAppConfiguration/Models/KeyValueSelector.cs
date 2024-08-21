@@ -9,27 +9,44 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
     public class KeyValueSelector
     {
         /// <summary>
+        /// Snapshot selector
+        /// </summary>
+        public KeyValueSelector(string snapshotName)
+        {
+            SnapshotName = snapshotName;
+        }
+
+        /// <summary>
+        /// Key selector
+        /// </summary>
+        public KeyValueSelector(string keyFilter, string labelFilter)
+        {
+            KeyFilter = keyFilter;
+            LabelFilter = labelFilter;
+        }
+
+        /// <summary>
         /// A filter that determines the set of keys that are included in the configuration provider.
         /// </summary>
         /// <remarks>See the documentation for this provider for details on the format of filter expressions</remarks>
-        public string KeyFilter { get; set; }
+        public string? KeyFilter { get; set; }
 
         /// <summary>
-        /// A filter that determines what label to use when selecting key-values for the the configuration provider.
+        /// A filter that determines what label to use when selecting key-values for the configuration provider.
         /// </summary>
-        public string LabelFilter { get; set; }
+        public string? LabelFilter { get; set; }
 
         /// <summary>
         /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.
         /// </summary>
-        public string SnapshotName { get; set; }
+        public string? SnapshotName { get; set; }
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.
         /// </summary>
         /// <param name="obj">The object to compare with the current object.</param>
         /// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is KeyValueSelector selector)
             {

@@ -20,11 +20,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             _featureFilterTracing = featureFilterTracing ?? throw new ArgumentNullException(nameof(featureFilterTracing));
         }
 
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
+        public Task<IEnumerable<KeyValuePair<string, string?>>> ProcessKeyValue(ConfigurationSetting setting, Logger? logger, CancellationToken cancellationToken)
         {
             FeatureFlag featureFlag = ParseFeatureFlag(setting.Key, setting.Value);
 
-            var keyValues = new List<KeyValuePair<string, string>>();
+            var keyValues = new List<KeyValuePair<string, string?>>();
 
             if (!string.IsNullOrEmpty(featureFlag.Id))
             {
@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 {
                     if (featureFlag.Conditions?.ClientFilters == null || !featureFlag.Conditions.ClientFilters.Any())
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", true.ToString()));
+                        keyValues.Add(new KeyValuePair<string, string?>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", true.ToString()));
                     }
                     else
                     {
@@ -42,11 +42,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                             _featureFilterTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
-                            keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
+                            keyValues.Add(new KeyValuePair<string, string?>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Name", clientFilter.Name));
 
-                            foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
+                            foreach (KeyValuePair<string, string?> kvp in new JsonFlattener().FlattenJson(clientFilter.Parameters))
                             {
-                                keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
+                                keyValues.Add(new KeyValuePair<string, string?>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.EnabledFor}:{i}:Parameters:{kvp.Key}", kvp.Value));
                             }
                         }
 
@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         // process RequirementType only when filters are not empty
                         if (featureFlag.Conditions.RequirementType != null)
                         {
-                            keyValues.Add(new KeyValuePair<string, string>(
+                            keyValues.Add(new KeyValuePair<string, string?>(
                                 $"{FeatureManagementConstants.SectionName}:{featureFlag.Id}:{FeatureManagementConstants.RequirementType}",
                                 featureFlag.Conditions.RequirementType));
                         }
@@ -62,22 +62,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
                 else
                 {
-                    keyValues.Add(new KeyValuePair<string, string>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
+                    keyValues.Add(new KeyValuePair<string, string?>($"{FeatureManagementConstants.SectionName}:{featureFlag.Id}", false.ToString()));
                 }
             }
 
-            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+            return Task.FromResult<IEnumerable<KeyValuePair<string, string?>>>(keyValues);
         }
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            string? contentType = setting.ContentType?.Split(';')[0].Trim();
 
             return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
                                  setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void InvalidateCache(ConfigurationSetting? setting = null)
         {
             return;
         }
@@ -117,7 +117,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         continue;
                     }
 
-                    string propertyName = reader.GetString();
+                    string? propertyName = reader.GetString();
 
                     switch (propertyName)
                     {
@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 if (reader.Read() && reader.TokenType == JsonTokenType.String)
                                 {
-                                    featureFlag.Id = reader.GetString();
+                                    featureFlag.Id = reader.GetString()!;
                                 }
                                 else if (reader.TokenType != JsonTokenType.Null)
                                 {
@@ -205,7 +205,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     continue;
                 }
 
-                string conditionsPropertyName = reader.GetString();
+                string? conditionsPropertyName = reader.GetString();
 
                 switch (conditionsPropertyName)
                 {
@@ -248,7 +248,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.String)
                             {
-                                featureConditions.RequirementType = reader.GetString();
+                                featureConditions.RequirementType = reader.GetString()!;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {
@@ -283,7 +283,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     continue;
                 }
 
-                string clientFiltersPropertyName = reader.GetString();
+                string? clientFiltersPropertyName = reader.GetString();
 
                 switch (clientFiltersPropertyName)
                 {
@@ -291,7 +291,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         {
                             if (reader.Read() && reader.TokenType == JsonTokenType.String)
                             {
-                                clientFilter.Name = reader.GetString();
+                                clientFilter.Name = reader.GetString()!;
                             }
                             else if (reader.TokenType != JsonTokenType.Null)
                             {

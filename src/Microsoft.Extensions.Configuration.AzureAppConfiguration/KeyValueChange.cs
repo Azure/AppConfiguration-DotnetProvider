@@ -18,8 +18,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public string Key { get; set; }
 
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
-        public ConfigurationSetting Current { get; set; }
+        /// <remarks>
+        /// Is null only when ChangeType is KeyValueChangeType.Deleted
+        /// </remarks>
+        public ConfigurationSetting? Current { get; set; }
     }
 }

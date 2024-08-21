@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationRefresherProvider : IConfigurationRefresherProvider
     {
-        private static readonly PropertyInfo _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
+        private static readonly PropertyInfo? _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
 
         public IEnumerable<IConfigurationRefresher> Refreshers { get; }
 
@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Refreshers = refreshers;
         }
 
-        private void FindRefreshers(IConfigurationRoot configurationRoot, ILoggerFactory loggerFactory, List<IConfigurationRefresher> refreshers)
+        private void FindRefreshers(IConfigurationRoot? configurationRoot, ILoggerFactory loggerFactory, List<IConfigurationRefresher> refreshers)
         {
             if (configurationRoot != null)
             {

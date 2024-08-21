@@ -25,7 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal static string GenerateUserAgent()
         {
             Assembly assembly = typeof(AzureAppConfigurationOptions).Assembly;
-            string informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+            string informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
             return $"{assembly.GetName().Name}/{informationalVersion}";
         }
 

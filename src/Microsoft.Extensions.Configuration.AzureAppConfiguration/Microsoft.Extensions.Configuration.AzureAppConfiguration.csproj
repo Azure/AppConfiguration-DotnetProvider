@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>11</LangVersion>
     <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications.</Description>
     <SignAssembly>true</SignAssembly>
     <DelaySign>false</DelaySign>

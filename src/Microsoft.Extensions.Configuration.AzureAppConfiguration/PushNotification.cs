@@ -13,16 +13,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The URI of the resource which triggered the <see cref="PushNotification"/>.
         /// </summary>
-        public Uri ResourceUri { get; set; }
+        public required Uri ResourceUri { get; set; }
 
         /// <summary>
         /// The Synchronization Token to be added to the next request to the App Configuration Service.
         /// </summary>
-        public string SyncToken { get; set; }
+        public required string SyncToken { get; set; }
 
         /// <summary>
         /// The Type of Event which triggered the <see cref="PushNotification"/>.
         /// </summary>
-        public string EventType { get; set; }
+        public required string EventType { get; set; }
     }
 }

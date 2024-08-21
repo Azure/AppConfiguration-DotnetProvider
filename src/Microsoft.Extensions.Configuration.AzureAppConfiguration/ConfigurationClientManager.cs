@@ -28,15 +28,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
         private readonly Uri _endpoint;
-        private readonly string _secret;
-        private readonly string _id;
-        private readonly TokenCredential _credential;
+        private readonly string? _secret;
+        private readonly string? _id;
+        private readonly TokenCredential? _credential;
         private readonly ConfigurationClientOptions _clientOptions;
         private readonly bool _replicaDiscoveryEnabled;
         private readonly SrvLookupClient _srvLookupClient;
         private readonly string _validDomain;
 
-        private IList<ConfigurationClientWrapper> _dynamicClients;
+        private IList<ConfigurationClientWrapper>? _dynamicClients;
         private DateTimeOffset _lastFallbackClientRefresh = default;
         private DateTimeOffset _lastFallbackClientRefreshAttempt = default;
         private Logger _logger = new Logger();
@@ -112,8 +112,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Internal constructor; Only used for unit testing.
         /// </summary>
-        /// <param name="clients"></param>
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor.
         internal ConfigurationClientManager(IList<ConfigurationClientWrapper> clients)
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor.
         {
             _clients = clients;
         }
@@ -169,7 +170,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientWrapper clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+            ConfigurationClientWrapper? clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
             if (_dynamicClients != null && clientWrapper == null)
             {
@@ -185,14 +186,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        public Uri GetEndpointForClient(ConfigurationClient client)
+        public Uri? GetEndpointForClient(ConfigurationClient client)
         {
             if (client == null)
             {
                 throw new ArgumentNullException(nameof(client));
             }
 
-            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
+            ConfigurationClientWrapper? currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
             if (_dynamicClients != null && currentClient == null)
             {
@@ -275,7 +276,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var targetEndpoint = new Uri($"https://{host}");
 
                     var configClient = _credential == null
-                        ? new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions)
+                        ? new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id!, _secret!), _clientOptions)
                         : new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
 
                     newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
@@ -291,7 +292,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             Debug.Assert(endpoint != null);
 
-            string hostName = endpoint.Host;
+            string hostName = endpoint!.Host;
 
             foreach (string label in TrustedDomainLabels)
             {

@@ -6,14 +6,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.AzureAppConfiguration;
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
     class Program
     {
-        static IConfiguration Configuration { get; set; }
-        static IConfigurationRefresher _refresher;
+        static IConfiguration? Configuration { get; set; }
+        static IConfigurationRefresher? _refresher;
 
         static void Main(string[] args)
         {
@@ -28,6 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             cts.Cancel();
         }
 
+        [MemberNotNull(nameof(Configuration))]
         private static void Configure()
         {
             var builder = new ConfigurationBuilder();
@@ -38,18 +40,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
             IConfiguration configuration = builder.Build();
 
-            if (string.IsNullOrEmpty(configuration["connection_string"]))
+            var connectionString = configuration["connection_string"];
+            if (string.IsNullOrEmpty(connectionString))
             {
-                Console.WriteLine("Connection string not found.");
                 Console.WriteLine("Please set the 'connection_string' environment variable to a valid Azure App Configuration connection string and re-run this example.");
-                return;
+                throw new InvalidOperationException("Connection string not found");
             }
 
             // Augment the configuration builder with Azure App Configuration
             // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(configuration["connection_string"])
+                options.Connect(connectionString)
                        .Select("AppName")
                        .Select("Settings:BackgroundColor")
                        .ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 5)
@@ -75,9 +77,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             while (!token.IsCancellationRequested)
             {
                 // Trigger an async refresh for registered configuration settings without wait
-                _ = _refresher.TryRefreshAsync();
+                _ = _refresher!.TryRefreshAsync();
 
-                sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
+                sb.AppendLine($"{Configuration!["AppName"]} has been configured to run in {Configuration["Language"]}");
                 sb.AppendLine();
 
                 sb.AppendLine(string.Equals(Configuration["Language"], "spanish", StringComparison.OrdinalIgnoreCase) ? "Buenos Dias." : "Good morning");

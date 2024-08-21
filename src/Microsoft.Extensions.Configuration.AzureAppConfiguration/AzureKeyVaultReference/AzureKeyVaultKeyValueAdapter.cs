@@ -27,17 +27,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// <summary> Uses the Azure Key Vault secret provider to resolve Key Vault references retrieved from Azure App Configuration. </summary>
         /// <param KeyValue ="IKeyValue">  inputs the IKeyValue </param>
         /// returns the keyname and actual value
-        public async Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
+        public async Task<IEnumerable<KeyValuePair<string, string?>>> ProcessKeyValue(ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
-            string secretRefUri = ParseSecretReferenceUri(setting);
+            string? secretRefUri = ParseSecretReferenceUri(setting);
 
             // Uri validation
-            if (string.IsNullOrEmpty(secretRefUri) || !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
+            if (string.IsNullOrEmpty(secretRefUri) || !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri? secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
             {
                 throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
             }
 
-            string secret;
+            string? secret;
 
             try
             {
@@ -52,13 +52,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRefUri);
             }
 
-            return new KeyValuePair<string, string>[]
+            return new KeyValuePair<string, string?>[]
             {
-                new KeyValuePair<string, string>(setting.Key, secret)
+                new KeyValuePair<string, string?>(setting.Key, secret)
             };
         }
 
-        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
+        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception? inner, string? secretRefUri = null)
         {
             return new KeyVaultReferenceException(message, inner)
             {
@@ -70,13 +70,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             };
         }
 
-        public bool CanProcess(ConfigurationSetting setting)
+        public bool CanProcess(ConfigurationSetting? setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            string? contentType = setting?.ContentType?.Split(';')[0].Trim();
             return string.Equals(contentType, KeyVaultConstants.ContentType);
         }
 
-        public void InvalidateCache(ConfigurationSetting setting = null)
+        public void InvalidateCache(ConfigurationSetting? setting = null)
         {
             if (setting == null)
             {
@@ -93,9 +93,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return _secretProvider.ShouldRefreshKeyVaultSecrets();
         }
 
-        private string ParseSecretReferenceUri(ConfigurationSetting setting)
+        private string? ParseSecretReferenceUri(ConfigurationSetting setting)
         {
-            string secretRefUri = null;
+            string? secretRefUri = null;
 
             try
             {

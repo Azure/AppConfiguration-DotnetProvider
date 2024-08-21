@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
         public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(
             this ConfigurationClient client,
-            IEnumerable<ConfigurationSetting> keyValues,
+            IEnumerable<ConfigurationSetting>? keyValues,
             GetKeyValueChangeCollectionOptions options,
             StringBuilder logDebugBuilder,
             StringBuilder logInfoBuilder,

@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         ///// <summary>
         ///// The value of the Key Vault secret.
         ///// </summary>
-        public string SecretValue { get; set; }
+        public string? SecretValue { get; set; }
 
         /// <summary>
         /// The time when this secret should be reloaded from Key Vault.
@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// </summary>
         public int RefreshAttempts { get; set; }
 
-        public CachedKeyVaultSecret(string secretValue = null, DateTimeOffset? refreshAt = null, int refreshAttempts = 0)
+        public CachedKeyVaultSecret(string? secretValue = null, DateTimeOffset? refreshAt = null, int refreshAttempts = 0)
         {
             SecretValue = secretValue;
             RefreshAt = refreshAt;
