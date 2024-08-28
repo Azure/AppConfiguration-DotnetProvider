@@ -15,7 +15,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class AzureAppConfigurationKeyVaultOptions
     {
         internal TokenCredential Credential;
-        internal SecretClientOptions ClientOptions = new SecretClientOptions();
+        internal SecretClientOptions ClientOptions = new SecretClientOptions
+        {
+            Retry = {
+                MaxRetries = int.MaxValue
+            }
+        };
         internal List<SecretClient> SecretClients = new List<SecretClient>();
         internal Func<Uri, ValueTask<string>> SecretResolver;
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
