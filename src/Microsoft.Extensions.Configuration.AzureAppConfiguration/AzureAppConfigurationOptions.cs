@@ -346,6 +346,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Connect the provider to a CDN using an endpoint.
+        /// </summary>
+        /// <param name="cdnEndpoint">The endpoint of the CDN to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri cdnEndpoint)
+        {
+            if (cdnEndpoint == null)
+            {
+                throw new ArgumentNullException(nameof(cdnEndpoint));
+            }
+
+            return Connect(new List<Uri>() { cdnEndpoint }, new DummyTokenCredential());
+        }
+
+        /// <summary>
         /// Trims the provided prefix from the keys of all key-values retrieved from Azure App Configuration.
         /// </summary>
         /// <param name="prefix">The prefix to be trimmed.</param>
