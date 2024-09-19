@@ -5,7 +5,6 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -40,6 +39,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             string secretValue = null;
 
             if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
+                    (cachedSecret.SourceId == secretIdentifier.SourceId) &&
                     (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
             {
                 return cachedSecret.SecretValue;
@@ -68,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     secretValue = await _keyVaultOptions.SecretResolver(secretIdentifier.SourceId).ConfigureAwait(false);
                 }
 
-                cachedSecret = new CachedKeyVaultSecret(secretValue);
+                cachedSecret = new CachedKeyVaultSecret(secretValue, secretIdentifier.SourceId);
                 success = true;
             }
             finally
@@ -86,9 +86,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public void ClearCache()
         {
-            _cachedKeyVaultSecrets.Clear();
-            _nextRefreshKey = null;
-            _nextRefreshTime = null;
+            foreach (KeyValuePair<string, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
+            {
+                if (secret.Value.LastRefreshTime + RefreshConstants.MinimumSecretRefreshInterval < DateTimeOffset.UtcNow)
+                {
+                    _cachedKeyVaultSecrets.Remove(secret.Key);
+                }
+
+                if (secret.Key == _nextRefreshKey)
+                {
+                    UpdateNextRefreshableSecretFromCache();
+                }
+            }
         }
 
         public void RemoveSecretFromCache(string key)
