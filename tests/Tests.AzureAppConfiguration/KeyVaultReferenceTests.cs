@@ -758,7 +758,7 @@ namespace Tests.AzureAppConfiguration
         public async Task CachedSecretIsInvalidatedWhenRefreshAllIsTrue()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(1);
+            TimeSpan cacheExpirationTime = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);

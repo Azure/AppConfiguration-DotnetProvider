@@ -25,7 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         /// <summary>
         /// The last time this secret was reloaded from Key Vault.
         /// </summary>
-        public DateTimeOffset? LastRefreshTime { get; set; }
+        public DateTimeOffset LastRefreshTime { get; set; }
 
         /// <summary>
         /// The source <see cref="Uri"/> for this secret.

@@ -5,6 +5,7 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -92,11 +93,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 {
                     _cachedKeyVaultSecrets.Remove(secret.Key);
                 }
+            }
 
-                if (secret.Key == _nextRefreshKey)
-                {
-                    UpdateNextRefreshableSecretFromCache();
-                }
+            if (_nextRefreshKey != null && !_cachedKeyVaultSecrets.ContainsKey(_nextRefreshKey))
+            {
+                UpdateNextRefreshableSecretFromCache();
             }
         }
 
