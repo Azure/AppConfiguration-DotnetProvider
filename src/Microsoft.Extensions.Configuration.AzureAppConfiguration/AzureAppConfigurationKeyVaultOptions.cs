@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal SecretClientOptions ClientOptions = new SecretClientOptions
         {
             Retry = {
-                MaxRetries = int.MaxValue
+                MaxRetries = 6
             }
         };
         internal List<SecretClient> SecretClients = new List<SecretClient>();
