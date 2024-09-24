@@ -1106,7 +1106,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (rfe.Status == HttpStatusCodes.TooManyRequests ||
                 rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                rfe.Status >= (int)HttpStatusCode.InternalServerError)
+                rfe.Status >= (int)HttpStatusCode.InternalServerError ||
+                rfe.Status == (int)HttpStatusCode.Forbidden ||
+                rfe.Status == (int)HttpStatusCode.Unauthorized)
             {
                 return true;
             }
