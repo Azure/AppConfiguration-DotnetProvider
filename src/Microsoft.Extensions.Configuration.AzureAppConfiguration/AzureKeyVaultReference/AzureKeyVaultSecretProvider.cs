@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,14 +15,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
     {
         private readonly AzureAppConfigurationKeyVaultOptions _keyVaultOptions;
         private readonly IDictionary<string, SecretClient> _secretClients;
-        private readonly Dictionary<string, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
-        private string _nextRefreshKey;
+        private readonly Dictionary<Uri, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
+        private Uri _nextRefreshSourceId;
         private DateTimeOffset? _nextRefreshTime;
 
         public AzureKeyVaultSecretProvider(AzureAppConfigurationKeyVaultOptions keyVaultOptions = null)
         {
             _keyVaultOptions = keyVaultOptions ?? new AzureAppConfigurationKeyVaultOptions();
-            _cachedKeyVaultSecrets = new Dictionary<string, CachedKeyVaultSecret>(StringComparer.OrdinalIgnoreCase);
+            _cachedKeyVaultSecrets = new Dictionary<Uri, CachedKeyVaultSecret>();
             _secretClients = new Dictionary<string, SecretClient>(StringComparer.OrdinalIgnoreCase);
 
             if (_keyVaultOptions.SecretClients != null)
@@ -40,8 +39,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             string secretValue = null;
 
-            if (_cachedKeyVaultSecrets.TryGetValue(key, out CachedKeyVaultSecret cachedSecret) &&
-                    (cachedSecret.SourceId == secretIdentifier.SourceId) &&
+            if (_cachedKeyVaultSecrets.TryGetValue(secretIdentifier.SourceId, out CachedKeyVaultSecret cachedSecret) &&
                     (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
             {
                 return cachedSecret.SecretValue;
@@ -75,7 +73,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             finally
             {
-                SetSecretInCache(key, cachedSecret, success);
+                SetSecretInCache(secretIdentifier.SourceId, key, cachedSecret, success);
             }
 
             return secretValue;
@@ -88,19 +86,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public void ClearCache()
         {
-            var keysToRemove = new List<string>();
+            var sourceIdsToRemove = new List<Uri>();
 
-            foreach (KeyValuePair<string, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
+            foreach (KeyValuePair<Uri, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
             {
                 if (secret.Value.LastRefreshTime + RefreshConstants.MinimumSecretRefreshInterval < DateTimeOffset.UtcNow)
                 {
-                    keysToRemove.Add(secret.Key);
+                    sourceIdsToRemove.Add(secret.Key);
                 }
             }
 
-            foreach (string key in keysToRemove)
+            foreach (Uri sourceId in sourceIdsToRemove)
             {
-                _cachedKeyVaultSecrets.Remove(key);
+                _cachedKeyVaultSecrets.Remove(sourceId);
             }
 
             if (_cachedKeyVaultSecrets.Any())
@@ -109,11 +107,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public void RemoveSecretFromCache(string key)
+        public void RemoveSecretFromCache(Uri sourceId)
         {
-            _cachedKeyVaultSecrets.Remove(key);
+            _cachedKeyVaultSecrets.Remove(sourceId);
 
-            if (key == _nextRefreshKey)
+            if (sourceId == _nextRefreshSourceId)
             {
                 UpdateNextRefreshableSecretFromCache();
             }
@@ -143,7 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return client;
         }
 
-        private void SetSecretInCache(string key, CachedKeyVaultSecret cachedSecret, bool success = true)
+        private void SetSecretInCache(Uri sourceId, string key, CachedKeyVaultSecret cachedSecret, bool success = true)
         {
             if (cachedSecret == null)
             {
@@ -151,31 +149,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             UpdateCacheExpirationTimeForSecret(key, cachedSecret, success);
-            _cachedKeyVaultSecrets[key] = cachedSecret;
+            _cachedKeyVaultSecrets[sourceId] = cachedSecret;
 
-            if (key == _nextRefreshKey)
+            if (sourceId == _nextRefreshSourceId)
             {
                 UpdateNextRefreshableSecretFromCache();
             }
             else if ((cachedSecret.RefreshAt.HasValue && _nextRefreshTime.HasValue && cachedSecret.RefreshAt.Value < _nextRefreshTime.Value)
                     || (cachedSecret.RefreshAt.HasValue && !_nextRefreshTime.HasValue))
             {
-                _nextRefreshKey = key;
+                _nextRefreshSourceId = sourceId;
                 _nextRefreshTime = cachedSecret.RefreshAt.Value;
             }
         }
 
         private void UpdateNextRefreshableSecretFromCache()
         {
-            _nextRefreshKey = null;
+            _nextRefreshSourceId = null;
             _nextRefreshTime = DateTimeOffset.MaxValue;
 
-            foreach (KeyValuePair<string, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
+            foreach (KeyValuePair<Uri, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
             {
                 if (secret.Value.RefreshAt.HasValue && secret.Value.RefreshAt.Value < _nextRefreshTime)
                 {
                     _nextRefreshTime = secret.Value.RefreshAt;
-                    _nextRefreshKey = secret.Key;
+                    _nextRefreshSourceId = secret.Key;
                 }
             }
 
