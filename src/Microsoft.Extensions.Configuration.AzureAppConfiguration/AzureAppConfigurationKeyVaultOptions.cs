@@ -14,11 +14,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationKeyVaultOptions
     {
+        private const int KeyVaultMaxRetries = 6;
+
         internal TokenCredential Credential;
         internal SecretClientOptions ClientOptions = new SecretClientOptions
         {
             Retry = {
-                MaxRetries = 6
+                MaxRetries = KeyVaultMaxRetries
             }
         };
         internal List<SecretClient> SecretClients = new List<SecretClient>();
