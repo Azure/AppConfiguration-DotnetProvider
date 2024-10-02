@@ -88,9 +88,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         {
             var sourceIdsToRemove = new List<Uri>();
 
+            var utcNow = DateTimeOffset.UtcNow;
+
             foreach (KeyValuePair<Uri, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
             {
-                if (secret.Value.LastRefreshTime + RefreshConstants.MinimumSecretRefreshInterval < DateTimeOffset.UtcNow)
+                if (secret.Value.LastRefreshTime + RefreshConstants.MinimumSecretRefreshInterval < utcNow)
                 {
                     sourceIdsToRemove.Add(secret.Key);
                 }
