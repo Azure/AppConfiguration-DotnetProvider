@@ -228,9 +228,9 @@ namespace Tests.AzureAppConfiguration
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Throws(new RequestFailedException(503, "Request failed."));
+                       .Throws(new RequestFailedException(403, "Forbidden."));
             mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Throws(new RequestFailedException(503, "Request failed."));
+                       .Throws(new RequestFailedException(401, "Unauthorized."));
             mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
 
             var mockClient2 = new Mock<ConfigurationClient>();
