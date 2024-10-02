@@ -14,6 +14,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationKeyVaultOptions
     {
+        // 6 retries is the highest number that will make the total retry time comfortably fall under the default startup timeout of 100 seconds.
+        // This allows the provider to throw a KeyVaultReferenceException with all relevant information and halt startup instead of timing out.
         private const int KeyVaultMaxRetries = 6;
 
         internal TokenCredential Credential;
