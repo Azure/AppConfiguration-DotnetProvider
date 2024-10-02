@@ -389,7 +389,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-                                adapter.InvalidateCache(change.Current);
+                                // If the current setting is null, try to invalidate the previous setting instead
+                                if (change.Current != null)
+                                {
+                                    adapter.InvalidateCache(change.Current);
+                                }
+                                else if (change.Previous != null)
+                                {
+                                    adapter.InvalidateCache(change.Previous);
+                                }
                             }
                         }
                     }

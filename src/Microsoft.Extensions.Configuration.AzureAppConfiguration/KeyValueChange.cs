@@ -21,5 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public string Label { get; set; }
 
         public ConfigurationSetting Current { get; set; }
+
+        public ConfigurationSetting Previous { get; set; }
     }
 }

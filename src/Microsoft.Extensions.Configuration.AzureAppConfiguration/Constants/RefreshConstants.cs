@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public static readonly TimeSpan MinimumFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(1);
 
         // Key Vault secrets
-        public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromMinutes(1);
 
         // Backoff during refresh failures
         public static readonly TimeSpan DefaultMinBackoff = TimeSpan.FromSeconds(30);
