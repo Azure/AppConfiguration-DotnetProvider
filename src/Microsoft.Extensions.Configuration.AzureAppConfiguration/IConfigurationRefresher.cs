@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

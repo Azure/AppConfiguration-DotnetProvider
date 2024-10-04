@@ -68,7 +68,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     options.ReplicaDiscoveryEnabled = false;
@@ -133,7 +133,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -193,7 +193,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -258,7 +258,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     refresher = options.GetRefresher();
                 })
@@ -272,7 +272,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.azconfig.io") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.True(configClientManager.IsValidEndpoint("azure.azconfig.io"));
             Assert.True(configClientManager.IsValidEndpoint("appconfig.azconfig.io"));
@@ -287,7 +288,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.appconfig.azure.com") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.True(configClientManager2.IsValidEndpoint("azure.appconfig.azure.com"));
             Assert.True(configClientManager2.IsValidEndpoint("azure.z1.appconfig.azure.com"));
@@ -302,7 +304,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.azconfig-test.io") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
@@ -311,7 +314,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             Assert.False(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
             Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
@@ -325,7 +329,8 @@ namespace Tests.AzureAppConfiguration
                 new[] { new Uri("https://azure.azconfig.io") },
                 new DefaultAzureCredential(),
                 new ConfigurationClientOptions(),
-                true);
+                true,
+                false);
 
             var clients = configClientManager.GetClients();
 
