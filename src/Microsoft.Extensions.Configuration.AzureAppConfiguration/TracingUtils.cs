@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
@@ -79,8 +80,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!string.IsNullOrEmpty(assemblyName))
             {
-                // Return the version using only the first 3 fields and remove additional characters
-                return AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName)?.GetName().Version?.ToString(3).Trim('{', '}');
+                Assembly infoVersionAttribute = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == assemblyName);
+
+                if (infoVersionAttribute != null)
+                {
+                    string informationalVersion = infoVersionAttribute.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+                    if (string.IsNullOrEmpty(informationalVersion))
+                    {
+                        return null;
+                    }
+
+                    // Commit information is appended to the informational version starting with a '+', so we remove
+                    // the commit information to get just the full name of the version.
+                    int plusIndex = informationalVersion.IndexOf('+');
+
+                    if (plusIndex != -1)
+                    {
+                        informationalVersion = informationalVersion.Substring(0, plusIndex);
+                    }
+
+                    return informationalVersion;
+                }
             }
 
             return null;
@@ -135,9 +156,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.EnvironmentKey, RequestTracingConstants.DevEnvironmentValue));
             }
 
-            if (requestTracingOptions.FilterTracing.UsesAnyFeatureFilter())
+            if (requestTracingOptions.FeatureFlagTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FilterTracing.ToString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.MaxVariants > 0)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagMaxVariantsKey, requestTracingOptions.FeatureFlagTracing.MaxVariants.ToString()));
+            }
+
+            if (requestTracingOptions.FeatureFlagTracing.UsesAnyTracingFeature())
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFeaturesKey, requestTracingOptions.FeatureFlagTracing.CreateFeaturesString()));
             }
 
             if (requestTracingOptions.FeatureManagementVersion != null)
@@ -150,6 +181,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
             }
 
+            if (requestTracingOptions.UsesAnyTracingFeature())
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
+            }
+
             if (requestTracingOptions.IsKeyVaultConfigured)
             {
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
@@ -160,9 +196,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
-            if (requestTracingOptions.IsSignalRUsed)
+            if (requestTracingOptions.IsFailoverRequest)
             {
-                correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
+                correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);
             }
 
             var sb = new StringBuilder();

@@ -22,7 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string RequestTypeKey = "RequestType";
         public const string HostTypeKey = "Host";
-        public const string FilterTypeKey = "Filter";
         public const string EnvironmentKey = "Env";
         public const string FeatureManagementVersionKey = "FMVer";
         public const string FeatureManagementAspNetCoreVersionKey = "FMANCVer";
@@ -30,7 +29,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
         public const string ReplicaCountKey = "ReplicaCount";
-        public const string SignalRUsedTag = "UsesSignalR";
+        public const string FeaturesKey = "Features";
+        public const string LoadBalancingEnabledTag = "LB";
+        public const string SignalRUsedTag = "SignalR";
+        public const string FailoverRequestTag = "Failover";
+
+        public const string FeatureFlagFilterTypeKey = "Filter";
+        public const string CustomFilter = "CSTM";
+        public const string PercentageFilter = "PRCNT";
+        public const string TimeWindowFilter = "TIME";
+        public const string TargetingFilter = "TRGT";
+        public const string FeatureFlagFeaturesKey = "FFFeatures";
+        public const string FeatureFlagUsesTelemetryTag = "Telemetry";
+        public const string FeatureFlagUsesSeedTag = "Seed";
+        public const string FeatureFlagMaxVariantsKey = "MaxVariants";
+        public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
@@ -38,7 +51,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
-
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
+
+        public const string Delimiter = "+";
     }
 }
