@@ -622,6 +622,113 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
+        List<ConfigurationSetting> _allocationIdFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantFeaturePercentileOn",
+                value: @"
+                        {
+                            ""id"": ""VariantFeaturePercentileOn"",
+                            ""enabled"": true,
+                            ""variants"": [
+                              {
+                                ""name"": ""Big"",
+                                ""status_override"": ""Disabled""
+                              }
+                            ],
+                            ""allocation"": {
+                              ""percentile"": [
+                                {
+                                  ""variant"": ""Big"",
+                                  ""from"": 0,
+                                  ""to"": 50
+                                }
+                              ],
+                              ""seed"": ""1234""
+                            },
+                            ""telemetry"": {
+                                ""enabled"": ""true"",
+                                ""metadata"": {
+		                            ""Tags.Tag1"": ""Tag1Value"",
+		                            ""Tags.Tag2"": ""Tag2Value""
+	                            }
+                            }
+                        }
+                        ",
+                label: "label",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantFeaturePercentileOff",
+                value: @"
+                        {
+                            ""id"": ""VariantFeaturePercentileOff"",
+                            ""enabled"": true,
+                            ""variants"": [
+                                {
+                                ""name"": ""Big""
+                                }
+                            ],
+                            ""allocation"": {
+                                ""percentile"": [
+                                {
+                                    ""variant"": ""Big"",
+                                    ""from"": 0,
+                                    ""to"": 50
+                                }
+                                ],
+                                ""seed"": ""12345""
+                            },
+                            ""telemetry"": {
+                                ""enabled"": true
+                            }
+                        }
+                        ",
+                label: "label",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "VariantFeatureDefaultEnabled",
+                value: @"
+                        {
+                            ""id"": ""VariantFeatureDefaultEnabled"",
+                            ""enabled"": true,
+                            ""variants"": [
+                              {
+                                ""name"": ""Medium"",
+                                ""configuration_value"": {
+                                  ""Size"": ""450px"",
+                                  ""Color"": ""Purple""
+                                }
+                              },
+                              {
+                                ""name"": ""Small"",
+                                ""configuration_value"": ""300px""
+                              }
+                            ],
+                            ""allocation"": {
+                              ""default_when_enabled"": ""Medium"",
+                              ""user"": [
+                                {
+                                  ""variant"": ""Small"",
+                                  ""users"": [
+                                    ""Jeff""
+                                  ]
+                                }
+                              ]
+                            },
+                            ""telemetry"": {
+                              ""enabled"": true
+                            }
+                          }
+                        ",
+                label: "label",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1")),
+        };
+
         TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         [Fact]
@@ -1936,6 +2043,50 @@ namespace Tests.AzureAppConfiguration
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_telemetryFeatureFlagCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, new DefaultAzureCredential());
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Equal("True", config["feature_management:feature_flags:0:telemetry:enabled"]);
+            Assert.Equal("TelemetryFeature1", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("Tag1Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag1"]);
+            Assert.Equal("Tag2Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag2"]);
+            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["feature_management:feature_flags:0:telemetry:metadata:ETag"]);
+
+            byte[] featureFlagIdHash;
+
+            using (HashAlgorithm hashAlgorithm = SHA256.Create())
+            {
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1\nlabel"));
+            }
+
+            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+
+            Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1?label=label", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
+
+            Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
+            Assert.Equal("TelemetryFeature2", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("Tag2Value", config["feature_management:feature_flags:1:telemetry:metadata:Tags.Tag1"]);
+        }
+
+        [Fact]
+        public void WithAllocationId()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_allocationIdFeatureFlagCollection));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
