@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 //
 
-using Azure.Core;
 using Azure.Data.AppConfiguration;
 using DnsClient;
 using DnsClient.Protocol;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
@@ -26,12 +26,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </remarks>
     internal class ConfigurationClientManager : IConfigurationClientManager, IDisposable
     {
+        private readonly IAzureClientFactory<ConfigurationClient> _clientFactory;
         private readonly IList<ConfigurationClientWrapper> _clients;
+
         private readonly Uri _endpoint;
-        private readonly string _secret;
-        private readonly string _id;
-        private readonly TokenCredential _credential;
-        private readonly ConfigurationClientOptions _clientOptions;
+
         private readonly bool _replicaDiscoveryEnabled;
         private readonly SrvLookupClient _srvLookupClient;
         private readonly string _validDomain;
@@ -52,61 +51,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal int RefreshClientsCalled { get; set; } = 0;
 
         public ConfigurationClientManager(
-            IEnumerable<string> connectionStrings,
-            ConfigurationClientOptions clientOptions,
-            bool replicaDiscoveryEnabled,
-            bool loadBalancingEnabled)
-        {
-            if (connectionStrings == null || !connectionStrings.Any())
-            {
-                throw new ArgumentNullException(nameof(connectionStrings));
-            }
-
-            string connectionString = connectionStrings.First();
-            _endpoint = new Uri(ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.EndpointSection));
-            _secret = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection);
-            _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
-            _clientOptions = clientOptions;
-            _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
-
-            // If load balancing is enabled, shuffle the passed in connection strings to randomize the endpoint used on startup
-            if (loadBalancingEnabled)
-            {
-                connectionStrings = connectionStrings.ToList().Shuffle();
-            }
-
-            _validDomain = GetValidDomain(_endpoint);
-            _srvLookupClient = new SrvLookupClient();
-
-            _clients = connectionStrings
-                .Select(cs =>
-                {
-                    var endpoint = new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection));
-                    return new ConfigurationClientWrapper(endpoint, new ConfigurationClient(cs, _clientOptions));
-                })
-                .ToList();
-        }
-
-        public ConfigurationClientManager(
+            IAzureClientFactory<ConfigurationClient> clientFactory,
             IEnumerable<Uri> endpoints,
-            TokenCredential credential,
-            ConfigurationClientOptions clientOptions,
             bool replicaDiscoveryEnabled,
             bool loadBalancingEnabled)
         {
+            _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
             }
 
-            if (credential == null)
-            {
-                throw new ArgumentNullException(nameof(credential));
-            }
-
             _endpoint = endpoints.First();
-            _credential = credential;
-            _clientOptions = clientOptions;
+
             _replicaDiscoveryEnabled = replicaDiscoveryEnabled;
 
             // If load balancing is enabled, shuffle the passed in endpoints to randomize the endpoint used on startup
@@ -119,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _srvLookupClient = new SrvLookupClient();
 
             _clients = endpoints
-                .Select(endpoint => new ConfigurationClientWrapper(endpoint, new ConfigurationClient(endpoint, _credential, _clientOptions)))
+                .Select(endpoint => new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri)))
                 .ToList();
         }
 
@@ -289,9 +247,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
-                    var configClient = _credential == null
-                        ? new ConfigurationClient(ConnectionStringUtils.Build(targetEndpoint, _id, _secret), _clientOptions)
-                        : new ConfigurationClient(targetEndpoint, _credential, _clientOptions);
+                    var configClient = _clientFactory.CreateClient(targetEndpoint.AbsoluteUri);
 
                     newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
                 }
