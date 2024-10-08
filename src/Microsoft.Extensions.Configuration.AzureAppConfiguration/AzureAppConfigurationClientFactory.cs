@@ -15,7 +15,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private readonly string _secret;
         private readonly string _id;
-        private IDictionary<string, ConfigurationClient> _clients = new Dictionary<string, ConfigurationClient>();
 
         public AzureAppConfigurationClientFactory(
             string connectionString,
@@ -52,16 +51,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("Invalid host URI.");
             }
 
-            if (!_clients.TryGetValue(endpoint, out ConfigurationClient configClient))
-            {
-                configClient = _credential == null
+            return _credential == null
                         ? new ConfigurationClient(ConnectionStringUtils.Build(new Uri(endpoint), _id, _secret), _clientOptions)
                         : new ConfigurationClient(new Uri(endpoint), _credential, _clientOptions);
-
-                _clients[endpoint] = configClient;
-            }
-
-            return configClient;
         }
     }
 }

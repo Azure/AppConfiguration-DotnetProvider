@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                     var settings = config.AddJsonFile("appsettings.json").Build();
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(settings["connection_string"])
+                        options.Connect(Environment.GetEnvironmentVariable("secret"))
                                .ConfigureRefresh(refresh =>
                                {
                                    refresh.Register("Settings:BackgroundColor")
