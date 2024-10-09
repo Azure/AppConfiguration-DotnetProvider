@@ -1,9 +1,10 @@
-﻿using System;
-using Azure;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using System;
 using Azure.Data.AppConfiguration;
 using Azure.Core;
 using Microsoft.Extensions.Azure;
-using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
