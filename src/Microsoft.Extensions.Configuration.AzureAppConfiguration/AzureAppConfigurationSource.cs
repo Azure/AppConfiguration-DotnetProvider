@@ -42,11 +42,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IEnumerable<Uri> endpoints;
                 IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
 
-                if (options.ConnectionStrings != null && options.ConnectionStrings.Any())
+                if (options.ConnectionStrings != null)
                 {
                     endpoints = options.ConnectionStrings.Select(cs => new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection)));
 
-                    clientFactory ??= new AzureAppConfigurationClientFactory(options.ConnectionStrings.First(), options.ClientOptions);
+                    clientFactory ??= new AzureAppConfigurationClientFactory(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {

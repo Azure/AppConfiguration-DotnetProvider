@@ -5,6 +5,8 @@ using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -13,23 +15,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClientOptions _clientOptions;
 
         private readonly TokenCredential _credential;
-
-        private readonly string _secret;
-        private readonly string _id;
+        private readonly IEnumerable<string> _connectionStrings;
 
         public AzureAppConfigurationClientFactory(
-            string connectionString,
+            IEnumerable<string> connectionStrings,
             ConfigurationClientOptions clientOptions)
         {
-            if (string.IsNullOrEmpty(connectionString))
+            if (connectionStrings == null || !connectionStrings.Any())
             {
-                throw new ArgumentNullException(nameof(connectionString));
+                throw new ArgumentException(nameof(connectionStrings));
             }
 
-            _clientOptions = clientOptions ?? throw new ArgumentNullException(nameof(clientOptions));
+            _connectionStrings = connectionStrings;
 
-            _secret = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection);
-            _id = ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection);
+            _clientOptions = clientOptions ?? throw new ArgumentNullException(nameof(clientOptions));
         }
 
         public AzureAppConfigurationClientFactory(
@@ -52,9 +51,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException("Invalid host URI.");
             }
 
-            return _credential == null
-                        ? new ConfigurationClient(ConnectionStringUtils.Build(new Uri(endpoint), _id, _secret), _clientOptions)
-                        : new ConfigurationClient(new Uri(endpoint), _credential, _clientOptions);
+            if (_credential != null)
+            {
+                return new ConfigurationClient(new Uri(endpoint), _credential, _clientOptions);
+            }
+
+            string connectionString = _connectionStrings.FirstOrDefault(cs => ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection) == endpoint);
+
+            //
+            // falback to the first connection string
+            if (connectionString == null)
+            {
+                string id = ConnectionStringUtils.Parse(_connectionStrings.First(), ConnectionStringUtils.IdSection);
+                string secret = ConnectionStringUtils.Parse(_connectionStrings.First(), ConnectionStringUtils.SecretSection);
+
+                connectionString = ConnectionStringUtils.Build(new Uri(endpoint), id, secret);
+            }
+
+            return new ConfigurationClient(connectionString, _clientOptions);
         }
     }
 }
