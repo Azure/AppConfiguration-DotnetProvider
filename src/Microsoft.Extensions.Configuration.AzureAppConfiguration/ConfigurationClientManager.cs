@@ -247,7 +247,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     var targetEndpoint = new Uri($"https://{host}");
 
-                    var configClient = _clientFactory.CreateClient(targetEndpoint.AbsoluteUri);
+                    ConfigurationClient configClient = _clientFactory.CreateClient(targetEndpoint.AbsoluteUri);
 
                     newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
                 }
