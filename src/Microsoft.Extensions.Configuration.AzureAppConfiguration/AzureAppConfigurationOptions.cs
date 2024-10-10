@@ -3,6 +3,7 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -132,6 +133,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
+        /// Client factory that is responsible for creating instances of ConfigurationClient.
+        /// </summary>
+        internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -142,6 +148,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 new JsonKeyValueAdapter(),
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
+        }
+
+        /// <summary>
+        /// Sets the client factory used to create ConfigurationClient instances.
+        /// </summary>
+        /// <param name="factory">The client factory.</param>
+        /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
+        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
+        {
+            ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+            return this;
         }
 
         /// <summary>

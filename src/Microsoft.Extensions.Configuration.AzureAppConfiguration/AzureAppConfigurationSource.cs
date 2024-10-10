@@ -1,7 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -29,35 +33,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             try
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
-                IConfigurationClientManager clientManager;
 
                 if (options.ClientManager != null)
                 {
-                    clientManager = options.ClientManager;
+                    return new AzureAppConfigurationProvider(options.ClientManager, options, _optional);
                 }
-                else if (options.ConnectionStrings != null)
+
+                IEnumerable<Uri> endpoints;
+                IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
+
+                if (options.ConnectionStrings != null)
                 {
-                    clientManager = new ConfigurationClientManager(
-                        options.ConnectionStrings,
-                        options.ClientOptions,
-                        options.ReplicaDiscoveryEnabled,
-                        options.LoadBalancingEnabled);
+                    endpoints = options.ConnectionStrings.Select(cs => new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection)));
+
+                    clientFactory ??= new AzureAppConfigurationClientFactory(options.ConnectionStrings, options.ClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
-                    clientManager = new ConfigurationClientManager(
-                        options.Endpoints,
-                        options.Credential,
-                        options.ClientOptions,
-                        options.ReplicaDiscoveryEnabled,
-                        options.LoadBalancingEnabled);
+                    endpoints = options.Endpoints;
+
+                    clientFactory ??= new AzureAppConfigurationClientFactory(options.Credential, options.ClientOptions);
                 }
                 else
                 {
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(clientManager, options, _optional);
+                provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {
