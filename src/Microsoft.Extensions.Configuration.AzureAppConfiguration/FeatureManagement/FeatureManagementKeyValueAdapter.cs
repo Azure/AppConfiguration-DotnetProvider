@@ -334,27 +334,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         private string CalculateAllocationId(FeatureFlag flag)
         {
+            if (flag.Allocation == null)
+            {
+                return null;
+            }
+
             StringBuilder inputBuilder = new StringBuilder();
 
             // Seed
-            inputBuilder.Append($"seed={flag.Allocation?.Seed ?? ""}");
+            inputBuilder.Append($"seed={flag.Allocation.Seed ?? ""}");
 
             var allocatedVariants = new HashSet<string>();
 
             // DefaultWhenEnabled
-            if (flag.Allocation?.DefaultWhenEnabled != null)
+            if (flag.Allocation.DefaultWhenEnabled != null)
             {
                 allocatedVariants.Add(flag.Allocation.DefaultWhenEnabled);
             }
 
-            inputBuilder.Append("\n");
-            inputBuilder.Append($"default_when_enabled={flag.Allocation?.DefaultWhenEnabled ?? ""}");
+            inputBuilder.Append($"\ndefault_when_enabled={flag.Allocation.DefaultWhenEnabled ?? ""}");
 
             // Percentiles
-            inputBuilder.Append("\n");
-            inputBuilder.Append("percentiles=");
+            inputBuilder.Append("\npercentiles=");
 
-            if (flag.Allocation?.Percentile != null && flag.Allocation.Percentile.Any())
+            if (flag.Allocation.Percentile != null && flag.Allocation.Percentile.Any())
             {
                 var sortedPercentiles = flag.Allocation.Percentile
                     .Where(p => p.From != p.To)
@@ -367,15 +370,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             // If there's no custom seed and no variants allocated, stop now and return null
-            if (flag.Allocation?.Seed == null &&
+            if (flag.Allocation.Seed == null &&
                 !allocatedVariants.Any())
             {
                 return null;
             }
 
             // Variants
-            inputBuilder.Append("\n");
-            inputBuilder.Append("variants=");
+            inputBuilder.Append("\nvariants=");
 
             if (allocatedVariants.Any() && flag.Variants != null && flag.Variants.Any())
             {
@@ -403,9 +405,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             using (SHA256 sha256 = SHA256.Create())
             {
-                byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
                 byte[] truncatedHash = new byte[15];
-                Array.Copy(hash, truncatedHash, 15);
+                Array.Copy(sha256.ComputeHash(Encoding.UTF8.GetBytes(input)), truncatedHash, 15);
                 return truncatedHash.ToBase64Url();
             }
         }
