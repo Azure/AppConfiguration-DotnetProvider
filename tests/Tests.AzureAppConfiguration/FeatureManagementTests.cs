@@ -622,6 +622,111 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
         };
 
+        List<ConfigurationSetting> _allocationIdFeatureFlagCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryVariant",
+                value: @"
+                        {
+                            ""id"": ""TelemetryVariant"",
+                            ""enabled"": true,
+                            ""variants"": [
+                                {
+                                    ""name"": ""True_Override"",
+                                    ""configuration_value"": ""default"",
+                                    ""status_override"": ""Disabled""
+                                }
+                            ],
+                            ""allocation"": {
+                                ""default_when_enabled"": ""True_Override""
+                            },
+                            ""telemetry"": {
+                                ""enabled"": ""true""
+                            }
+                        }
+                        ",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("cmwBRcIAq1jUyKL3Kj8bvf9jtxBrFg-R-ayExStMC90")),
+
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryVariantPercentile",
+                value: @"
+                        {
+                            ""id"": ""TelemetryVariant"",
+                            ""enabled"": true,
+                            ""variants"": [
+                                {
+                                    ""name"": ""True_Override"",
+                                    ""configuration_value"": {
+                                        ""someKey"": ""someValue"",
+                                        ""someOtherKey"": {
+                                            ""someSubKey"": ""someSubValue""
+                                        }
+                                    }
+                                }
+                            ],
+                            ""allocation"": {
+                                ""default_when_enabled"": ""True_Override"",
+                                ""percentile"": [
+                                    {
+                                        ""variant"": ""True_Override"",
+                                        ""from"": 0,
+                                        ""to"": 100
+                                    }
+                                ]
+                            },
+                            ""telemetry"": {
+                                ""enabled"": ""true""
+                            }
+                        }
+                        ",
+                label: "label",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("cmwBRcIAq1jUyKL3Kj8bvf9jtxBrFg-R-ayExStMC90")),
+
+            // Quote of the day test
+            ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "Greeting",
+                value: @"
+                        {
+                            ""id"": ""Greeting"",
+	                        ""description"": """",
+	                        ""enabled"": true,
+	                        ""variants"": [
+		                        {
+			                        ""name"": ""On"",
+			                        ""configuration_value"": true
+		                        },
+		                        {
+			                        ""name"": ""Off"",
+			                        ""configuration_value"": false
+		                        }
+	                        ],
+	                        ""allocation"": {
+		                        ""percentile"": [
+			                        {
+				                        ""variant"": ""On"",
+				                        ""from"": 0,
+				                        ""to"": 50
+			                        },
+			                        {
+				                        ""variant"": ""Off"",
+				                        ""from"": 50,
+				                        ""to"": 100
+			                        }
+		                        ],
+		                        ""default_when_enabled"": ""Off"",
+		                        ""default_when_disabled"": ""Off""
+	                        },
+	                        ""telemetry"": {
+		                        ""enabled"": true
+	                        }
+                        }
+                        ",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("8kS3pc_cQmWnfLY9LQ1cd-RfR6_nQqH6sgdlL9eCgek")),
+        };
+
         TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
         [Fact]
@@ -1970,6 +2075,65 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
             Assert.Equal("TelemetryFeature2", config["feature_management:feature_flags:1:id"]);
             Assert.Equal("Tag2Value", config["feature_management:feature_flags:1:telemetry:metadata:Tags.Tag1"]);
+        }
+
+        [Fact]
+        public void WithAllocationId()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_allocationIdFeatureFlagCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, new DefaultAzureCredential());
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            byte[] featureFlagIdHash;
+
+            using (HashAlgorithm hashAlgorithm = SHA256.Create())
+            {
+                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariant\n"));
+            }
+
+            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+
+            // Validate TelemetryVariant
+            Assert.Equal("True", config["feature_management:feature_flags:0:telemetry:enabled"]);
+            Assert.Equal("TelemetryVariant", config["feature_management:feature_flags:0:id"]);
+
+            Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
+
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariant", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
+
+            Assert.Equal("MExY1waco2tqen4EcJKK", config["feature_management:feature_flags:0:telemetry:metadata:AllocationId"]);
+
+            // Validate TelemetryVariantPercentile
+            Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
+            Assert.Equal("TelemetryVariant", config["feature_management:feature_flags:1:id"]);
+
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariantPercentile?label=label", config["feature_management:feature_flags:1:telemetry:metadata:FeatureFlagReference"]);
+
+            Assert.Equal("SCq5T7Bb1k6tWfWjI3qz", config["feature_management:feature_flags:1:telemetry:metadata:AllocationId"]);
+
+            // Validate Greeting
+            Assert.Equal("True", config["feature_management:feature_flags:2:telemetry:enabled"]);
+            Assert.Equal("Greeting", config["feature_management:feature_flags:2:id"]);
+
+            Assert.Equal("63pHsrNKDSi5Zfe_FvZPSegwbsEo5TS96hf4k7cc4Zw", config["feature_management:feature_flags:2:telemetry:metadata:FeatureFlagId"]);
+
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}Greeting", config["feature_management:feature_flags:2:telemetry:metadata:FeatureFlagReference"]);
+
+            Assert.Equal("L0m7_ulkdsaQmz6dSw4r", config["feature_management:feature_flags:2:telemetry:metadata:AllocationId"]);
         }
 
         [Fact]
