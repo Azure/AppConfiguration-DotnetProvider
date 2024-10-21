@@ -342,7 +342,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             StringBuilder inputBuilder = new StringBuilder();
 
             // Seed
-            inputBuilder.Append($"seed={flag.Allocation.Seed ?? ""}");
+            inputBuilder.Append($"seed={flag.Allocation.Seed ?? string.Empty}");
 
             var allocatedVariants = new HashSet<string>();
 
@@ -352,7 +352,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 allocatedVariants.Add(flag.Allocation.DefaultWhenEnabled);
             }
 
-            inputBuilder.Append($"\ndefault_when_enabled={flag.Allocation.DefaultWhenEnabled ?? ""}");
+            inputBuilder.Append($"\ndefault_when_enabled={flag.Allocation.DefaultWhenEnabled ?? string.Empty}");
 
             // Percentiles
             inputBuilder.Append("\npercentiles=");
@@ -388,7 +388,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 inputBuilder.Append(string.Join(";", sortedVariants.Select(v =>
                 {
-                    var variantValue = "";
+                    var variantValue = string.Empty;
 
                     if (v.ConfigurationValue.ValueKind != JsonValueKind.Null && v.ConfigurationValue.ValueKind != JsonValueKind.Undefined)
                     {
