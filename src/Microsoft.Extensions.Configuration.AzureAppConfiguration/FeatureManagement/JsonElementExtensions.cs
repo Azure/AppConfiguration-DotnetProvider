@@ -68,6 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         writer.WriteNumberValue(element.GetDouble());
                     }
+
                     break;
 
                 case JsonValueKind.True:
