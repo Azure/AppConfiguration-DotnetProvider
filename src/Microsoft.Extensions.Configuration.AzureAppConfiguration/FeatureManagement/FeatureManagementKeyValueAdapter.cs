@@ -5,6 +5,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -320,11 +321,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
 
-                    string allocationId = CalculateAllocationId(featureFlag);
-
-                    if (allocationId != null)
+                    if (featureFlag.Allocation != null)
                     {
-                        keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.AllocationId}", allocationId));
+                        string allocationId = CalculateAllocationId(featureFlag);
+
+                        if (allocationId != null)
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.AllocationId}", allocationId));
+                        }
                     }
                 }
             }
@@ -334,10 +338,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         private string CalculateAllocationId(FeatureFlag flag)
         {
-            if (flag.Allocation == null)
-            {
-                return null;
-            }
+            Debug.Assert(flag.Allocation != null);
 
             StringBuilder inputBuilder = new StringBuilder();
 
