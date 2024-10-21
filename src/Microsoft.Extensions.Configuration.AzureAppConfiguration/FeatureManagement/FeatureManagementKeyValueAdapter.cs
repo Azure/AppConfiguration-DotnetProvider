@@ -359,7 +359,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (flag.Allocation.Percentile != null && flag.Allocation.Percentile.Any())
             {
-                var sortedPercentiles = flag.Allocation.Percentile
+                IEnumerable<FeaturePercentileAllocation> sortedPercentiles = flag.Allocation.Percentile
                     .Where(p => p.From != p.To)
                     .OrderBy(p => p.From)
                     .ToList();
@@ -381,7 +381,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (allocatedVariants.Any() && flag.Variants != null && flag.Variants.Any())
             {
-                var sortedVariants = flag.Variants
+                IEnumerable<FeatureVariant> sortedVariants = flag.Variants
                     .Where(variant => allocatedVariants.Contains(variant.Name))
                     .OrderBy(variant => variant.Name)
                     .ToList();
@@ -392,7 +392,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (v.ConfigurationValue.ValueKind != JsonValueKind.Null && v.ConfigurationValue.ValueKind != JsonValueKind.Undefined)
                     {
-                        variantValue = JsonSerializer.Serialize(v.ConfigurationValue);
+                        variantValue = v.ConfigurationValue.SerializeWithSortedKeys();
                     }
 
                     return $"{v.Name.ToBase64String()},{(variantValue)}";

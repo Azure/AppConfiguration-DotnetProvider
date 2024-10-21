@@ -658,10 +658,10 @@ namespace Tests.AzureAppConfiguration
                                 {
                                     ""name"": ""True_Override"",
                                     ""configuration_value"": {
-                                        ""someKey"": ""someValue"",
                                         ""someOtherKey"": {
                                             ""someSubKey"": ""someSubValue""
-                                        }
+                                        },
+                                        ""someKey"": ""someValue""
                                     }
                                 }
                             ],
