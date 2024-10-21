@@ -652,7 +652,7 @@ namespace Tests.AzureAppConfiguration
                 key: FeatureManagementConstants.FeatureFlagMarker + "TelemetryVariantPercentile",
                 value: @"
                         {
-                            ""id"": ""TelemetryVariant"",
+                            ""id"": ""TelemetryVariantPercentile"",
                             ""enabled"": true,
                             ""variants"": [
                                 {
@@ -2119,7 +2119,7 @@ namespace Tests.AzureAppConfiguration
 
             // Validate TelemetryVariantPercentile
             Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
-            Assert.Equal("TelemetryVariant", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("TelemetryVariantPercentile", config["feature_management:feature_flags:1:id"]);
 
             Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariantPercentile?label=label", config["feature_management:feature_flags:1:telemetry:metadata:FeatureFlagReference"]);
 
