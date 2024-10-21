@@ -60,11 +60,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         writer.WriteNumberValue(longValue);
                     }
-                    else
+                    else if (element.TryGetDecimal(out decimal decimalValue))
+                    {
+                        writer.WriteNumberValue(element.GetDecimal());
+                    }
+                    else if (element.TryGetDouble(out double doubleValue))
                     {
                         writer.WriteNumberValue(element.GetDouble());
                     }
-
                     break;
 
                 case JsonValueKind.True:

@@ -661,7 +661,10 @@ namespace Tests.AzureAppConfiguration
                                         ""someOtherKey"": {
                                             ""someSubKey"": ""someSubValue""
                                         },
-                                        ""someKey"": ""someValue""
+                                        ""someKey4"": [3, 1, 4,  true],
+                                        ""someKey"": ""someValue"",
+                                        ""someKey3"": 3.14,
+                                        ""someKey2"": 3                                    
                                     }
                                 }
                             ],
@@ -2123,7 +2126,7 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariantPercentile?label=label", config["feature_management:feature_flags:1:telemetry:metadata:FeatureFlagReference"]);
 
-            Assert.Equal("SCq5T7Bb1k6tWfWjI3qz", config["feature_management:feature_flags:1:telemetry:metadata:AllocationId"]);
+            Assert.Equal("YsdJ4pQpmhYa8KEhRLUn", config["feature_management:feature_flags:1:telemetry:metadata:AllocationId"]);
 
             // Validate Greeting
             Assert.Equal("True", config["feature_management:feature_flags:2:telemetry:enabled"]);
