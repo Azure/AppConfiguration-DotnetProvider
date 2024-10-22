@@ -302,6 +302,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Connect the provider to CDN endpoint.
+        /// </summary>
+        /// <param name="cdnEndpoint">The endpoint of the Azure App Configuration CDN to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri cdnEndpoint)
+        {
+            if (cdnEndpoint == null)
+            {
+                throw new ArgumentNullException(nameof(cdnEndpoint));
+            }
+
+            return Connect(cdnEndpoint, new EmptyTokenCredential());
+        }
+
+        /// <summary>
         /// Connect the provider to Azure App Configuration using endpoint and token credentials.
         /// </summary>
         /// <param name="endpoint">The endpoint of the Azure App Configuration to connect to.</param>
