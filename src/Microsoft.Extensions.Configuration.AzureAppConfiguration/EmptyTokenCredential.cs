@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// <summary>
     /// A token credential that provides an empty token.
     /// </summary>
-    public class EmptyTokenCredential : TokenCredential
+    internal class EmptyTokenCredential : TokenCredential
     {
         /// <summary>
         /// Gets an empty token.
