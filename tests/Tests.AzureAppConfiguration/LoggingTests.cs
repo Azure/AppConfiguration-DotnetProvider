@@ -582,7 +582,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.Register("TestKey1", "label", true)
                                       .SetRefreshInterval(RefreshInterval);
                     });
-                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(RefreshInterval));
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(60)));
                     refresher = options.GetRefresher();
                 })
                 .Build();
