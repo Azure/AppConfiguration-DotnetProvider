@@ -186,7 +186,7 @@ namespace Tests.AzureAppConfiguration
             {
                 configuration = builder.AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 }).Build();
             });
@@ -212,7 +212,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
                 .Build();
@@ -237,7 +237,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
                 .Build();
@@ -262,7 +262,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 }).Build();
             });
@@ -287,7 +287,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 }).Build();
             });
@@ -309,7 +309,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
                 .Build();
@@ -364,13 +364,12 @@ namespace Tests.AzureAppConfiguration
                     {
                         startupOptions.Timeout = TimeSpan.FromSeconds(5);
                     });
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
                 .Build();
             });
         }
-
 
         [Fact]
         public void HasNoAccessToKeyVault()
@@ -389,7 +388,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                 })
                 .Build();
@@ -418,7 +417,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient1.Object)
                                                       .Register(mockSecretClient2.Object));
                 })
@@ -441,7 +440,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.SetCredential(new DefaultAzureCredential()));
                 })
                 .Build();
@@ -469,7 +468,7 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient1.Object).Register(mockSecretClient2.Object));
                 })
                 .Build();
@@ -492,7 +491,7 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 })
                 .Build();
             });
@@ -516,7 +515,7 @@ namespace Tests.AzureAppConfiguration
             new ConfigurationBuilder()
             .AddAzureAppConfiguration(options =>
             {
-                options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                 options.Adapters = new List<IKeyValueAdapter> { mockKeyValueAdapter.Object };
             }, optional: true)
             .Build();
@@ -533,7 +532,7 @@ namespace Tests.AzureAppConfiguration
             IConfiguration config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetSecretResolver((secretUri) =>
@@ -559,7 +558,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetSecretResolver((secretUri) =>
@@ -589,7 +588,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetSecretResolver(null);
@@ -610,7 +609,7 @@ namespace Tests.AzureAppConfiguration
             IConfiguration config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetCredential(new DefaultAzureCredential());
@@ -645,7 +644,7 @@ namespace Tests.AzureAppConfiguration
             var configuration = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetSecretResolver((secretUri) =>
@@ -673,7 +672,7 @@ namespace Tests.AzureAppConfiguration
             {
                 new ConfigurationBuilder().AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetSecretRefreshInterval(_kv.Key, TimeSpan.FromMilliseconds(10));
@@ -722,7 +721,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
 
                     options.ConfigureKeyVault(kv =>
                     {
@@ -760,7 +759,7 @@ namespace Tests.AzureAppConfiguration
         public async Task CachedSecretIsInvalidatedWhenRefreshAllIsTrue()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan refreshInterval = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -795,7 +794,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.Register(mockSecretClient.Object);
@@ -832,7 +831,7 @@ namespace Tests.AzureAppConfiguration
         public async Task SecretIsReloadedFromKeyVaultWhenCacheExpires()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan refreshInterval = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -848,7 +847,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.Register(mockSecretClient.Object);
@@ -875,7 +874,7 @@ namespace Tests.AzureAppConfiguration
         public async Task SecretsWithDefaultRefreshInterval()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -891,7 +890,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.Register(mockSecretClient.Object);
@@ -920,7 +919,7 @@ namespace Tests.AzureAppConfiguration
         public async Task SecretsWithDifferentRefreshIntervals()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(60);
             TimeSpan longRefreshInterval = TimeSpan.FromDays(1);
 
             var mockResponse = new Mock<Response>();
@@ -937,7 +936,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);;
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.Register(mockSecretClient.Object);
@@ -962,7 +961,6 @@ namespace Tests.AzureAppConfiguration
             // Validate that 3 calls were made to fetch secrets from KeyVault because the secret cache had expired for only one secret. 
             mockSecretClient.Verify(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
-
 
         [Fact]
         public void ThrowsWhenInvalidKeyVaultSecretReferenceJson()

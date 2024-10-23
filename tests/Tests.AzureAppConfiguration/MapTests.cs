@@ -1,19 +1,22 @@
-﻿using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure;
+using Azure.Core.Diagnostics;
+using Azure.Core.Testing;
+using Azure.Data.AppConfiguration;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Moq;
 using System;
 using System.Collections.Generic;
-using Xunit;
-using Azure.Data.AppConfiguration;
-using Azure;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using System.Diagnostics.Tracing;
 using System.Linq;
-using Azure.Core.Testing;
-using Moq;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Security.KeyVault.Secrets;
-using Azure.Core.Diagnostics;
-using System.Diagnostics.Tracing;
+using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -71,6 +74,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " mapped";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -82,6 +86,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " second";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                 })
@@ -113,16 +118,17 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
                     options.Map((setting) =>
                         {
-                        if (setting.ContentType != KeyVaultConstants.ContentType + "; charset=utf-8")
-                        {
-                            setting.Value = @"
+                            if (setting.ContentType != KeyVaultConstants.ContentType + "; charset=utf-8")
+                            {
+                                setting.Value = @"
                                             {
                                                 ""uri"":""https://keyvault-theclassics.vault.azure.net/certificates/TestCertificate""
                                             }";
-                            setting.ContentType = KeyVaultConstants.ContentType + "; charset=utf-8";
-                        }
-                        return new ValueTask<ConfigurationSetting>(setting);
-                    });
+                                setting.ContentType = KeyVaultConstants.ContentType + "; charset=utf-8";
+                            }
+
+                            return new ValueTask<ConfigurationSetting>(setting);
+                        });
                 })
                 .Build();
 
@@ -152,6 +158,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " mapped";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -163,6 +170,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " second";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
 
@@ -205,6 +213,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Key = "newTestKey1";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -212,6 +221,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -255,6 +265,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Label = "newLabel";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -262,6 +273,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -303,6 +315,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Key = "TestKey2";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -310,6 +323,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -356,6 +370,7 @@ namespace Tests.AzureAppConfiguration
                                         eTag: new ETag("changed"),
                                         contentType: "text");
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -395,13 +410,14 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = mockClientManager;
-                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(60)));
                     options.Map((setting) =>
                     {
                         if (setting.ContentType == KeyVaultConstants.ContentType + "; charset=utf-8")
                         {
                             setting.Value = _secretValue;
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();
@@ -426,12 +442,11 @@ namespace Tests.AzureAppConfiguration
                 .Returns((string name, string version, CancellationToken cancellationToken) =>
                     Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, _secretValue))));
 
-
             var config = new ConfigurationBuilder()
             .AddAzureAppConfiguration(options =>
             {
                 options.ClientManager = mockClientManager;
-                options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(1)));
+                options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object).SetSecretRefreshInterval(TimeSpan.FromSeconds(60)));
                 options.Map(async (setting) =>
                 {
                     if (setting.ContentType == KeyVaultConstants.ContentType + "; charset=utf-8")
@@ -440,6 +455,7 @@ namespace Tests.AzureAppConfiguration
                         setting.Value = secret.Value;
                         setting.ContentType = "text";
                     }
+
                     return setting;
                 });
                 refresher = options.GetRefresher();
@@ -466,6 +482,7 @@ namespace Tests.AzureAppConfiguration
                     {
                         informationalInvocation += s;
                     }
+
                     if (args.Level == EventLevel.Verbose)
                     {
                         verboseInvocation += s;
@@ -487,6 +504,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Key = "newTestKey1";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     }).Map((setting) =>
                     {
@@ -494,6 +512,7 @@ namespace Tests.AzureAppConfiguration
                         {
                             setting.Value += " changed";
                         }
+
                         return new ValueTask<ConfigurationSetting>(setting);
                     });
                     refresher = options.GetRefresher();

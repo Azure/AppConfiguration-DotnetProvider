@@ -126,6 +126,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 requestTracingDisabled = Environment.GetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable);
             }
             catch (SecurityException) { }
+
             _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
 
             if (_requestTracingEnabled)
@@ -209,7 +210,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Filter clients based on their backoff status
-                    clients = clients.Where(client => 
+                    clients = clients.Where(client =>
                     {
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
@@ -321,7 +322,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         refreshAll = true;
                                         break;
                                     }
-                                } else
+                                }
+                                else
                                 {
                                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                                 }
@@ -388,7 +390,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
                             foreach (IKeyValueAdapter adapter in _options.Adapters)
                             {
-                                adapter.OnChangeDetected(change.Current);
+                                // If the current setting is null, try to pass the previous setting instead
+                                if (change.Current != null)
+                                {
+                                    adapter.OnChangeDetected(change.Current);
+                                }
+                                else if (change.Previous != null)
+                                {
+                                    adapter.OnChangeDetected(change.Previous);
+                                }
                             }
                         }
                     }
@@ -669,17 +679,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 throw;
             }
-            catch (KeyVaultReferenceException exception)
-            {
-                if (IsFailOverable(exception))
-                {
-                    startupExceptions.Add(exception);
-
-                    return false;
-                }
-
-                throw;
-            }
             catch (AggregateException exception)
             {
                 if (exception.InnerExceptions?.Any(e => e is OperationCanceledException) ?? false)
@@ -698,7 +697,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     return false;
                 }
-                
+
                 throw;
             }
 
@@ -968,7 +967,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
-                FeatureFlagTracing = _options.FeatureFlagTracing
+                FeatureFlagTracing = _options.FeatureFlagTracing,
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
             };
         }
 
@@ -1003,6 +1003,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<ConfigurationClient, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.IsFailoverRequest = false;
+            }
+
             if (_options.LoadBalancingEnabled && _lastSuccessfulEndpoint != null && clients.Count() > 1)
             {
                 int nextClientIndex = 0;
@@ -1057,15 +1062,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw;
                     }
                 }
-                catch (KeyVaultReferenceException kvre)
-                {
-                    if (!IsFailOverable(kvre) || !clientEnumerator.MoveNext())
-                    {
-                        backoffAllClients = true;
-
-                        throw;
-                    }
-                }
                 catch (AggregateException ae)
                 {
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
@@ -1105,6 +1101,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 previousEndpoint = currentEndpoint;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.IsFailoverRequest = true;
+                }
             }
         }
 
@@ -1132,7 +1133,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (rfe.Status == HttpStatusCodes.TooManyRequests ||
                 rfe.Status == (int)HttpStatusCode.RequestTimeout ||
-                rfe.Status >= (int)HttpStatusCode.InternalServerError)
+                rfe.Status >= (int)HttpStatusCode.InternalServerError ||
+                rfe.Status == (int)HttpStatusCode.Forbidden ||
+                rfe.Status == (int)HttpStatusCode.Unauthorized)
             {
                 return true;
             }
@@ -1152,20 +1155,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return innerException is WebException ||
                    innerException is SocketException ||
                    innerException is IOException;
-        }
-
-        private bool IsFailOverable(KeyVaultReferenceException kvre)
-        {
-            if (kvre.InnerException is RequestFailedException rfe && IsFailOverable(rfe))
-            {
-                return true;
-            }
-            else if (kvre.InnerException is AggregateException ae && IsFailOverable(ae))
-            {
-                return true;
-            }
-
-            return false;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)

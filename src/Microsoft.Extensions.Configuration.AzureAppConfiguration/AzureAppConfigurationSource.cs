@@ -12,7 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
-            _optionsProvider = () => {
+            _optionsProvider = () =>
+            {
                 var options = new AzureAppConfigurationOptions();
                 optionsInitializer(options);
                 return options;
@@ -37,18 +38,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else if (options.ConnectionStrings != null)
                 {
                     clientManager = new ConfigurationClientManager(
-                        options.ConnectionStrings, 
-                        options.ClientOptions, 
-                        options.ReplicaDiscoveryEnabled, 
+                        options.ConnectionStrings,
+                        options.ClientOptions,
+                        options.ReplicaDiscoveryEnabled,
                         options.LoadBalancingEnabled);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     clientManager = new ConfigurationClientManager(
-                        options.Endpoints, 
-                        options.Credential, 
-                        options.ClientOptions, 
-                        options.ReplicaDiscoveryEnabled, 
+                        options.Endpoints,
+                        options.Credential,
+                        options.ClientOptions,
+                        options.ReplicaDiscoveryEnabled,
                         options.LoadBalancingEnabled);
                 }
                 else

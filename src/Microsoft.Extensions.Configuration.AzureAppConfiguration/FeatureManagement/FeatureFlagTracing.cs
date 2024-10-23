@@ -14,11 +14,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// </summary>
     internal class FeatureFlagTracing
     {
-        private const string CustomFilter = "CSTM";
-        private const string PercentageFilter = "PRCNT";
-        private const string TimeWindowFilter = "TIME";
-        private const string TargetingFilter = "TRGT";
-
         // Built-in Feature Filter Names
         private readonly List<string> PercentageFilterNames = new List<string> { "Percentage", "Microsoft.Percentage", "PercentageFilter", "Microsoft.PercentageFilter" };
         private readonly List<string> TimeWindowFilterNames = new List<string> { "TimeWindow", "Microsoft.TimeWindow", "TimeWindowFilter", "Microsoft.TimeWindowFilter" };
@@ -98,7 +93,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (UsesCustomFilter)
             {
-                sb.Append(CustomFilter);
+                sb.Append(RequestTracingConstants.CustomFilter);
             }
 
             if (UsesPercentageFilter)
@@ -108,7 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(PercentageFilter);
+                sb.Append(RequestTracingConstants.PercentageFilter);
             }
 
             if (UsesTimeWindowFilter)
@@ -118,7 +113,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(TimeWindowFilter);
+                sb.Append(RequestTracingConstants.TimeWindowFilter);
             }
 
             if (UsesTargetingFilter)
@@ -128,14 +123,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(TargetingFilter);
+                sb.Append(RequestTracingConstants.TargetingFilter);
             }
 
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by feature flags.
+        /// </summary>
+        /// <returns>Formatted string like: "Seed+ConfigRef+Telemetry". If no tracing features are used, empty string will be returned.</returns>
         public string CreateFeaturesString()
         {
+            if (!UsesAnyTracingFeature())
+            {
+                return string.Empty;
+            }
+
             var sb = new StringBuilder();
 
             if (UsesSeed)

@@ -138,7 +138,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             IList<KeyValuePair<string, string>> correlationContextKeyValues = new List<KeyValuePair<string, string>>();
             IList<string> correlationContextTags = new List<string>();
-            
+
             correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.RequestTypeKey, Enum.GetName(typeof(RequestType), requestType)));
 
             if (requestTracingOptions.ReplicaCount > 0)
@@ -158,7 +158,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.FeatureFlagTracing.UsesAnyFeatureFilter())
             {
-                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureFlagFilterTypeKey, requestTracingOptions.FeatureFlagTracing.CreateFiltersString()));
             }
 
             if (requestTracingOptions.FeatureFlagTracing.MaxVariants > 0)
@@ -181,6 +181,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
             }
 
+            if (requestTracingOptions.UsesAnyTracingFeature())
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
+            }
+
             if (requestTracingOptions.IsKeyVaultConfigured)
             {
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultConfiguredTag);
@@ -191,14 +196,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
-            if (requestTracingOptions.IsSignalRUsed)
+            if (requestTracingOptions.IsFailoverRequest)
             {
-                correlationContextTags.Add(RequestTracingConstants.SignalRUsedTag);
+                correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);
             }
 
             var sb = new StringBuilder();
 
-            foreach (KeyValuePair<string,string> kvp in correlationContextKeyValues)
+            foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)
             {
                 if (sb.Length > 0)
                 {

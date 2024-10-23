@@ -36,6 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         VisitJsonProperty(property);
                     }
+
                     break;
 
                 case JsonValueKind.Array:
@@ -45,6 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         VisitJsonElement(element[index]);
                         ExitContext();
                     }
+
                     break;
 
                 case JsonValueKind.String:
