@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Determines whether the specified configuration source is an Azure App Configuration source.
         /// </summary>
         /// <param name="source">The configuration source to check.</param>
-        /// <returns><c>true</c> if the specified source is an Azure App Configuration source; otherwise, <c>false</c>.</returns>
+        /// <returns>true if the specified source is an Azure App Configuration source; otherwise, false.</returns>
         public static bool IsAzureAppConfigurationSource(this IConfigurationSource source)
         {
             return source is AzureAppConfigurationSource;
