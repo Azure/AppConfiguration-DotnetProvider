@@ -46,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uriResult) || !(uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri uriResult))
             {
                 throw new ArgumentException("Invalid host URI.");
             }
