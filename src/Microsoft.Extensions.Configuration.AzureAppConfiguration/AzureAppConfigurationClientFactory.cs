@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (connectionStrings == null || !connectionStrings.Any())
             {
-                throw new ArgumentException(nameof(connectionStrings));
+                throw new ArgumentNullException(nameof(connectionStrings));
             }
 
             _connectionStrings = connectionStrings;
@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_credential != null)
             {
-                return new ConfigurationClient(new Uri(endpoint), _credential, _clientOptions);
+                return new ConfigurationClient(uriResult, _credential, _clientOptions);
             }
 
             string connectionString = _connectionStrings.FirstOrDefault(cs => ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection) == endpoint);
@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 string id = ConnectionStringUtils.Parse(_connectionStrings.First(), ConnectionStringUtils.IdSection);
                 string secret = ConnectionStringUtils.Parse(_connectionStrings.First(), ConnectionStringUtils.SecretSection);
 
-                connectionString = ConnectionStringUtils.Build(new Uri(endpoint), id, secret);
+                connectionString = ConnectionStringUtils.Build(uriResult, id, secret);
             }
 
             return new ConfigurationClient(connectionString, _clientOptions);
