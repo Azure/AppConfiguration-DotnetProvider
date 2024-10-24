@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Checks whether any tracing feature is used.
         /// </summary>
-        /// <returns>True if any tracing feature is used, otherwise false.</returns>
+        /// <returns>true if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
             return IsLoadBalancingEnabled || IsSignalRUsed;
