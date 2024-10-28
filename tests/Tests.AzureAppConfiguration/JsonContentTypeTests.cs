@@ -125,13 +125,13 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void JsonContentTypeTests_EnableEnableStrictJsonParsing()
+        public void JsonContentTypeTests_StrictJsonParsingEnabled()
         {
             List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
             {
                 ConfigurationModelFactory.ConfigurationSetting(
                     key: "TestKey1",
-                    value: "True",
+                    value: "}{",
                     contentType: "application/json")
             };
             var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
@@ -140,10 +140,31 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options => 
                 {
                     options.ClientManager = mockClientManager;
-                    options.EnableStrictJsonParsing();
                 });
 
-             var ex = Assert.Throws<FormatException>(() => builder.Build());
+             Assert.Throws<FormatException>(() => builder.Build());
+        }
+
+        [Fact]
+        public void JsonContentTypeTests_StrictJsonParsingDisabled()
+        {
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "TestKey1",
+                    value: "}{",
+                    contentType: "application/json")
+            };
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+
+            var builder = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = mockClientManager;
+                    options.DisableStrictJsonParsing();
+                });
+
+            Assert.NotNull(builder.Build());
         }
 
         [Fact]

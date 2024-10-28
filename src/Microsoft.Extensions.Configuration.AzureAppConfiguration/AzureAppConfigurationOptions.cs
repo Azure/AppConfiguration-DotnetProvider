@@ -445,11 +445,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Configure the provider behavior when parsing invalid JSON values. When strict JSON parsing is enabled, the provider will throw <see cref="FormatException"/>, if a key-value with JSON content type has invalid JSON value.
+        /// By default, the provider will throw <see cref="FormatException"/> if a key-value with JSON content type has invalid JSON value. This method silences the behaviour and interpret the value as string instead.
         /// </summary>
-        public AzureAppConfigurationOptions EnableStrictJsonParsing()
+        public AzureAppConfigurationOptions DisableStrictJsonParsing()
         {
-            JsonKeyValueAdapter.ThrowOnInvalidJson = true;
+            JsonKeyValueAdapter.ThrowOnInvalidJson = false;
             return this;
         }
 
