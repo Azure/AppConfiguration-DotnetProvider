@@ -467,7 +467,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// By default, the provider will throw <see cref="FormatException"/> if a key-value with JSON content type has invalid JSON value. This method silences the behaviour and interpret the value as string instead.
+        /// By default, the provider will throw a <see cref="FormatException"/> if a key-value with JSON content type has an invalid JSON value. This method silences the behavior and interprets the value as a string instead.
         /// </summary>
         public AzureAppConfigurationOptions DisableStrictJsonParsing()
         {
