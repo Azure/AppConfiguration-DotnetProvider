@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +14,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// </summary>
     public class FeatureFlagOptions
     {
+        private TimeSpan _refreshInterval = RefreshConstants.DefaultFeatureFlagRefreshInterval;
+
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/>.
         /// </summary>
         internal List<KeyValueSelector> FeatureFlagSelectors = new List<KeyValueSelector>();
+
+        /// <summary>
+        /// The time after which feature flags can be refreshed.  Must be greater than or equal to 1 second.
+        /// </summary>
+        internal TimeSpan RefreshInterval
+        {
+            get { return _refreshInterval; }
+            set { _refreshInterval = value; }
+        }
 
         /// <summary>
         /// The label that feature flags will be selected from.
@@ -27,7 +38,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
-        public TimeSpan CacheExpirationInterval { get; set; } = RefreshConstants.DefaultFeatureFlagsCacheExpirationInterval;
+        [Obsolete("The " + nameof(CacheExpirationInterval) + " property is deprecated and will be removed in a future release. " +
+            "Please use the new " + nameof(SetRefreshInterval) + " method instead. " +
+            "Note that the usage has changed, but the functionality remains the same.")]
+        public TimeSpan CacheExpirationInterval
+        {
+            get { return _refreshInterval; }
+            set { _refreshInterval = value; }
+        }
+
+        /// <summary>
+        /// Sets the time after which feature flags can be refreshed.
+        /// </summary>
+        /// <param name="refreshInterval">
+        /// Sets the minimum time interval between consecutive refresh operations for feature flags. Default value is 30 seconds. Must be greater than or equal to 1 second.
+        /// </param>
+        public FeatureFlagOptions SetRefreshInterval(TimeSpan refreshInterval)
+        {
+            RefreshInterval = refreshInterval;
+
+            return this;
+        }
 
         /// <summary>
         /// Specify what feature flags to include in the configuration provider.

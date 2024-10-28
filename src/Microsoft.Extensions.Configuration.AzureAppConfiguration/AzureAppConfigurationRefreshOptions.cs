@@ -12,9 +12,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// </summary>
     public class AzureAppConfigurationRefreshOptions
     {
-        internal TimeSpan CacheExpirationInterval { get; private set; } = RefreshConstants.DefaultCacheExpirationInterval;
+        internal TimeSpan RefreshInterval { get; private set; } = RefreshConstants.DefaultRefreshInterval;
         internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
-        
+
         /// <summary>
         /// Register the specified individual key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
@@ -55,15 +55,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Any refresh operation triggered using <see cref="IConfigurationRefresher"/> will not update the value for a key until the cached value for that key has expired.
         /// </summary>
         /// <param name="cacheExpiration">Minimum time that must elapse before the cache is expired.</param>
+        [Obsolete("The " + nameof(SetCacheExpiration) + " method is deprecated and will be removed in a future release. " +
+            "Please use the " + nameof(SetRefreshInterval) + " method instead. " +
+            "Note that only the name of the method has changed, and the functionality remains the same.")]
         public AzureAppConfigurationRefreshOptions SetCacheExpiration(TimeSpan cacheExpiration)
         {
-            if (cacheExpiration < RefreshConstants.MinimumCacheExpirationInterval)
+            return SetRefreshInterval(cacheExpiration);
+        }
+
+        /// <summary>
+        /// Sets the minimum time interval between consecutive refresh operations for the registered key-values. Default value is 30 seconds. Must be greater than 1 second.
+        /// Refresh operations triggered using <see cref="IConfigurationRefresher"/> will not make any server requests unless the refresh interval has elapsed since the key was last refreshed.
+        /// </summary>
+        /// <param name="refreshInterval">Minimum time that must elapse between each refresh for a specific key.</param>
+        public AzureAppConfigurationRefreshOptions SetRefreshInterval(TimeSpan refreshInterval)
+        {
+            if (refreshInterval < RefreshConstants.MinimumRefreshInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(cacheExpiration), cacheExpiration.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumCacheExpirationInterval.TotalMilliseconds));
+                throw new ArgumentOutOfRangeException(nameof(refreshInterval), refreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumRefreshInterval.TotalMilliseconds));
             }
 
-            CacheExpirationInterval = cacheExpiration;
+            RefreshInterval = refreshInterval;
             return this;
         }
     }

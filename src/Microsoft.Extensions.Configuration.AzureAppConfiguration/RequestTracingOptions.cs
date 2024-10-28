@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -33,9 +34,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public int ReplicaCount { get; set; } = 0;
 
         /// <summary>
-        /// Type of feature filters used by the application.
+        /// Information about feature flags in the application, like filter and variant usage.
         /// </summary>
-        public FeatureFilterTracing FilterTracing { get; set; } = new FeatureFilterTracing();
+        public FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
         /// <summary>
         /// Version of the Microsoft.FeatureManagement assembly, if present in the application.
@@ -51,5 +52,55 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Microsoft.AspNetCore.SignalR assembly is present in the application.
         /// </summary>
         public bool IsSignalRUsed { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether load balancing is enabled.
+        /// </summary>
+        public bool IsLoadBalancingEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether the request is triggered by a failover.
+        /// </summary>
+        public bool IsFailoverRequest { get; set; } = false;
+
+        /// <summary>
+        /// Checks whether any tracing feature is used.
+        /// </summary>
+        /// <returns>true if any tracing feature is used, otherwise false.</returns>
+        public bool UsesAnyTracingFeature()
+        {
+            return IsLoadBalancingEnabled || IsSignalRUsed;
+        }
+
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by the application.
+        /// </summary>
+        /// <returns>Formatted string like: "LB+SignalR". If no tracing features are used, empty string will be returned.</returns>
+        public string CreateFeaturesString()
+        {
+            if (!UsesAnyTracingFeature())
+            {
+                return string.Empty;
+            }
+
+            var sb = new StringBuilder();
+
+            if (IsLoadBalancingEnabled)
+            {
+                sb.Append(RequestTracingConstants.LoadBalancingEnabledTag);
+            }
+
+            if (IsSignalRUsed)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.SignalRUsedTag);
+            }
+
+            return sb.ToString();
+        }
     }
 }

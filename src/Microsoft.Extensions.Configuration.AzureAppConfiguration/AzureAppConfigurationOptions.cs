@@ -3,6 +3,7 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -35,9 +36,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
-        /// Flag to indicate whether enable replica discovery.
+        /// Flag to indicate whether replica discovery is enabled.
         /// </summary>
         public bool ReplicaDiscoveryEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Flag to indicate whether load balancing is enabled.
+        /// </summary>
+        public bool LoadBalancingEnabled { get; set; }
 
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
@@ -119,12 +125,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Indicates all types of feature filters used by the application.
         /// </summary>
-        internal FeatureFilterTracing FeatureFilterTracing { get; set; } = new FeatureFilterTracing();
+        internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
         /// <summary>
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
+
+        /// <summary>
+        /// Client factory that is responsible for creating instances of ConfigurationClient.
+        /// </summary>
+        internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -135,8 +146,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
                 new JsonKeyValueAdapter(),
-                new FeatureManagementKeyValueAdapter(FeatureFilterTracing)
+                new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
+        }
+
+        /// <summary>
+        /// Sets the client factory used to create ConfigurationClient instances.
+        /// </summary>
+        /// <param name="factory">The client factory.</param>
+        /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
+        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
+        {
+            ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+            return this;
         }
 
         /// <summary>
@@ -215,10 +237,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureFlagOptions options = new FeatureFlagOptions();
             configure?.Invoke(options);
 
-            if (options.CacheExpirationInterval < RefreshConstants.MinimumFeatureFlagsCacheExpirationInterval)
+            if (options.RefreshInterval < RefreshConstants.MinimumFeatureFlagRefreshInterval)
             {
-                throw new ArgumentOutOfRangeException(nameof(options.CacheExpirationInterval), options.CacheExpirationInterval.TotalMilliseconds,
-                    string.Format(ErrorMessages.CacheExpirationTimeTooShort, RefreshConstants.MinimumFeatureFlagsCacheExpirationInterval.TotalMilliseconds));
+                throw new ArgumentOutOfRangeException(nameof(options.RefreshInterval), options.RefreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumFeatureFlagRefreshInterval.TotalMilliseconds));
             }
 
             if (options.FeatureFlagSelectors.Count() != 0 && options.Label != null)
@@ -247,8 +269,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = featureFlagFilter,
                     Label = labelFilter,
-                    // If UseFeatureFlags is called multiple times for the same key and label filters, last cache expiration time wins
-                    CacheExpirationInterval = options.CacheExpirationInterval
+                    // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
+                    RefreshInterval = options.RefreshInterval
                 });
 
             }
@@ -381,7 +403,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (var item in refreshOptions.RefreshRegistrations)
             {
-                item.CacheExpirationInterval = refreshOptions.CacheExpirationInterval;
+                item.RefreshInterval = refreshOptions.RefreshInterval;
                 _changeWatchers.Add(item);
             }
 

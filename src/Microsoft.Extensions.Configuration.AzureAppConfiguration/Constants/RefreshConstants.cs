@@ -8,15 +8,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class RefreshConstants
     {
         // Key-values
-        public static readonly TimeSpan DefaultCacheExpirationInterval = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan MinimumCacheExpirationInterval = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan DefaultRefreshInterval = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MinimumRefreshInterval = TimeSpan.FromSeconds(1);
 
         // Feature flags
-        public static readonly TimeSpan DefaultFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(30);
-        public static readonly TimeSpan MinimumFeatureFlagsCacheExpirationInterval = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan DefaultFeatureFlagRefreshInterval = TimeSpan.FromSeconds(30);
+        public static readonly TimeSpan MinimumFeatureFlagRefreshInterval = TimeSpan.FromSeconds(1);
 
         // Key Vault secrets
-        public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromSeconds(1);
+        public static readonly TimeSpan MinimumSecretRefreshInterval = TimeSpan.FromMinutes(1);
 
         // Backoff during refresh failures
         public static readonly TimeSpan DefaultMinBackoff = TimeSpan.FromSeconds(30);

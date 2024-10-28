@@ -12,14 +12,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// <summary>
     /// Tracing for tracking built-in feature filter usage.
     /// </summary>
-    internal class FeatureFilterTracing
+    internal class FeatureFlagTracing
     {
-        private const string CustomFilter = "CSTM";
-        private const string PercentageFilter = "PRCNT";
-        private const string TimeWindowFilter = "TIME";
-        private const string TargetingFilter = "TRGT";
-        private const string FilterTypeDelimiter = "+";
-
         // Built-in Feature Filter Names
         private readonly List<string> PercentageFilterNames = new List<string> { "Percentage", "Microsoft.Percentage", "PercentageFilter", "Microsoft.PercentageFilter" };
         private readonly List<string> TimeWindowFilterNames = new List<string> { "TimeWindow", "Microsoft.TimeWindow", "TimeWindowFilter", "Microsoft.TimeWindowFilter" };
@@ -29,18 +23,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesPercentageFilter { get; set; } = false;
         public bool UsesTimeWindowFilter { get; set; } = false;
         public bool UsesTargetingFilter { get; set; } = false;
-       
+        public bool UsesSeed { get; set; } = false;
+        public bool UsesTelemetry { get; set; } = false;
+        public bool UsesVariantConfigurationReference { get; set; } = false;
+        public int MaxVariants { get; set; }
+
         public bool UsesAnyFeatureFilter()
         {
             return UsesCustomFilter || UsesPercentageFilter || UsesTimeWindowFilter || UsesTargetingFilter;
         }
 
-        public void ResetFeatureFilterTracing()
+        public bool UsesAnyTracingFeature()
+        {
+            return UsesSeed || UsesTelemetry || UsesVariantConfigurationReference;
+        }
+
+        public void ResetFeatureFlagTracing()
         {
             UsesCustomFilter = false;
             UsesPercentageFilter = false;
             UsesTimeWindowFilter = false;
             UsesTargetingFilter = false;
+            UsesSeed = false;
+            UsesTelemetry = false;
+            UsesVariantConfigurationReference = false;
+            MaxVariants = 0;
         }
 
         public void UpdateFeatureFilterTracing(string filterName)
@@ -63,11 +70,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
+        public void NotifyMaxVariants(int currentFlagTotalVariants)
+        {
+            if (currentFlagTotalVariants > MaxVariants)
+            {
+                MaxVariants = currentFlagTotalVariants;
+            }
+        }
+
         /// <summary>
         /// Returns a formatted string containing code names, indicating which feature filters are used by the application.
         /// </summary>
         /// <returns>Formatted string like: "CSTM+PRCNT+TIME+TRGT", "PRCNT+TRGT", etc. If no filters are used, empty string will be returned.</returns>
-        public override string ToString()
+        public string CreateFiltersString()
         {
             if (!UsesAnyFeatureFilter())
             {
@@ -78,37 +93,78 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (UsesCustomFilter)
             {
-                sb.Append(CustomFilter);
+                sb.Append(RequestTracingConstants.CustomFilter);
             }
 
             if (UsesPercentageFilter)
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(FilterTypeDelimiter);
+                    sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(PercentageFilter);
+                sb.Append(RequestTracingConstants.PercentageFilter);
             }
 
             if (UsesTimeWindowFilter)
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(FilterTypeDelimiter);
+                    sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(TimeWindowFilter);
+                sb.Append(RequestTracingConstants.TimeWindowFilter);
             }
 
             if (UsesTargetingFilter)
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(FilterTypeDelimiter);
+                    sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(TargetingFilter);
+                sb.Append(RequestTracingConstants.TargetingFilter);
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Returns a formatted string containing code names, indicating which tracing features are used by feature flags.
+        /// </summary>
+        /// <returns>Formatted string like: "Seed+ConfigRef+Telemetry". If no tracing features are used, empty string will be returned.</returns>
+        public string CreateFeaturesString()
+        {
+            if (!UsesAnyTracingFeature())
+            {
+                return string.Empty;
+            }
+
+            var sb = new StringBuilder();
+
+            if (UsesSeed)
+            {
+                sb.Append(RequestTracingConstants.FeatureFlagUsesSeedTag);
+            }
+
+            if (UsesVariantConfigurationReference)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
+            }
+
+            if (UsesTelemetry)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.FeatureFlagUsesTelemetryTag);
             }
 
             return sb.ToString();

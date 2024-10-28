@@ -240,7 +240,7 @@ namespace Tests.AzureAppConfiguration
             // 5. Contains the runtime information (target framework, OS description etc.) in the format set by the SDK
             // 6. Does not contain any additional components
             string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(\+[a-z0-9]+)?(-preview(\.\d+)?)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
-            
+
             var response = new MockResponse(200);
             response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 

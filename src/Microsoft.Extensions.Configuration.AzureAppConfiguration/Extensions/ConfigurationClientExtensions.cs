@@ -31,11 +31,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             try
             {
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
+                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK &&
+                    !response.Value.ETag.Equals(setting.ETag))
                 {
                     return new KeyValueChange
                     {
                         ChangeType = KeyValueChangeType.Modified,
+                        Previous = setting,
                         Current = response.Value,
                         Key = setting.Key,
                         Label = setting.Label
@@ -47,6 +49,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return new KeyValueChange
                 {
                     ChangeType = KeyValueChangeType.Deleted,
+                    Previous = setting,
                     Current = null,
                     Key = setting.Key,
                     Label = setting.Label
@@ -56,6 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             return new KeyValueChange
             {
                 ChangeType = KeyValueChangeType.None,
+                Previous = setting,
                 Current = setting,
                 Key = setting.Key,
                 Label = setting.Label
@@ -116,7 +120,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
                 async () =>
                 {
-                    await foreach(ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
+                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
                     {
                         if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
                         {
@@ -158,6 +162,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                                     ChangeType = KeyValueChangeType.Modified,
                                     Key = setting.Key,
                                     Label = options.Label.NormalizeNull(),
+                                    Previous = null,
                                     Current = setting
                                 });
                                 string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
@@ -176,6 +181,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         ChangeType = KeyValueChangeType.Deleted,
                         Key = kvp.Key,
                         Label = options.Label.NormalizeNull(),
+                        Previous = null,
                         Current = null
                     });
                     string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);

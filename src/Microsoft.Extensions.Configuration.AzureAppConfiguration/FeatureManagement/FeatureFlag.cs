@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -11,5 +12,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool Enabled { get; set; }
 
         public FeatureConditions Conditions { get; set; }
+
+        public IEnumerable<FeatureVariant> Variants { get; set; }
+
+        public FeatureAllocation Allocation { get; set; }
+
+        public FeatureTelemetry Telemetry { get; set; }
     }
 }
