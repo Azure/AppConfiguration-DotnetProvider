@@ -92,6 +92,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 }
             }
 
+            // Need to check if all pages were deleted since hasCollectionsChanged wouldn't have been set
             if (hasCollectionChanged || (!newMatchConditions.Any() && matchConditions.Any()))
             {
                 return newMatchConditions;

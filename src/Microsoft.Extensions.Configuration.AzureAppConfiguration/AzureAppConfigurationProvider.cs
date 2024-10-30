@@ -973,7 +973,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         private async Task<List<KeyValueChange>> GetRefreshedKeyValueCollections(
-            IEnumerable<KeyValueWatcher> FeatureFlagWatchers,
+            IEnumerable<KeyValueWatcher> featureFlagWatchers,
             Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedCollections,
             IDictionary<string, ConfigurationSetting> existingSettings,
             ConfigurationClient client,
@@ -983,7 +983,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             HashSet<string> existingKeys = new HashSet<string>();
 
-            foreach (KeyValueWatcher changeWatcher in FeatureFlagWatchers)
+            foreach (KeyValueWatcher changeWatcher in featureFlagWatchers)
             {
                 SettingSelector selector = new SettingSelector()
                 {
