@@ -6,8 +6,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class CdnConfigurationClientManager : IConfigurationClientManager
     {
-        private readonly IAzureClientFactory<ConfigurationClient> _clientFactory;
-
         private readonly ConfigurationClient _client;
         private readonly Uri _endpoint;
 
@@ -15,7 +13,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IAzureClientFactory<ConfigurationClient> clientFactory,
             Uri endpoint)
         {
-            _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+            if (clientFactory == null)
+            {
+                throw new ArgumentNullException(nameof(clientFactory));
+            }
             _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
 
             _client = clientFactory.CreateClient(_endpoint.AbsoluteUri);
