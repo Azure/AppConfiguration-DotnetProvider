@@ -99,7 +99,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        /// <remarks>This property is used only for unit testing.</remarks>
         internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
@@ -321,15 +320,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Connect the provider to CDN endpoint.
         /// </summary>
-        /// <param name="cdnEndpoint">The endpoint of the CDN instance to connect to.</param>
-        public AzureAppConfigurationOptions ConnectCdn(Uri cdnEndpoint)
+        /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
         {
-            if (cdnEndpoint == null)
+            if (endpoint == null)
             {
-                throw new ArgumentNullException(nameof(cdnEndpoint));
+                throw new ArgumentNullException(nameof(endpoint));
             }
 
-            return Connect(cdnEndpoint, new EmptyTokenCredential());
+            ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerCall);
+
+            ClientManager = new CdnConfigurationClientManager(new AzureAppConfigurationClientFactory(new EmptyTokenCredential(), ClientOptions), endpoint);
+
+            return this;
         }
 
         /// <summary>

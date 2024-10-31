@@ -282,7 +282,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 if (_watchedSettings.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                                 {
                                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken, !(_options.ClientManager is CdnConfigurationClientManager)).ConfigureAwait(false)).ConfigureAwait(false);
                                 }
                                 else
                                 {
