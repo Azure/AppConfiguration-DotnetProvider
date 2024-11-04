@@ -17,6 +17,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new ArgumentNullException(nameof(clientFactory));
             }
+
             _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
 
             _client = clientFactory.CreateClient(_endpoint.AbsoluteUri);
