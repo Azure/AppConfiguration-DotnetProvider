@@ -115,6 +115,11 @@ namespace Tests.AzureAppConfiguration
             return ConfigurationModelFactory.ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ContentType, setting.ETag, setting.LastModified);
         }
 
+        public static ConfigurationSetting ChangeValue(ConfigurationSetting setting, string value)
+        {
+            return ConfigurationModelFactory.ConfigurationSetting(setting.Key, value, setting.Label, setting.ContentType, new ETag(Guid.NewGuid().ToString()), setting.LastModified);
+        }
+
         public static List<ConfigurationSetting> LoadJsonSettingsFromFile(string path)
         {
             List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>();
