@@ -221,7 +221,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshAllFalseDoesNotUpdateEntireConfiguration()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
 
@@ -244,7 +243,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -426,8 +425,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ElementAt(0).Value = "newValue1";
-            keyValueCollection.ElementAt(1).Value = "newValue2";
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue1");
+            keyValueCollection[1] = TestHelpers.ChangeValue(keyValueCollection[1], "newValue2");
             keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
