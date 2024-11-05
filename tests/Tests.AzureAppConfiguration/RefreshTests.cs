@@ -208,7 +208,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -258,7 +258,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshAllTrueUpdatesEntireConfiguration()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
 
@@ -281,7 +280,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -352,7 +351,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.First().Value = "newValue";
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue");
             keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
@@ -498,7 +497,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal(1, requestCount);
 
-            keyValueCollection.First().Value = "newValue";
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue");
 
             // Simulate simultaneous refresh calls with expired cache from multiple threads
             var task1 = Task.Run(() => WaitAndRefresh(refresher, 1500));
@@ -605,7 +604,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -701,7 +700,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -822,7 +821,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            keyValueCollection = keyValueCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -873,7 +872,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -889,8 +888,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
-            ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            ConfigurationSetting refreshRegisteredSetting = _kvCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
             var mockClient = GetMockConfigurationClient();
             IConfigurationRefresher refresher = null;
 
@@ -915,7 +913,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
 
-            refreshRegisteredSetting.Value = "UpdatedValueForLabel1";
+            _kvCollection[_kvCollection.IndexOf(refreshRegisteredSetting)] = TestHelpers.ChangeValue(refreshRegisteredSetting, "UpdatedValueForLabel1");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -932,8 +930,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshRegisteredKvOverwritesSelectedKv()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
-            ConfigurationSetting refreshAllRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            ConfigurationSetting refreshAllRegisteredSetting = _kvCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
             var mockClient = GetMockConfigurationClient();
             IConfigurationRefresher refresher = null;
 
@@ -958,7 +955,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValueForLabel1", config["TestKeyWithMultipleLabels"]);
 
-            refreshAllRegisteredSetting.Value = "UpdatedValueForLabel1";
+            _kvCollection[_kvCollection.IndexOf(refreshAllRegisteredSetting)] = TestHelpers.ChangeValue(refreshAllRegisteredSetting, "UpdatedValueForLabel1");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
