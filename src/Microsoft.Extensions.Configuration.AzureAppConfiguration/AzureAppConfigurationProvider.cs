@@ -968,7 +968,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
-                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
+                IsCdnUsed = _options.Credential is EmptyTokenCredential
             };
         }
 
