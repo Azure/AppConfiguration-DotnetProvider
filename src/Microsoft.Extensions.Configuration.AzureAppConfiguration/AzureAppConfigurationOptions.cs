@@ -329,7 +329,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
         public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
         {
-            if (!(Credential is EmptyTokenCredential) || (ConnectionStrings?.Any() ?? false))
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
             {
                 throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
             }
@@ -339,7 +339,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerCall);
+            ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerRetry);
 
             return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
         }
