@@ -35,6 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     return new KeyValueChange
                     {
                         ChangeType = KeyValueChangeType.Modified,
+                        Previous = setting,
                         Current = response.Value,
                         Key = setting.Key,
                         Label = setting.Label
@@ -46,6 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 return new KeyValueChange
                 {
                     ChangeType = KeyValueChangeType.Deleted,
+                    Previous = setting,
                     Current = null,
                     Key = setting.Key,
                     Label = setting.Label
@@ -55,6 +57,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             return new KeyValueChange
             {
                 ChangeType = KeyValueChangeType.None,
+                Previous = setting,
                 Current = setting,
                 Key = setting.Key,
                 Label = setting.Label

@@ -84,7 +84,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             else
             {
-                _secretProvider.RemoveSecretFromCache(setting.Key);
+                if (CanProcess(setting))
+                {
+                    string secretRefUri = ParseSecretReferenceUri(setting);
+
+                    if (!string.IsNullOrEmpty(secretRefUri) && Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) && KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
+                    {
+                        _secretProvider.RemoveSecretFromCache(secretIdentifier.SourceId);
+                    }
+                }
             }
         }
 

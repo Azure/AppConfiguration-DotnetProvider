@@ -759,7 +759,7 @@ namespace Tests.AzureAppConfiguration
         public async Task CachedSecretIsInvalidatedWhenRefreshAllIsTrue()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan refreshInterval = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -831,7 +831,7 @@ namespace Tests.AzureAppConfiguration
         public async Task SecretIsReloadedFromKeyVaultWhenCacheExpires()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan refreshInterval = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -874,7 +874,7 @@ namespace Tests.AzureAppConfiguration
         public async Task SecretsWithDefaultRefreshInterval()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(60);
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -919,7 +919,7 @@ namespace Tests.AzureAppConfiguration
         public async Task SecretsWithDifferentRefreshIntervals()
         {
             IConfigurationRefresher refresher = null;
-            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(1);
+            TimeSpan shortRefreshInterval = TimeSpan.FromSeconds(60);
             TimeSpan longRefreshInterval = TimeSpan.FromDays(1);
 
             var mockResponse = new Mock<Response>();
