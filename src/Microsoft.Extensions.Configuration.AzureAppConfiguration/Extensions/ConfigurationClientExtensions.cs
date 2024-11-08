@@ -80,13 +80,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
+            using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
+
             await foreach (Page<ConfigurationSetting> page in pageableManager.GetPages(pageable, matchConditions).ConfigureAwait(false))
             {
                 Response response = page.GetRawResponse();
 
                 newMatchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
 
-                if (response.Status == (int)HttpStatusCode.OK)
+                if (response.Status == (int)HttpStatusCode.OK &&
+                    (!existingMatchConditionsEnumerator.MoveNext() || !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)))
                 {
                     hasCollectionChanged = true;
                 }

@@ -370,8 +370,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
                                 }
                             }
-
-                            if (refreshAll)
+                            else
                             {
                                 // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
                                 // or if RegisterAll was called and any loaded key-value changed
@@ -844,7 +843,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var selector = new SettingSelector
                 {
                     KeyFilter = KeyFilter.Any,
-                    LabelFilter = LabelFilter.Null ?? LabelFilter.Null
+                    LabelFilter = LabelFilter.Null
                 };
 
                 List<MatchConditions> matchConditions = new List<MatchConditions>();
