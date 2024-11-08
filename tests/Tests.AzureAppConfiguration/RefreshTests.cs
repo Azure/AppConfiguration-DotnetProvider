@@ -1056,6 +1056,48 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
         }
 
+        [Fact]
+        public async Task RefreshTests_SelectedKeysRefreshWithRegisterAll()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockAsyncPageable = new MockAsyncPageable(_kvCollection);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
+                .Returns(mockAsyncPageable);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("TestKey*");
+                    options.PageableManager = new MockConfigurationSettingPageableManager();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            FirstKeyValue.Value = "newValue1";
+            _kvCollection[2].Value = "newValue3";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Equal("newValue3", config["TestKey3"]);
+        }
+
 #if NET8_0
         [Fact]
         public void RefreshTests_ChainedConfigurationProviderUsedAsRootForRefresherProvider()

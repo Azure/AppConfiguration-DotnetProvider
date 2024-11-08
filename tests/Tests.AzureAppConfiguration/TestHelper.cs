@@ -174,7 +174,7 @@ namespace Tests.AzureAppConfiguration
             _status = 200;
         }
 
-        public void UpdateFeatureFlags(List<ConfigurationSetting> newCollection)
+        public void UpdateCollection(List<ConfigurationSetting> newCollection)
         {
             if (_collection.All(setting => newCollection.Any(newSetting =>
                 setting.Key == newSetting.Key &&

@@ -779,7 +779,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
@@ -850,7 +850,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             var cacheExpirationInterval = TimeSpan.FromSeconds(1);
@@ -924,7 +924,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
@@ -994,7 +994,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
@@ -1118,7 +1118,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(new List<ConfigurationSetting> { _kv }))
+                .Callback(() => mockAsyncPageable.UpdateCollection(new List<ConfigurationSetting> { _kv }))
                 .Returns(mockAsyncPageable);
 
             IConfigurationRefresher refresher = null;
@@ -1510,7 +1510,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlagCollection);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlagCollection.Where(s =>
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlagCollection.Where(s =>
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1) ||
                         (s.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + prefix2) && s.Label == label2 && s.Key != FeatureManagementConstants.FeatureFlagMarker + "App2_Feature3")).ToList()))
                 .Returns(mockAsyncPageable);
@@ -1681,7 +1681,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlagCollection);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlagCollection.Where(s =>
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlagCollection.Where(s =>
                         s.Key.Equals(FeatureManagementConstants.FeatureFlagMarker + prefix1) && s.Label == label1).ToList()))
                 .Returns(mockAsyncPageable);
 
@@ -1745,7 +1745,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -1829,7 +1829,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -1907,7 +1907,7 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Callback(() => mockAsyncPageable.UpdateFeatureFlags(featureFlags))
+                .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))

@@ -399,7 +399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
             configure?.Invoke(refreshOptions);
 
-            if (!refreshOptions.RefreshRegistrations.Any())
+            if (!refreshOptions.RefreshRegistrations.Any() && !refreshOptions.RegisterAllEnabled)
             {
                 throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
             }
