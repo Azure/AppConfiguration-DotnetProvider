@@ -98,8 +98,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 }
             }
 
-            // Need to check if all pages were deleted since hasCollectionsChanged wouldn't have been set
-            if (hasCollectionChanged || (!newMatchConditions.Any() && matchConditions.Any()))
+            // Need to check if pages were deleted since hasCollectionsChanged wouldn't have been set
+            if (hasCollectionChanged || existingMatchConditionsEnumerator.MoveNext())
             {
                 return newMatchConditions;
             }
