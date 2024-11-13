@@ -1724,7 +1724,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
-            FirstKeyValue.Value = "newValue1";
+            FirstKeyValue = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -1817,7 +1817,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
 
-            FirstKeyValue.Value = "newValue1";
+            FirstKeyValue = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
             value: @"
