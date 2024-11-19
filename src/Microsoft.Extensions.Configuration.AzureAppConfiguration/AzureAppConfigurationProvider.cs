@@ -338,11 +338,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                             }
 
-                            if (!refreshAll)
+                            if (refreshAll)
                             {
+                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
+                                data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+                                watchedSelectedKvCollections = await LoadSelected(data, _options.KeyValueSelectors, client, cancellationToken).ConfigureAwait(false);
+                                watchedFeatureFlagCollections = await LoadSelected(data, _options.FeatureFlagSelectors, client, cancellationToken).ConfigureAwait(false);
+                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
+                                return;
+                            }
+                            else
+                            {
+                                // Get key value collection changes if RegisterAll was called
                                 watchedSelectedKvCollections = _watchedSelectedKvCollections;
-
-                                watchedFeatureFlagCollections = _watchedFeatureFlagCollections;
 
                                 if (_options.RefreshOptions.RegisterAllEnabled)
                                 {
@@ -360,6 +369,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     }
                                 }
 
+                                // Get feature flag changes
+                                watchedFeatureFlagCollections = _watchedFeatureFlagCollections;
+
                                 bool featureFlagCollectionsChanged = await UpdateWatchedCollections(refreshableFeatureFlagWatchers, watchedFeatureFlagCollections, client, cancellationToken).ConfigureAwait(false);
 
                                 if (!featureFlagCollectionsChanged)
@@ -372,16 +384,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                     logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
                                 }
-                            }
-                            else
-                            {
-                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
-                                watchedSelectedKvCollections = await LoadSelected(data, _options.KeyValueSelectors, client, cancellationToken).ConfigureAwait(false);
-                                watchedFeatureFlagCollections = await LoadSelected(data, _options.FeatureFlagSelectors, client, cancellationToken).ConfigureAwait(false);
-                                watchedSettings = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                                logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
-                                return;
                             }
                         },
                         cancellationToken)
