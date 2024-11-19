@@ -263,11 +263,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
 
-                _featureFlagSelectors.AppendUnique(new KeyValueSelector
-                {
-                    KeyFilter = featureFlagFilter,
-                    LabelFilter = labelFilter
-                });
+                _featureFlagSelectors.AppendUnique(featureFlagSelector);
 
                 _featureFlagWatchers.AppendUnique(new KeyValueWatcher
                 {

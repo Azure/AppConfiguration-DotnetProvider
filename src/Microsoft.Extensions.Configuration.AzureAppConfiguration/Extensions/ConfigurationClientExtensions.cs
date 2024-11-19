@@ -6,7 +6,6 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,7 +78,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             bool hasCollectionChanged = false;
 
-            List<MatchConditions> newMatchConditions = new List<MatchConditions>();
+            var newMatchConditions = new List<MatchConditions>();
 
             AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
@@ -91,6 +90,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
                 newMatchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
 
+                // Set hasCollectionChanged to true if the lists of etags are different, and continue iterating to get all of newMatchConditions
                 if (response.Status == (int)HttpStatusCode.OK &&
                     (!existingMatchConditionsEnumerator.MoveNext() || !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)))
                 {

@@ -18,10 +18,7 @@ namespace Azure.Core.Testing
             Status = status;
             ReasonPhrase = reasonPhrase;
 
-            if (status == 200)
-            {
-                AddHeader(new HttpHeader(HttpHeader.Names.ETag, "\"" + Guid.NewGuid().ToString() + "\""));
-            }
+            AddHeader(new HttpHeader(HttpHeader.Names.ETag, "\"" + Guid.NewGuid().ToString() + "\""));
         }
 
         public override int Status { get; }

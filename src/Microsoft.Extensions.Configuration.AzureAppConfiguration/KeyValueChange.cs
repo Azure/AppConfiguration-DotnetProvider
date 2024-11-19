@@ -24,6 +24,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public ConfigurationSetting Previous { get; set; }
 
-        public bool IsMultiKeyWatcherChange { get; set; }
+        public bool IsWatchedSetting { get; set; }
     }
 }
