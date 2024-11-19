@@ -91,8 +91,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 newMatchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
 
                 // Set hasCollectionChanged to true if the lists of etags are different, and continue iterating to get all of newMatchConditions
-                if (response.Status == (int)HttpStatusCode.OK &&
-                    (!existingMatchConditionsEnumerator.MoveNext() || !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)))
+                if ((!existingMatchConditionsEnumerator.MoveNext() ||
+                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
+                    response.Status == (int)HttpStatusCode.OK)
                 {
                     hasCollectionChanged = true;
                 }
