@@ -1096,6 +1096,16 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Equal("newValue3", config["TestKey3"]);
+
+            _kvCollection.RemoveAt(2);
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Null(config["TestKey3"]);
         }
 
 #if NET8_0

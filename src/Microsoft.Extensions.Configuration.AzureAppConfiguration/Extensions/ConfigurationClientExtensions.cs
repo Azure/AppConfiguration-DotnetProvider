@@ -86,13 +86,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             await foreach (Page<ConfigurationSetting> page in pageableManager.GetPages(pageable, matchConditions).ConfigureAwait(false))
             {
+                ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
+
+                if (serverEtag == null || page.Values == null)
+                {
+                    throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
+                }
+
                 Response response = page.GetRawResponse();
 
-                newMatchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
+                newMatchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
 
                 // Set hasCollectionChanged to true if the lists of etags are different, and continue iterating to get all of newMatchConditions
                 if ((!existingMatchConditionsEnumerator.MoveNext() ||
-                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
+                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(serverEtag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
                     hasCollectionChanged = true;

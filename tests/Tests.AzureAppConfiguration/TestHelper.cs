@@ -176,7 +176,8 @@ namespace Tests.AzureAppConfiguration
 
         public void UpdateCollection(List<ConfigurationSetting> newCollection)
         {
-            if (_collection.All(setting => newCollection.Any(newSetting =>
+            if (_collection.Count() == newCollection.Count() &&
+                _collection.All(setting => newCollection.Any(newSetting =>
                 setting.Key == newSetting.Key &&
                 setting.Value == newSetting.Value &&
                 setting.Label == newSetting.Label &&

@@ -853,12 +853,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
                     {
+                        ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
+
+                        if (serverEtag == null || page.Values == null)
+                        {
+                            throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
+                        }
+
                         foreach (ConfigurationSetting setting in page.Values)
                         {
                             existingData[setting.Key] = setting;
                         }
 
-                        matchConditions.Add(new MatchConditions { IfNoneMatch = page.GetRawResponse().Headers.ETag });
+                        matchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
                     }
                 }).ConfigureAwait(false);
 
@@ -883,12 +890,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
                         {
+                            ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
+
+                            if (serverEtag == null || page.Values == null)
+                            {
+                                throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
+                            }
+
                             foreach (ConfigurationSetting setting in page.Values)
                             {
                                 existingData[setting.Key] = setting;
                             }
 
-                            matchConditions.Add(new MatchConditions { IfNoneMatch = page.GetRawResponse().Headers.ETag });
+                            matchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
                         }
                     }).ConfigureAwait(false);
 
@@ -1031,14 +1045,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 ChangeType = KeyValueChangeType.Modified,
                                 IsWatchedSetting = false
                             });
-
-                            if (existingSettings.ContainsKey(setting.Key))
-                            {
-                                existingKeys.Add(setting.Key);
-                            }
                         }
                     }
                 }).ConfigureAwait(false);
+
+                IEnumerable<string> existingKeysList = GetCurrentKeyValueCollection(loadOption.KeyFilter, existingSettings.Keys);
+
+                foreach (string key in existingKeysList)
+                {
+                    existingKeys.Add(key);
+                }
             }
 
             var loadedSettings = new HashSet<string>();
@@ -1307,6 +1323,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return innerException is WebException ||
                    innerException is SocketException ||
                    innerException is IOException;
+        }
+
+        private IEnumerable<string> GetCurrentKeyValueCollection(string key, IEnumerable<string> existingKeys)
+        {
+            IEnumerable<string> currentKeyValues;
+
+            if (key.EndsWith("*"))
+            {
+                // Get current application settings starting with changeWatcher.Key, excluding the last * character
+                string keyPrefix = key.Substring(0, key.Length - 1);
+                currentKeyValues = existingKeys.Where(val =>
+                {
+                    return val.StartsWith(keyPrefix);
+                });
+            }
+            else
+            {
+                currentKeyValues = existingKeys.Where(val =>
+                {
+                    return val.Equals(key);
+                });
+            }
+
+            return currentKeyValues;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
