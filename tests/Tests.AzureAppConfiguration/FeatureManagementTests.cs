@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure;
-using Azure.Core;
 using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
@@ -16,7 +15,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;

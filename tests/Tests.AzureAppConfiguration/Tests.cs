@@ -241,12 +241,10 @@ namespace Tests.AzureAppConfiguration
             // 6. Does not contain any additional components
             string userAgentRegex = @"^Microsoft\.Extensions\.Configuration\.AzureAppConfiguration/\d+\.\d+\.\d+(\+[a-z0-9]+)?(-preview(\.\d+)?)?,azsdk-net-Data.AppConfiguration/[.+\w-]+ \([.;\w\s]+\)$";
 
-            var response1 = new MockResponse(200);
-            response1.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
-            var response2 = new MockResponse(200);
-            response2.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
+            var response = new MockResponse(200);
+            response.SetContent(SerializationHelpers.Serialize(_kvCollectionPageOne.ToArray(), TestHelpers.SerializeBatch));
 
-            var mockTransport = new MockTransport(response1, response2);
+            var mockTransport = new MockTransport(response);
             var options = new AzureAppConfigurationOptions();
             options.ClientOptions.Transport = mockTransport;
 
