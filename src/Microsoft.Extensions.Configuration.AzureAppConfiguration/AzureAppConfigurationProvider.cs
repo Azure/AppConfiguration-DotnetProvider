@@ -845,7 +845,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var selector = new SettingSelector()
                     {
                         KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter ?? LabelFilter.Null
+                        LabelFilter = loadOption.LabelFilter
                     };
 
                     var matchConditions = new List<MatchConditions>();
@@ -960,6 +960,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var existingKeys = new HashSet<string>();
 
+            var loadedSettings = new HashSet<string>();
+
             AsyncPageable<ConfigurationSetting> pageableSettings;
 
             foreach (KeyValueSelector loadOption in selectors)
@@ -969,7 +971,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     SettingSelector selector = new SettingSelector()
                     {
                         KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter ?? LabelFilter.Null
+                        LabelFilter = loadOption.LabelFilter
                     };
 
                     pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
@@ -1011,6 +1013,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 ChangeType = KeyValueChangeType.Modified,
                                 IsWatchedSetting = false
                             });
+
+                            loadedSettings.Add(setting.Key);
                         }
                     }
                 }).ConfigureAwait(false);
@@ -1021,13 +1025,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     existingKeys.Add(key);
                 }
-            }
-
-            var loadedSettings = new HashSet<string>();
-
-            foreach (KeyValueChange change in keyValueChanges)
-            {
-                loadedSettings.Add(change.Key);
             }
 
             foreach (string key in existingKeys)

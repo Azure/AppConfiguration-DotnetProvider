@@ -88,7 +88,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
 
-                if (serverEtag == null || page.Values == null)
+                if (page?.Values == null)
                 {
                     throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
                 }

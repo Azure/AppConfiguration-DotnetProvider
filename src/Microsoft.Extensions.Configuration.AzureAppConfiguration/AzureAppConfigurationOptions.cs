@@ -270,22 +270,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (var featureFlagSelector in options.FeatureFlagSelectors)
             {
-                var featureFlagFilter = featureFlagSelector.KeyFilter;
-                var labelFilter = featureFlagSelector.LabelFilter;
+                ValidateSelectFilters(featureFlagSelector.KeyFilter, featureFlagSelector.LabelFilter);
 
-                ValidateSelectFilters(featureFlagFilter, labelFilter);
-
-                if (string.IsNullOrWhiteSpace(labelFilter))
+                if (string.IsNullOrWhiteSpace(featureFlagSelector.LabelFilter))
                 {
-                    labelFilter = LabelFilter.Null;
+                    featureFlagSelector.LabelFilter = LabelFilter.Null;
                 }
 
                 _featureFlagSelectors.AppendUnique(featureFlagSelector);
 
                 _featureFlagWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    Key = featureFlagFilter,
-                    Label = labelFilter,
+                    Key = featureFlagSelector.KeyFilter,
+                    Label = featureFlagSelector.LabelFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
