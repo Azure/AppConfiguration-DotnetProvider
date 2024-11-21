@@ -161,7 +161,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
 
-            // Adds the default query to App Configuration if no select API is called
+            // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
             _kvSelectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
         }
 
