@@ -27,9 +27,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueWatcher> _featureFlagWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
-        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private List<KeyValueSelector> _kvSelectors;
         private List<KeyValueSelector> _featureFlagSelectors = new List<KeyValueSelector>();
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
+        private bool _selectCalled = false;
 
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
@@ -159,6 +160,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 new JsonKeyValueAdapter(),
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
+
+            // Adds the default query to App Configuration if no select API is called
+            _kvSelectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
         }
 
         /// <summary>
@@ -182,20 +186,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
         {
-            if (string.IsNullOrEmpty(keyFilter))
-            {
-                throw new ArgumentNullException(nameof(keyFilter));
-            }
+            ValidateSelectFilters(keyFilter, labelFilter);
 
             if (string.IsNullOrWhiteSpace(labelFilter))
             {
                 labelFilter = LabelFilter.Null;
             }
 
-            // Do not support * and , for label filter for now.
-            if (labelFilter.Contains('*') || labelFilter.Contains(','))
+            if (!_selectCalled)
             {
-                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
+                _kvSelectors.Clear();
+
+                _selectCalled = true;
             }
 
             _kvSelectors.AppendUnique(new KeyValueSelector
@@ -203,6 +205,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter
             });
+
             return this;
         }
 
@@ -216,6 +219,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (string.IsNullOrEmpty(name))
             {
                 throw new ArgumentNullException(nameof(name));
+            }
+
+            if (!_selectCalled)
+            {
+                _kvSelectors.Clear();
+
+                _selectCalled = true;
             }
 
             _kvSelectors.AppendUnique(new KeyValueSelector
@@ -262,6 +272,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 var featureFlagFilter = featureFlagSelector.KeyFilter;
                 var labelFilter = featureFlagSelector.LabelFilter;
+
+                ValidateSelectFilters(featureFlagFilter, labelFilter);
+
+                if (string.IsNullOrWhiteSpace(labelFilter))
+                {
+                    labelFilter = LabelFilter.Null;
+                }
 
                 _featureFlagSelectors.AppendUnique(featureFlagSelector);
 
@@ -476,6 +493,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
+        }
+
+        private static void ValidateSelectFilters(string keyFilter, string labelFilter)
+        {
+            if (string.IsNullOrEmpty(keyFilter))
+            {
+                throw new ArgumentNullException(nameof(keyFilter));
+            }
+
+            // Do not support * and , for label filter for now.
+            if (labelFilter != null && (labelFilter.Contains('*') || labelFilter.Contains(',')))
+            {
+                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
+            }
         }
     }
 }

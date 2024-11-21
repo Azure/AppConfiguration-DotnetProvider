@@ -1137,7 +1137,7 @@ namespace Tests.AzureAppConfiguration
             Thread.Sleep(RefreshInterval);
 
             await refresher.TryRefreshAsync();
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         }
 
         [Fact]

@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> _watchedFeatureFlagCollections = new Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
-        private List<KeyValueWatcher> _selectedKvWatchers = new List<KeyValueWatcher>();
+        private DateTimeOffset _registerAllNextRefreshTime;
 
         private readonly TimeSpan MinRefreshInterval;
 
@@ -198,13 +198,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> refreshableWatchers = _options.ChangeWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
                     IEnumerable<KeyValueWatcher> refreshableFeatureFlagWatchers = _options.FeatureFlagWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
-                    IEnumerable<KeyValueWatcher> refreshableSelectedKeyValueWatchers = _selectedKvWatchers.Where(changeWatcher => utcNow >= changeWatcher.NextRefreshTime);
+                    bool registerAllIsRefreshable = utcNow >= _registerAllNextRefreshTime;
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
                         !refreshableWatchers.Any() &&
                         !refreshableFeatureFlagWatchers.Any() &&
-                        !refreshableSelectedKeyValueWatchers.Any() &&
+                        !registerAllIsRefreshable &&
                         !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
                     {
                         return;
@@ -353,9 +353,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Get key value collection changes if RegisterAll was called
                                 watchedSelectedKvCollections = _watchedSelectedKvCollections;
 
-                                if (_options.RefreshOptions.RegisterAllEnabled)
+                                if (_options.RefreshOptions.RegisterAllEnabled && registerAllIsRefreshable)
                                 {
-                                    bool selectedKvCollectionsChanged = await UpdateWatchedCollections(refreshableSelectedKeyValueWatchers, watchedSelectedKvCollections, client, cancellationToken).ConfigureAwait(false);
+                                    bool selectedKvCollectionsChanged = await UpdateWatchedCollections(_options.KeyValueSelectors, watchedSelectedKvCollections, client, cancellationToken).ConfigureAwait(false);
 
                                     if (!selectedKvCollectionsChanged)
                                     {
@@ -372,7 +372,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Get feature flag changes
                                 watchedFeatureFlagCollections = _watchedFeatureFlagCollections;
 
-                                bool featureFlagCollectionsChanged = await UpdateWatchedCollections(refreshableFeatureFlagWatchers, watchedFeatureFlagCollections, client, cancellationToken).ConfigureAwait(false);
+                                bool featureFlagCollectionsChanged = await UpdateWatchedCollections(
+                                    refreshableFeatureFlagWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
+                                    watchedFeatureFlagCollections,
+                                    client,
+                                    cancellationToken).ConfigureAwait(false);
 
                                 if (!featureFlagCollectionsChanged)
                                 {
@@ -393,9 +397,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedSettings = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSettings);
 
-                        foreach (KeyValueWatcher changeWatcher in refreshableWatchers.Concat(refreshableFeatureFlagWatchers).Concat(refreshableSelectedKeyValueWatchers))
+                        foreach (KeyValueWatcher changeWatcher in refreshableWatchers.Concat(refreshableFeatureFlagWatchers))
                         {
                             UpdateNextRefreshTime(changeWatcher);
+                        }
+
+                        if (_options.RefreshOptions.RegisterAllEnabled && registerAllIsRefreshable)
+                        {
+                            _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.RefreshOptions.RefreshInterval);
                         }
 
                         foreach (KeyValueChange change in keyValueChanges)
@@ -462,9 +471,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Update the next refresh time for all refresh registered settings and feature flags
-                        foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.FeatureFlagWatchers).Concat(_selectedKvWatchers))
+                        foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.FeatureFlagWatchers))
                         {
                             UpdateNextRefreshTime(changeWatcher);
+                        }
+
+                        if (_options.RefreshOptions.RegisterAllEnabled)
+                        {
+                            _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.RefreshOptions.RefreshInterval);
                         }
                     }
 
@@ -760,7 +774,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
-            Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedSelectedKeyValueCollections = null;
+            Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedSelectedKvCollections = null;
             Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedFeatureFlagCollections = null;
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedSettings = null;
 
@@ -768,7 +782,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clients,
                 async (client) =>
                 {
-                    watchedSelectedKeyValueCollections = await LoadSelected(
+                    watchedSelectedKvCollections = await LoadSelected(
                         data,
                         _options.KeyValueSelectors,
                         client,
@@ -791,6 +805,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 cancellationToken)
                 .ConfigureAwait(false);
 
+            // Update the next refresh time for all refresh registered settings and feature flags
+            foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.FeatureFlagWatchers))
+            {
+                UpdateNextRefreshTime(changeWatcher);
+            }
+
+            if (_options.RefreshOptions.RegisterAllEnabled)
+            {
+                _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.RefreshOptions.RefreshInterval);
+            }
+
             if (data != null)
             {
                 // Invalidate all the cached KeyVault secrets
@@ -802,75 +827,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                 SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
 
-                var selectedKeyValueWatchers = new List<KeyValueWatcher>();
-
-                if (_options.RefreshOptions.RegisterAllEnabled)
-                {
-                    foreach (KeyValueIdentifier keyValueIdentifier in watchedSelectedKeyValueCollections.Keys)
-                    {
-                        selectedKeyValueWatchers.Add(new KeyValueWatcher()
-                        {
-                            Key = keyValueIdentifier.Key,
-                            Label = keyValueIdentifier.Label,
-                            RefreshInterval = _options.RefreshOptions.RefreshInterval
-                        });
-                    }
-                }
-
-                // Update the next refresh time for all refresh registered settings and feature flags
-                foreach (KeyValueWatcher changeWatcher in _options.ChangeWatchers.Concat(_options.FeatureFlagWatchers).Concat(selectedKeyValueWatchers))
-                {
-                    UpdateNextRefreshTime(changeWatcher);
-                }
-
                 _watchedSettings = watchedSettings;
-                _watchedSelectedKvCollections = watchedSelectedKeyValueCollections;
+                _watchedSelectedKvCollections = watchedSelectedKvCollections;
                 _watchedFeatureFlagCollections = watchedFeatureFlagCollections;
                 _mappedData = mappedData;
-                _selectedKvWatchers = selectedKeyValueWatchers;
             }
         }
 
         private async Task<Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>>> LoadSelected(Dictionary<string, ConfigurationSetting> existingData, IEnumerable<KeyValueSelector> selectors, ConfigurationClient client, CancellationToken cancellationToken)
         {
             var watchedCollections = new Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>>();
-
-            // Use default query if there are no key-values specified for use
-            if (!_options.KeyValueSelectors.Any())
-            {
-                // Load all key-values with the null label.
-                var selector = new SettingSelector
-                {
-                    KeyFilter = KeyFilter.Any,
-                    LabelFilter = LabelFilter.Null
-                };
-
-                var matchConditions = new List<MatchConditions>();
-
-                await CallWithRequestTracing(async () =>
-                {
-                    AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
-
-                    await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
-                    {
-                        ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
-
-                        if (serverEtag == null || page.Values == null)
-                        {
-                            throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
-                        }
-
-                        foreach (ConfigurationSetting setting in page.Values)
-                        {
-                            existingData[setting.Key] = setting;
-                        }
-
-                        matchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
-                    }
-                }).ConfigureAwait(false);
-
-                watchedCollections[new KeyValueIdentifier(KeyFilter.Any, LabelFilter.Null)] = matchConditions;
-            }
 
             foreach (KeyValueSelector loadOption in selectors)
             {
@@ -1416,15 +1382,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> UpdateWatchedCollections(IEnumerable<KeyValueWatcher> keyValueWatchers, Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedKeyValueCollections, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<bool> UpdateWatchedCollections(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueIdentifier, IEnumerable<MatchConditions>> watchedKeyValueCollections, ConfigurationClient client, CancellationToken cancellationToken)
         {
             bool watchedCollectionsChanged = false;
 
-            foreach (KeyValueWatcher multiKeyWatcher in keyValueWatchers)
+            foreach (KeyValueSelector selector in selectors)
             {
                 IEnumerable<MatchConditions> newMatchConditions = null;
 
-                KeyValueIdentifier watchedKeyValueIdentifier = new KeyValueIdentifier(multiKeyWatcher.Key, multiKeyWatcher.Label);
+                KeyValueIdentifier watchedKeyValueIdentifier = new KeyValueIdentifier(selector.KeyFilter, selector.LabelFilter);
 
                 if (watchedKeyValueCollections.TryGetValue(watchedKeyValueIdentifier, out IEnumerable<MatchConditions> matchConditions))
                 {

@@ -33,7 +33,7 @@ namespace Tests.AzureAppConfiguration
             configBuilder.Build();
 
             // Assert
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
         }
 
         [Fact]

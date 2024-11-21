@@ -497,7 +497,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            Assert.Equal(2, requestCount);
+            Assert.Equal(1, requestCount);
 
             keyValueCollection.First().Value = "newValue";
 
@@ -509,7 +509,7 @@ namespace Tests.AzureAppConfiguration
             await Task.WhenAll(task1, task2, task3);
 
             Assert.Equal("newValue", config["TestKey1"]);
-            Assert.Equal(3, requestCount);
+            Assert.Equal(2, requestCount);
         }
 
         [Fact]
