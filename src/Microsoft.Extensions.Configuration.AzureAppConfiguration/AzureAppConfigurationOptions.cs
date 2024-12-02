@@ -74,9 +74,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<KeyValueSelector> FeatureFlagSelectors => _featureFlagSelectors;
 
         /// <summary>
-        /// The configured options for refresh.
+        /// Indicates if <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> was called.
         /// </summary>
-        internal AzureAppConfigurationRefreshOptions RefreshOptions { get; private set; } = new AzureAppConfigurationRefreshOptions();
+        internal bool RegisterAllEnabled { get; private set; }
+
+        /// <summary>
+        /// Refresh interval for selected key-value collections when <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> is called.
+        /// </summary>
+        internal TimeSpan KvCollectionRefreshInterval { get; private set; } = RefreshConstants.DefaultRefreshInterval;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -186,7 +191,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
         {
-            ValidateSelectFilters(keyFilter, labelFilter);
+            if (string.IsNullOrEmpty(keyFilter))
+            {
+                throw new ArgumentNullException(nameof(keyFilter));
+            }
+
+            // Do not support * and , for label filter for now.
+            if (labelFilter != null && (labelFilter.Contains('*') || labelFilter.Contains(',')))
+            {
+                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
+            }
 
             if (string.IsNullOrWhiteSpace(labelFilter))
             {
@@ -268,15 +282,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 });
             }
 
-            foreach (var featureFlagSelector in options.FeatureFlagSelectors)
+            foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
             {
-                ValidateSelectFilters(featureFlagSelector.KeyFilter, featureFlagSelector.LabelFilter);
-
-                if (string.IsNullOrWhiteSpace(featureFlagSelector.LabelFilter))
-                {
-                    featureFlagSelector.LabelFilter = LabelFilter.Null;
-                }
-
                 _featureFlagSelectors.AppendUnique(featureFlagSelector);
 
                 _featureFlagWatchers.AppendUnique(new KeyValueWatcher
@@ -420,7 +427,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _changeWatchers.Add(item);
             }
 
-            RefreshOptions = refreshOptions;
+            if (refreshOptions.RegisterAllEnabled)
+            {
+                RegisterAllEnabled = refreshOptions.RegisterAllEnabled;
+            }
+
+            if (RegisterAllEnabled)
+            {
+                KvCollectionRefreshInterval = refreshOptions.RefreshInterval;
+            }
 
             return this;
         }
@@ -490,20 +505,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
-        }
-
-        private static void ValidateSelectFilters(string keyFilter, string labelFilter)
-        {
-            if (string.IsNullOrEmpty(keyFilter))
-            {
-                throw new ArgumentNullException(nameof(keyFilter));
-            }
-
-            // Do not support * and , for label filter for now.
-            if (labelFilter != null && (labelFilter.Contains('*') || labelFilter.Contains(',')))
-            {
-                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
-            }
         }
     }
 }

@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<MatchConditions>> GetNewMatchConditions(this ConfigurationClient client, KeyValueIdentifier keyValueIdentifier, IEnumerable<MatchConditions> matchConditions, ConfigurationSettingPageableManager pageableManager, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<MatchConditions>> GetNewMatchConditions(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, ConfigurationSettingPageableManager pageableManager, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -72,8 +72,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             SettingSelector selector = new SettingSelector
             {
-                KeyFilter = keyValueIdentifier.Key,
-                LabelFilter = keyValueIdentifier.Label
+                KeyFilter = keyValueSelector.KeyFilter,
+                LabelFilter = keyValueSelector.LabelFilter
             };
 
             bool hasCollectionChanged = false;
