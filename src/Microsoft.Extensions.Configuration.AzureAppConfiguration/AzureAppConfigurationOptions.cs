@@ -421,7 +421,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
             }
 
-            if ((RegisterAllEnabled && refreshOptions.RefreshRegistrations.Any()) || (refreshOptions.RegisterAllEnabled && _changeWatchers.Any()))
+            // Check if both register methods are called at any point
+            if ((RegisterAllEnabled && refreshOptions.RefreshRegistrations.Any()) ||
+                (refreshOptions.RegisterAllEnabled && _changeWatchers.Any()) ||
+                (refreshOptions.RefreshRegistrations.Any() && refreshOptions.RegisterAllEnabled))
             {
                 throw new ArgumentException($"Cannot call both {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} and "
                 + $"{nameof(AzureAppConfigurationRefreshOptions.Register)}.");
