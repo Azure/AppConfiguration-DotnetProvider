@@ -208,7 +208,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (clients.Count() > 1 && _requestTracingOptions != null)
+                    if (_requestTracingOptions != null)
                     {
                         _requestTracingOptions.ReplicaCount = clients.Count() - 1;
                     }
@@ -617,6 +617,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
+                    if (_requestTracingOptions != null)
+                    {
+                        _requestTracingOptions.ReplicaCount = clients.Count() - 1;
+                    }
+
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
                         break;
@@ -971,7 +976,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
-                ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
                 IsLoadBalancingEnabled = _options.LoadBalancingEnabled
             };
