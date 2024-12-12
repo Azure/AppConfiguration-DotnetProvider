@@ -208,6 +208,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
+                    if (clients.Count() > 1 && _requestTracingOptions != null)
+                    {
+                        _requestTracingOptions.ReplicaCount = clients.Count() - 1;
+                    }
+
                     //
                     // Filter clients based on their backoff status
                     clients = clients.Where(client =>
