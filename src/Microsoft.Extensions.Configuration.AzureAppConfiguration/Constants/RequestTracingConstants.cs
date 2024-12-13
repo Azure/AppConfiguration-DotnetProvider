@@ -43,7 +43,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagUsesTelemetryTag = "Telemetry";
         public const string FeatureFlagUsesSeedTag = "Seed";
         public const string FeatureFlagMaxVariantsKey = "MaxVariants";
-        public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";
