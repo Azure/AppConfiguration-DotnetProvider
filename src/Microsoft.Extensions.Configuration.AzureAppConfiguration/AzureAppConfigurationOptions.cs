@@ -23,8 +23,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
-        private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
-        private List<KeyValueWatcher> _featureFlagWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _sentinelKvWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _kvSelectors;
@@ -64,12 +64,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal TokenCredential Credential { get; private set; }
 
         /// <summary>
-        /// A collection of <see cref="KeyValueSelector"/>.
+        /// Key Value selectors specified by user.
         /// </summary>
         internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
-        /// A collection of <see cref="KeyValueSelector"/>.
+        /// Feature Flag selectors specified by user.
         /// </summary>
         internal IEnumerable<KeyValueSelector> FeatureFlagSelectors => _featureFlagSelectors;
 
@@ -81,17 +81,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Refresh interval for selected key-value collections when <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> is called.
         /// </summary>
-        internal TimeSpan KvCollectionRefreshInterval { get; private set; } = RefreshConstants.DefaultRefreshInterval;
+        internal TimeSpan KvCollectionRefreshInterval { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers;
+        internal IEnumerable<KeyValueWatcher> KvWatchers => _sentinelKvWatchers;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> FeatureFlagWatchers => _featureFlagWatchers;
+        internal IEnumerable<KeyValueWatcher> FeatureFlagWatchers => _ffWatchers;
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -278,7 +278,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 options.FeatureFlagSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
+                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label
                 });
             }
 
@@ -286,7 +286,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _featureFlagSelectors.AppendUnique(featureFlagSelector);
 
-                _featureFlagWatchers.AppendUnique(new KeyValueWatcher
+                _ffWatchers.AppendUnique(new KeyValueWatcher
                 {
                     Key = featureFlagSelector.KeyFilter,
                     Label = featureFlagSelector.LabelFilter,
@@ -413,37 +413,40 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="configure">A callback used to configure Azure App Configuration refresh options.</param>
         public AzureAppConfigurationOptions ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> configure)
         {
+            if (RegisterAllEnabled)
+            {
+                throw new ArgumentException($"{nameof(ConfigureRefresh)}() cannot be invoked multiple times when {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} has been invoked.");
+            }
+
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
             configure?.Invoke(refreshOptions);
 
-            if (!refreshOptions.RefreshRegistrations.Any() && !refreshOptions.RegisterAllEnabled)
+            bool isRegisterCalled = refreshOptions.RefreshRegistrations.Any();
+            RegisterAllEnabled = refreshOptions.RegisterAllEnabled;
+
+            if (!isRegisterCalled && !RegisterAllEnabled)
             {
-                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
+                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must register at least one key-value for refresh or enable refresh of all selected key-values.");
             }
 
             // Check if both register methods are called at any point
-            if ((RegisterAllEnabled && refreshOptions.RefreshRegistrations.Any()) ||
-                (refreshOptions.RegisterAllEnabled && _changeWatchers.Any()) ||
-                (refreshOptions.RefreshRegistrations.Any() && refreshOptions.RegisterAllEnabled))
+            if (RegisterAllEnabled && (_sentinelKvWatchers.Any() || isRegisterCalled))
             {
                 throw new ArgumentException($"Cannot call both {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} and "
                 + $"{nameof(AzureAppConfigurationRefreshOptions.Register)}.");
             }
 
-            foreach (var item in refreshOptions.RefreshRegistrations)
-            {
-                item.RefreshInterval = refreshOptions.RefreshInterval;
-                _changeWatchers.Add(item);
-            }
-
-            if (refreshOptions.RegisterAllEnabled)
-            {
-                RegisterAllEnabled = refreshOptions.RegisterAllEnabled;
-            }
-
             if (RegisterAllEnabled)
             {
                 KvCollectionRefreshInterval = refreshOptions.RefreshInterval;
+            }
+            else
+            {
+                foreach (KeyValueWatcher item in refreshOptions.RefreshRegistrations)
+                {
+                    item.RefreshInterval = refreshOptions.RefreshInterval;
+                    _sentinelKvWatchers.Add(item);
+                }
             }
 
             return this;
