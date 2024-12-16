@@ -32,12 +32,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildSelectedKeyValueCollectionsUnchangedMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshSelectedKeyValuesCollectionsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshSelectedKeyValueCollectionsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
         public static string BuildSelectedKeyValueCollectionsUpdatedMessage()
         {
-            return LoggingConstants.RefreshSelectedKeyValuesCollectionsUpdated;
+            return LoggingConstants.RefreshSelectedKeyValueCollectionsUpdated;
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)
