@@ -10,5 +10,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagInvalidJsonProperty = "Invalid property '{0}' for feature flag. Key: '{1}'. Found type: '{2}'. Expected type: '{3}'.";
         public const string FeatureFlagInvalidFormat = "Invalid json format for feature flag. Key: '{0}'.";
         public const string InvalidKeyVaultReference = "Invalid Key Vault reference.";
+        public const string InvalidConfigurationSettingPage = "Invalid page while loading configuration settings.";
     }
 }
