@@ -110,15 +110,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
-            IEnumerable<KeyValueWatcher> watchers = options.KvWatchers.Union(options.FeatureFlagWatchers);
+            IEnumerable<KeyValueWatcher> watchers = options.IndividualKvWatchers.Union(options.FeatureFlagWatchers);
 
-            if (watchers.Any())
+            if (options.RegisterAllEnabled)
+            {
+                if (options.FeatureFlagWatchers.Any())
+                {
+                    TimeSpan minFfWatcherRefreshInterval = options.FeatureFlagWatchers.Min(w => w.RefreshInterval);
+
+                    MinRefreshInterval = minFfWatcherRefreshInterval < options.KvCollectionRefreshInterval ? minFfWatcherRefreshInterval : options.KvCollectionRefreshInterval;
+                }
+                else
+                {
+                    MinRefreshInterval = options.KvCollectionRefreshInterval;
+                }
+            }
+            else if (watchers.Any())
             {
                 MinRefreshInterval = watchers.Min(w => w.RefreshInterval);
-            }
-            else if (options.RegisterAllEnabled)
-            {
-                MinRefreshInterval = options.KvCollectionRefreshInterval;
             }
             else
             {
@@ -200,14 +209,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     EnsureAssemblyInspected();
 
                     var utcNow = DateTimeOffset.UtcNow;
-                    IEnumerable<KeyValueWatcher> refreshableKvWatchers = _options.KvWatchers.Where(kvWatcher => utcNow >= kvWatcher.NextRefreshTime);
-                    IEnumerable<KeyValueWatcher> refreshableFeatureFlagWatchers = _options.FeatureFlagWatchers.Where(ffWatcher => utcNow >= ffWatcher.NextRefreshTime);
+                    IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers = _options.IndividualKvWatchers.Where(kvWatcher => utcNow >= kvWatcher.NextRefreshTime);
+                    IEnumerable<KeyValueWatcher> refreshableFfWatchers = _options.FeatureFlagWatchers.Where(ffWatcher => utcNow >= ffWatcher.NextRefreshTime);
                     bool registerAllIsRefreshable = utcNow >= _registerAllNextRefreshTime;
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
-                        !refreshableKvWatchers.Any() &&
-                        !refreshableFeatureFlagWatchers.Any() &&
+                        !refreshableIndividualKvWatchers.Any() &&
+                        !refreshableFfWatchers.Any() &&
                         !registerAllIsRefreshable &&
                         !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
                     {
@@ -278,120 +287,71 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             logDebugBuilder.Clear();
                             logInfoBuilder.Clear();
 
-                            foreach (KeyValueWatcher kvWatcher in refreshableKvWatchers)
+                            if (!_options.RegisterAllEnabled)
                             {
-                                string watchedKey = kvWatcher.Key;
-                                string watchedLabel = kvWatcher.Label;
+                                refreshAll = await RefreshIndividualKvWatchers(
+                                    client,
+                                    keyValueChanges,
+                                    refreshableIndividualKvWatchers,
+                                    endpoint,
+                                    logDebugBuilder,
+                                    logInfoBuilder,
+                                    cancellationToken).ConfigureAwait(false);
 
-                                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-
-                                KeyValueChange change = default;
-
-                                //
-                                // Find if there is a change associated with watcher
-                                if (_watchedSentinelKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                                if (!refreshAll)
                                 {
-                                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                    // Get feature flag changes
+                                    watchedFfCollections = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_watchedFfCollections);
 
-                                    change.IsWatchedSetting = true;
+                                    await RefreshFfCollections(client,
+                                        keyValueChanges,
+                                        refreshableFfWatchers,
+                                        watchedFfCollections,
+                                        endpoint,
+                                        logDebugBuilder,
+                                        logInfoBuilder,
+                                        cancellationToken).ConfigureAwait(false);
                                 }
                                 else
                                 {
-                                    // Load the key-value in case the previous load attempts had failed
-
-                                    try
-                                    {
-                                        await CallWithRequestTracing(
-                                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                                    }
-                                    catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
-                                    {
-                                        watchedKv = null;
-                                    }
-
-                                    if (watchedKv != null)
-                                    {
-                                        change = new KeyValueChange()
-                                        {
-                                            Key = watchedKv.Key,
-                                            Label = watchedKv.Label.NormalizeNull(),
-                                            Current = watchedKv,
-                                            ChangeType = KeyValueChangeType.Modified,
-                                            IsWatchedSetting = true
-                                        };
-                                    }
+                                    // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
+                                    data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+                                    watchedKvCollections = await LoadSelected(client, data, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
+                                    watchedFfCollections = await LoadSelected(client, data, _options.FeatureFlagSelectors, cancellationToken).ConfigureAwait(false);
+                                    watchedSentinelKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                    logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
+                                    return;
                                 }
-
-                                // Check if a change has been detected in the key-value registered for refresh
-                                if (change.ChangeType != KeyValueChangeType.None)
-                                {
-                                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
-                                    logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
-                                    keyValueChanges.Add(change);
-
-                                    if (kvWatcher.RefreshAll)
-                                    {
-                                        refreshAll = true;
-                                        break;
-                                    }
-                                }
-                                else
-                                {
-                                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
-                                }
-                            }
-
-                            if (refreshAll)
-                            {
-                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
-                                watchedKvCollections = await LoadSelected(client, data, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
-                                watchedFfCollections = await LoadSelected(client, data, _options.FeatureFlagSelectors, cancellationToken).ConfigureAwait(false);
-                                watchedSentinelKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                                logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
-                                return;
                             }
                             else
                             {
                                 // Get key value collection changes if RegisterAll was called
-                                watchedKvCollections = _watchedKvCollections;
+                                watchedKvCollections = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_watchedKvCollections);
 
                                 if (_options.RegisterAllEnabled && registerAllIsRefreshable)
                                 {
-                                    bool selectedKvCollectionsChanged = await UpdateWatchedCollections(_options.KeyValueSelectors, watchedKvCollections, client, cancellationToken).ConfigureAwait(false);
-
-                                    if (!selectedKvCollectionsChanged)
-                                    {
-                                        logDebugBuilder.AppendLine(LogHelper.BuildSelectedKeyValueCollectionsUnchangedMessage(endpoint.ToString()));
-                                    }
-                                    else
-                                    {
-                                        keyValueChanges.AddRange(await GetRefreshedCollections(_options.KeyValueSelectors, _mappedData, client, cancellationToken).ConfigureAwait(false));
-
-                                        logInfoBuilder.Append(LogHelper.BuildSelectedKeyValueCollectionsUpdatedMessage());
-                                    }
+                                    await RefreshKvCollections(
+                                        client,
+                                        keyValueChanges,
+                                        watchedKvCollections,
+                                        endpoint,
+                                        logDebugBuilder,
+                                        logInfoBuilder,
+                                        cancellationToken).ConfigureAwait(false);
                                 }
 
                                 // Get feature flag changes
-                                watchedFfCollections = _watchedFfCollections;
+                                watchedFfCollections = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_watchedFfCollections);
 
-                                bool featureFlagCollectionsChanged = await UpdateWatchedCollections(
-                                    refreshableFeatureFlagWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
-                                    watchedFfCollections,
+                                await RefreshFfCollections(
                                     client,
+                                    keyValueChanges,
+                                    refreshableFfWatchers,
+                                    watchedFfCollections,
+                                    endpoint,
+                                    logDebugBuilder,
+                                    logInfoBuilder,
                                     cancellationToken).ConfigureAwait(false);
-
-                                if (!featureFlagCollectionsChanged)
-                                {
-                                    logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
-                                }
-                                else
-                                {
-                                    keyValueChanges.AddRange(await GetRefreshedCollections(_options.FeatureFlagSelectors, _mappedData, client, cancellationToken).ConfigureAwait(false));
-
-                                    logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
-                                }
                             }
                         },
                         cancellationToken)
@@ -401,7 +361,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         watchedSentinelKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedSentinelKvs);
 
-                        foreach (KeyValueWatcher changeWatcher in refreshableKvWatchers.Concat(refreshableFeatureFlagWatchers))
+                        foreach (KeyValueWatcher changeWatcher in refreshableIndividualKvWatchers.Concat(refreshableFfWatchers))
                         {
                             UpdateNextRefreshTime(changeWatcher);
                         }
@@ -475,7 +435,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Update the next refresh time for all refresh registered settings and feature flags
-                        foreach (KeyValueWatcher changeWatcher in _options.KvWatchers.Concat(_options.FeatureFlagWatchers))
+                        foreach (KeyValueWatcher changeWatcher in _options.IndividualKvWatchers.Concat(_options.FeatureFlagWatchers))
                         {
                             UpdateNextRefreshTime(changeWatcher);
                         }
@@ -632,7 +592,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             else
             {
-                foreach (KeyValueWatcher kvWatcher in _options.KvWatchers)
+                foreach (KeyValueWatcher kvWatcher in _options.IndividualKvWatchers)
                 {
                     kvWatcher.NextRefreshTime = nextRefreshTime;
                 }
@@ -817,7 +777,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 .ConfigureAwait(false);
 
             // Update the next refresh time for all refresh registered settings and feature flags
-            foreach (KeyValueWatcher changeWatcher in _options.KvWatchers.Concat(_options.FeatureFlagWatchers))
+            foreach (KeyValueWatcher changeWatcher in _options.IndividualKvWatchers.Concat(_options.FeatureFlagWatchers))
             {
                 UpdateNextRefreshTime(changeWatcher);
             }
@@ -928,7 +888,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var watchedSentinelKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
-            foreach (KeyValueWatcher kvWatcher in _options.KvWatchers)
+            foreach (KeyValueWatcher kvWatcher in _options.IndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
                 string watchedLabel = kvWatcher.Label;
@@ -1058,6 +1018,132 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return keyValueChanges;
+        }
+
+        private async Task<bool> RefreshIndividualKvWatchers(
+            ConfigurationClient client,
+            List<KeyValueChange> keyValueChanges,
+            IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers,
+            Uri endpoint,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
+            CancellationToken cancellationToken)
+        {
+            foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
+            {
+                string watchedKey = kvWatcher.Key;
+                string watchedLabel = kvWatcher.Label;
+
+                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+
+                KeyValueChange change = default;
+
+                //
+                // Find if there is a change associated with watcher
+                if (_watchedSentinelKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                {
+                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+
+                    change.IsWatchedSetting = true;
+                }
+                else
+                {
+                    // Load the key-value in case the previous load attempts had failed
+
+                    try
+                    {
+                        await CallWithRequestTracing(
+                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                    }
+                    catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
+                    {
+                        watchedKv = null;
+                    }
+
+                    if (watchedKv != null)
+                    {
+                        change = new KeyValueChange()
+                        {
+                            Key = watchedKv.Key,
+                            Label = watchedKv.Label.NormalizeNull(),
+                            Current = watchedKv,
+                            ChangeType = KeyValueChangeType.Modified,
+                            IsWatchedSetting = true
+                        };
+                    }
+                }
+
+                // Check if a change has been detected in the key-value registered for refresh
+                if (change.ChangeType != KeyValueChangeType.None)
+                {
+                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+                    logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
+                    keyValueChanges.Add(change);
+
+                    if (kvWatcher.RefreshAll)
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+                }
+            }
+
+            return false;
+        }
+
+        private async Task RefreshFfCollections(
+            ConfigurationClient client,
+            List<KeyValueChange> keyValueChanges,
+            IEnumerable<KeyValueWatcher> refreshableFfWatchers,
+            Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedFfCollections,
+            Uri endpoint,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
+            CancellationToken cancellationToken)
+        {
+            bool featureFlagCollectionsChanged = await UpdateWatchedCollections(
+                refreshableFfWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
+                watchedFfCollections,
+                client,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!featureFlagCollectionsChanged)
+            {
+                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
+            }
+            else
+            {
+                keyValueChanges.AddRange(await GetRefreshedCollections(_options.FeatureFlagSelectors, _mappedData, client, cancellationToken).ConfigureAwait(false));
+
+                logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
+            }
+        }
+
+        private async Task RefreshKvCollections(
+            ConfigurationClient client,
+            List<KeyValueChange> keyValueChanges,
+            Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedKvCollections,
+            Uri endpoint,
+            StringBuilder logDebugBuilder,
+            StringBuilder logInfoBuilder,
+            CancellationToken cancellationToken)
+        {
+            bool selectedKvCollectionsChanged = await UpdateWatchedCollections(_options.KeyValueSelectors, watchedKvCollections, client, cancellationToken).ConfigureAwait(false);
+
+            if (!selectedKvCollectionsChanged)
+            {
+                logDebugBuilder.AppendLine(LogHelper.BuildSelectedKeyValueCollectionsUnchangedMessage(endpoint.ToString()));
+            }
+            else
+            {
+                keyValueChanges.AddRange(await GetRefreshedCollections(_options.KeyValueSelectors, _mappedData, client, cancellationToken).ConfigureAwait(false));
+
+                logInfoBuilder.Append(LogHelper.BuildSelectedKeyValueCollectionsUpdatedMessage());
+            }
         }
 
         private void SetData(IDictionary<string, string> data)
@@ -1394,7 +1480,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> UpdateWatchedCollections(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedKeyValueCollections, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<bool> UpdateWatchedCollections(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedCollections, ConfigurationClient client, CancellationToken cancellationToken)
         {
             bool watchedCollectionsChanged = false;
 
@@ -1402,7 +1488,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 IEnumerable<MatchConditions> newMatchConditions = null;
 
-                if (watchedKeyValueCollections.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
+                if (watchedCollections.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                         async () => newMatchConditions = await client.GetNewMatchConditions(selector, matchConditions, _options.PageableManager, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
@@ -1410,7 +1496,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (newMatchConditions != null)
                 {
-                    watchedKeyValueCollections[selector] = newMatchConditions;
+                    watchedCollections[selector] = newMatchConditions;
 
                     watchedCollectionsChanged = true;
                 }

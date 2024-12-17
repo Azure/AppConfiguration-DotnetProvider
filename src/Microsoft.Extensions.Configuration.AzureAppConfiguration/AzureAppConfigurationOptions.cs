@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
-        private List<KeyValueWatcher> _sentinelKvWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> KvWatchers => _sentinelKvWatchers;
+        internal IEnumerable<KeyValueWatcher> IndividualKvWatchers => _individualKvWatchers;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
@@ -430,7 +430,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             // Check if both register methods are called at any point
-            if (RegisterAllEnabled && (_sentinelKvWatchers.Any() || isRegisterCalled))
+            if (RegisterAllEnabled && (_individualKvWatchers.Any() || isRegisterCalled))
             {
                 throw new ArgumentException($"Cannot call both {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} and "
                 + $"{nameof(AzureAppConfigurationRefreshOptions.Register)}.");
@@ -445,7 +445,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 foreach (KeyValueWatcher item in refreshOptions.RefreshRegistrations)
                 {
                     item.RefreshInterval = refreshOptions.RefreshInterval;
-                    _sentinelKvWatchers.Add(item);
+                    _individualKvWatchers.Add(item);
                 }
             }
 
