@@ -328,7 +328,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Get key value collection changes if RegisterAll was called
                                 watchedKvCollections = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_watchedKvCollections);
 
-                                if (_options.RegisterAllEnabled && registerAllIsRefreshable)
+                                if (registerAllIsRefreshable)
                                 {
                                     await RefreshKvCollections(
                                         client,
