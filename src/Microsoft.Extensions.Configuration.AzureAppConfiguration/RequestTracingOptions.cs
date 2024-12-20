@@ -64,6 +64,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsFailoverRequest { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate wether the request is sent to a CDN.
+        /// </summary>
+        public bool IsCdnUsed { get; set; } = false;
+
+        /// <summary>
         /// Checks whether any tracing feature is used.
         /// </summary>
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
