@@ -112,26 +112,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             IEnumerable<KeyValueWatcher> watchers = options.IndividualKvWatchers.Union(options.FeatureFlagWatchers);
 
+            bool hasWatchers = watchers.Any();
+            TimeSpan minWatcherRefreshInterval = hasWatchers ? watchers.Min(w => w.RefreshInterval) : TimeSpan.MaxValue;
+
             if (options.RegisterAllEnabled)
             {
-                if (options.FeatureFlagWatchers.Any())
-                {
-                    TimeSpan minFfWatcherRefreshInterval = options.FeatureFlagWatchers.Min(w => w.RefreshInterval);
-
-                    MinRefreshInterval = minFfWatcherRefreshInterval < options.KvCollectionRefreshInterval ? minFfWatcherRefreshInterval : options.KvCollectionRefreshInterval;
-                }
-                else
-                {
-                    MinRefreshInterval = options.KvCollectionRefreshInterval;
-                }
-            }
-            else if (watchers.Any())
-            {
-                MinRefreshInterval = watchers.Min(w => w.RefreshInterval);
+                MinRefreshInterval = TimeSpan.FromTicks(Math.Min(minWatcherRefreshInterval.Ticks, options.KvCollectionRefreshInterval.Ticks));
             }
             else
             {
-                MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
+                MinRefreshInterval = hasWatchers ? minWatcherRefreshInterval : RefreshConstants.DefaultRefreshInterval;
             }
 
             // Enable request tracing if not opt-out
