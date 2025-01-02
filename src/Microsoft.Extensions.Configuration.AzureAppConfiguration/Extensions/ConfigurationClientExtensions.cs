@@ -3,12 +3,10 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -65,131 +63,66 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<KeyValueChange>> GetKeyValueChangeCollection(
-            this ConfigurationClient client,
-            IEnumerable<ConfigurationSetting> keyValues,
-            GetKeyValueChangeCollectionOptions options,
-            StringBuilder logDebugBuilder,
-            StringBuilder logInfoBuilder,
-            Uri endpoint,
-            CancellationToken cancellationToken)
+        public static async Task<IEnumerable<MatchConditions>> GetNewMatchConditions(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, ConfigurationSettingPageableManager pageableManager, CancellationToken cancellationToken)
         {
-            if (options == null)
+            if (matchConditions == null)
             {
-                throw new ArgumentNullException(nameof(options));
+                throw new ArgumentNullException(nameof(matchConditions));
             }
 
-            if (keyValues == null)
+            if (keyValueSelector == null)
             {
-                keyValues = Enumerable.Empty<ConfigurationSetting>();
+                throw new ArgumentNullException(nameof(keyValueSelector));
             }
 
-            if (options.KeyFilter == null)
+            if (pageableManager == null)
             {
-                options.KeyFilter = string.Empty;
+                throw new ArgumentNullException(nameof(pageableManager));
             }
 
-            if (keyValues.Any(k => string.IsNullOrEmpty(k.Key)))
+            SettingSelector selector = new SettingSelector
             {
-                throw new ArgumentNullException($"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Key)}");
-            }
-
-            if (keyValues.Any(k => !string.Equals(k.Label.NormalizeNull(), options.Label.NormalizeNull())))
-            {
-                throw new ArgumentException("All key-values registered for refresh must use the same label.", $"{nameof(keyValues)}[].{nameof(ConfigurationSetting.Label)}");
-            }
-
-            if (keyValues.Any(k => k.Label != null && k.Label.Contains("*")))
-            {
-                throw new ArgumentException("The label filter cannot contain '*'", $"{nameof(options)}.{nameof(options.Label)}");
-            }
-
-            var hasKeyValueCollectionChanged = false;
-            var selector = new SettingSelector
-            {
-                KeyFilter = options.KeyFilter,
-                LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label,
-                Fields = SettingFields.ETag | SettingFields.Key
+                KeyFilter = keyValueSelector.KeyFilter,
+                LabelFilter = keyValueSelector.LabelFilter
             };
 
-            // Dictionary of eTags that we write to and use for comparison
-            var eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
+            bool hasCollectionChanged = false;
 
-            // Fetch e-tags for prefixed key-values that can be used to detect changes
-            await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
-                async () =>
-                {
-                    await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
-                    {
-                        if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
-                        {
-                            hasKeyValueCollectionChanged = true;
-                            break;
-                        }
+            var newMatchConditions = new List<MatchConditions>();
 
-                        eTagMap.Remove(setting.Key);
-                    }
-                }).ConfigureAwait(false);
+            AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
-            // Check for any deletions
-            if (eTagMap.Any())
+            using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
+
+            await foreach (Page<ConfigurationSetting> page in pageableManager.GetPages(pageable, matchConditions).ConfigureAwait(false))
             {
-                hasKeyValueCollectionChanged = true;
-            }
+                ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
 
-            var changes = new List<KeyValueChange>();
-
-            // If changes have been observed, refresh prefixed key-values
-            if (hasKeyValueCollectionChanged)
-            {
-                selector = new SettingSelector
+                if (page?.Values == null)
                 {
-                    KeyFilter = options.KeyFilter,
-                    LabelFilter = string.IsNullOrEmpty(options.Label) ? LabelFilter.Null : options.Label
-                };
+                    throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
+                }
 
-                eTagMap = keyValues.ToDictionary(kv => kv.Key, kv => kv.ETag);
-                await TracingUtils.CallWithRequestTracing(options.RequestTracingEnabled, RequestType.Watch, options.RequestTracingOptions,
-                    async () =>
-                    {
-                        await foreach (ConfigurationSetting setting in client.GetConfigurationSettingsAsync(selector, cancellationToken).ConfigureAwait(false))
-                        {
-                            if (!eTagMap.TryGetValue(setting.Key, out ETag etag) || !etag.Equals(setting.ETag))
-                            {
-                                changes.Add(new KeyValueChange
-                                {
-                                    ChangeType = KeyValueChangeType.Modified,
-                                    Key = setting.Key,
-                                    Label = options.Label.NormalizeNull(),
-                                    Previous = null,
-                                    Current = setting
-                                });
-                                string key = setting.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                                logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
-                            }
+                Response response = page.GetRawResponse();
 
-                            eTagMap.Remove(setting.Key);
-                        }
-                    }).ConfigureAwait(false);
+                newMatchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
 
-                foreach (var kvp in eTagMap)
+                // Set hasCollectionChanged to true if the lists of etags are different, and continue iterating to get all of newMatchConditions
+                if ((!existingMatchConditionsEnumerator.MoveNext() ||
+                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(serverEtag)) &&
+                    response.Status == (int)HttpStatusCode.OK)
                 {
-                    changes.Add(new KeyValueChange
-                    {
-                        ChangeType = KeyValueChangeType.Deleted,
-                        Key = kvp.Key,
-                        Label = options.Label.NormalizeNull(),
-                        Previous = null,
-                        Current = null
-                    });
-                    string key = kvp.Key.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                    logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagReadMessage(key, options.Label.NormalizeNull(), endpoint.ToString()));
-                    logInfoBuilder.AppendLine(LogHelper.BuildFeatureFlagUpdatedMessage(key));
+                    hasCollectionChanged = true;
                 }
             }
 
-            return changes;
+            // Need to check if pages were deleted since hasCollectionsChanged wouldn't have been set
+            if (hasCollectionChanged || existingMatchConditionsEnumerator.MoveNext())
+            {
+                return newMatchConditions;
+            }
+
+            return null;
         }
     }
 }
