@@ -70,6 +70,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException(nameof(matchConditions));
             }
 
+            if (keyValueSelector == null)
+            {
+                throw new ArgumentNullException(nameof(keyValueSelector));
+            }
+
+            if (pageableManager == null)
+            {
+                throw new ArgumentNullException(nameof(pageableManager));
+            }
+
             SettingSelector selector = new SettingSelector
             {
                 KeyFilter = keyValueSelector.KeyFilter,
