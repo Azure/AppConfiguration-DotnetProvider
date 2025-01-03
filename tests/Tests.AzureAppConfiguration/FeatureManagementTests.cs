@@ -435,7 +435,6 @@ namespace Tests.AzureAppConfiguration
 		                    },
 		                    {
 			                    ""name"": ""Small"",
-			                    ""configuration_reference"": ""ShoppingCart:Small"",
 			                    ""status_override"": ""Disabled""
 		                    }
 	                        ],
@@ -1868,7 +1867,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Big", config["feature_management:feature_flags:0:variants:0:name"]);
             Assert.Equal("600px", config["feature_management:feature_flags:0:variants:0:configuration_value"]);
             Assert.Equal("Small", config["feature_management:feature_flags:0:variants:1:name"]);
-            Assert.Equal("ShoppingCart:Small", config["feature_management:feature_flags:0:variants:1:configuration_reference"]);
             Assert.Equal("Disabled", config["feature_management:feature_flags:0:variants:1:status_override"]);
             Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_disabled"]);
             Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_enabled"]);
@@ -2023,7 +2021,7 @@ namespace Tests.AzureAppConfiguration
             var settings = new List<ConfigurationSetting>()
             {
                 CreateFeatureFlag("Feature1", variantsJsonString: @"[{""name"": 1}]"),
-                CreateFeatureFlag("Feature2", variantsJsonString: @"[{""configuration_reference"": true}]"),
+                CreateFeatureFlag("Feature2", requirementType: "2"),
                 CreateFeatureFlag("Feature3", variantsJsonString: @"[{""status_override"": []}]"),
                 CreateFeatureFlag("Feature4", seed: "{}"),
                 CreateFeatureFlag("Feature5", defaultWhenDisabled: "5"),
@@ -2038,8 +2036,7 @@ namespace Tests.AzureAppConfiguration
                 CreateFeatureFlag("Feature14", telemetryEnabled: "14"),
                 CreateFeatureFlag("Feature15", telemetryMetadataJsonString: @"{""key"": 15}"),
                 CreateFeatureFlag("Feature16", clientFiltersJsonString: @"[{""name"": 16}]"),
-                CreateFeatureFlag("Feature17", clientFiltersJsonString: @"{""key"": [{""name"": ""name"", ""parameters"": 17}]}"),
-                CreateFeatureFlag("Feature18", requirementType: "18")
+                CreateFeatureFlag("Feature17", clientFiltersJsonString: @"{""key"": [{""name"": ""name"", ""parameters"": 17}]}")
             };
 
             var mockResponse = new Mock<Response>();
