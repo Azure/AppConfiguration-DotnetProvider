@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<IEnumerable<MatchConditions>> GetNewMatchConditions(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, ConfigurationSettingPageableManager pageableManager, CancellationToken cancellationToken)
+        public static async Task<bool> HasWatchedCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, ConfigurationSettingPageableManager pageableManager, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -73,6 +73,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             if (keyValueSelector == null)
             {
                 throw new ArgumentNullException(nameof(keyValueSelector));
+            }
+
+            if (keyValueSelector.SnapshotName != null)
+            {
+                throw new ArgumentException("Cannot check snapshot for changes.", $"{nameof(keyValueSelector)}.{nameof(keyValueSelector.SnapshotName)}");
             }
 
             if (pageableManager == null)
@@ -85,10 +90,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 KeyFilter = keyValueSelector.KeyFilter,
                 LabelFilter = keyValueSelector.LabelFilter
             };
-
-            bool hasCollectionChanged = false;
-
-            var newMatchConditions = new List<MatchConditions>();
 
             AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
@@ -105,24 +106,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
                 Response response = page.GetRawResponse();
 
-                newMatchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
-
-                // Set hasCollectionChanged to true if the lists of etags are different, and continue iterating to get all of newMatchConditions
+                // Return true if the lists of etags are different
                 if ((!existingMatchConditionsEnumerator.MoveNext() ||
                     !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(serverEtag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
-                    hasCollectionChanged = true;
+                    return true;
                 }
             }
 
-            // Need to check if pages were deleted since hasCollectionsChanged wouldn't have been set
-            if (hasCollectionChanged || existingMatchConditionsEnumerator.MoveNext())
+            // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
+            if (existingMatchConditionsEnumerator.MoveNext())
             {
-                return newMatchConditions;
+                return true;
             }
 
-            return null;
+            return false;
         }
     }
 }

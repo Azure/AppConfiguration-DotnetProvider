@@ -23,7 +23,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public ConfigurationSetting Current { get; set; }
 
         public ConfigurationSetting Previous { get; set; }
-
-        public bool IsWatchedSetting { get; set; }
     }
 }

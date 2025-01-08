@@ -30,7 +30,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly IConfigurationClientManager _configClientManager;
         private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
-        private Dictionary<string, ConfigurationSetting> _mappedData;
+        private Dictionary<string, ConfigurationSetting> _individualKvData;
+        private Dictionary<string, ConfigurationSetting> _kvCollectionData;
+        private Dictionary<string, ConfigurationSetting> _ffCollectionData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> _watchedKvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
         private Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> _watchedFfEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
@@ -204,7 +206,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     bool registerAllIsRefreshable = utcNow >= _registerAllNextRefreshTime;
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
-                    if (_mappedData != null &&
+                    if (_individualKvData == null &&
+                        _kvCollectionData == null &&
+                        _ffCollectionData == null &&
                         !refreshableIndividualKvWatchers.Any() &&
                         !refreshableFfWatchers.Any() &&
                         !registerAllIsRefreshable &&
@@ -242,7 +246,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
 
                     // Check if initial configuration load had failed
-                    if (_mappedData == null)
+                    if (_individualKvData == null && _kvCollectionData == null && _ffCollectionData == null)
                     {
                         if (InitializationCacheExpires < utcNow)
                         {
@@ -260,14 +264,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedKvEtags = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> keyValueChanges = null;
-                    Dictionary<string, ConfigurationSetting> data = null;
+                    Dictionary<string, ConfigurationSetting> individualKvData = null;
+                    Dictionary<string, ConfigurationSetting> kvCollectionData = null;
+                    Dictionary<string, ConfigurationSetting> ffCollectionData = null;
+                    bool kvCollectionUpdated = false;
+                    bool ffCollectionUpdated = false;
                     bool refreshAll = false;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
                     await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
                         {
-                            data = null;
+                            kvCollectionData = null;
+                            ffCollectionData = null;
+                            individualKvData = null;
                             watchedIndividualKvs = null;
                             watchedKvEtags = null;
                             watchedFfEtags = null;
@@ -293,9 +303,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     // Get feature flag changes
                                     watchedFfEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_watchedFfEtags);
 
-                                    await RefreshFfCollections(
+                                    ffCollectionData = new Dictionary<string, ConfigurationSetting>();
+
+                                    ffCollectionUpdated = await RefreshFfCollections(
                                         client,
-                                        keyValueChanges,
+                                        ffCollectionData,
                                         refreshableFfWatchers,
                                         watchedFfEtags,
                                         endpoint,
@@ -306,10 +318,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 else
                                 {
                                     // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
-                                    data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
-                                    watchedKvEtags = await LoadSelected(client, data, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
-                                    watchedFfEtags = await LoadSelected(client, data, _options.FeatureFlagSelectors, cancellationToken).ConfigureAwait(false);
-                                    watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                    kvCollectionData = new Dictionary<string, ConfigurationSetting>();
+                                    ffCollectionData = new Dictionary<string, ConfigurationSetting>();
+                                    individualKvData = new Dictionary<string, ConfigurationSetting>();
+
+                                    watchedKvEtags = await LoadSelected(client, kvCollectionData, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
+                                    watchedFfEtags = await LoadSelected(client, ffCollectionData, _options.FeatureFlagSelectors, cancellationToken).ConfigureAwait(false);
+                                    watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, kvCollectionData, individualKvData, cancellationToken).ConfigureAwait(false);
                                     logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                                     return;
                                 }
@@ -321,9 +336,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                 if (registerAllIsRefreshable)
                                 {
-                                    await RefreshKvCollections(
+                                    kvCollectionData = new Dictionary<string, ConfigurationSetting>();
+
+                                    kvCollectionUpdated = await RefreshKvCollections(
                                         client,
-                                        keyValueChanges,
+                                        kvCollectionData,
                                         watchedKvEtags,
                                         endpoint,
                                         logDebugBuilder,
@@ -334,9 +351,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 // Get feature flag changes
                                 watchedFfEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_watchedFfEtags);
 
-                                await RefreshFfCollections(
+                                ffCollectionData = new Dictionary<string, ConfigurationSetting>();
+
+                                ffCollectionUpdated = await RefreshFfCollections(
                                     client,
-                                    keyValueChanges,
+                                    ffCollectionData,
                                     refreshableFfWatchers,
                                     watchedFfEtags,
                                     endpoint,
@@ -357,11 +376,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             UpdateNextRefreshTime(changeWatcher);
                         }
 
-                        if (_options.RegisterAllEnabled && registerAllIsRefreshable)
-                        {
-                            _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
-                        }
-
                         foreach (KeyValueChange change in keyValueChanges)
                         {
                             KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
@@ -371,10 +385,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 ConfigurationSetting setting = change.Current;
                                 ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
 
-                                if (change.IsWatchedSetting)
-                                {
-                                    watchedIndividualKvs[changeIdentifier] = settingCopy;
-                                }
+                                watchedIndividualKvs[changeIdentifier] = settingCopy;
 
                                 foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                                 {
@@ -383,21 +394,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                 if (setting == null)
                                 {
-                                    _mappedData.Remove(change.Key);
+                                    _individualKvData.Remove(change.Key);
                                 }
                                 else
                                 {
-                                    _mappedData[change.Key] = setting;
+                                    _individualKvData[change.Key] = setting;
                                 }
                             }
                             else if (change.ChangeType == KeyValueChangeType.Deleted)
                             {
-                                _mappedData.Remove(change.Key);
+                                _individualKvData.Remove(change.Key);
 
-                                if (change.IsWatchedSetting)
-                                {
-                                    watchedIndividualKvs.Remove(changeIdentifier);
-                                }
+                                watchedIndividualKvs.Remove(changeIdentifier);
                             }
 
                             // Invalidate the cached Key Vault secret (if any) for this ConfigurationSetting
@@ -415,9 +423,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                         }
                     }
-                    else
+
+                    if (refreshAll)
                     {
-                        _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
+                        _kvCollectionData = await MapConfigurationSettings(kvCollectionData).ConfigureAwait(false);
+
+                        _individualKvData = await MapConfigurationSettings(individualKvData).ConfigureAwait(false);
+
+                        _ffCollectionData = await MapConfigurationSettings(ffCollectionData).ConfigureAwait(false);
 
                         // Invalidate all the cached KeyVault secrets
                         foreach (IKeyValueAdapter adapter in _options.Adapters)
@@ -431,8 +444,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             UpdateNextRefreshTime(changeWatcher);
                         }
                     }
+                    else
+                    {
+                        if (_options.RegisterAllEnabled)
+                        {
+                            if (registerAllIsRefreshable)
+                            {
+                                _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
+                            }
 
-                    if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || keyValueChanges.Any())
+                            if (kvCollectionUpdated)
+                            {
+                                _kvCollectionData = await MapConfigurationSettings(kvCollectionData).ConfigureAwait(false);
+                            }
+                        }
+
+                        if (ffCollectionUpdated)
+                        {
+                            _ffCollectionData = await MapConfigurationSettings(ffCollectionData).ConfigureAwait(false);
+                        }
+                    }
+
+                    if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || keyValueChanges.Any() || kvCollectionUpdated || ffCollectionUpdated)
                     {
                         _watchedIndividualKvs = watchedIndividualKvs;
 
@@ -449,10 +482,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             _logger.LogInformation(logInfoBuilder.ToString().Trim());
                         }
+
+                        Dictionary<string, ConfigurationSetting> combinedData = GetCombinedData(_kvCollectionData, _individualKvData, _ffCollectionData);
+
                         // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
                         // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await PrepareData(_mappedData, cancellationToken).ConfigureAwait(false));
+                        SetData(await PrepareData(combinedData, cancellationToken).ConfigureAwait(false));
                     }
                 }
                 finally
@@ -730,7 +766,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
         {
-            Dictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, ConfigurationSetting> kvCollectionData = new Dictionary<string, ConfigurationSetting>();
+            Dictionary<string, ConfigurationSetting> ffCollectionData = new Dictionary<string, ConfigurationSetting>();
+            Dictionary<string, ConfigurationSetting> individualKvData = new Dictionary<string, ConfigurationSetting>();
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedKvEtags = null;
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedFfEtags = null;
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
@@ -741,21 +779,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     watchedKvEtags = await LoadSelected(
                         client,
-                        data,
+                        kvCollectionData,
                         _options.KeyValueSelectors,
                         cancellationToken)
                         .ConfigureAwait(false);
 
                     watchedFfEtags = await LoadSelected(
                         client,
-                        data,
+                        ffCollectionData,
                         _options.FeatureFlagSelectors,
                         cancellationToken)
                         .ConfigureAwait(false);
 
                     watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(
                         client,
-                        data,
+                        kvCollectionData,
+                        individualKvData,
                         cancellationToken)
                         .ConfigureAwait(false);
                 },
@@ -773,7 +812,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
             }
 
-            if (data != null)
+            if (watchedKvEtags != null && watchedFfEtags != null && watchedIndividualKvs != null)
             {
                 // Invalidate all the cached KeyVault secrets
                 foreach (IKeyValueAdapter adapter in _options.Adapters)
@@ -781,13 +820,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     adapter.OnChangeDetected();
                 }
 
-                Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
-                SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
+                kvCollectionData = await MapConfigurationSettings(kvCollectionData).ConfigureAwait(false);
+
+                individualKvData = await MapConfigurationSettings(individualKvData).ConfigureAwait(false);
+
+                ffCollectionData = await MapConfigurationSettings(ffCollectionData).ConfigureAwait(false);
+
+                Dictionary<string, ConfigurationSetting> combinedData = GetCombinedData(kvCollectionData, individualKvData, ffCollectionData);
+
+                SetData(await PrepareData(combinedData, cancellationToken).ConfigureAwait(false));
 
                 _watchedIndividualKvs = watchedIndividualKvs;
                 _watchedKvEtags = watchedKvEtags;
                 _watchedFfEtags = watchedFfEtags;
-                _mappedData = mappedData;
+                _kvCollectionData = kvCollectionData;
+                _individualKvData = individualKvData;
+                _ffCollectionData = ffCollectionData;
             }
         }
 
@@ -797,7 +845,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IEnumerable<KeyValueSelector> selectors,
             CancellationToken cancellationToken)
         {
-            var watchedCollections = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+            var watchedEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
 
             foreach (KeyValueSelector loadOption in selectors)
             {
@@ -834,7 +882,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }).ConfigureAwait(false);
 
-                    watchedCollections[loadOption] = matchConditions;
+                    watchedEtags[loadOption] = matchConditions;
                 }
                 else
                 {
@@ -868,10 +916,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            return watchedCollections;
+            return watchedEtags;
         }
 
-        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(ConfigurationClient client, IDictionary<string, ConfigurationSetting> existingSettings, CancellationToken cancellationToken)
+        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(
+            ConfigurationClient client,
+            IDictionary<string, ConfigurationSetting> existingSettings,
+            IDictionary<string, ConfigurationSetting> individualKvData,
+            CancellationToken cancellationToken)
         {
             var watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
 
@@ -887,6 +939,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
                 {
                     watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
+                    individualKvData[watchedKey] = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
                     continue;
                 }
 
@@ -905,106 +958,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (watchedKv != null)
                 {
                     watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
-                    existingSettings[watchedKey] = watchedKv;
+                    individualKvData[watchedKey] = watchedKv;
                 }
             }
 
             return watchedIndividualKvs;
-        }
-
-        private async Task<List<KeyValueChange>> GetRefreshedCollections(
-            IEnumerable<KeyValueSelector> selectors,
-            IEnumerable<string> existingDataKeys,
-            ConfigurationClient client,
-            CancellationToken cancellationToken)
-        {
-            var keyValueChanges = new List<KeyValueChange>();
-
-            var existingKeys = new HashSet<string>();
-
-            var loadedSettings = new HashSet<string>();
-
-            AsyncPageable<ConfigurationSetting> pageableSettings;
-
-            foreach (KeyValueSelector loadOption in selectors)
-            {
-                if (string.IsNullOrEmpty(loadOption.SnapshotName))
-                {
-                    SettingSelector selector = new SettingSelector()
-                    {
-                        KeyFilter = loadOption.KeyFilter,
-                        LabelFilter = loadOption.LabelFilter
-                    };
-
-                    pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
-                }
-                else
-                {
-                    ConfigurationSnapshot snapshot;
-
-                    try
-                    {
-                        snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
-                    }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
-                    {
-                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
-                    }
-
-                    if (snapshot.SnapshotComposition != SnapshotComposition.Key)
-                    {
-                        throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
-                    }
-
-                    pageableSettings = client.GetConfigurationSettingsForSnapshotAsync(
-                        loadOption.SnapshotName,
-                        cancellationToken);
-                }
-
-                await CallWithRequestTracing(async () =>
-                {
-                    await foreach (Page<ConfigurationSetting> page in _options.PageableManager.GetPages(pageableSettings).ConfigureAwait(false))
-                    {
-                        foreach (ConfigurationSetting setting in page.Values)
-                        {
-                            keyValueChanges.Add(new KeyValueChange()
-                            {
-                                Key = setting.Key,
-                                Label = setting.Label,
-                                Current = setting,
-                                ChangeType = KeyValueChangeType.Modified,
-                                IsWatchedSetting = false
-                            });
-
-                            loadedSettings.Add(setting.Key);
-                        }
-                    }
-                }).ConfigureAwait(false);
-
-                IEnumerable<string> existingKeysList = GetExistingKeys(loadOption.KeyFilter, existingDataKeys);
-
-                foreach (string key in existingKeysList)
-                {
-                    existingKeys.Add(key);
-                }
-            }
-
-            foreach (string key in existingKeys)
-            {
-                if (!loadedSettings.Contains(key))
-                {
-                    keyValueChanges.Add(new KeyValueChange()
-                    {
-                        Key = key,
-                        Label = null,
-                        Current = null,
-                        ChangeType = KeyValueChangeType.Deleted,
-                        IsWatchedSetting = false
-                    });
-                }
-            }
-
-            return keyValueChanges;
         }
 
         private async Task<bool> RefreshIndividualKvWatchers(
@@ -1031,8 +989,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                         async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-
-                    change.IsWatchedSetting = true;
                 }
                 else
                 {
@@ -1055,8 +1011,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             Key = watchedKv.Key,
                             Label = watchedKv.Label.NormalizeNull(),
                             Current = watchedKv,
-                            ChangeType = KeyValueChangeType.Modified,
-                            IsWatchedSetting = true
+                            ChangeType = KeyValueChangeType.Modified
                         };
                     }
                 }
@@ -1082,9 +1037,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return false;
         }
 
-        private async Task RefreshFfCollections(
+        private async Task<bool> RefreshFfCollections(
             ConfigurationClient client,
-            List<KeyValueChange> keyValueChanges,
+            Dictionary<string, ConfigurationSetting> data,
             IEnumerable<KeyValueWatcher> refreshableFfWatchers,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedFfEtags,
             Uri endpoint,
@@ -1092,45 +1047,49 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
-            bool featureFlagCollectionsChanged = await UpdateWatchedCollections(
+            bool ffCollectionsChanged = await UpdateWatchedCollections(
                 refreshableFfWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
                 watchedFfEtags,
                 client,
                 cancellationToken).ConfigureAwait(false);
 
-            if (!featureFlagCollectionsChanged)
+            if (!ffCollectionsChanged)
             {
                 logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
             }
             else
             {
-                keyValueChanges.AddRange(await GetRefreshedCollections(_options.FeatureFlagSelectors, _mappedData.Keys, client, cancellationToken).ConfigureAwait(false));
+                watchedFfEtags = await LoadSelected(client, data, _options.FeatureFlagSelectors, cancellationToken).ConfigureAwait(false);
 
                 logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
             }
+
+            return ffCollectionsChanged;
         }
 
-        private async Task RefreshKvCollections(
+        private async Task<bool> RefreshKvCollections(
             ConfigurationClient client,
-            List<KeyValueChange> keyValueChanges,
+            Dictionary<string, ConfigurationSetting> data,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedKvEtags,
             Uri endpoint,
             StringBuilder logDebugBuilder,
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
-            bool selectedKvCollectionsChanged = await UpdateWatchedCollections(_options.KeyValueSelectors, watchedKvEtags, client, cancellationToken).ConfigureAwait(false);
+            bool kvCollectionsChanged = await UpdateWatchedCollections(_options.KeyValueSelectors, watchedKvEtags, client, cancellationToken).ConfigureAwait(false);
 
-            if (!selectedKvCollectionsChanged)
+            if (!kvCollectionsChanged)
             {
                 logDebugBuilder.AppendLine(LogHelper.BuildSelectedKeyValueCollectionsUnchangedMessage(endpoint.ToString()));
             }
             else
             {
-                keyValueChanges.AddRange(await GetRefreshedCollections(_options.KeyValueSelectors, _mappedData.Keys, client, cancellationToken).ConfigureAwait(false));
+                watchedKvEtags = await LoadSelected(client, data, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
 
                 logInfoBuilder.Append(LogHelper.BuildSelectedKeyValueCollectionsUpdatedMessage());
             }
+
+            return kvCollectionsChanged;
         }
 
         private void SetData(IDictionary<string, string> data)
@@ -1467,29 +1426,51 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> UpdateWatchedCollections(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedCollections, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<bool> UpdateWatchedCollections(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedEtags, ConfigurationClient client, CancellationToken cancellationToken)
         {
             bool watchedCollectionsChanged = false;
 
             foreach (KeyValueSelector selector in selectors)
             {
-                IEnumerable<MatchConditions> newMatchConditions = null;
-
-                if (watchedCollections.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
+                if (watchedEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => newMatchConditions = await client.GetNewMatchConditions(selector, matchConditions, _options.PageableManager, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => watchedCollectionsChanged = await client.HasWatchedCollectionsChanged(selector, matchConditions, _options.PageableManager, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
-                if (newMatchConditions != null)
+                if (watchedCollectionsChanged)
                 {
-                    watchedCollections[selector] = newMatchConditions;
-
-                    watchedCollectionsChanged = true;
+                    return watchedCollectionsChanged;
                 }
             }
 
             return watchedCollectionsChanged;
+        }
+
+        private Dictionary<string, ConfigurationSetting> GetCombinedData(
+            Dictionary<string, ConfigurationSetting> kvCollectionData,
+            Dictionary<string, ConfigurationSetting> individualKvData,
+            Dictionary<string, ConfigurationSetting> ffCollectionData)
+        {
+            // Merge all key-value and feature flag data
+            Dictionary<string, ConfigurationSetting> combinedData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in kvCollectionData)
+            {
+                combinedData[kvp.Key] = kvp.Value;
+            }
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in individualKvData)
+            {
+                combinedData[kvp.Key] = kvp.Value;
+            }
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in ffCollectionData)
+            {
+                combinedData[kvp.Key] = kvp.Value;
+            }
+
+            return combinedData;
         }
 
         public void Dispose()
