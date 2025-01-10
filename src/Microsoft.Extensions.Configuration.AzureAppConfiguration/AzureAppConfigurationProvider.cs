@@ -205,10 +205,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     IEnumerable<KeyValueWatcher> refreshableFfWatchers = _options.FeatureFlagWatchers.Where(ffWatcher => utcNow >= ffWatcher.NextRefreshTime);
                     bool registerAllIsRefreshable = utcNow >= _registerAllNextRefreshTime;
 
-                    // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
-                    if (_individualKvData == null &&
-                        _kvCollectionData == null &&
-                        _ffCollectionData == null &&
+                    // Skip refresh if all data is loaded, but none of the watchers or adapters are refreshable.
+                    if (_individualKvData != null &&
+                        _kvCollectionData != null &&
+                        _ffCollectionData != null &&
                         !refreshableIndividualKvWatchers.Any() &&
                         !refreshableFfWatchers.Any() &&
                         !registerAllIsRefreshable &&
