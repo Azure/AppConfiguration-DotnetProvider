@@ -27,8 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
-        private List<KeyValueSelector> _kvSelectors;
-        private List<KeyValueSelector> _featureFlagSelectors = new List<KeyValueSelector>();
+        private List<KeyValueSelector> _selectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
         private bool _selectCalled = false;
 
@@ -64,14 +63,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal TokenCredential Credential { get; private set; }
 
         /// <summary>
-        /// Key Value selectors specified by user.
+        /// Key Value and Feature Flag selectors specified by user.
         /// </summary>
-        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
-
-        /// <summary>
-        /// Feature Flag selectors specified by user.
-        /// </summary>
-        internal IEnumerable<KeyValueSelector> FeatureFlagSelectors => _featureFlagSelectors;
+        internal IEnumerable<KeyValueSelector> Selectors => _selectors;
 
         /// <summary>
         /// Indicates if <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> was called.
@@ -167,7 +161,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             };
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
-            _kvSelectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
+            _selectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
         }
 
         /// <summary>
@@ -209,12 +203,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _kvSelectors.Clear();
+                _selectors.Clear();
 
                 _selectCalled = true;
             }
 
-            _kvSelectors.AppendUnique(new KeyValueSelector
+            _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter
@@ -237,12 +231,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _kvSelectors.Clear();
+                _selectors.Clear();
 
                 _selectCalled = true;
             }
 
-            _kvSelectors.AppendUnique(new KeyValueSelector
+            _selectors.AppendUnique(new KeyValueSelector
             {
                 SnapshotName = name
             });
@@ -278,13 +272,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 options.FeatureFlagSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label
+                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label,
+                    IsFeatureFlagSelector = true
                 });
             }
 
             foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
             {
-                _featureFlagSelectors.AppendUnique(featureFlagSelector);
+                _selectors.AppendUnique(featureFlagSelector);
 
                 _ffWatchers.AppendUnique(new KeyValueWatcher
                 {

@@ -102,7 +102,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             FeatureFlagSelectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = featureFlagPrefix,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                IsFeatureFlagSelector = true
             });
 
             return this;
