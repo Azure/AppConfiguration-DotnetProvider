@@ -35,9 +35,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.RefreshSelectedKeyValueCollectionsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
         }
 
-        public static string BuildSelectedKeyValueCollectionsUpdatedMessage()
+        public static string BuildSelectedKeyValuesAndFeatureFlagsUpdatedMessage()
         {
-            return LoggingConstants.RefreshSelectedKeyValueCollectionsUpdated;
+            return LoggingConstants.RefreshSelectedKeyValuesAndFeatureFlagsUpdated;
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)

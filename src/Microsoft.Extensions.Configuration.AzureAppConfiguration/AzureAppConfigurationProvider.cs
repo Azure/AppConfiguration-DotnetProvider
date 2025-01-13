@@ -360,7 +360,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                         data = await LoadSelected(client, watchedKvEtags, watchedFfEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
 
-                                        logInfoBuilder.Append(LogHelper.BuildSelectedKeyValueCollectionsUpdatedMessage());
+                                        logInfoBuilder.Append(LogHelper.BuildSelectedKeyValuesAndFeatureFlagsUpdatedMessage());
                                     }
                                 }
 

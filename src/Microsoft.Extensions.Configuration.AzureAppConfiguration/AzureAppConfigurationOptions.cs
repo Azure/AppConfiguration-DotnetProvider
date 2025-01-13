@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal TokenCredential Credential { get; private set; }
 
         /// <summary>
-        /// Key Value and Feature Flag selectors specified by user.
+        /// A collection of <see cref="KeyValueSelector"/> specified by user.
         /// </summary>
         internal IEnumerable<KeyValueSelector> Selectors => _selectors;
 
