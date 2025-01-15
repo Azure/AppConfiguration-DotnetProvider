@@ -210,9 +210,14 @@ namespace Tests.AzureAppConfiguration
         }
     }
 
-    internal class MockConfigurationSettingPageableManager : ConfigurationSettingPageableManager
+    internal class MockPageableConfigurationSettings : IPageableConfigurationSettings
     {
-        public override IAsyncEnumerable<Page<ConfigurationSetting>> GetPages(AsyncPageable<ConfigurationSetting> pageable, IEnumerable<MatchConditions> matchConditions)
+        public IAsyncEnumerable<Page<ConfigurationSetting>> IteratePages(AsyncPageable<ConfigurationSetting> pageable, IEnumerable<MatchConditions> matchConditions)
+        {
+            return pageable.AsPages();
+        }
+
+        public IAsyncEnumerable<Page<ConfigurationSetting>> IteratePages(AsyncPageable<ConfigurationSetting> pageable)
         {
             return pageable.AsPages();
         }

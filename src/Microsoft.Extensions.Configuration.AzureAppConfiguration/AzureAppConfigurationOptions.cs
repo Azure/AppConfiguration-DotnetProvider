@@ -107,16 +107,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
+        /// For use in tests only. An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        /// <remarks>This property is used only for unit testing.</remarks>
         internal IConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
-        /// An optional class used to process pageable results from Azure App Configuration.
+        /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.
         /// </summary>
-        /// <remarks>This property is only set outside of this class if it's used for unit testing.</remarks>
-        internal ConfigurationSettingPageableManager PageableManager { get; set; } = new ConfigurationSettingPageableManager();
+        internal IPageableConfigurationSettings PageableConfigurationSettings { get; set; }
 
         /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.

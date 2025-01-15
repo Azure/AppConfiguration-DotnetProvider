@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HasWatchedCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, ConfigurationSettingPageableManager pageableManager, CancellationToken cancellationToken)
+        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IPageableConfigurationSettings pageableConfigurationSettings, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -80,11 +80,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentException("Cannot check snapshot for changes.", $"{nameof(keyValueSelector)}.{nameof(keyValueSelector.SnapshotName)}");
             }
 
-            if (pageableManager == null)
-            {
-                throw new ArgumentNullException(nameof(pageableManager));
-            }
-
             SettingSelector selector = new SettingSelector
             {
                 KeyFilter = keyValueSelector.KeyFilter,
@@ -95,16 +90,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
 
-            await foreach (Page<ConfigurationSetting> page in pageableManager.GetPages(pageable, matchConditions).ConfigureAwait(false))
+            await foreach (Page<ConfigurationSetting> page in pageable.AsPages(pageableConfigurationSettings, matchConditions).ConfigureAwait(false))
             {
-                ETag serverEtag = (ETag)page?.GetRawResponse()?.Headers.ETag;
+                using Response response = page.GetRawResponse();
 
-                if (page?.Values == null)
-                {
-                    throw new RequestFailedException(ErrorMessages.InvalidConfigurationSettingPage);
-                }
-
-                Response response = page.GetRawResponse();
+                ETag serverEtag = (ETag)response.Headers.ETag;
 
                 // Return true if the lists of etags are different
                 if ((!existingMatchConditionsEnumerator.MoveNext() ||
@@ -116,12 +106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            if (existingMatchConditionsEnumerator.MoveNext())
-            {
-                return true;
-            }
-
-            return false;
+            return existingMatchConditionsEnumerator.MoveNext();
         }
     }
 }
