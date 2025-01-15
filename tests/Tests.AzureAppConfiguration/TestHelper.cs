@@ -210,7 +210,7 @@ namespace Tests.AzureAppConfiguration
         }
     }
 
-    internal class MockPageableConfigurationSettings : IConfigurationSettingPageIterator
+    internal class MockConfigurationSettingPageIterator : IConfigurationSettingPageIterator
     {
         public IAsyncEnumerable<Page<ConfigurationSetting>> IteratePages(AsyncPageable<ConfigurationSetting> pageable, IEnumerable<MatchConditions> matchConditions)
         {
