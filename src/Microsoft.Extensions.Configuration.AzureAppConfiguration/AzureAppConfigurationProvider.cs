@@ -284,13 +284,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         if (_options.RegisterAllEnabled)
                         {
                             // Get key value collection changes if RegisterAll was called
-                            kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_kvEtags);
-
                             if (isRefreshDue)
                             {
                                 refreshAll = await HaveCollectionsChanged(
                                     _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector).ToList(),
-                                    kvEtags,
+                                    _kvEtags,
                                     client,
                                     cancellationToken).ConfigureAwait(false);
                             }
@@ -321,11 +319,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         else
                         {
                             // Get feature flag changes
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(_ffEtags);
-
                             ffCollectionUpdated = await HaveCollectionsChanged(
                                 refreshableFfWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
-                                ffEtags,
+                                _ffEtags,
                                 client,
                                 cancellationToken).ConfigureAwait(false);
 
@@ -1285,13 +1281,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> HaveCollectionsChanged(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> watchedEtags, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<bool> HaveCollectionsChanged(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags, ConfigurationClient client, CancellationToken cancellationToken)
         {
             bool haveCollectionsChanged = false;
 
             foreach (KeyValueSelector selector in selectors)
             {
-                if (watchedEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
+                if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                         async () => haveCollectionsChanged = await client.HaveCollectionsChanged(selector, matchConditions, _options.PageableConfigurationSettings, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
