@@ -1073,7 +1073,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*");
-                    options.PageableConfigurationSettings = new MockPageableConfigurationSettings();
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.RegisterAll()

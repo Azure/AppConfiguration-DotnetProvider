@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> _ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
-        private DateTimeOffset _registerAllNextRefreshTime;
+        private DateTimeOffset _nextCollectionRefreshTime;
 
         private readonly TimeSpan MinRefreshInterval;
 
@@ -119,9 +119,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 MinRefreshInterval = TimeSpan.FromTicks(Math.Min(minWatcherRefreshInterval.Ticks, options.KvCollectionRefreshInterval.Ticks));
             }
+            else if (hasWatchers)
+            {
+                MinRefreshInterval = minWatcherRefreshInterval;
+            }
             else
             {
-                MinRefreshInterval = hasWatchers ? minWatcherRefreshInterval : RefreshConstants.DefaultRefreshInterval;
+                MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
             }
 
             // Enable request tracing if not opt-out
@@ -201,7 +205,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers = _options.IndividualKvWatchers.Where(kvWatcher => utcNow >= kvWatcher.NextRefreshTime);
                     IEnumerable<KeyValueWatcher> refreshableFfWatchers = _options.FeatureFlagWatchers.Where(ffWatcher => utcNow >= ffWatcher.NextRefreshTime);
-                    bool isRefreshDue = utcNow >= _registerAllNextRefreshTime;
+                    bool isRefreshDue = utcNow >= _nextCollectionRefreshTime;
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
@@ -287,7 +291,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (isRefreshDue)
                             {
                                 refreshAll = await HaveCollectionsChanged(
-                                    _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector).ToList(),
+                                    _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
                                     _kvEtags,
                                     client,
                                     cancellationToken).ConfigureAwait(false);
@@ -307,7 +311,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (refreshAll)
                         {
-                            // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true
+                            // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true,
+                            // or if any key-value collection change was detected.
                             kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
 
@@ -316,32 +321,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                             return;
                         }
-                        else
+
+                        // Get feature flag changes
+                        ffCollectionUpdated = await HaveCollectionsChanged(
+                            refreshableFfWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
+                            _ffEtags,
+                            client,
+                            cancellationToken).ConfigureAwait(false);
+
+                        if (ffCollectionUpdated)
                         {
-                            // Get feature flag changes
-                            ffCollectionUpdated = await HaveCollectionsChanged(
-                                refreshableFfWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
-                                _ffEtags,
+                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+
+                            ffCollectionData = await LoadSelected(
                                 client,
+                                new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(),
+                                ffEtags,
+                                _options.Selectors.Where(selector => selector.IsFeatureFlagSelector),
                                 cancellationToken).ConfigureAwait(false);
 
-                            if (ffCollectionUpdated)
-                            {
-                                ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
-
-                                ffCollectionData = await LoadSelected(
-                                    client,
-                                    new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(),
-                                    ffEtags,
-                                    _options.Selectors.Where(selector => selector.IsFeatureFlagSelector),
-                                    cancellationToken).ConfigureAwait(false);
-
-                                logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
-                            }
-                            else
-                            {
-                                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
-                            }
+                            logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
+                        }
+                        else
+                        {
+                            logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
                         }
                     },
                     cancellationToken)
@@ -389,7 +392,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (isRefreshDue)
                     {
-                        _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
+                        _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
                     }
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || keyValueChanges.Any() || refreshAll || ffCollectionUpdated)
@@ -535,7 +538,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_options.RegisterAllEnabled)
             {
-                _registerAllNextRefreshTime = nextRefreshTime;
+                _nextCollectionRefreshTime = nextRefreshTime;
             }
             else
             {
@@ -725,7 +728,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_options.RegisterAllEnabled)
             {
-                _registerAllNextRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
+                _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
             }
 
             if (data != null)
@@ -772,7 +775,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
-                        await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages().ConfigureAwait(false))
+                        await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
                         {
                             using Response response = page.GetRawResponse();
 
@@ -1190,30 +1193,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                    innerException is IOException;
         }
 
-        private IEnumerable<string> GetExistingKeys(string key, IEnumerable<string> existingKeys)
-        {
-            IEnumerable<string> currentKeyValues;
-
-            if (key.EndsWith("*"))
-            {
-                // Get current application settings starting with changeWatcher.Key, excluding the last * character
-                string keyPrefix = key.Substring(0, key.Length - 1);
-                currentKeyValues = existingKeys.Where(val =>
-                {
-                    return val.StartsWith(keyPrefix);
-                });
-            }
-            else
-            {
-                currentKeyValues = existingKeys.Where(val =>
-                {
-                    return val.Equals(key);
-                });
-            }
-
-            return currentKeyValues;
-        }
-
         private async Task<Dictionary<string, ConfigurationSetting>> MapConfigurationSettings(Dictionary<string, ConfigurationSetting> data)
         {
             Dictionary<string, ConfigurationSetting> mappedData = new Dictionary<string, ConfigurationSetting>(StringComparer.OrdinalIgnoreCase);
@@ -1281,7 +1260,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> HaveCollectionsChanged(IEnumerable<KeyValueSelector> selectors, Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<bool> HaveCollectionsChanged(
+            IEnumerable<KeyValueSelector> selectors,
+            Dictionary<KeyValueSelector,
+            IEnumerable<MatchConditions>> pageEtags,
+            ConfigurationClient client,
+            CancellationToken cancellationToken)
         {
             bool haveCollectionsChanged = false;
 
@@ -1290,7 +1274,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(selector, matchConditions, _options.PageableConfigurationSettings, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(
+                            selector,
+                            matchConditions,
+                            _options.ConfigurationSettingPageIterator,
+                            cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
                 if (haveCollectionsChanged)

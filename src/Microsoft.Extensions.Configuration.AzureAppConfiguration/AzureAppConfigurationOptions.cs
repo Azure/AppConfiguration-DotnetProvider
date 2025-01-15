@@ -114,7 +114,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.
         /// </summary>
-        internal IPageableConfigurationSettings PageableConfigurationSettings { get; set; }
+        internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
 
         /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
