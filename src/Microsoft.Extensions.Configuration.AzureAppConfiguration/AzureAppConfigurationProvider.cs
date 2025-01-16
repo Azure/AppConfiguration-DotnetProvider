@@ -32,6 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+        private HashSet<string> _ffKeys = new HashSet<string>();
         private Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> _kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
         private Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> _ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
         private RequestTracingOptions _requestTracingOptions;
@@ -262,6 +263,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Avoid instance state modification
                     Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags = null;
                     Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags = null;
+                    HashSet<string> ffKeys = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> keyValueChanges = null;
                     Dictionary<string, ConfigurationSetting> data = null;
@@ -273,17 +275,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
                     {
-                        data = null;
-                        ffCollectionData = null;
-                        watchedIndividualKvs = null;
                         kvEtags = null;
                         ffEtags = null;
+                        ffKeys = null;
+                        watchedIndividualKvs = null;
                         keyValueChanges = new List<KeyValueChange>();
+                        data = null;
+                        ffCollectionData = null;
                         ffCollectionUpdated = false;
                         refreshAll = false;
-                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
                         logDebugBuilder.Clear();
                         logInfoBuilder.Clear();
+                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
                         if (_options.RegisterAllEnabled)
                         {
@@ -315,8 +318,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // or if any key-value collection change was detected.
                             kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+                            ffKeys = new HashSet<string>();
 
-                            data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
+                            data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
                             watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                             logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                             return;
@@ -332,12 +336,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         if (ffCollectionUpdated)
                         {
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+                            ffKeys = new HashSet<string>();
 
                             ffCollectionData = await LoadSelected(
                                 client,
                                 new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(),
                                 ffEtags,
                                 _options.Selectors.Where(selector => selector.IsFeatureFlagSelector),
+                                ffKeys,
                                 cancellationToken).ConfigureAwait(false);
 
                             logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
@@ -374,6 +380,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (ffCollectionUpdated)
                         {
+                            // Remove all feature flag keys that are not present in the latest loading of feature flags, but were loaded previously
+                            foreach (string key in _ffKeys.Except(ffKeys))
+                            {
+                                _mappedData.Remove(key);
+                            }
+
                             Dictionary<string, ConfigurationSetting> mappedFfData = await MapConfigurationSettings(ffCollectionData).ConfigureAwait(false);
 
                             foreach (KeyValuePair<string, ConfigurationSetting> kvp in mappedFfData)
@@ -397,11 +409,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || keyValueChanges.Any() || refreshAll || ffCollectionUpdated)
                     {
-                        _watchedIndividualKvs = watchedIndividualKvs;
+                        _watchedIndividualKvs = watchedIndividualKvs ?? _watchedIndividualKvs;
 
-                        _ffEtags = ffEtags;
+                        _ffEtags = ffEtags ?? _ffEtags;
 
-                        _kvEtags = kvEtags;
+                        _kvEtags = kvEtags ?? _kvEtags;
+
+                        _ffKeys = ffKeys ?? _ffKeys;
 
                         if (logDebugBuilder.Length > 0)
                         {
@@ -698,6 +712,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
+            HashSet<string> ffKeys = new HashSet<string>();
 
             await ExecuteWithFailOverPolicyAsync(
                 clients,
@@ -708,6 +723,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         kvEtags,
                         ffEtags,
                         _options.Selectors,
+                        ffKeys,
                         cancellationToken)
                         .ConfigureAwait(false);
 
@@ -755,6 +771,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags,
             IEnumerable<KeyValueSelector> selectors,
+            HashSet<string> ffKeys,
             CancellationToken cancellationToken)
         {
             Dictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>();
@@ -784,6 +801,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             foreach (ConfigurationSetting setting in page.Values)
                             {
                                 data[setting.Key] = setting;
+
+                                if (loadOption.IsFeatureFlagSelector)
+                                {
+                                    ffKeys.Add(setting.Key);
+                                }
                             }
 
                             matchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });

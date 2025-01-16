@@ -7,6 +7,7 @@ using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
@@ -1106,6 +1107,118 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newValue1", config["TestKey1"]);
             Assert.Null(config["TestKey3"]);
+        }
+
+        [Fact]
+        public async Task RefreshTests_RegisterAllRefreshesFeatureFlags()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var featureFlags = new List<ConfigurationSetting> {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                    value: @"
+                            {
+                                ""id"": ""MyFeature"",
+                                ""description"": ""The new beta version of our web site."",
+                                ""display_name"": ""Beta Feature"",
+                                ""enabled"": true,
+                                ""conditions"": {
+                                ""client_filters"": [
+                                    {
+                                    ""name"": ""SuperUsers""
+                                    }
+                                ]
+                                }
+                            }
+                            ",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+            };
+
+            var mockAsyncPageableKv = new MockAsyncPageable(_kvCollection);
+
+            var mockAsyncPageableFf = new MockAsyncPageable(featureFlags);
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                if (selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+                {
+                    mockAsyncPageableFf.UpdateCollection(featureFlags);
+
+                    return mockAsyncPageableFf;
+                }
+
+                mockAsyncPageableKv.UpdateCollection(_kvCollection);
+
+                return mockAsyncPageableKv;
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("TestKey*");
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.UseFeatureFlags();
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            FirstKeyValue.Value = "newValue1";
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                value: @"
+                        {
+                            ""id"": ""MyFeature"",
+                            ""description"": ""The new beta version of our web site."",
+                            ""display_name"": ""Beta Feature"",
+                            ""enabled"": true,
+                            ""conditions"": {
+                            ""client_filters"": [
+                                {
+                                ""name"": ""AllUsers""
+                                }
+                            ]
+                            }
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            FirstKeyValue.Value = "newerValue1";
+            featureFlags.RemoveAt(0);
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newerValue1", config["TestKey1"]);
+            Assert.Null(config["FeatureManagement:MyFeature"]);
         }
 
 #if NET8_0
