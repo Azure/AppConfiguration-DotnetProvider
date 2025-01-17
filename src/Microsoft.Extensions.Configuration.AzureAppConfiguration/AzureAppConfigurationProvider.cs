@@ -261,8 +261,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Avoid instance state modification
-                    Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags = null;
                     Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags = null;
+                    Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags = null;
                     HashSet<string> ffKeys = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> keyValueChanges = null;
@@ -328,7 +328,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         // Get feature flag changes
                         ffCollectionUpdated = await HaveCollectionsChanged(
-                            refreshableFfWatchers.Select(watcher => new KeyValueSelector { KeyFilter = watcher.Key, LabelFilter = watcher.Label }),
+                            refreshableFfWatchers.Select(watcher => new KeyValueSelector
+                            {
+                                KeyFilter = watcher.Key,
+                                LabelFilter = watcher.Label,
+                                IsFeatureFlagSelector = true
+                            }),
                             _ffEtags,
                             client,
                             cancellationToken).ConfigureAwait(false);
@@ -759,10 +764,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
 
-                _watchedIndividualKvs = watchedIndividualKvs;
+                _mappedData = mappedData;
                 _kvEtags = kvEtags;
                 _ffEtags = ffEtags;
-                _mappedData = mappedData;
+                _watchedIndividualKvs = watchedIndividualKvs;
+                _ffKeys = ffKeys;
             }
         }
 
@@ -1284,8 +1290,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<bool> HaveCollectionsChanged(
             IEnumerable<KeyValueSelector> selectors,
-            Dictionary<KeyValueSelector,
-            IEnumerable<MatchConditions>> pageEtags,
+            Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags,
             ConfigurationClient client,
             CancellationToken cancellationToken)
         {
