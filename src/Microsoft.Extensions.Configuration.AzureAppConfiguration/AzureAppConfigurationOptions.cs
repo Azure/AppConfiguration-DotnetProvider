@@ -419,14 +419,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!isRegisterCalled && !RegisterAllEnabled)
             {
-                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must call either {nameof(AzureAppConfigurationRefreshOptions.Register)}()" +
+                throw new InvalidOperationException($"{nameof(ConfigureRefresh)}() must call either {nameof(AzureAppConfigurationRefreshOptions.Register)}()" +
                     $" or {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)}()");
             }
 
             // Check if both register methods are called at any point
             if (RegisterAllEnabled && (_individualKvWatchers.Any() || isRegisterCalled))
             {
-                throw new ArgumentException($"Cannot call both {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} and "
+                throw new InvalidOperationException($"Cannot call both {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} and "
                 + $"{nameof(AzureAppConfigurationRefreshOptions.Register)}.");
             }
 

@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string RefreshConfigurationUpdatedSuccess = "Configuration reloaded.";
         public const string RefreshKeyValueSettingUpdated = "Setting updated.";
         public const string RefreshKeyVaultSettingUpdated = "Setting updated from Key Vault.";
-        public const string RefreshFeatureFlagsUpdated = "Feature flags updated.";
+        public const string RefreshFeatureFlagsUpdated = "Feature flags reloaded.";
         public const string RefreshSelectedKeyValuesAndFeatureFlagsUpdated = "Selected key-value collections and feature flags updated.";
 
         // Other
