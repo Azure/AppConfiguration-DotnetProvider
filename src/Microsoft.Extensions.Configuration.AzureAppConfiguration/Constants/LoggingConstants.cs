@@ -20,7 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Successful update, debug log level
         public const string RefreshKeyValueRead = "Key-value read from App Configuration.";
         public const string RefreshKeyVaultSecretRead = "Secret read from Key Vault for key-value.";
-        public const string RefreshFeatureFlagRead = "Feature flag read from App Configuration.";
         public const string RefreshFeatureFlagsUnchanged = "Feature flags read from App Configuration. Change:'None'";
         public const string RefreshSelectedKeyValueCollectionsUnchanged = "Selected key-value collections read from App Configuration. Change:'None'";
 

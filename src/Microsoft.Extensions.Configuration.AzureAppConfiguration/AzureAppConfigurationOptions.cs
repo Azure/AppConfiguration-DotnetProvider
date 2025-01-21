@@ -408,7 +408,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (RegisterAllEnabled)
             {
-                throw new ArgumentException($"{nameof(ConfigureRefresh)}() cannot be invoked multiple times when {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} has been invoked.");
+                throw new InvalidOperationException($"{nameof(ConfigureRefresh)}() cannot be invoked multiple times when {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} has been invoked.");
             }
 
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
@@ -419,7 +419,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!isRegisterCalled && !RegisterAllEnabled)
             {
-                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must register at least one key-value for refresh or enable refresh of all selected key-values.");
+                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must call either {nameof(AzureAppConfigurationRefreshOptions.Register)}()" +
+                    $" or {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)}()");
             }
 
             // Check if both register methods are called at any point

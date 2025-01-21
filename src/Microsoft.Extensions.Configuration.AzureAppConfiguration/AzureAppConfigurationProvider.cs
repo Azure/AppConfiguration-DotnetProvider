@@ -1310,7 +1310,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (haveCollectionsChanged)
                 {
-                    return haveCollectionsChanged;
+                    return true;
                 }
             }
 
