@@ -14,6 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         internal TimeSpan RefreshInterval { get; private set; } = RefreshConstants.DefaultRefreshInterval;
         internal ISet<KeyValueWatcher> RefreshRegistrations = new HashSet<KeyValueWatcher>();
+        internal bool RegisterAllEnabled { get; private set; }
 
         /// <summary>
         /// Register the specified individual key-value to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
@@ -46,6 +47,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 Label = label,
                 RefreshAll = refreshAll
             });
+
+            return this;
+        }
+
+        /// <summary>
+        /// Register all key-values loaded outside of <see cref="AzureAppConfigurationOptions.ConfigureRefresh"/> to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
+        /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
+        /// </summary>
+        public AzureAppConfigurationRefreshOptions RegisterAll()
+        {
+            RegisterAllEnabled = true;
 
             return this;
         }
