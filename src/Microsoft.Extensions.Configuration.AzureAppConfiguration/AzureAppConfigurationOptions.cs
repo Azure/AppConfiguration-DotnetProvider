@@ -3,6 +3,7 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -147,6 +148,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
+        /// Client factory that is responsible for creating instances of ConfigurationClient.
+        /// </summary>
+        internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -160,6 +166,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
             _selectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
+        }
+
+        /// <summary>
+        /// Sets the client factory used to create ConfigurationClient instances.
+        /// </summary>
+        /// <param name="factory">The client factory.</param>
+        /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
+        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
+        {
+            ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+            return this;
         }
 
         /// <summary>
@@ -315,6 +332,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (Credential is EmptyTokenCredential)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -329,6 +351,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Credential = null;
             ConnectionStrings = connectionStrings;
             return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to CDN endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
+        {
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerRetry);
+
+            return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
         }
 
         /// <summary>
@@ -358,6 +401,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (Credential is EmptyTokenCredential)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));

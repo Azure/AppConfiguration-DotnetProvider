@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken, bool makeConditionalRequest = true)
         {
             if (setting == null)
             {
@@ -28,8 +28,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             try
             {
-                Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
+                Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: makeConditionalRequest, cancellationToken).ConfigureAwait(false);
+                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK &&
+                    !response.Value.ETag.Equals(setting.ETag))
                 {
                     return new KeyValueChange
                     {
