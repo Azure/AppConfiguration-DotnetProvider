@@ -35,6 +35,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     clientManager = options.ClientManager;
                 }
+                else if (options.IsCdnEnabled)
+                {
+                    clientManager = new CdnConfigurationClientManager(options.Endpoints, options.ClientOptions);
+                }
                 else if (options.ConnectionStrings != null)
                 {
                     clientManager = new ConfigurationClientManager(

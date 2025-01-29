@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -135,6 +136,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
         /// </summary>
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether Connection to CDN is enabled.
+        /// </summary>
+        internal bool IsCdnEnabled { get; private set; } = false;
 
         /// <summary>
         /// Indicates all types of feature filters used by the application.
@@ -299,6 +305,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(string connectionString)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString));
@@ -315,6 +326,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -338,6 +354,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credentials to use to connect.</param>
         public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoint == null)
             {
                 throw new ArgumentNullException(nameof(endpoint));
@@ -358,6 +379,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
@@ -372,6 +398,34 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Endpoints = endpoints;
             ConnectionStrings = null;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to CDN endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
+        {
+            if (!IsCdnEnabled && (Credential != null || ConnectionStrings != null))
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            IsCdnEnabled = true;
+
+            //todo: ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerRetry); need it?
+            //todo: add another policy
+
+            Credential = new EmptyTokenCredential();
+            Endpoints = new List<Uri>() { endpoint };
+            ConnectionStrings = null;
+
             return this;
         }
 

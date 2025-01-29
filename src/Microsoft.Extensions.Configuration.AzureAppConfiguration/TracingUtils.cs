@@ -201,6 +201,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);
             }
 
+            if (requestTracingOptions.IsCdnEnabled)
+            {
+                correlationContextTags.Add(RequestTracingConstants.CdnEnabledTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)
