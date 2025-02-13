@@ -550,7 +550,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-
+                    _requestTracingOptions.IsPushRefreshUsed = true;
                 }
 
                 SetDirty(maxDelay);

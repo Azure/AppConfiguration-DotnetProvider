@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsFailoverRequest { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether 
+        /// Flag to indicate whether push refresh is used.
         /// </summary>
 
         public bool IsPushRefreshUsed { get; set; } = false;
