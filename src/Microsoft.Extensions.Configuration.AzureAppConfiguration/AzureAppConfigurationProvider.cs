@@ -548,6 +548,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_configClientManager.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
             {
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+
+                }
+
                 SetDirty(maxDelay);
             }
             else
