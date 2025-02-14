@@ -23,12 +23,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
 
-        private List<KeyValueWatcher> _changeWatchers = new List<KeyValueWatcher>();
-        private List<KeyValueWatcher> _multiKeyWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
+        private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
-        private List<KeyValueSelector> _kvSelectors = new List<KeyValueSelector>();
+        private List<KeyValueSelector> _selectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
+        private bool _selectCalled = false;
 
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
@@ -62,19 +63,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal TokenCredential Credential { get; private set; }
 
         /// <summary>
-        /// A collection of <see cref="KeyValueSelector"/>.
+        /// A collection of <see cref="KeyValueSelector"/> specified by user.
         /// </summary>
-        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
+        internal IEnumerable<KeyValueSelector> Selectors => _selectors;
+
+        /// <summary>
+        /// Indicates if <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> was called.
+        /// </summary>
+        internal bool RegisterAllEnabled { get; private set; }
+
+        /// <summary>
+        /// Refresh interval for selected key-value collections when <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> is called.
+        /// </summary>
+        internal TimeSpan KvCollectionRefreshInterval { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> ChangeWatchers => _changeWatchers;
+        internal IEnumerable<KeyValueWatcher> IndividualKvWatchers => _individualKvWatchers;
 
         /// <summary>
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
-        internal IEnumerable<KeyValueWatcher> MultiKeyWatchers => _multiKeyWatchers;
+        internal IEnumerable<KeyValueWatcher> FeatureFlagWatchers => _ffWatchers;
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -96,10 +107,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
+        /// For use in tests only. An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        /// <remarks>This property is used only for unit testing.</remarks>
         internal IConfigurationClientManager ClientManager { get; set; }
+
+        /// <summary>
+        /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.
+        /// </summary>
+        internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
 
         /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
@@ -142,6 +157,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 new JsonKeyValueAdapter(),
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
+
+            // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
+            _selectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
         }
 
         /// <summary>
@@ -170,22 +188,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(keyFilter));
             }
 
+            // Do not support * and , for label filter for now.
+            if (labelFilter != null && (labelFilter.Contains('*') || labelFilter.Contains(',')))
+            {
+                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
+            }
+
             if (string.IsNullOrWhiteSpace(labelFilter))
             {
                 labelFilter = LabelFilter.Null;
             }
 
-            // Do not support * and , for label filter for now.
-            if (labelFilter.Contains('*') || labelFilter.Contains(','))
+            if (!_selectCalled)
             {
-                throw new ArgumentException("The characters '*' and ',' are not supported in label filters.", nameof(labelFilter));
+                _selectors.Clear();
+
+                _selectCalled = true;
             }
 
-            _kvSelectors.AppendUnique(new KeyValueSelector
+            _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter
             });
+
             return this;
         }
 
@@ -201,7 +227,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(name));
             }
 
-            _kvSelectors.AppendUnique(new KeyValueSelector
+            if (!_selectCalled)
+            {
+                _selectors.Clear();
+
+                _selectCalled = true;
+            }
+
+            _selectors.AppendUnique(new KeyValueSelector
             {
                 SnapshotName = name
             });
@@ -212,7 +245,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Configures options for Azure App Configuration feature flags that will be parsed and transformed into feature management configuration.
         /// If no filtering is specified via the <see cref="FeatureFlagOptions"/> then all feature flags with no label are loaded.
-        /// All loaded feature flags will be automatically registered for refresh on an individual flag level.
+        /// All loaded feature flags will be automatically registered for refresh as a collection.
         /// </summary>
         /// <param name="configure">A callback used to configure feature flag options.</param>
         public AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> configure = null)
@@ -237,25 +270,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 options.FeatureFlagSelectors.Add(new KeyValueSelector
                 {
                     KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = options.Label == null ? LabelFilter.Null : options.Label
+                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label,
+                    IsFeatureFlagSelector = true
                 });
             }
 
-            foreach (var featureFlagSelector in options.FeatureFlagSelectors)
+            foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
             {
-                var featureFlagFilter = featureFlagSelector.KeyFilter;
-                var labelFilter = featureFlagSelector.LabelFilter;
+                _selectors.AppendUnique(featureFlagSelector);
 
-                Select(featureFlagFilter, labelFilter);
-
-                _multiKeyWatchers.AppendUnique(new KeyValueWatcher
+                _ffWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    Key = featureFlagFilter,
-                    Label = labelFilter,
+                    Key = featureFlagSelector.KeyFilter,
+                    Label = featureFlagSelector.LabelFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
-
             }
 
             return this;
@@ -376,18 +406,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="configure">A callback used to configure Azure App Configuration refresh options.</param>
         public AzureAppConfigurationOptions ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> configure)
         {
+            if (RegisterAllEnabled)
+            {
+                throw new InvalidOperationException($"{nameof(ConfigureRefresh)}() cannot be invoked multiple times when {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} has been invoked.");
+            }
+
             var refreshOptions = new AzureAppConfigurationRefreshOptions();
             configure?.Invoke(refreshOptions);
 
-            if (!refreshOptions.RefreshRegistrations.Any())
+            bool isRegisterCalled = refreshOptions.RefreshRegistrations.Any();
+            RegisterAllEnabled = refreshOptions.RegisterAllEnabled;
+
+            if (!isRegisterCalled && !RegisterAllEnabled)
             {
-                throw new ArgumentException($"{nameof(ConfigureRefresh)}() must have at least one key-value registered for refresh.");
+                throw new InvalidOperationException($"{nameof(ConfigureRefresh)}() must call either {nameof(AzureAppConfigurationRefreshOptions.Register)}()" +
+                    $" or {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)}()");
             }
 
-            foreach (var item in refreshOptions.RefreshRegistrations)
+            // Check if both register methods are called at any point
+            if (RegisterAllEnabled && (_individualKvWatchers.Any() || isRegisterCalled))
             {
-                item.RefreshInterval = refreshOptions.RefreshInterval;
-                _changeWatchers.Add(item);
+                throw new InvalidOperationException($"Cannot call both {nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} and "
+                + $"{nameof(AzureAppConfigurationRefreshOptions.Register)}.");
+            }
+
+            if (RegisterAllEnabled)
+            {
+                KvCollectionRefreshInterval = refreshOptions.RefreshInterval;
+            }
+            else
+            {
+                foreach (KeyValueWatcher item in refreshOptions.RefreshRegistrations)
+                {
+                    item.RefreshInterval = refreshOptions.RefreshInterval;
+                    _individualKvWatchers.Add(item);
+                }
             }
 
             return this;

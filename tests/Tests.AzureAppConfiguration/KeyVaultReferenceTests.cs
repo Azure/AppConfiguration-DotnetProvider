@@ -505,9 +505,9 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
 
             var mockKeyValueAdapter = new Mock<IKeyValueAdapter>(MockBehavior.Strict);
-            mockKeyValueAdapter.Setup(adapter => adapter.CanProcess(_kv))
+            mockKeyValueAdapter.Setup(adapter => adapter.CanProcess(It.IsAny<ConfigurationSetting>()))
                 .Returns(true);
-            mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(_kv, It.IsAny<Uri>(), It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
+            mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(It.IsAny<ConfigurationSetting>(), It.IsAny<Uri>(), It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
                 .Throws(new KeyVaultReferenceException("Key vault error", null));
             mockKeyValueAdapter.Setup(adapter => adapter.OnChangeDetected(null));
             mockKeyValueAdapter.Setup(adapter => adapter.OnConfigUpdated());
@@ -743,7 +743,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config[_kv.Key]);
 
             // Update sentinel key-value
-            sentinelKv.Value = "Value2";
+            sentinelKv = TestHelpers.ChangeValue(sentinelKv, "Value2");
             Thread.Sleep(refreshInterval);
             await refresher.RefreshAsync();
 
@@ -815,7 +815,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config[_kv.Key]);
 
             // Update sentinel key-value to trigger refresh operation
-            sentinelKv.Value = "Value2";
+            sentinelKv = TestHelpers.ChangeValue(sentinelKv, "Value2");
             Thread.Sleep(refreshInterval);
             await refresher.RefreshAsync();
 

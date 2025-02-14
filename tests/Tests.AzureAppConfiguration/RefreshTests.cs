@@ -7,6 +7,7 @@ using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
@@ -208,7 +209,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -221,7 +222,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshAllFalseDoesNotUpdateEntireConfiguration()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
 
@@ -244,7 +244,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -259,7 +259,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshAllTrueUpdatesEntireConfiguration()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
 
@@ -282,7 +281,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -353,7 +352,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.First().Value = "newValue";
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue");
             keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
@@ -426,8 +425,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ElementAt(0).Value = "newValue1";
-            keyValueCollection.ElementAt(1).Value = "newValue2";
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue1");
+            keyValueCollection[1] = TestHelpers.ChangeValue(keyValueCollection[1], "newValue2");
             keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
@@ -499,7 +498,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal(1, requestCount);
 
-            keyValueCollection.First().Value = "newValue";
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue");
 
             // Simulate simultaneous refresh calls with expired cache from multiple threads
             var task1 = Task.Run(() => WaitAndRefresh(refresher, 1500));
@@ -606,7 +605,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -702,7 +701,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -823,7 +822,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            keyValueCollection = keyValueCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -874,7 +873,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
 
-            keyValueCollection.ForEach(kv => kv.Value = "newValue");
+            _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -890,8 +889,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshAllFalseForOverwrittenSentinelUpdatesConfig()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
-            ConfigurationSetting refreshRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            ConfigurationSetting refreshRegisteredSetting = _kvCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
             var mockClient = GetMockConfigurationClient();
             IConfigurationRefresher refresher = null;
 
@@ -916,7 +914,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValueForLabel2", config["TestKeyWithMultipleLabels"]);
 
-            refreshRegisteredSetting.Value = "UpdatedValueForLabel1";
+            _kvCollection[_kvCollection.IndexOf(refreshRegisteredSetting)] = TestHelpers.ChangeValue(refreshRegisteredSetting, "UpdatedValueForLabel1");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -933,8 +931,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_RefreshRegisteredKvOverwritesSelectedKv()
         {
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
-            ConfigurationSetting refreshAllRegisteredSetting = keyValueCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
+            ConfigurationSetting refreshAllRegisteredSetting = _kvCollection.FirstOrDefault(s => s.Key == "TestKeyWithMultipleLabels" && s.Label == "label1");
             var mockClient = GetMockConfigurationClient();
             IConfigurationRefresher refresher = null;
 
@@ -959,7 +956,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValueForLabel1", config["TestKeyWithMultipleLabels"]);
 
-            refreshAllRegisteredSetting.Value = "UpdatedValueForLabel1";
+            _kvCollection[_kvCollection.IndexOf(refreshAllRegisteredSetting)] = TestHelpers.ChangeValue(refreshAllRegisteredSetting, "UpdatedValueForLabel1");
 
             // Wait for the cache to expire
             Thread.Sleep(1500);
@@ -1054,6 +1051,170 @@ namespace Tests.AzureAppConfiguration
             var exception = Assert.Throws<AggregateException>(action);
             Assert.IsType<TaskCanceledException>(exception.InnerException);
             Assert.Equal("TestValue1", config["TestKey1"]);
+        }
+
+        [Fact]
+        public async Task RefreshTests_SelectedKeysRefreshWithRegisterAll()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockAsyncPageable = new MockAsyncPageable(_kvCollection);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
+                .Returns(mockAsyncPageable);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("TestKey*");
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            FirstKeyValue.Value = "newValue1";
+            _kvCollection[2].Value = "newValue3";
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Equal("newValue3", config["TestKey3"]);
+
+            _kvCollection.RemoveAt(2);
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Null(config["TestKey3"]);
+        }
+
+        [Fact]
+        public async Task RefreshTests_RegisterAllRefreshesFeatureFlags()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var featureFlags = new List<ConfigurationSetting> {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                    value: @"
+                            {
+                                ""id"": ""MyFeature"",
+                                ""description"": ""The new beta version of our web site."",
+                                ""display_name"": ""Beta Feature"",
+                                ""enabled"": true,
+                                ""conditions"": {
+                                ""client_filters"": [
+                                    {
+                                    ""name"": ""SuperUsers""
+                                    }
+                                ]
+                                }
+                            }
+                            ",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+            };
+
+            var mockAsyncPageableKv = new MockAsyncPageable(_kvCollection);
+
+            var mockAsyncPageableFf = new MockAsyncPageable(featureFlags);
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                if (selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+                {
+                    mockAsyncPageableFf.UpdateCollection(featureFlags);
+
+                    return mockAsyncPageableFf;
+                }
+
+                mockAsyncPageableKv.UpdateCollection(_kvCollection);
+
+                return mockAsyncPageableKv;
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("TestKey*");
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.UseFeatureFlags();
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            FirstKeyValue.Value = "newValue1";
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                value: @"
+                        {
+                            ""id"": ""MyFeature"",
+                            ""description"": ""The new beta version of our web site."",
+                            ""display_name"": ""Beta Feature"",
+                            ""enabled"": true,
+                            ""conditions"": {
+                            ""client_filters"": [
+                                {
+                                ""name"": ""AllUsers""
+                                }
+                            ]
+                            }
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newValue1", config["TestKey1"]);
+            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            FirstKeyValue.Value = "newerValue1";
+            featureFlags.RemoveAt(0);
+
+            // Wait for the cache to expire
+            Thread.Sleep(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("newerValue1", config["TestKey1"]);
+            Assert.Null(config["FeatureManagement:MyFeature"]);
         }
 
 #if NET8_0
