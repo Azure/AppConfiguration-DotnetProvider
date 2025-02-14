@@ -268,11 +268,10 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void FailOverTests_ValidateEndpoints()
         {
-            var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
-
             var configClientManager = new ConfigurationClientManager(
-                clientFactory,
                 new[] { new Uri("https://foobar.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
                 true,
                 false);
 
@@ -286,8 +285,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
 
             var configClientManager2 = new ConfigurationClientManager(
-                clientFactory,
                 new[] { new Uri("https://foobar.appconfig.azure.com") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
                 true,
                 false);
 
@@ -301,8 +301,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
 
             var configClientManager3 = new ConfigurationClientManager(
-                clientFactory,
                 new[] { new Uri("https://foobar.azconfig-test.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
                 true,
                 false);
 
@@ -310,8 +311,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
 
             var configClientManager4 = new ConfigurationClientManager(
-                clientFactory,
                 new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
                 true,
                 false);
 
@@ -323,11 +325,10 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void FailOverTests_GetNoDynamicClient()
         {
-            var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
-
             var configClientManager = new ConfigurationClientManager(
-                clientFactory,
                 new[] { new Uri("https://azure.azconfig.io") },
+                new DefaultAzureCredential(),
+                new ConfigurationClientOptions(),
                 true,
                 false);
 
