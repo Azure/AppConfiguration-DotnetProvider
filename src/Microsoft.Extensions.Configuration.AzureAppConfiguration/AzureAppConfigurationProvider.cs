@@ -812,8 +812,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             using Response response = page.GetRawResponse();
 
-                            ETag serverEtag = (ETag)response.Headers.ETag;
-
                             foreach (ConfigurationSetting setting in page.Values)
                             {
                                 data[setting.Key] = setting;
@@ -824,7 +822,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                             }
 
-                            matchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
+                            matchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
                         }
                     }).ConfigureAwait(false);
 
