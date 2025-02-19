@@ -1069,7 +1069,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*");
+                    options.Select("TestKey*", "label");
                     options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -1159,7 +1159,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*");
+                    options.Select("TestKey*", "label");
                     options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
                     options.ConfigureRefresh(refreshOptions =>
                     {
