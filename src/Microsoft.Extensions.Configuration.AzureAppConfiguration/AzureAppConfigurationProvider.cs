@@ -822,6 +822,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                             }
 
+                            // The ETag will never be null here because it's not a conditional request
+                            // Each successful response should have 200 status code and an ETag
                             matchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
                         }
                     }).ConfigureAwait(false);
