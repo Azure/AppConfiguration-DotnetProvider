@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string LoadBalancingEnabledTag = "LB";
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
-        public const string PushRefreshUsedTag = "PushRefresh";
+        public const string PushRefreshTag = "PushRefresh";
 
         public const string FeatureFlagFilterTypeKey = "Filter";
         public const string CustomFilter = "CSTM";

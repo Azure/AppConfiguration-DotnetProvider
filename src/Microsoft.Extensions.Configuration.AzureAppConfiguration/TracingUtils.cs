@@ -203,7 +203,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (requestTracingOptions.IsPushRefreshUsed)
             {
-                correlationContextTags.Add(RequestTracingConstants.PushRefreshUsedTag);
+                correlationContextTags.Add(RequestTracingConstants.PushRefreshTag);
             }
 
             var sb = new StringBuilder();
