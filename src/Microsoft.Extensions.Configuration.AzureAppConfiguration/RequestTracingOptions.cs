@@ -66,7 +66,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether push refresh is used.
         /// </summary>
-
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
