@@ -201,7 +201,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Clear();
+                _selectors.RemoveAll(selector => !selector.IsFeatureFlagSelector);
 
                 _selectCalled = true;
             }
@@ -229,7 +229,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Clear();
+                _selectors.RemoveAll(selector => !selector.IsFeatureFlagSelector);
 
                 _selectCalled = true;
             }
