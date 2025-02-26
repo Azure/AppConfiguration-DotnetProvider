@@ -1077,7 +1077,7 @@ namespace Tests.AzureAppConfiguration
                 ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", "label",
                     eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63")),
                 ConfigurationModelFactory.ConfigurationSetting("TestKey2", "TestValue2", "label",
-                    eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989")),
+                    eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"))
             };
 
             MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
