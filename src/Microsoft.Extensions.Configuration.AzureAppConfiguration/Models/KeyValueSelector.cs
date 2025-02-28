@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System.Collections.Generic;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     /// <summary>
@@ -18,6 +20,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// A filter that determines what label to use when selecting key-values for the the configuration provider.
         /// </summary>
         public string LabelFilter { get; set; }
+
+        /// <summary>
+        /// A filter that determines what tags to use when selecting key-values for the the configuration provider.
+        /// </summary>
+        public IList<string> TagsFilter { get; set; }
 
         /// <summary>
         /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.

@@ -74,7 +74,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// The label filter to apply when querying Azure App Configuration for feature flags. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null)
+        /// <param name="tagsFilter">
+        /// TODO
+        /// </param>
+        public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null, IDictionary<string, string> tagsFilter = null)
         {
             if (string.IsNullOrEmpty(featureFlagFilter))
             {
@@ -99,10 +102,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             string featureFlagPrefix = FeatureManagementConstants.FeatureFlagMarker + featureFlagFilter;
 
+            IList<string> tagsFilterList = new List<string>();
+
+            if (tagsFilter != null)
+            {
+                tagsFilterList = tagsFilter.Select(kvp => $"{kvp.Key}={kvp.Value}").ToList();
+            }
+
             FeatureFlagSelectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = featureFlagPrefix,
                 LabelFilter = labelFilter,
+                TagsFilter = tagsFilterList,
                 IsFeatureFlagSelector = true
             });
 

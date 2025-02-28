@@ -792,6 +792,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
+                    foreach (string tagFilter in loadOption.TagsFilter)
+                    {
+                        selector.TagsFilter.Add(tagFilter);
+                    }
+
                     var matchConditions = new List<MatchConditions>();
 
                     await CallWithRequestTracing(async () =>

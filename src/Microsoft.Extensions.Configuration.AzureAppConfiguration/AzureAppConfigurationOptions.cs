@@ -198,7 +198,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
+        /// <param name="tagsFilter">
+        /// TODO
+        /// </param>
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IDictionary<string, string> tagsFilter = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -223,10 +226,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _selectCalled = true;
             }
 
+            IList<string> tagsFilterList = new List<string>();
+
+            if (tagsFilter != null)
+            {
+                tagsFilterList = tagsFilter.Select(kvp => $"{kvp.Key}={kvp.Value}").ToList();
+            }
+
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                TagsFilter = tagsFilterList
             });
 
             return this;
