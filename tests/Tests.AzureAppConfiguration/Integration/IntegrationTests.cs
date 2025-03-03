@@ -38,7 +38,7 @@ namespace Tests.AzureAppConfiguration
 
         // Client for direct manipulation of the store
         private ConfigurationClient _configClient;
-        
+
         // Flag indicating whether tests should run
         private bool _skipTests = false;
         private string _skipReason = null;
@@ -57,14 +57,14 @@ namespace Tests.AzureAppConfiguration
         private Uri GetEndpoint()
         {
             string endpoint = Environment.GetEnvironmentVariable("AZURE_APPCONFIG_INTEGRATIONTEST_ENDPOINT");
-            
+
             if (string.IsNullOrEmpty(endpoint))
             {
                 _skipTests = true;
                 _skipReason = "AZURE_APPCONFIG_INTEGRATIONTEST_ENDPOINT environment variable is missing";
                 return null;
             }
-            
+
             return new Uri(endpoint);
         }
 
@@ -76,7 +76,7 @@ namespace Tests.AzureAppConfiguration
             try
             {
                 Uri endpoint = GetEndpoint();
-                
+
                 // If endpoint is null, skip all tests
                 if (_skipTests)
                 {
@@ -110,7 +110,7 @@ namespace Tests.AzureAppConfiguration
             {
                 return;
             }
-            
+
             try
             {
                 // Remove test settings from the store
@@ -129,7 +129,7 @@ namespace Tests.AzureAppConfiguration
         public void LoadConfiguration_RetrievesValuesFromAppConfiguration()
         {
             Skip.If(_skipTests, _skipReason);
-            
+
             // Arrange & Act
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -148,7 +148,7 @@ namespace Tests.AzureAppConfiguration
         public async Task TryRefreshAsync_UpdatesConfiguration_WhenSentinelKeyChanged()
         {
             Skip.If(_skipTests, _skipReason);
-            
+
             // Arrange
             IConfigurationRefresher refresher = null;
 
@@ -160,38 +160,38 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register(SentinelKey, refreshAll: true)
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
-                    
+
                     refresher = options.GetRefresher();
                 })
                 .Build();
-            
+
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            
+
             // Update values in the store
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting(SentinelKey, "Updated"));
-                
+
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
-            
+
             // Act
             var result = await refresher.TryRefreshAsync();
-            
+
             // Assert
             Assert.True(result);
             Assert.Equal("UpdatedValue1", config[$"{TestKeyPrefix}:Setting1"]);
         }
-        
-        [Fact]
+
+        [SkippableFact]
         public async Task TryRefreshAsync_RefreshesOnlySelectedKeys_WhenUsingKeyFilter()
         {
             Skip.If(_skipTests, _skipReason);
-            
+
             // Arrange
             IConfigurationRefresher refresher = null;
 
@@ -200,22 +200,22 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
-                    
+
                     // Only refresh Setting1 when sentinel changes
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register(SentinelKey, $"{TestKeyPrefix}:Setting1", refreshAll: false)
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
-                    
+
                     refresher = options.GetRefresher();
                 })
                 .Build();
-            
+
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]);
-            
+
             // Update values in the store
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
@@ -223,24 +223,24 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationSetting($"{TestKeyPrefix}:Setting2", "UpdatedValue2"));
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting(SentinelKey, "Updated"));
-                
+
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
-            
+
             // Act
             var result = await refresher.TryRefreshAsync();
-            
+
             // Assert
             Assert.True(result);
             Assert.Equal("UpdatedValue1", config[$"{TestKeyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]); // This value shouldn't change
         }
-        
+
         [Fact]
         public async Task TryRefreshAsync_RefreshesFeatureFlags_WhenConfigured()
         {
             Skip.If(_skipTests, _skipReason);
-            
+
             // Arrange
             IConfigurationRefresher refresher = null;
 
@@ -250,17 +250,17 @@ namespace Tests.AzureAppConfiguration
                     options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                     options.UseFeatureFlags();
-                    
+
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register(SentinelKey)
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
-                    
+
                     refresher = options.GetRefresher();
                 })
                 .Build();
-            
+
             // Verify initial feature flag state
             Assert.Equal("False", config[$"FeatureManagement:{TestKeyPrefix}Feature:Enabled"]);
 
@@ -272,23 +272,23 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureManagementConstants.ContentType));
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting(SentinelKey, "Updated"));
-                
+
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
-            
+
             // Act
             var result = await refresher.TryRefreshAsync();
-            
+
             // Assert
             Assert.True(result);
             Assert.Equal("True", config[$"FeatureManagement:{TestKeyPrefix}Feature:Enabled"]);
         }
-        
+
         [Fact]
         public async Task RegisterAll_RefreshesAllKeys_WhenSentinelChanged()
         {
             Skip.If(_skipTests, _skipReason);
-            
+
             // Arrange
             IConfigurationRefresher refresher = null;
 
@@ -297,22 +297,22 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
-                    
+
                     // Use RegisterAll to refresh everything when sentinel changes
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.RegisterAll()
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
-                    
+
                     refresher = options.GetRefresher();
                 })
                 .Build();
-            
+
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]);
-            
+
             // Update all values in the store
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
@@ -323,21 +323,21 @@ namespace Tests.AzureAppConfiguration
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
-            
+
             // Act
             var result = await refresher.TryRefreshAsync();
-            
+
             // Assert
             Assert.True(result);
             Assert.Equal("UpdatedValue1", config[$"{TestKeyPrefix}:Setting1"]);
             Assert.Equal("UpdatedValue2", config[$"{TestKeyPrefix}:Setting2"]);
         }
-        
+
         [Fact]
         public async Task TryRefreshAsync_ReturnsFalse_WhenSentinelKeyUnchanged()
         {
             Skip.If(_skipTests, _skipReason);
-            
+
             // Arrange
             IConfigurationRefresher refresher = null;
 
@@ -346,30 +346,30 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
-                    
+
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register(SentinelKey)
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
-                    
+
                     refresher = options.GetRefresher();
                 })
                 .Build();
-            
+
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            
+
             // Update data but not sentinel
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
-                
+
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
-            
+
             // Act
             var result = await refresher.TryRefreshAsync();
-            
+
             // Assert
             Assert.False(result); // Should return false as sentinel hasn't changed
             Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]); // Should not update
