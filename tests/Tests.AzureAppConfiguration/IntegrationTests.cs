@@ -10,31 +10,32 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Tests.AzureAppConfiguration.IntegrationTests
+namespace Tests.AzureAppConfiguration
 {
     /// <summary>
     /// Integration tests for Azure App Configuration that connect to a real service.
     /// Requires valid connection details to be provided through environment variables or other secure methods.
     /// </summary>
     [Trait("Category", "Integration")]
-    public class AzureAppConfigurationIntegrationTests : IAsyncLifetime
+    public class IntegrationTests : IAsyncLifetime
     {
         // Test constants
         private const string TestKeyPrefix = "IntegrationTest";
         private const string SentinelKey = TestKeyPrefix + ":Sentinel";
         private const string FeatureFlagKey = ".appconfig.featureflag/" + TestKeyPrefix + "Feature";
-        
+
         // Keys to create for testing
         private readonly List<ConfigurationSetting> _testSettings = new List<ConfigurationSetting>
         {
             new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "InitialValue1"),
             new ConfigurationSetting($"{TestKeyPrefix}:Setting2", "InitialValue2"),
             new ConfigurationSetting(SentinelKey, "Initial"),
-            new ConfigurationSetting(FeatureFlagKey, 
-                @"{""id"":""" + TestKeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}", 
+            ConfigurationModelFactory.ConfigurationSetting(
+                FeatureFlagKey,
+                @"{""id"":""" + TestKeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
                 contentType: FeatureManagementConstants.ContentType)
         };
-        
+
         // Client for direct manipulation of the store
         private ConfigurationClient _configClient;
 
@@ -47,6 +48,14 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
         }
 
         /// <summary>
+        /// Gets the endpoint for the App Configuration store.
+        /// </summary>
+        private Uri GetEndpoint()
+        {
+            return new Uri(Environment.GetEnvironmentVariable("AZURE_APPCONFIG_INTEGRATIONTEST_ENDPOINT"));
+        }
+
+        /// <summary>
         /// Creates test data in the Azure App Configuration store before running tests.
         /// </summary>
         public async Task InitializeAsync()
@@ -54,15 +63,15 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             try
             {
                 // Get endpoint from environment variable
-                string endpoint = Environment.GetEnvironmentVariable("AZURE_APPCONFIG_ENDPOINT");
-                
+                string endpoint = Environment.GetEnvironmentVariable("AZURE_APPCONFIG_INTEGRATIONTEST_ENDPOINT");
+
                 if (string.IsNullOrEmpty(endpoint))
                 {
-                    throw new InvalidOperationException("AZURE_APPCONFIG_ENDPOINT environment variable is required when using managed identity");
+                    throw new InvalidOperationException("AZURE_APPCONFIG_INTEGRATIONTEST_ENDPOINT environment variable is required when using managed identity");
                 }
-                
+
                 _configClient = new ConfigurationClient(new Uri(endpoint), GetCredential());
-                
+
                 // Add test settings to the store
                 foreach (var setting in _testSettings)
                 {
@@ -102,7 +111,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetConnectionString());
+                    options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                 })
                 .Build();
@@ -121,7 +130,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetConnectionString());
+                    options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
@@ -162,7 +171,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetConnectionString());
+                    options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                     
                     // Only refresh Setting1 when sentinel changes
@@ -209,7 +218,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetConnectionString());
+                    options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                     options.UseFeatureFlags();
                     
@@ -255,7 +264,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetConnectionString());
+                    options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                     
                     // Use RegisterAll to refresh everything when sentinel changes
@@ -280,7 +289,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
                 new ConfigurationSetting($"{TestKeyPrefix}:Setting2", "UpdatedValue2"));
             await _configClient.SetConfigurationSettingAsync(
                 new ConfigurationSetting(SentinelKey, "Updated"));
-                
+
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
             
@@ -302,7 +311,7 @@ namespace Tests.AzureAppConfiguration.IntegrationTests
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetConnectionString());
+                    options.Connect(GetEndpoint(), GetCredential());
                     options.Select($"{TestKeyPrefix}:*");
                     
                     options.ConfigureRefresh(refresh =>
