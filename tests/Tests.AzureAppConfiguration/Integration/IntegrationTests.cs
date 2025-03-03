@@ -263,10 +263,10 @@ namespace Tests.AzureAppConfiguration
             
             // Verify initial feature flag state
             Assert.Equal("False", config[$"FeatureManagement:{TestKeyPrefix}Feature:Enabled"]);
-            
+
             // Update feature flag in the store
             await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting(
+                ConfigurationModelFactory.ConfigurationSetting(
                     FeatureFlagKey,
                     @"{""id"":""" + TestKeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
                     contentType: FeatureManagementConstants.ContentType));
@@ -301,8 +301,8 @@ namespace Tests.AzureAppConfiguration
                     // Use RegisterAll to refresh everything when sentinel changes
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.RegisterAll(SentinelKey)
-                              .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                        refresh.RegisterAll()
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     
                     refresher = options.GetRefresher();
