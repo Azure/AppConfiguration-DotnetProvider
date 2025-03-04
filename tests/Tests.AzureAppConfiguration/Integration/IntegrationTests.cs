@@ -163,7 +163,7 @@ namespace Tests.AzureAppConfiguration
                     _testResourceGroupName = $"appconfig-test-{Guid.NewGuid():N}".Substring(0, 20);
                     Console.WriteLine($"Creating temporary resource group: {_testResourceGroupName}");
 
-                    var rgData = new ResourceGroupData(AzureLocation.Parse(location));
+                    var rgData = new ResourceGroupData(new AzureLocation(location));
                     var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, _testResourceGroupName, rgData);
                     _resourceGroup = rgLro.Value;
                     _shouldDeleteResourceGroup = true;
@@ -186,7 +186,7 @@ namespace Tests.AzureAppConfiguration
                 Console.WriteLine($"Creating test App Configuration store: {_testStoreName}");
 
                 // Create the App Configuration store
-                var storeData = new AppConfigurationStoreData(AzureLocation.Parse(location), new AppConfigurationSku("free"));
+                var storeData = new AppConfigurationStoreData(new AzureLocation(location), new AppConfigurationSku("free"));
                 var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
                     WaitUntil.Completed,
                     _testStoreName,
