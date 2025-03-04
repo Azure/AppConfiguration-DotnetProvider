@@ -24,6 +24,7 @@ namespace Tests.AzureAppConfiguration
     /// Requires Azure credentials with appropriate permissions.
     /// </summary>
     [Trait("Category", "Integration")]
+    [CollectionDefinition(nameof(IntegrationTests), DisableParallelization = true)]
     public class IntegrationTests : IAsyncLifetime
     {
         // Test constants
@@ -36,8 +37,13 @@ namespace Tests.AzureAppConfiguration
         private const string SubscriptionIdEnvVar = "AZURE_SUBSCRIPTION_ID";
         private const string LocationEnvVar = "AZURE_LOCATION";
         private const string CreateResourceGroupEnvVar = "AZURE_CREATE_RESOURCE_GROUP";
-        private const string DefaultLocation = "westus";
+        private const string DefaultLocation = "eastus";
         private const string LocalSettingsFile = "local.settings.json";
+
+        // Retry configuration for RBAC permission propagation
+        private const int MaxRetryAttempts = 5;
+        private static readonly TimeSpan InitialBackoff = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(15);
 
         // Keys to create for testing
         private readonly List<ConfigurationSetting> _testSettings = new List<ConfigurationSetting>
@@ -128,6 +134,66 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Sets a configuration setting with retries to handle RBAC permission propagation delay
+        /// </summary>
+        /// <param name="setting">The configuration setting to add or update</param>
+        private async Task SetConfigurationSettingWithRetryAsync(ConfigurationSetting setting)
+        {
+            int attempt = 0;
+            TimeSpan backoff = InitialBackoff;
+
+            while (true)
+            {
+                try
+                {
+                    attempt++;
+
+                    await _configClient.SetConfigurationSettingAsync(setting);
+
+                    // Successfully set the setting, exit the loop
+                    return;
+                }
+                catch (RequestFailedException ex) when (
+                    (ex.Status == 403 || ex.Status == 401) && // Permission/authorization issues
+                    attempt < MaxRetryAttempts)
+                {
+                    // Calculate exponential backoff with jitter
+                    Random jitter = new Random();
+                    double jitterFactor = 0.8 + (jitter.NextDouble() * 0.4); // 0.8-1.2 jitter factor
+                    TimeSpan delay = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * jitterFactor);
+
+                    // Don't exceed max backoff
+                    if (delay > MaxBackoff) delay = MaxBackoff;
+
+                    Console.WriteLine($"RBAC permissions not propagated yet (attempt {attempt}/{MaxRetryAttempts}). Retrying in {delay.TotalSeconds:0.##}s...");
+
+                    await Task.Delay(delay);
+
+                    // Exponential backoff: double the delay for next attempt
+                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 2);
+                }
+                catch (Exception ex) when (attempt < MaxRetryAttempts)
+                {
+                    // Handle other transient errors with retry
+                    Console.WriteLine($"Error setting configuration (attempt {attempt}/{MaxRetryAttempts}): {ex.Message}");
+
+                    await Task.Delay(backoff);
+
+                    // Exponential backoff: double the delay for next attempt
+                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 2);
+                    if (backoff > MaxBackoff) backoff = MaxBackoff;
+                }
+
+                // If we've reached max attempts, let the final exception propagate
+                if (attempt >= MaxRetryAttempts)
+                {
+                    await _configClient.SetConfigurationSettingAsync(setting); // Let any exception propagate
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
         /// Creates a temporary Azure App Configuration store and adds test data.
         /// </summary>
         public async Task InitializeAsync()
@@ -155,7 +221,8 @@ namespace Tests.AzureAppConfiguration
 
                 // Initialize Azure Resource Manager client
                 _armClient = new ArmClient(credential);
-                SubscriptionResource subscription = _armClient.GetDefaultSubscription();
+
+                SubscriptionResource subscription = _armClient.GetSubscriptions().Get(subscriptionIdStr);
 
                 // Create resource group if requested or use existing one
                 if (createResourceGroup)
@@ -200,10 +267,11 @@ namespace Tests.AzureAppConfiguration
                 // Initialize the configuration client for the store
                 _configClient = new ConfigurationClient(_appConfigEndpoint, credential);
 
-                // Add test settings to the store
+                // Add test settings to the store with retry logic to handle RBAC permission propagation delays
+                Console.WriteLine("Setting up initial test data...");
                 foreach (var setting in _testSettings)
                 {
-                    await _configClient.SetConfigurationSettingAsync(setting);
+                    await SetConfigurationSettingWithRetryAsync(setting);
                 }
 
                 Console.WriteLine("Test data initialized successfully");
@@ -252,6 +320,45 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
+        /// <summary>
+        /// Creates a unique prefix for test keys to ensure test isolation
+        /// </summary>
+        private string GetUniqueKeyPrefix(string testName)
+        {
+            // Use a combination of the test prefix and test method name to ensure uniqueness
+            return $"{TestKeyPrefix}_{testName}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+        }
+
+        /// <summary>
+        /// Setup test-specific keys and settings
+        /// </summary>
+        private async Task<(string keyPrefix, string sentinelKey, string featureFlagKey)> SetupTestKeys(string testName)
+        {
+            string keyPrefix = GetUniqueKeyPrefix(testName);
+            string sentinelKey = $"{keyPrefix}:Sentinel";
+            string featureFlagKey = $".appconfig.featureflag/{keyPrefix}Feature";
+
+            // Create test-specific settings
+            var testSettings = new List<ConfigurationSetting>
+            {
+                new ConfigurationSetting($"{keyPrefix}:Setting1", "InitialValue1"),
+                new ConfigurationSetting($"{keyPrefix}:Setting2", "InitialValue2"),
+                new ConfigurationSetting(sentinelKey, "Initial"),
+                ConfigurationModelFactory.ConfigurationSetting(
+                    featureFlagKey,
+                    @"{""id"":""" + keyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
+                    contentType: FeatureManagementConstants.ContentType)
+            };
+
+            // Add test-specific settings to the store with retry logic
+            foreach (var setting in testSettings)
+            {
+                await SetConfigurationSettingWithRetryAsync(setting);
+            }
+
+            return (keyPrefix, sentinelKey, featureFlagKey);
+        }
+
         [Fact]
         public void LoadConfiguration_RetrievesValuesFromAppConfiguration()
         {
@@ -276,17 +383,18 @@ namespace Tests.AzureAppConfiguration
         {
             Skip.If(_skipTests, _skipReason);
 
-            // Arrange
+            // Arrange - Setup test-specific keys
+            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("UpdatesConfig");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetEndpoint(), GetCredential());
-                    options.Select($"{TestKeyPrefix}:*");
+                    options.Select($"{keyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(SentinelKey, refreshAll: true)
+                        refresh.Register(sentinelKey, refreshAll: true)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -295,13 +403,13 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
 
-            // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting(SentinelKey, "Updated"));
+            // Update values in the store with retry logic
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -311,7 +419,7 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.True(result);
-            Assert.Equal("UpdatedValue1", config[$"{TestKeyPrefix}:Setting1"]);
+            Assert.Equal("UpdatedValue1", config[$"{keyPrefix}:Setting1"]);
         }
 
         [Fact]
@@ -319,19 +427,20 @@ namespace Tests.AzureAppConfiguration
         {
             Skip.If(_skipTests, _skipReason);
 
-            // Arrange
+            // Arrange - Setup test-specific keys
+            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("RefreshesSelectedKeys");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetEndpoint(), GetCredential());
-                    options.Select($"{TestKeyPrefix}:*");
+                    options.Select($"{keyPrefix}:*");
 
                     // Only refresh Setting1 when sentinel changes
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(SentinelKey, $"{TestKeyPrefix}:Setting1", refreshAll: false)
+                        refresh.Register(sentinelKey, $"{keyPrefix}:Setting1", refreshAll: false)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -340,16 +449,16 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]);
+            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]);
 
-            // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting($"{TestKeyPrefix}:Setting2", "UpdatedValue2"));
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting(SentinelKey, "Updated"));
+            // Update values in the store with retry logic
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -359,8 +468,8 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.True(result);
-            Assert.Equal("UpdatedValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]); // This value shouldn't change
+            Assert.Equal("UpdatedValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]); // This value shouldn't change
         }
 
         [Fact]
@@ -368,19 +477,20 @@ namespace Tests.AzureAppConfiguration
         {
             Skip.If(_skipTests, _skipReason);
 
-            // Arrange
+            // Arrange - Setup test-specific keys
+            var (keyPrefix, sentinelKey, featureFlagKey) = await SetupTestKeys("RefreshesFeatureFlags");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetEndpoint(), GetCredential());
-                    options.Select($"{TestKeyPrefix}:*");
+                    options.Select($"{keyPrefix}:*");
                     options.UseFeatureFlags();
 
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(SentinelKey)
+                        refresh.Register(sentinelKey)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -389,16 +499,16 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial feature flag state
-            Assert.Equal("False", config[$"FeatureManagement:{TestKeyPrefix}Feature:Enabled"]);
+            Assert.Equal("False", config[$"FeatureManagement:{keyPrefix}Feature:Enabled"]);
 
-            // Update feature flag in the store
-            await _configClient.SetConfigurationSettingAsync(
+            // Update feature flag in the store with retry logic
+            await SetConfigurationSettingWithRetryAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
-                    FeatureFlagKey,
-                    @"{""id"":""" + TestKeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
+                    featureFlagKey,
+                    @"{""id"":""" + keyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
                     contentType: FeatureManagementConstants.ContentType));
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting(SentinelKey, "Updated"));
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -408,7 +518,7 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.True(result);
-            Assert.Equal("True", config[$"FeatureManagement:{TestKeyPrefix}Feature:Enabled"]);
+            Assert.Equal("True", config[$"FeatureManagement:{keyPrefix}Feature:Enabled"]);
         }
 
         [Fact]
@@ -416,14 +526,15 @@ namespace Tests.AzureAppConfiguration
         {
             Skip.If(_skipTests, _skipReason);
 
-            // Arrange
+            // Arrange - Setup test-specific keys
+            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("RefreshesAllKeys");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetEndpoint(), GetCredential());
-                    options.Select($"{TestKeyPrefix}:*");
+                    options.Select($"{keyPrefix}:*");
 
                     // Use RegisterAll to refresh everything when sentinel changes
                     options.ConfigureRefresh(refresh =>
@@ -437,16 +548,16 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]);
+            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]);
 
-            // Update all values in the store
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting($"{TestKeyPrefix}:Setting2", "UpdatedValue2"));
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting(SentinelKey, "Updated"));
+            // Update all values in the store with retry logic
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -456,8 +567,8 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.True(result);
-            Assert.Equal("UpdatedValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            Assert.Equal("UpdatedValue2", config[$"{TestKeyPrefix}:Setting2"]);
+            Assert.Equal("UpdatedValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("UpdatedValue2", config[$"{keyPrefix}:Setting2"]);
         }
 
         [Fact]
@@ -465,18 +576,19 @@ namespace Tests.AzureAppConfiguration
         {
             Skip.If(_skipTests, _skipReason);
 
-            // Arrange
+            // Arrange - Setup test-specific keys
+            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("SentinelUnchanged");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetEndpoint(), GetCredential());
-                    options.Select($"{TestKeyPrefix}:*");
+                    options.Select($"{keyPrefix}:*");
 
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(SentinelKey)
+                        refresh.Register(sentinelKey)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -485,11 +597,11 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
 
-            // Update data but not sentinel
-            await _configClient.SetConfigurationSettingAsync(
-                new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "UpdatedValue1"));
+            // Update data but not sentinel with retry logic
+            await SetConfigurationSettingWithRetryAsync(
+                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -499,7 +611,7 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.False(result); // Should return false as sentinel hasn't changed
-            Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]); // Should not update
+            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]); // Should not update
         }
     }
 }
