@@ -1241,6 +1241,224 @@ namespace Tests.AzureAppConfiguration
         }
 #endif
 
+        [Fact]
+        public async Task RefreshTests_SingleKeyRefreshRespectsMinimumInterval()
+        {
+            int serverCallCount = 0;
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+            {
+                serverCallCount++;
+                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label), mockResponse.Object);
+            }
+
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            {
+                serverCallCount++;
+                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(newSetting, response);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    serverCallCount++;
+                    return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
+                });
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Initial configuration load
+            Assert.Equal("TestValue1", config["TestKey1"]);
+
+            // Reset counter to only count refresh calls
+            int initialCallCount = serverCallCount;
+
+            serverCallCount = 0;
+
+            //
+            // Let cache invalidate
+            await Task.Delay(TimeSpan.FromSeconds(1));
+
+            // First refresh call should make a server call since we waited at least the minimum interval
+            await refresher.RefreshAsync();
+
+            Assert.Equal(1, serverCallCount);
+
+            // Sub refresh call immediately after should also not make server calls
+            for (int i = 0; i < 5; i++)
+            {
+                await refresher.RefreshAsync();
+            }
+
+            Assert.Equal(1, serverCallCount);
+
+            // Modify value to verify it doesn't update
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue");
+
+            // Still not enough time elapsed
+            await refresher.RefreshAsync();
+
+            Assert.Equal(1, serverCallCount);
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+
+            // Wait for the minimum interval to elapse
+            await Task.Delay(TimeSpan.FromSeconds(1));
+
+            // Now the refresh should make server calls
+            for (int i = 0; i < 5; i++)
+            {
+                await refresher.RefreshAsync();
+            }
+
+            Assert.Equal(2, serverCallCount);
+
+            Assert.Equal("newValue", config["TestKey1"]);
+        }
+
+        [Fact]
+        public async Task RefreshTests_FeatureFlagRefreshRespectsConfiguredCacheInterval()
+        {
+            int serverCallCount = 0;
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            var featureFlags = new List<ConfigurationSetting> {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                    value: @"
+                            {
+                                ""id"": ""MyFeature"",
+                                ""description"": ""The new beta version of our web site."",
+                                ""display_name"": ""Beta Feature"",
+                                ""enabled"": true,
+                                ""conditions"": {
+                                ""client_filters"": [
+                                    {
+                                    ""name"": ""SuperUsers""
+                                    }
+                                ]
+                                }
+                            }
+                            ",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
+            };
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                serverCallCount++;
+
+                if (selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+                {
+                    return new MockAsyncPageable(featureFlags.Select(ff => TestHelpers.CloneSetting(ff)).ToList());
+                }
+
+                return new MockAsyncPageable(new List<ConfigurationSetting>());
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            // Configure with a 5 second cache for feature flags
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Initial configuration load
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            // Reset counter to only count refresh calls
+            serverCallCount = 0;
+
+            // First refresh call immediately after load should not make server calls as cache hasn't expired
+            await refresher.RefreshAsync();
+
+            Assert.Equal(0, serverCallCount);
+
+            // Modify feature flag to verify it doesn't update until cache expires
+            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
+                value: @"
+                        {
+                            ""id"": ""MyFeature"",
+                            ""description"": ""The new beta version of our web site."",
+                            ""display_name"": ""Beta Feature"",
+                            ""enabled"": true,
+                            ""conditions"": {
+                            ""client_filters"": [
+                                {
+                                ""name"": ""AllUsers""
+                                }
+                            ]
+                            }
+                        }
+                        ",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c2"));
+
+            // This should not make server calls because feature flag cache hasn't expired
+            for (int i = 0; i < 5; i++)
+            {
+                await refresher.RefreshAsync();
+            }
+
+            Assert.Equal(0, serverCallCount);
+
+            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+
+            // Wait for the cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(1));
+
+            // Now the refresh should make server calls and update the feature flag, but only one call
+            for (int i = 0; i < 5; i++)
+            {
+                await refresher.RefreshAsync();
+            }
+
+            // One call for collection change check, one call to pull the latest values
+            Assert.Equal(2, serverCallCount);
+
+            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
+        }
+
         private void optionsInitializer(AzureAppConfigurationOptions options)
         {
             options.ConfigureStartupOptions(startupOptions =>
