@@ -70,24 +70,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
         /// Built-in feature flag filter options: <see cref="KeyFilter"/>.
         /// </param>
-        /// <param name="tagsFilter">
-        /// TODO
-        /// </param>
-        public FeatureFlagOptions Select(string featureFlagFilter, IDictionary<string, string> tagsFilter)
-        {
-            return Select(featureFlagFilter, LabelFilter.Null, tagsFilter);
-        }
-
-        /// <summary>
-        /// Specify what feature flags to include in the configuration provider.
-        /// <see cref="Select"/> can be called multiple times to include multiple sets of feature flags.
-        /// </summary>
-        /// <param name="featureFlagFilter">
-        /// The filter to apply to feature flag names when querying Azure App Configuration for feature flags.
-        /// For example, you can select all feature flags that begin with "MyApp" by setting the featureflagFilter to "MyApp*". 
-        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
-        /// Built-in feature flag filter options: <see cref="KeyFilter"/>.
-        /// </param>
         /// <param name="labelFilter">
         /// The label filter to apply when querying Azure App Configuration for feature flags. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
@@ -95,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <param name="tagsFilter">
         /// TODO
         /// </param>
-        public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null, IDictionary<string, string> tagsFilter = null)
+        public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagsFilter = null)
         {
             if (string.IsNullOrEmpty(featureFlagFilter))
             {
@@ -120,18 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             string featureFlagPrefix = FeatureManagementConstants.FeatureFlagMarker + featureFlagFilter;
 
-            IList<string> tagsFilterList = new List<string>();
-
-            if (tagsFilter != null)
-            {
-                tagsFilterList = tagsFilter.Select(kvp => $"{kvp.Key}={kvp.Value}").ToList();
-            }
-
             FeatureFlagSelectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = featureFlagPrefix,
                 LabelFilter = labelFilter,
-                TagsFilter = tagsFilterList,
+                TagsFilter = tagsFilter,
                 IsFeatureFlagSelector = true
             });
 
