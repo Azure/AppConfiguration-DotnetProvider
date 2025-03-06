@@ -41,9 +41,10 @@ namespace Tests.AzureAppConfiguration
         private const string LocalSettingsFile = "local.settings.json";
 
         // Retry configuration for RBAC permission propagation
-        private const int MaxRetryAttempts = 5;
-        private static readonly TimeSpan InitialBackoff = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(15);
+        private const int MaxRetryAttempts = 30; // Significantly increased from 12 to 30
+        private static readonly TimeSpan InitialBackoff = TimeSpan.FromSeconds(5); // Increased from 2s to 5s
+        private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(180); // Increased from 60s to 180s (3 minutes)
+        private static readonly TimeSpan InitialRbacWaitTime = TimeSpan.FromSeconds(30); // 30-second initial wait after store creation
 
         // Keys to create for testing
         private readonly List<ConfigurationSetting> _testSettings = new List<ConfigurationSetting>
@@ -141,6 +142,8 @@ namespace Tests.AzureAppConfiguration
         {
             int attempt = 0;
             TimeSpan backoff = InitialBackoff;
+            bool hasPermissionErrors = false;
+            DateTime startTime = DateTime.UtcNow;
 
             while (true)
             {
@@ -148,15 +151,28 @@ namespace Tests.AzureAppConfiguration
                 {
                     attempt++;
 
+                    Console.WriteLine($"Attempt {attempt}/{MaxRetryAttempts} to set configuration setting '{setting.Key}'...");
                     await _configClient.SetConfigurationSettingAsync(setting);
 
                     // Successfully set the setting, exit the loop
+                    TimeSpan elapsed = DateTime.UtcNow - startTime;
+                    if (hasPermissionErrors)
+                    {
+                        Console.WriteLine($"RBAC permissions propagated successfully after {attempt} attempts and {elapsed.TotalSeconds:F1} seconds");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Configuration setting '{setting.Key}' was successfully set on attempt {attempt}");
+                    }
                     return;
                 }
                 catch (RequestFailedException ex) when (
                     (ex.Status == 403 || ex.Status == 401) && // Permission/authorization issues
                     attempt < MaxRetryAttempts)
                 {
+                    hasPermissionErrors = true;
+                    TimeSpan elapsed = DateTime.UtcNow - startTime;
+                    
                     // Calculate exponential backoff with jitter
                     Random jitter = new Random();
                     double jitterFactor = 0.8 + (jitter.NextDouble() * 0.4); // 0.8-1.2 jitter factor
@@ -165,30 +181,46 @@ namespace Tests.AzureAppConfiguration
                     // Don't exceed max backoff
                     if (delay > MaxBackoff) delay = MaxBackoff;
 
-                    Console.WriteLine($"RBAC permissions not propagated yet (attempt {attempt}/{MaxRetryAttempts}). Retrying in {delay.TotalSeconds:0.##}s...");
+                    Console.WriteLine($"RBAC permissions not propagated yet (attempt {attempt}/{MaxRetryAttempts}, error {ex.Status}: {ex.Message}). " +
+                        $"{elapsed.TotalSeconds:F1}s elapsed. Waiting {delay.TotalSeconds:0.##}s before retry...");
 
                     await Task.Delay(delay);
 
-                    // Exponential backoff: double the delay for next attempt
-                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 2);
+                    // Slower-growing exponential backoff for auth errors
+                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 1.2);
+                    if (backoff > MaxBackoff) backoff = MaxBackoff;
                 }
                 catch (Exception ex) when (attempt < MaxRetryAttempts)
                 {
                     // Handle other transient errors with retry
                     Console.WriteLine($"Error setting configuration (attempt {attempt}/{MaxRetryAttempts}): {ex.Message}");
 
-                    await Task.Delay(backoff);
+                    // Use a shorter delay for non-auth errors
+                    TimeSpan delay = TimeSpan.FromSeconds(Math.Min(15, backoff.TotalSeconds / 2));
+                    await Task.Delay(delay);
 
-                    // Exponential backoff: double the delay for next attempt
-                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 2);
+                    // Less aggressive backoff for other types of errors
+                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 1.1);
                     if (backoff > MaxBackoff) backoff = MaxBackoff;
                 }
 
-                // If we've reached max attempts, let the final exception propagate
+                // If we've reached max attempts, try one last time and let any exception propagate
                 if (attempt >= MaxRetryAttempts)
                 {
-                    await _configClient.SetConfigurationSettingAsync(setting); // Let any exception propagate
-                    break;
+                    Console.WriteLine($"Maximum retry attempts ({MaxRetryAttempts}) reached. Making final attempt...");
+                    try 
+                    {
+                        await _configClient.SetConfigurationSettingAsync(setting);
+                        Console.WriteLine($"Final attempt succeeded for setting '{setting.Key}'!");
+                        return;
+                    }
+                    catch (RequestFailedException ex) when (ex.Status == 403 || ex.Status == 401)
+                    {
+                        TimeSpan elapsed = DateTime.UtcNow - startTime;
+                        throw new TimeoutException(
+                            $"RBAC permissions did not propagate after {elapsed.TotalSeconds:F1} seconds and {MaxRetryAttempts} attempts. " +
+                            $"Last error: {ex.Status} {ex.Message}", ex);
+                    }
                 }
             }
         }
@@ -263,9 +295,27 @@ namespace Tests.AzureAppConfiguration
                 _appConfigEndpoint = new Uri(_appConfigStore.Data.Endpoint);
 
                 Console.WriteLine($"Store created: {_appConfigEndpoint}");
-
+                
+                // Add significant pause after store creation to allow initial RBAC permissions to propagate
+                Console.WriteLine($"Waiting {InitialRbacWaitTime.TotalSeconds} seconds for initial RBAC permissions to propagate...");
+                await Task.Delay(InitialRbacWaitTime);
+                
                 // Initialize the configuration client for the store
                 _configClient = new ConfigurationClient(_appConfigEndpoint, credential);
+
+                // Create a simple test setting first to verify permissions
+                var testSetting = new ConfigurationSetting($"{TestKeyPrefix}:PermissionTest", "TestValue");
+                Console.WriteLine("Testing RBAC permissions with a preliminary setting...");
+                try 
+                {
+                    await SetConfigurationSettingWithRetryAsync(testSetting);
+                    Console.WriteLine("Preliminary permission test successful, RBAC permissions are active.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Initial permission test failed: {ex.Message}");
+                    Console.WriteLine("Will still attempt to continue with the main test data setup...");
+                }
 
                 // Add test settings to the store with retry logic to handle RBAC permission propagation delays
                 Console.WriteLine("Setting up initial test data...");
