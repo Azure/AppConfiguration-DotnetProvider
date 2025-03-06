@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// A filter that determines what tags to use when selecting key-values for the the configuration provider.
         /// </summary>
-        public IList<string> TagsFilter { get; set; }
+        public IEnumerable<string> TagsFilter { get; set; }
 
         /// <summary>
         /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.

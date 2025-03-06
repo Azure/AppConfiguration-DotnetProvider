@@ -194,29 +194,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// e.g. the key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
         /// Built-in key filter options: <see cref="KeyFilter"/>.
         /// </param>
-        /// <param name="tagsFilter">
-        /// TODO
-        /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, IDictionary<string, string> tagsFilter)
-        {
-            return Select(keyFilter, LabelFilter.Null, tagsFilter);
-        }
-
-        /// <summary>
-        /// Specify what key-values to include in the configuration provider.
-        /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
-        /// </summary>
-        /// <param name="keyFilter">
-        /// The key filter to apply when querying Azure App Configuration for key-values.
-        /// An asterisk (*) can be added to the end to return all key-values whose key begins with the key filter.
-        /// e.g. key filter `abc*` returns all key-values whose key starts with `abc`.
-        /// A comma (,) can be used to select multiple key-values. Comma separated filters must exactly match a key to select it.
-        /// Using asterisk to select key-values that begin with a key filter while simultaneously using comma separated key filters is not supported.
-        /// E.g. the key filter `abc*,def` is not supported. The key filters `abc*` and `abc,def` are supported.
-        /// For all other cases the characters: asterisk (*), comma (,), and backslash (\) are reserved. Reserved characters must be escaped using a backslash (\).
-        /// e.g. the key filter `a\\b\,\*c*` returns all key-values whose key starts with `a\b,*c`.
-        /// Built-in key filter options: <see cref="KeyFilter"/>.
-        /// </param>
         /// <param name="labelFilter">
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
@@ -224,7 +201,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="tagsFilter">
         /// TODO
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IDictionary<string, string> tagsFilter = null)
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagsFilter = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -249,18 +226,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _selectCalled = true;
             }
 
-            IList<string> tagsFilterList = new List<string>();
-
-            if (tagsFilter != null)
-            {
-                tagsFilterList = tagsFilter.Select(kvp => $"{kvp.Key}={kvp.Value}").ToList();
-            }
-
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter,
-                TagsFilter = tagsFilterList
+                TagsFilter = tagsFilter
             });
 
             return this;
