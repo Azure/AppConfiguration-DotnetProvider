@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string LabelFilter { get; set; }
 
         /// <summary>
-        /// A filter that determines what tags to use when selecting key-values for the the configuration provider.
+        /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
         /// </summary>
         public IEnumerable<string> TagsFilter { get; set; }
 
@@ -47,7 +47,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
             {
                 return KeyFilter == selector.KeyFilter
                     && LabelFilter == selector.LabelFilter
-                    && SnapshotName == selector.SnapshotName;
+                    && SnapshotName == selector.SnapshotName
+                    && TagsFilter == selector.TagsFilter;
             }
 
             return false;
@@ -61,7 +62,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         {
             return (KeyFilter?.GetHashCode() ?? 0) ^
                    (LabelFilter?.GetHashCode() ?? 1) ^
-                   (SnapshotName?.GetHashCode() ?? 2);
+                   (SnapshotName?.GetHashCode() ?? 2) ^
+                   (TagsFilter?.GetHashCode() ?? 3);
         }
     }
 }
