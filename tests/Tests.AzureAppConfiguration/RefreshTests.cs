@@ -449,7 +449,7 @@ namespace Tests.AzureAppConfiguration
             var requestCount = 0;
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            
+
             // Define delay for async operations
             var operationDelay = TimeSpan.FromSeconds(6);
 
