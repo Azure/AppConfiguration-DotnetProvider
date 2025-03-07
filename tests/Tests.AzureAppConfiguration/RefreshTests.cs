@@ -457,7 +457,6 @@ namespace Tests.AzureAppConfiguration
                 .Returns(() =>
                 {
                     requestCount++;
-                    
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in keyValueCollection)
                     {
@@ -1022,7 +1021,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshIsCancelled()
+        public async Task RefreshTests_RefreshIsCancelled()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();

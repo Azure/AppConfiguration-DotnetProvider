@@ -215,7 +215,7 @@ namespace Tests.AzureAppConfiguration
             {
                 await Task.Delay(_delay.Value);
             }
-            
+
             yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
         }
     }
