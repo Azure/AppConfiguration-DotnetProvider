@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -40,12 +41,6 @@ namespace Tests.AzureAppConfiguration
         private const string DefaultLocation = "eastus";
         private const string LocalSettingsFile = "local.settings.json";
 
-        // Retry configuration for RBAC permission propagation
-        private const int MaxRetryAttempts = 30; // Significantly increased from 12 to 30
-        private static readonly TimeSpan InitialBackoff = TimeSpan.FromSeconds(5); // Increased from 2s to 5s
-        private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(180); // Increased from 60s to 180s (3 minutes)
-        private static readonly TimeSpan InitialRbacWaitTime = TimeSpan.FromSeconds(30); // 30-second initial wait after store creation
-
         // Keys to create for testing
         private readonly List<ConfigurationSetting> _testSettings = new List<ConfigurationSetting>
         {
@@ -60,6 +55,9 @@ namespace Tests.AzureAppConfiguration
 
         // Client for direct manipulation of the store
         private ConfigurationClient _configClient;
+
+        // Connection string for the store
+        private string _connectionString;
 
         // Store management resources
         private ArmClient _armClient;
@@ -83,7 +81,6 @@ namespace Tests.AzureAppConfiguration
 
             if (File.Exists(localSettingsPath))
             {
-                Console.WriteLine($"Loading settings from {localSettingsPath}");
                 try
                 {
                     var config = new ConfigurationBuilder()
@@ -127,102 +124,11 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Gets the endpoint for the App Configuration store.
+        /// Returns the connection string for connecting to the app configuration store.
         /// </summary>
-        private Uri GetEndpoint()
+        private string GetConnectionString()
         {
-            return _appConfigEndpoint;
-        }
-
-        /// <summary>
-        /// Sets a configuration setting with retries to handle RBAC permission propagation delay
-        /// </summary>
-        /// <param name="setting">The configuration setting to add or update</param>
-        private async Task SetConfigurationSettingWithRetryAsync(ConfigurationSetting setting)
-        {
-            int attempt = 0;
-            TimeSpan backoff = InitialBackoff;
-            bool hasPermissionErrors = false;
-            DateTime startTime = DateTime.UtcNow;
-
-            while (true)
-            {
-                try
-                {
-                    attempt++;
-
-                    Console.WriteLine($"Attempt {attempt}/{MaxRetryAttempts} to set configuration setting '{setting.Key}'...");
-                    await _configClient.SetConfigurationSettingAsync(setting);
-
-                    // Successfully set the setting, exit the loop
-                    TimeSpan elapsed = DateTime.UtcNow - startTime;
-                    if (hasPermissionErrors)
-                    {
-                        Console.WriteLine($"RBAC permissions propagated successfully after {attempt} attempts and {elapsed.TotalSeconds:F1} seconds");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Configuration setting '{setting.Key}' was successfully set on attempt {attempt}");
-                    }
-                    return;
-                }
-                catch (RequestFailedException ex) when (
-                    (ex.Status == 403 || ex.Status == 401) && // Permission/authorization issues
-                    attempt < MaxRetryAttempts)
-                {
-                    hasPermissionErrors = true;
-                    TimeSpan elapsed = DateTime.UtcNow - startTime;
-                    
-                    // Calculate exponential backoff with jitter
-                    Random jitter = new Random();
-                    double jitterFactor = 0.8 + (jitter.NextDouble() * 0.4); // 0.8-1.2 jitter factor
-                    TimeSpan delay = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * jitterFactor);
-
-                    // Don't exceed max backoff
-                    if (delay > MaxBackoff) delay = MaxBackoff;
-
-                    Console.WriteLine($"RBAC permissions not propagated yet (attempt {attempt}/{MaxRetryAttempts}, error {ex.Status}: {ex.Message}). " +
-                        $"{elapsed.TotalSeconds:F1}s elapsed. Waiting {delay.TotalSeconds:0.##}s before retry...");
-
-                    await Task.Delay(delay);
-
-                    // Slower-growing exponential backoff for auth errors
-                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 1.2);
-                    if (backoff > MaxBackoff) backoff = MaxBackoff;
-                }
-                catch (Exception ex) when (attempt < MaxRetryAttempts)
-                {
-                    // Handle other transient errors with retry
-                    Console.WriteLine($"Error setting configuration (attempt {attempt}/{MaxRetryAttempts}): {ex.Message}");
-
-                    // Use a shorter delay for non-auth errors
-                    TimeSpan delay = TimeSpan.FromSeconds(Math.Min(15, backoff.TotalSeconds / 2));
-                    await Task.Delay(delay);
-
-                    // Less aggressive backoff for other types of errors
-                    backoff = TimeSpan.FromMilliseconds(backoff.TotalMilliseconds * 1.1);
-                    if (backoff > MaxBackoff) backoff = MaxBackoff;
-                }
-
-                // If we've reached max attempts, try one last time and let any exception propagate
-                if (attempt >= MaxRetryAttempts)
-                {
-                    Console.WriteLine($"Maximum retry attempts ({MaxRetryAttempts}) reached. Making final attempt...");
-                    try 
-                    {
-                        await _configClient.SetConfigurationSettingAsync(setting);
-                        Console.WriteLine($"Final attempt succeeded for setting '{setting.Key}'!");
-                        return;
-                    }
-                    catch (RequestFailedException ex) when (ex.Status == 403 || ex.Status == 401)
-                    {
-                        TimeSpan elapsed = DateTime.UtcNow - startTime;
-                        throw new TimeoutException(
-                            $"RBAC permissions did not propagate after {elapsed.TotalSeconds:F1} seconds and {MaxRetryAttempts} attempts. " +
-                            $"Last error: {ex.Status} {ex.Message}", ex);
-                    }
-                }
-            }
+            return _connectionString;
         }
 
         /// <summary>
@@ -260,7 +166,6 @@ namespace Tests.AzureAppConfiguration
                 if (createResourceGroup)
                 {
                     _testResourceGroupName = $"appconfig-test-{Guid.NewGuid():N}".Substring(0, 20);
-                    Console.WriteLine($"Creating temporary resource group: {_testResourceGroupName}");
 
                     var rgData = new ResourceGroupData(new AzureLocation(location));
                     var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, _testResourceGroupName, rgData);
@@ -282,7 +187,6 @@ namespace Tests.AzureAppConfiguration
 
                 // Create unique store name for this test run
                 _testStoreName = $"integration-{Guid.NewGuid():N}".Substring(0, 20);
-                Console.WriteLine($"Creating test App Configuration store: {_testStoreName}");
 
                 // Create the App Configuration store
                 var storeData = new AppConfigurationStoreData(new AzureLocation(location), new AppConfigurationSku("free"));
@@ -294,41 +198,28 @@ namespace Tests.AzureAppConfiguration
                 _appConfigStore = createOperation.Value;
                 _appConfigEndpoint = new Uri(_appConfigStore.Data.Endpoint);
 
-                Console.WriteLine($"Store created: {_appConfigEndpoint}");
-                
-                // Add significant pause after store creation to allow initial RBAC permissions to propagate
-                Console.WriteLine($"Waiting {InitialRbacWaitTime.TotalSeconds} seconds for initial RBAC permissions to propagate...");
-                await Task.Delay(InitialRbacWaitTime);
-                
-                // Initialize the configuration client for the store
-                _configClient = new ConfigurationClient(_appConfigEndpoint, credential);
+                // Get the connection string for the store instead of using RBAC
+                var accessKeys = _appConfigStore.GetKeysAsync();
+                var primaryKey = await accessKeys.FirstOrDefaultAsync();
 
-                // Create a simple test setting first to verify permissions
-                var testSetting = new ConfigurationSetting($"{TestKeyPrefix}:PermissionTest", "TestValue");
-                Console.WriteLine("Testing RBAC permissions with a preliminary setting...");
-                try 
+                if (primaryKey == null)
                 {
-                    await SetConfigurationSettingWithRetryAsync(testSetting);
-                    Console.WriteLine("Preliminary permission test successful, RBAC permissions are active.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Warning: Initial permission test failed: {ex.Message}");
-                    Console.WriteLine("Will still attempt to continue with the main test data setup...");
+                    throw new InvalidOperationException("Failed to retrieve access keys from App Configuration store.");
                 }
 
-                // Add test settings to the store with retry logic to handle RBAC permission propagation delays
-                Console.WriteLine("Setting up initial test data...");
+                _connectionString = primaryKey.ConnectionString;
+
+                // Initialize the configuration client with the connection string
+                _configClient = new ConfigurationClient(_connectionString);
+
+                // Add test settings to the store
                 foreach (var setting in _testSettings)
                 {
-                    await SetConfigurationSettingWithRetryAsync(setting);
+                    await _configClient.SetConfigurationSettingAsync(setting);
                 }
-
-                Console.WriteLine("Test data initialized successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Test initialization failed: {ex}");
                 _skipTests = true;
                 _skipReason = $"Failed to initialize integration tests: {ex.Message}";
 
@@ -400,10 +291,10 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureManagementConstants.ContentType)
             };
 
-            // Add test-specific settings to the store with retry logic
+            // Add test-specific settings to the store
             foreach (var setting in testSettings)
             {
-                await SetConfigurationSettingWithRetryAsync(setting);
+                await _configClient.SetConfigurationSettingAsync(setting);
             }
 
             return (keyPrefix, sentinelKey, featureFlagKey);
@@ -418,7 +309,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetEndpoint(), GetCredential());
+                    options.Connect(GetConnectionString());
                     options.Select($"{TestKeyPrefix}:*");
                 })
                 .Build();
@@ -440,7 +331,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetEndpoint(), GetCredential());
+                    options.Connect(GetConnectionString());
                     options.Select($"{keyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
@@ -455,11 +346,9 @@ namespace Tests.AzureAppConfiguration
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
 
-            // Update values in the store with retry logic
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting(sentinelKey, "Updated"));
+            // Update values in the store
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -484,7 +373,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetEndpoint(), GetCredential());
+                    options.Connect(GetConnectionString());
                     options.Select($"{keyPrefix}:*");
 
                     // Only refresh Setting1 when sentinel changes
@@ -502,13 +391,10 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]);
 
-            // Update values in the store with retry logic
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting(sentinelKey, "Updated"));
+            // Update values in the store
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -534,7 +420,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetEndpoint(), GetCredential());
+                    options.Connect(GetConnectionString());
                     options.Select($"{keyPrefix}:*");
                     options.UseFeatureFlags();
 
@@ -551,14 +437,13 @@ namespace Tests.AzureAppConfiguration
             // Verify initial feature flag state
             Assert.Equal("False", config[$"FeatureManagement:{keyPrefix}Feature:Enabled"]);
 
-            // Update feature flag in the store with retry logic
-            await SetConfigurationSettingWithRetryAsync(
+            // Update feature flag in the store
+            await _configClient.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     featureFlagKey,
                     @"{""id"":""" + keyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
                     contentType: FeatureManagementConstants.ContentType));
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting(sentinelKey, "Updated"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -583,7 +468,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetEndpoint(), GetCredential());
+                    options.Connect(GetConnectionString());
                     options.Select($"{keyPrefix}:*");
 
                     // Use RegisterAll to refresh everything when sentinel changes
@@ -601,13 +486,10 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]);
 
-            // Update all values in the store with retry logic
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting(sentinelKey, "Updated"));
+            // Update all values in the store
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -633,7 +515,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(GetEndpoint(), GetCredential());
+                    options.Connect(GetConnectionString());
                     options.Select($"{keyPrefix}:*");
 
                     options.ConfigureRefresh(refresh =>
@@ -649,9 +531,8 @@ namespace Tests.AzureAppConfiguration
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
 
-            // Update data but not sentinel with retry logic
-            await SetConfigurationSettingWithRetryAsync(
-                new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            // Update data but not sentinel
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
