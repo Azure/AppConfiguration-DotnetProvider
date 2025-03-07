@@ -243,16 +243,12 @@ namespace Tests.AzureAppConfiguration
             {
                 if (_appConfigStore != null)
                 {
-                    Console.WriteLine($"Deleting test App Configuration store: {_testStoreName}");
                     await _appConfigStore.DeleteAsync(WaitUntil.Completed);
-                    Console.WriteLine("Store deleted successfully");
                 }
 
                 if (_shouldDeleteResourceGroup && _resourceGroup != null)
                 {
-                    Console.WriteLine($"Deleting temporary resource group: {_testResourceGroupName}");
                     await _resourceGroup.DeleteAsync(WaitUntil.Completed);
-                    Console.WriteLine("Resource group deleted successfully");
                 }
             }
             catch (Exception ex)

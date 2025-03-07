@@ -731,7 +731,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        [Obsolete]
         public async Task WatchesFeatureFlagsUsingCacheExpirationInterval()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
@@ -875,7 +874,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        [Obsolete]
         public async Task SkipRefreshIfCacheNotExpired()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
@@ -1201,7 +1199,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        [Obsolete]
         public void AlternateValidFeatureFlagFormats()
         {
             var mockResponse = new Mock<Response>();
