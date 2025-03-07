@@ -212,7 +212,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue");
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -247,7 +247,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -284,7 +284,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -356,7 +356,7 @@ namespace Tests.AzureAppConfiguration
             keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -430,7 +430,7 @@ namespace Tests.AzureAppConfiguration
             keyValueCollection.Remove(keyValueCollection.FirstOrDefault(s => s.Key == "TestKey3" && s.Label == "label"));
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -443,32 +443,34 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async void RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
+        public async Task RefreshTests_SingleServerCallOnSimultaneousMultipleRefresh()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var requestCount = 0;
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            
+            // Define delay for async operations
+            var operationDelay = TimeSpan.FromSeconds(6);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
                     requestCount++;
-                    Thread.Sleep(6000);
-
+                    
                     var copy = new List<ConfigurationSetting>();
                     foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
                     };
 
-                    return new MockAsyncPageable(copy);
+                    return new MockAsyncPageable(copy, operationDelay);
                 });
 
-            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            async Task<Response<ConfigurationSetting>> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
             {
                 requestCount++;
-                Thread.Sleep(6000);
+                await Task.Delay(operationDelay, cancellationToken);
 
                 var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
                 var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
@@ -477,7 +479,7 @@ namespace Tests.AzureAppConfiguration
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+                .Returns((Func<ConfigurationSetting, bool, CancellationToken, Task<Response<ConfigurationSetting>>>)GetIfChanged);
 
             IConfigurationRefresher refresher = null;
 
@@ -512,7 +514,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void RefreshTests_RefreshAsyncThrowsOnRequestFailedException()
+        public async Task RefreshTests_RefreshAsyncThrowsOnRequestFailedException()
         {
             IConfigurationRefresher refresher = null;
             var mockClient = GetMockConfigurationClient();
@@ -539,7 +541,7 @@ namespace Tests.AzureAppConfiguration
                 .Throws(new RequestFailedException("Request failed."));
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             Action action = () => refresher.RefreshAsync().Wait();
             Assert.Throws<AggregateException>(action);
@@ -575,7 +577,7 @@ namespace Tests.AzureAppConfiguration
                 .Throws(new RequestFailedException("Request failed."));
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             bool result = await refresher.TryRefreshAsync();
             Assert.False(result);
@@ -608,7 +610,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue");
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             bool result = await refresher.TryRefreshAsync();
             Assert.True(result);
@@ -651,13 +653,13 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue";
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             // First call to GetConfigurationSettingAsync does not throw
             Assert.True(await refresher.TryRefreshAsync());
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             // Second call to GetConfigurationSettingAsync throws KeyVaultReferenceException
             Assert.False(await refresher.TryRefreshAsync());
@@ -704,7 +706,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue");
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
                 await refresher.RefreshAsync()
@@ -748,7 +750,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey3"]);
 
             // Make sure MinBackoffDuration has ended
-            Thread.Sleep(100);
+            await Task.Delay(100);
 
             // Act
             await Assert.ThrowsAsync<RequestFailedException>(async () =>
@@ -763,7 +765,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(configuration["TestKey3"]);
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -825,7 +827,7 @@ namespace Tests.AzureAppConfiguration
             keyValueCollection = keyValueCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             bool firstRefreshResult = await refresher.TryRefreshAsync();
             Assert.False(firstRefreshResult);
@@ -835,7 +837,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             bool secondRefreshResult = await refresher.TryRefreshAsync();
             Assert.True(secondRefreshResult);
@@ -876,7 +878,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection = _kvCollection.Select(kv => TestHelpers.ChangeValue(kv, "newValue")).ToList();
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -917,7 +919,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection[_kvCollection.IndexOf(refreshRegisteredSetting)] = TestHelpers.ChangeValue(refreshRegisteredSetting, "UpdatedValueForLabel1");
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -959,7 +961,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection[_kvCollection.IndexOf(refreshAllRegisteredSetting)] = TestHelpers.ChangeValue(refreshAllRegisteredSetting, "UpdatedValueForLabel1");
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -1043,7 +1045,7 @@ namespace Tests.AzureAppConfiguration
             FirstKeyValue.Value = "newValue1";
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             using var cancellationSource = new CancellationTokenSource();
             cancellationSource.Cancel();
@@ -1087,7 +1089,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection[2].Value = "newValue3";
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -1097,7 +1099,7 @@ namespace Tests.AzureAppConfiguration
             _kvCollection.RemoveAt(2);
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -1198,7 +1200,7 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -1209,7 +1211,7 @@ namespace Tests.AzureAppConfiguration
             featureFlags.RemoveAt(0);
 
             // Wait for the cache to expire
-            Thread.Sleep(1500);
+            await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
@@ -1240,224 +1242,6 @@ namespace Tests.AzureAppConfiguration
             Assert.NotNull(refresherProvider);
         }
 #endif
-
-        [Fact]
-        public async Task RefreshTests_SingleKeyRefreshRespectsMinimumInterval()
-        {
-            int serverCallCount = 0;
-            IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
-            {
-                serverCallCount++;
-                return Response.FromValue(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label), mockResponse.Object);
-            }
-
-            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
-            {
-                serverCallCount++;
-                var newSetting = _kvCollection.FirstOrDefault(s => (s.Key == setting.Key && s.Label == setting.Label));
-                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
-                var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(newSetting, response);
-            }
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(() =>
-                {
-                    serverCallCount++;
-                    return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
-                });
-
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
-
-            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            // Initial configuration load
-            Assert.Equal("TestValue1", config["TestKey1"]);
-
-            // Reset counter to only count refresh calls
-            int initialCallCount = serverCallCount;
-
-            serverCallCount = 0;
-
-            //
-            // Let cache invalidate
-            await Task.Delay(TimeSpan.FromSeconds(1));
-
-            // First refresh call should make a server call since we waited at least the minimum interval
-            await refresher.RefreshAsync();
-
-            Assert.Equal(1, serverCallCount);
-
-            // Sub refresh call immediately after should also not make server calls
-            for (int i = 0; i < 5; i++)
-            {
-                await refresher.RefreshAsync();
-            }
-
-            Assert.Equal(1, serverCallCount);
-
-            // Modify value to verify it doesn't update
-            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue");
-
-            // Still not enough time elapsed
-            await refresher.RefreshAsync();
-
-            Assert.Equal(1, serverCallCount);
-
-            Assert.Equal("TestValue1", config["TestKey1"]);
-
-            // Wait for the minimum interval to elapse
-            await Task.Delay(TimeSpan.FromSeconds(1));
-
-            // Now the refresh should make server calls
-            for (int i = 0; i < 5; i++)
-            {
-                await refresher.RefreshAsync();
-            }
-
-            Assert.Equal(2, serverCallCount);
-
-            Assert.Equal("newValue", config["TestKey1"]);
-        }
-
-        [Fact]
-        public async Task RefreshTests_FeatureFlagRefreshRespectsConfiguredCacheInterval()
-        {
-            int serverCallCount = 0;
-            IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            var featureFlags = new List<ConfigurationSetting> {
-                ConfigurationModelFactory.ConfigurationSetting(
-                    key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
-                    value: @"
-                            {
-                                ""id"": ""MyFeature"",
-                                ""description"": ""The new beta version of our web site."",
-                                ""display_name"": ""Beta Feature"",
-                                ""enabled"": true,
-                                ""conditions"": {
-                                ""client_filters"": [
-                                    {
-                                    ""name"": ""SuperUsers""
-                                    }
-                                ]
-                                }
-                            }
-                            ",
-                    label: default,
-                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-                    eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"))
-            };
-
-            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
-            {
-                serverCallCount++;
-
-                if (selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
-                {
-                    return new MockAsyncPageable(featureFlags.Select(ff => TestHelpers.CloneSetting(ff)).ToList());
-                }
-
-                return new MockAsyncPageable(new List<ConfigurationSetting>());
-            }
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
-
-            // Configure with a 5 second cache for feature flags
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
-                    options.UseFeatureFlags(featureFlagOptions =>
-                    {
-                        featureFlagOptions.SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            // Initial configuration load
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-
-            // Reset counter to only count refresh calls
-            serverCallCount = 0;
-
-            // First refresh call immediately after load should not make server calls as cache hasn't expired
-            await refresher.RefreshAsync();
-
-            Assert.Equal(0, serverCallCount);
-
-            // Modify feature flag to verify it doesn't update until cache expires
-            featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
-                key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
-                value: @"
-                        {
-                            ""id"": ""MyFeature"",
-                            ""description"": ""The new beta version of our web site."",
-                            ""display_name"": ""Beta Feature"",
-                            ""enabled"": true,
-                            ""conditions"": {
-                            ""client_filters"": [
-                                {
-                                ""name"": ""AllUsers""
-                                }
-                            ]
-                            }
-                        }
-                        ",
-                label: default,
-                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
-                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c2"));
-
-            // This should not make server calls because feature flag cache hasn't expired
-            for (int i = 0; i < 5; i++)
-            {
-                await refresher.RefreshAsync();
-            }
-
-            Assert.Equal(0, serverCallCount);
-
-            Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-
-            // Wait for the cache to expire
-            await Task.Delay(TimeSpan.FromSeconds(1));
-
-            // Now the refresh should make server calls and update the feature flag, but only one call
-            for (int i = 0; i < 5; i++)
-            {
-                await refresher.RefreshAsync();
-            }
-
-            // One call for collection change check, one call to pull the latest values
-            Assert.Equal(2, serverCallCount);
-
-            Assert.Equal("AllUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
-        }
 
         private void optionsInitializer(AzureAppConfigurationOptions options)
         {

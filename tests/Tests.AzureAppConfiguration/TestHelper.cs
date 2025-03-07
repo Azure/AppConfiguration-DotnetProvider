@@ -164,8 +164,9 @@ namespace Tests.AzureAppConfiguration
     {
         private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
         private int _status;
+        private readonly TimeSpan? _delay;
 
-        public MockAsyncPageable(List<ConfigurationSetting> collection)
+        public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null)
         {
             foreach (ConfigurationSetting setting in collection)
             {
@@ -177,6 +178,7 @@ namespace Tests.AzureAppConfiguration
             }
 
             _status = 200;
+            _delay = delay;
         }
 
         public void UpdateCollection(List<ConfigurationSetting> newCollection)
@@ -207,10 +209,13 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-#pragma warning disable 1998
-        public async override IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
-#pragma warning restore 1998
+        public override async IAsyncEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
         {
+            if (_delay.HasValue)
+            {
+                await Task.Delay(_delay.Value);
+            }
+            
             yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
         }
     }
