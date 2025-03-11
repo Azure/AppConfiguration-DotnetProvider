@@ -75,7 +75,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
         /// <param name="tagsFilter">
-        /// TODO
+        /// The tag filter to apply when querying Azure App Configuration for key-values. By default no tags will be used.
+        /// Each tag provided must follow the format "tag=value". A key-value will only be returned if its tags match all tags provided
+        /// in the filter, or if the filter is empty.
         /// </param>
         public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagsFilter = null)
         {
