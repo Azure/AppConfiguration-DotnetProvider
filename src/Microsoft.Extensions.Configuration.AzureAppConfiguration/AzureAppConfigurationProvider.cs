@@ -576,6 +576,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     kvWatcher.NextRefreshTime = nextRefreshTime;
                 }
             }
+            else
+            {
+                foreach (KeyValueWatcher kvWatcher in _options.IndividualKvWatchers)
+                {
+                    kvWatcher.NextRefreshTime = nextRefreshTime;
+                }
+            }
 
             foreach (KeyValueWatcher featureFlagWatcher in _options.FeatureFlagWatchers)
             {
