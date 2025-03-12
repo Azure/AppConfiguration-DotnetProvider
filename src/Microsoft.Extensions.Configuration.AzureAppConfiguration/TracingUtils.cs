@@ -201,6 +201,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);
             }
 
+            if (requestTracingOptions.IsPushRefreshUsed)
+            {
+                correlationContextTags.Add(RequestTracingConstants.PushRefreshTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)

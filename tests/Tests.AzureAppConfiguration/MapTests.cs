@@ -181,7 +181,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1 mapped first", config["TestKey1"]);
             Assert.Equal("TestValue2 second", config["TestKey2"]);
 
-            FirstKeyValue.Value = "newValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -232,8 +232,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
 
-            FirstKeyValue.Value = "newValue1";
-            _kvCollection.Last().Value = "newValue2";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue1");
+            _kvCollection[1] = TestHelpers.ChangeValue(_kvCollection[1], "newValue2");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -282,8 +282,8 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("TestValue1 changed", config["TestKey1"]);
             Assert.Equal("TestValue2 changed", config["TestKey2"]);
-            FirstKeyValue.Value = "newValue1";
-            _kvCollection.Last().Value = "newValue2";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue1");
+            _kvCollection[1] = TestHelpers.ChangeValue(_kvCollection[1], "newValue2");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -523,8 +523,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey1"]);
             Assert.Equal("TestValue2", config["TestKey2"]);
 
-            FirstKeyValue.Value = "newValue1";
-            _kvCollection.Last().Value = "newValue2";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue1");
+            _kvCollection[1] = TestHelpers.ChangeValue(_kvCollection[1], "newValue2");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();

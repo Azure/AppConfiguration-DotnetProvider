@@ -25,7 +25,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public bool UsesTargetingFilter { get; set; } = false;
         public bool UsesSeed { get; set; } = false;
         public bool UsesTelemetry { get; set; } = false;
-        public bool UsesVariantConfigurationReference { get; set; } = false;
         public int MaxVariants { get; set; }
 
         public bool UsesAnyFeatureFilter()
@@ -35,7 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public bool UsesAnyTracingFeature()
         {
-            return UsesSeed || UsesTelemetry || UsesVariantConfigurationReference;
+            return UsesSeed || UsesTelemetry;
         }
 
         public void ResetFeatureFlagTracing()
@@ -46,7 +45,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             UsesTargetingFilter = false;
             UsesSeed = false;
             UsesTelemetry = false;
-            UsesVariantConfigurationReference = false;
             MaxVariants = 0;
         }
 
@@ -145,16 +143,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             if (UsesSeed)
             {
                 sb.Append(RequestTracingConstants.FeatureFlagUsesSeedTag);
-            }
-
-            if (UsesVariantConfigurationReference)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.FeatureFlagUsesVariantConfigurationReferenceTag);
             }
 
             if (UsesTelemetry)

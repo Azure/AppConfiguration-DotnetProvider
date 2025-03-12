@@ -33,6 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string LoadBalancingEnabledTag = "LB";
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
+        public const string PushRefreshTag = "PushRefresh";
 
         public const string FeatureFlagFilterTypeKey = "Filter";
         public const string CustomFilter = "CSTM";
@@ -43,7 +44,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagUsesTelemetryTag = "Telemetry";
         public const string FeatureFlagUsesSeedTag = "Seed";
         public const string FeatureFlagMaxVariantsKey = "MaxVariants";
-        public const string FeatureFlagUsesVariantConfigurationReferenceTag = "ConfigRef";
 
         public const string DiagnosticHeaderActivityName = "Azure.CustomDiagnosticHeaders";
         public const string CorrelationContextHeader = "Correlation-Context";

@@ -435,7 +435,6 @@ namespace Tests.AzureAppConfiguration
 		                    },
 		                    {
 			                    ""name"": ""Small"",
-			                    ""configuration_reference"": ""ShoppingCart:Small"",
 			                    ""status_override"": ""Disabled""
 		                    }
 	                        ],
@@ -1176,6 +1175,63 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void SelectOrderDoesNotAffectLoad()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            List<ConfigurationSetting> kvCollection = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", "label",
+                    eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63")),
+                ConfigurationModelFactory.ConfigurationSetting("TestKey2", "TestValue2", "label",
+                    eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"))
+            };
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                List<ConfigurationSetting> settingCollection;
+
+                if (selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+                {
+                    settingCollection = _featureFlagCollection;
+                }
+                else
+                {
+                    settingCollection = kvCollection;
+                }
+
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = settingCollection.FirstOrDefault(s => (s.Key == selector.KeyFilter && s.Label == selector.LabelFilter));
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select("App1_Feature1", "App1_Label");
+                        ff.Select("App2_Feature1", "App2_Label");
+                    });
+                    options.Select("TestKey1", "label");
+                    options.Select("TestKey2", "label");
+                })
+                .Build();
+
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
+        [Fact]
         public void TestNullAndMissingValuesForConditions()
         {
             var mockResponse = new Mock<Response>();
@@ -1864,7 +1920,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("SuperUsers", config["FeatureManagement:MyFeature2:EnabledFor:0:Name"]);
-            FirstKeyValue.Value = "newValue1";
+            FirstKeyValue = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -1959,7 +2015,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue1", config["TestKey1"]);
             Assert.Equal("NoUsers", config["FeatureManagement:MyFeature:EnabledFor:0:Name"]);
 
-            FirstKeyValue.Value = "newValue1";
+            FirstKeyValue = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
             featureFlags[0] = ConfigurationModelFactory.ConfigurationSetting(
             key: FeatureManagementConstants.FeatureFlagMarker + "myFeature",
             value: @"
@@ -2010,7 +2066,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Big", config["feature_management:feature_flags:0:variants:0:name"]);
             Assert.Equal("600px", config["feature_management:feature_flags:0:variants:0:configuration_value"]);
             Assert.Equal("Small", config["feature_management:feature_flags:0:variants:1:name"]);
-            Assert.Equal("ShoppingCart:Small", config["feature_management:feature_flags:0:variants:1:configuration_reference"]);
             Assert.Equal("Disabled", config["feature_management:feature_flags:0:variants:1:status_override"]);
             Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_disabled"]);
             Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_enabled"]);
@@ -2224,7 +2279,7 @@ namespace Tests.AzureAppConfiguration
             var settings = new List<ConfigurationSetting>()
             {
                 CreateFeatureFlag("Feature1", variantsJsonString: @"[{""name"": 1}]"),
-                CreateFeatureFlag("Feature2", variantsJsonString: @"[{""configuration_reference"": true}]"),
+                CreateFeatureFlag("Feature2", requirementType: "2"),
                 CreateFeatureFlag("Feature3", variantsJsonString: @"[{""status_override"": []}]"),
                 CreateFeatureFlag("Feature4", seed: "{}"),
                 CreateFeatureFlag("Feature5", defaultWhenDisabled: "5"),
@@ -2239,8 +2294,7 @@ namespace Tests.AzureAppConfiguration
                 CreateFeatureFlag("Feature14", telemetryEnabled: "14"),
                 CreateFeatureFlag("Feature15", telemetryMetadataJsonString: @"{""key"": 15}"),
                 CreateFeatureFlag("Feature16", clientFiltersJsonString: @"[{""name"": 16}]"),
-                CreateFeatureFlag("Feature17", clientFiltersJsonString: @"{""key"": [{""name"": ""name"", ""parameters"": 17}]}"),
-                CreateFeatureFlag("Feature18", requirementType: "18")
+                CreateFeatureFlag("Feature17", clientFiltersJsonString: @"{""key"": [{""name"": ""name"", ""parameters"": 17}]}")
             };
 
             var mockResponse = new Mock<Response>();

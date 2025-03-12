@@ -743,7 +743,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config[_kv.Key]);
 
             // Update sentinel key-value
-            sentinelKv.Value = "Value2";
+            sentinelKv = TestHelpers.ChangeValue(sentinelKv, "Value2");
             Thread.Sleep(refreshInterval);
             await refresher.RefreshAsync();
 
@@ -815,7 +815,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config[_kv.Key]);
 
             // Update sentinel key-value to trigger refresh operation
-            sentinelKv.Value = "Value2";
+            sentinelKv = TestHelpers.ChangeValue(sentinelKv, "Value2");
             Thread.Sleep(refreshInterval);
             await refresher.RefreshAsync();
 

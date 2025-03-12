@@ -29,7 +29,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             try
             {
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK)
+                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK &&
+                    !response.Value.ETag.Equals(setting.ETag))
                 {
                     return new KeyValueChange
                     {
@@ -94,11 +95,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 using Response response = page.GetRawResponse();
 
-                ETag serverEtag = (ETag)response.Headers.ETag;
-
                 // Return true if the lists of etags are different
                 if ((!existingMatchConditionsEnumerator.MoveNext() ||
-                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(serverEtag)) &&
+                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
                     return true;

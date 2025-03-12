@@ -347,7 +347,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(_kvCollection[0], "newValue1");
 
             refresher.ProcessPushNotification(_pushNotificationList.First(), TimeSpan.FromSeconds(0));
             await refresher.RefreshAsync();

@@ -188,13 +188,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             (string.IsNullOrEmpty(kvp.Key) ? "" : $":{kvp.Key}"), kvp.Value));
                     }
 
-                    if (featureVariant.ConfigurationReference != null)
-                    {
-                        _featureFlagTracing.UsesVariantConfigurationReference = true;
-
-                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationReference}", featureVariant.ConfigurationReference));
-                    }
-
                     if (featureVariant.StatusOverride != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.StatusOverride}", featureVariant.StatusOverride));
@@ -1236,24 +1229,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             {
                                 throw CreateFeatureFlagFormatException(
                                     FeatureManagementConstants.Name,
-                                    settingKey,
-                                    reader.TokenType.ToString(),
-                                    JsonTokenType.String.ToString());
-                            }
-
-                            break;
-                        }
-
-                    case FeatureManagementConstants.ConfigurationReference:
-                        {
-                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                            {
-                                featureVariant.ConfigurationReference = reader.GetString();
-                            }
-                            else if (reader.TokenType != JsonTokenType.Null)
-                            {
-                                throw CreateFeatureFlagFormatException(
-                                    FeatureManagementConstants.ConfigurationReference,
                                     settingKey,
                                     reader.TokenType.ToString(),
                                     JsonTokenType.String.ToString());
