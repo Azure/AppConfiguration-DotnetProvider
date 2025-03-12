@@ -11,12 +11,9 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -473,7 +470,6 @@ namespace Tests.AzureAppConfiguration
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
-
 
             // Update values in the store
             await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
