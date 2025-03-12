@@ -1067,6 +1067,63 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void SelectOrderDoesNotAffectLoad()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            List<ConfigurationSetting> kvCollection = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", "label",
+                    eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63")),
+                ConfigurationModelFactory.ConfigurationSetting("TestKey2", "TestValue2", "label",
+                    eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"))
+            };
+
+            MockAsyncPageable GetTestKeys(SettingSelector selector, CancellationToken ct)
+            {
+                List<ConfigurationSetting> settingCollection;
+
+                if (selector.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+                {
+                    settingCollection = _featureFlagCollection;
+                }
+                else
+                {
+                    settingCollection = kvCollection;
+                }
+
+                var copy = new List<ConfigurationSetting>();
+                var newSetting = settingCollection.FirstOrDefault(s => (s.Key == selector.KeyFilter && s.Label == selector.LabelFilter));
+                if (newSetting != null)
+                    copy.Add(TestHelpers.CloneSetting(newSetting));
+                return new MockAsyncPageable(copy);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select("App1_Feature1", "App1_Label");
+                        ff.Select("App2_Feature1", "App2_Label");
+                    });
+                    options.Select("TestKey1", "label");
+                    options.Select("TestKey2", "label");
+                })
+                .Build();
+
+            Assert.Equal("True", config["FeatureManagement:App1_Feature1"]);
+            Assert.Equal("False", config["FeatureManagement:App2_Feature1"]);
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+        }
+
+        [Fact]
         public void TestNullAndMissingValuesForConditions()
         {
             var mockResponse = new Mock<Response>();

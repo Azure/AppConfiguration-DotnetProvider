@@ -118,6 +118,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (options.RegisterAllEnabled)
             {
+                if (options.KvCollectionRefreshInterval <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException(
+                        $"{nameof(options.KvCollectionRefreshInterval)} must be greater than zero seconds when using RegisterAll for refresh",
+                        nameof(options));
+                }
+
                 MinRefreshInterval = TimeSpan.FromTicks(Math.Min(minWatcherRefreshInterval.Ticks, options.KvCollectionRefreshInterval.Ticks));
             }
             else if (hasWatchers)
@@ -206,7 +213,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers = _options.IndividualKvWatchers.Where(kvWatcher => utcNow >= kvWatcher.NextRefreshTime);
                     IEnumerable<KeyValueWatcher> refreshableFfWatchers = _options.FeatureFlagWatchers.Where(ffWatcher => utcNow >= ffWatcher.NextRefreshTime);
-                    bool isRefreshDue = utcNow >= _nextCollectionRefreshTime;
+                    bool isRefreshDue = _options.RegisterAllEnabled && utcNow >= _nextCollectionRefreshTime;
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
@@ -412,7 +419,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }
 
-                    if (isRefreshDue)
+                    if (_options.RegisterAllEnabled && isRefreshDue)
                     {
                         _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
                     }
@@ -548,6 +555,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_configClientManager.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
             {
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.IsPushRefreshUsed = true;
+                }
+
                 SetDirty(maxDelay);
             }
             else
