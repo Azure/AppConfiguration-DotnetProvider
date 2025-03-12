@@ -26,13 +26,17 @@
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
   </ItemGroup>
-    
+
+  <!-- Add to Tests.AzureAppConfiguration.csproj -->
   <ItemGroup>
-    <None Update="local.settings.json">
+    <None Update="Integration\appsettings.Secrets.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Integration\GetAzureSubscription.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj" />
   </ItemGroup>

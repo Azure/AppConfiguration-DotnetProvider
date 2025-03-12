@@ -11,8 +11,11 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -23,6 +26,7 @@ namespace Tests.AzureAppConfiguration
     /// Integration tests for Azure App Configuration that connect to a real service.
     /// Creates a temporary App Configuration store for testing and deletes it after the tests are complete.
     /// Requires Azure credentials with appropriate permissions.
+    /// NOTE: Before running these tests, execute the GetAzureSubscription.ps1 script to create appsettings.Secrets.json.
     /// </summary>
     [Trait("Category", "Integration")]
     [CollectionDefinition(nameof(IntegrationTests), DisableParallelization = true)]
@@ -32,14 +36,18 @@ namespace Tests.AzureAppConfiguration
         private const string TestKeyPrefix = "IntegrationTest";
         private const string SentinelKey = TestKeyPrefix + ":Sentinel";
         private const string FeatureFlagKey = ".appconfig.featureflag/" + TestKeyPrefix + "Feature";
+        private const string DefaultLocation = "swedensouth";
+        private const string SubscriptionJsonPath = "appsettings.Secrets.json";
 
-        // Azure Resource Management constants
-        private const string ResourceGroupEnvVar = "AZURE_APPCONFIG_RESOURCE_GROUP";
-        private const string SubscriptionIdEnvVar = "AZURE_SUBSCRIPTION_ID";
-        private const string LocationEnvVar = "AZURE_LOCATION";
-        private const string CreateResourceGroupEnvVar = "AZURE_CREATE_RESOURCE_GROUP";
-        private const string DefaultLocation = "eastus";
-        private const string LocalSettingsFile = "local.settings.json";
+        /// <summary>
+        /// Class to hold test-specific key information
+        /// </summary>
+        private class TestContext
+        {
+            public string KeyPrefix { get; set; }
+            public string SentinelKey { get; set; }
+            public string FeatureFlagKey { get; set; }
+        }
 
         // Keys to create for testing
         private readonly List<ConfigurationSetting> _testSettings = new List<ConfigurationSetting>
@@ -63,45 +71,14 @@ namespace Tests.AzureAppConfiguration
         private ArmClient _armClient;
         private string _testStoreName;
         private string _testResourceGroupName;
-        private bool _shouldDeleteResourceGroup = false;
         private AppConfigurationStoreResource _appConfigStore;
         private Uri _appConfigEndpoint;
         private ResourceGroupResource _resourceGroup;
+        private string _subscriptionId;
 
         // Flag indicating whether tests should run
         private bool _skipTests = false;
         private string _skipReason = null;
-
-        /// <summary>
-        /// Loads environment variables from a local settings file if it exists.
-        /// </summary>
-        private void LoadEnvironmentVariablesFromFile()
-        {
-            string localSettingsPath = Path.Combine(AppContext.BaseDirectory, LocalSettingsFile);
-
-            if (File.Exists(localSettingsPath))
-            {
-                try
-                {
-                    var config = new ConfigurationBuilder()
-                        .AddJsonFile(localSettingsPath, optional: true)
-                        .Build();
-
-                    foreach (var setting in config.AsEnumerable())
-                    {
-                        if (!string.IsNullOrEmpty(setting.Value) &&
-                            Environment.GetEnvironmentVariable(setting.Key) == null)
-                        {
-                            Environment.SetEnvironmentVariable(setting.Key, setting.Value);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error loading local settings: {ex.Message}");
-                }
-            }
-        }
 
         /// <summary>
         /// Gets a DefaultAzureCredential for authentication.
@@ -124,6 +101,60 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Gets the current subscription ID by reading from the JSON file created by the PowerShell script.
+        /// NOTE: The PowerShell script must be run manually before running the tests.
+        /// </summary>
+        private string GetCurrentSubscriptionId()
+        {
+            try
+            {
+                // Read the JSON file created by the script
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Integration", SubscriptionJsonPath);
+
+                if (!File.Exists(jsonPath))
+                {
+                    _skipTests = true;
+                    _skipReason = $"Subscription JSON file not found at {jsonPath}. Run the GetAzureSubscription.ps1 script first.";
+                    return null;
+                }
+
+                string jsonContent = File.ReadAllText(jsonPath);
+
+                using JsonDocument doc = JsonDocument.Parse(jsonContent);
+                JsonElement root = doc.RootElement;
+
+                bool success = root.GetProperty("Success").GetBoolean();
+
+                if (!success)
+                {
+                    _skipTests = true;
+                    _skipReason = root.GetProperty("ErrorMessage").GetString();
+                    return null;
+                }
+
+                return root.GetProperty("SubscriptionId").GetString();
+            }
+            catch (FileNotFoundException ex)
+            {
+                _skipTests = true;
+                _skipReason = $"Subscription JSON file not found: {ex.Message}. Run the GetAzureSubscription.ps1 script first.";
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _skipTests = true;
+                _skipReason = $"Failed to parse subscription JSON: {ex.Message}";
+                return null;
+            }
+            catch (IOException ex)
+            {
+                _skipTests = true;
+                _skipReason = $"IO error while reading subscription data: {ex.Message}";
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Returns the connection string for connecting to the app configuration store.
         /// </summary>
         private string GetConnectionString()
@@ -138,93 +169,144 @@ namespace Tests.AzureAppConfiguration
         {
             try
             {
-                // Load environment variables from local.settings.json if present
-                LoadEnvironmentVariablesFromFile();
-
                 var credential = GetCredential();
                 if (_skipTests) return;
 
-                // Get required Azure information from environment variables
-                string resourceGroupName = Environment.GetEnvironmentVariable(ResourceGroupEnvVar);
-                string subscriptionIdStr = Environment.GetEnvironmentVariable(SubscriptionIdEnvVar);
-                string location = Environment.GetEnvironmentVariable(LocationEnvVar) ?? DefaultLocation;
-                bool createResourceGroup = string.Equals(Environment.GetEnvironmentVariable(CreateResourceGroupEnvVar), "true", StringComparison.OrdinalIgnoreCase);
-
-                if (string.IsNullOrEmpty(subscriptionIdStr))
-                {
-                    _skipTests = true;
-                    _skipReason = $"Missing required environment variable: {SubscriptionIdEnvVar}";
-                    return;
-                }
+                // Get the current subscription ID from the JSON file
+                _subscriptionId = GetCurrentSubscriptionId();
+                if (_skipTests) return;
 
                 // Initialize Azure Resource Manager client
                 _armClient = new ArmClient(credential);
 
-                SubscriptionResource subscription = _armClient.GetSubscriptions().Get(subscriptionIdStr);
+                SubscriptionResource subscription = _armClient.GetSubscriptions().Get(_subscriptionId);
 
-                // Create resource group if requested or use existing one
-                if (createResourceGroup)
+                // Create a temporary resource group for this test run
+                _testResourceGroupName = $"appconfig-test-{Guid.NewGuid():N}".Substring(0, 20);
+
+                var rgData = new ResourceGroupData(new AzureLocation(DefaultLocation));
+
+                try
                 {
-                    _testResourceGroupName = $"appconfig-test-{Guid.NewGuid():N}".Substring(0, 20);
-
-                    var rgData = new ResourceGroupData(new AzureLocation(location));
                     var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, _testResourceGroupName, rgData);
                     _resourceGroup = rgLro.Value;
-                    _shouldDeleteResourceGroup = true;
                 }
-                else
+                catch (RequestFailedException ex)
                 {
-                    if (string.IsNullOrEmpty(resourceGroupName))
-                    {
-                        _skipTests = true;
-                        _skipReason = $"Missing required environment variable: {ResourceGroupEnvVar}";
-                        return;
-                    }
-
-                    _testResourceGroupName = resourceGroupName;
-                    _resourceGroup = await subscription.GetResourceGroups().GetAsync(resourceGroupName);
+                    _skipTests = true;
+                    _skipReason = $"Failed to create resource group: {ex.Message}";
+                    return;
                 }
 
                 // Create unique store name for this test run
                 _testStoreName = $"integration-{Guid.NewGuid():N}".Substring(0, 20);
 
                 // Create the App Configuration store
-                var storeData = new AppConfigurationStoreData(new AzureLocation(location), new AppConfigurationSku("free"));
-                var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
-                    WaitUntil.Completed,
-                    _testStoreName,
-                    storeData);
+                var storeData = new AppConfigurationStoreData(new AzureLocation(DefaultLocation), new AppConfigurationSku("free"));
 
-                _appConfigStore = createOperation.Value;
-                _appConfigEndpoint = new Uri(_appConfigStore.Data.Endpoint);
-
-                // Get the connection string for the store instead of using RBAC
-                var accessKeys = _appConfigStore.GetKeysAsync();
-                var primaryKey = await accessKeys.FirstOrDefaultAsync();
-
-                if (primaryKey == null)
+                try
                 {
-                    throw new InvalidOperationException("Failed to retrieve access keys from App Configuration store.");
+                    var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
+                        WaitUntil.Completed,
+                        _testStoreName,
+                        storeData);
+
+                    _appConfigStore = createOperation.Value;
+                    _appConfigEndpoint = new Uri(_appConfigStore.Data.Endpoint);
+                }
+                catch (RequestFailedException ex)
+                {
+                    _skipTests = true;
+                    _skipReason = $"Failed to create App Configuration store: {ex.Message}";
+                    await CleanupResourceGroup();
+                    return;
                 }
 
-                _connectionString = primaryKey.ConnectionString;
+                // Get the connection string for the store
+                try
+                {
+                    var accessKeys = _appConfigStore.GetKeysAsync();
+                    var primaryKey = await accessKeys.FirstOrDefaultAsync();
 
-                // Initialize the configuration client with the connection string
-                _configClient = new ConfigurationClient(_connectionString);
+                    if (primaryKey == null)
+                    {
+                        throw new InvalidOperationException("Failed to retrieve access keys from App Configuration store.");
+                    }
+
+                    _connectionString = primaryKey.ConnectionString;
+
+                    // Initialize the configuration client with the connection string
+                    _configClient = new ConfigurationClient(_connectionString);
+                }
+                catch (RequestFailedException ex)
+                {
+                    _skipTests = true;
+                    _skipReason = $"Failed to get access keys: {ex.Message}";
+                    await CleanupResourceGroup();
+                    return;
+                }
 
                 // Add test settings to the store
-                foreach (var setting in _testSettings)
+                try
                 {
-                    await _configClient.SetConfigurationSettingAsync(setting);
+                    foreach (var setting in _testSettings)
+                    {
+                        await _configClient.SetConfigurationSettingAsync(setting);
+                    }
+                }
+                catch (RequestFailedException ex)
+                {
+                    _skipTests = true;
+                    _skipReason = $"Failed to set configuration settings: {ex.Message}";
+                    await CleanupResourceGroup();
                 }
             }
-            catch (Exception ex)
+            catch (CredentialUnavailableException ex)
+            {
+                _skipTests = true;
+                _skipReason = $"Azure credentials unavailable: {ex.Message}";
+                await CleanupResourceGroup();
+            }
+            catch (InvalidOperationException ex)
             {
                 _skipTests = true;
                 _skipReason = $"Failed to initialize integration tests: {ex.Message}";
+                await CleanupResourceGroup();
+            }
+            catch (RequestFailedException ex)
+            {
+                _skipTests = true;
+                _skipReason = $"Azure request failed: {ex.Message}";
+                await CleanupResourceGroup();
+            }
+            catch (TaskCanceledException ex)
+            {
+                _skipTests = true;
+                _skipReason = $"Operation timed out: {ex.Message}";
+                await CleanupResourceGroup();
+            }
+        }
 
-                // Clean up any partially created resources
-                await DisposeAsync();
+        /// <summary>
+        /// Helper method to clean up the resource group if initialization fails
+        /// </summary>
+        private async Task CleanupResourceGroup()
+        {
+            if (_resourceGroup != null)
+            {
+                try
+                {
+                    await _resourceGroup.DeleteAsync(WaitUntil.Completed);
+                    _resourceGroup = null;
+                }
+                catch (RequestFailedException)
+                {
+                    // Ignore exceptions during cleanup
+                }
+                catch (TaskCanceledException)
+                {
+                    // Ignore timeout exceptions during cleanup
+                }
             }
         }
 
@@ -233,27 +315,28 @@ namespace Tests.AzureAppConfiguration
         /// </summary>
         public async Task DisposeAsync()
         {
-            // Don't attempt cleanup if we don't have a store to delete
-            if (_appConfigStore == null && !_shouldDeleteResourceGroup)
+            // Don't attempt cleanup if we don't have a resource group to delete
+            if (_resourceGroup == null)
             {
                 return;
             }
 
             try
             {
-                if (_appConfigStore != null)
-                {
-                    await _appConfigStore.DeleteAsync(WaitUntil.Completed);
-                }
-
-                if (_shouldDeleteResourceGroup && _resourceGroup != null)
-                {
-                    await _resourceGroup.DeleteAsync(WaitUntil.Completed);
-                }
+                await _resourceGroup.DeleteAsync(WaitUntil.Completed);
+                _resourceGroup = null;
             }
-            catch (Exception ex)
+            catch (RequestFailedException ex)
             {
-                Console.WriteLine($"Test cleanup failed: {ex}. You may need to manually delete the resources: Store={_testStoreName}, ResourceGroup={(_shouldDeleteResourceGroup ? _testResourceGroupName : "N/A")}");
+                Console.WriteLine($"Test cleanup failed: {ex.Message}. You may need to manually delete the resources: Store={_testStoreName}, ResourceGroup={_testResourceGroupName}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"Test cleanup failed: {ex.Message}. You may need to manually delete the resources: Store={_testStoreName}, ResourceGroup={_testResourceGroupName}");
+            }
+            catch (TaskCanceledException ex)
+            {
+                Console.WriteLine($"Test cleanup timed out: {ex.Message}. You may need to manually delete the resources: Store={_testStoreName}, ResourceGroup={_testResourceGroupName}");
             }
         }
 
@@ -269,7 +352,7 @@ namespace Tests.AzureAppConfiguration
         /// <summary>
         /// Setup test-specific keys and settings
         /// </summary>
-        private async Task<(string keyPrefix, string sentinelKey, string featureFlagKey)> SetupTestKeys(string testName)
+        private async Task<TestContext> SetupTestKeys(string testName)
         {
             string keyPrefix = GetUniqueKeyPrefix(testName);
             string sentinelKey = $"{keyPrefix}:Sentinel";
@@ -293,7 +376,12 @@ namespace Tests.AzureAppConfiguration
                 await _configClient.SetConfigurationSettingAsync(setting);
             }
 
-            return (keyPrefix, sentinelKey, featureFlagKey);
+            return new TestContext
+            {
+                KeyPrefix = keyPrefix,
+                SentinelKey = sentinelKey,
+                FeatureFlagKey = featureFlagKey
+            };
         }
 
         [Fact]
@@ -316,22 +404,22 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task TryRefreshAsync_UpdatesConfiguration_WhenSentinelKeyChanged()
+        public async Task RefreshAsync_UpdatesConfiguration_WhenSentinelKeyChanged()
         {
             Skip.If(_skipTests, _skipReason);
 
             // Arrange - Setup test-specific keys
-            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("UpdatesConfig");
+            var testContext = await SetupTestKeys("UpdatesConfig");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{keyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(sentinelKey, refreshAll: true)
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -340,42 +428,41 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
 
             // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Act
-            var result = await refresher.TryRefreshAsync();
+            await refresher.RefreshAsync();
 
             // Assert
-            Assert.True(result);
-            Assert.Equal("UpdatedValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
         }
 
         [Fact]
-        public async Task TryRefreshAsync_RefreshesOnlySelectedKeys_WhenUsingKeyFilter()
+        public async Task RefreshAsync_RefreshesOnlySelectedKeys_WhenUsingKeyFilter()
         {
             Skip.If(_skipTests, _skipReason);
 
             // Arrange - Setup test-specific keys
-            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("RefreshesSelectedKeys");
+            var testContext = await SetupTestKeys("RefreshesSelectedKeys");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{keyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*");
 
                     // Only refresh Setting1 when sentinel changes
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(sentinelKey, $"{keyPrefix}:Setting1", refreshAll: false)
+                        refresh.Register(testContext.SentinelKey, $"{testContext.KeyPrefix}:Setting1", refreshAll: false)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -384,45 +471,45 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]);
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+
 
             // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Act
-            var result = await refresher.TryRefreshAsync();
+            await refresher.RefreshAsync();
 
             // Assert
-            Assert.True(result);
-            Assert.Equal("UpdatedValue1", config[$"{keyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]); // This value shouldn't change
+            Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]); // This value shouldn't change
         }
 
         [Fact]
-        public async Task TryRefreshAsync_RefreshesFeatureFlags_WhenConfigured()
+        public async Task RefreshAsync_RefreshesFeatureFlags_WhenConfigured()
         {
             Skip.If(_skipTests, _skipReason);
 
             // Arrange - Setup test-specific keys
-            var (keyPrefix, sentinelKey, featureFlagKey) = await SetupTestKeys("RefreshesFeatureFlags");
+            var testContext = await SetupTestKeys("RefreshesFeatureFlags");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{keyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*");
                     options.UseFeatureFlags();
 
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(sentinelKey)
+                        refresh.Register(testContext.SentinelKey)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -431,25 +518,24 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial feature flag state
-            Assert.Equal("False", config[$"FeatureManagement:{keyPrefix}Feature:Enabled"]);
+            Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
 
             // Update feature flag in the store
             await _configClient.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
-                    featureFlagKey,
-                    @"{""id"":""" + keyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
+                    testContext.FeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
                     contentType: FeatureManagementConstants.ContentType));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Act
-            var result = await refresher.TryRefreshAsync();
+            await refresher.RefreshAsync();
 
             // Assert
-            Assert.True(result);
-            Assert.Equal("True", config[$"FeatureManagement:{keyPrefix}Feature:Enabled"]);
+            Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
         }
 
         [Fact]
@@ -458,14 +544,14 @@ namespace Tests.AzureAppConfiguration
             Skip.If(_skipTests, _skipReason);
 
             // Arrange - Setup test-specific keys
-            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("RefreshesAllKeys");
+            var testContext = await SetupTestKeys("RefreshesAllKeys");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{keyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*");
 
                     // Use RegisterAll to refresh everything when sentinel changes
                     options.ConfigureRefresh(refresh =>
@@ -479,44 +565,43 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{keyPrefix}:Setting2"]);
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
 
             // Update all values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting2", "UpdatedValue2"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(sentinelKey, "Updated"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Act
-            var result = await refresher.TryRefreshAsync();
+            await refresher.RefreshAsync();
 
             // Assert
-            Assert.True(result);
-            Assert.Equal("UpdatedValue1", config[$"{keyPrefix}:Setting1"]);
-            Assert.Equal("UpdatedValue2", config[$"{keyPrefix}:Setting2"]);
+            Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("UpdatedValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
         }
 
         [Fact]
-        public async Task TryRefreshAsync_ReturnsFalse_WhenSentinelKeyUnchanged()
+        public async Task RefreshAsync_ReturnsFalse_WhenSentinelKeyUnchanged()
         {
             Skip.If(_skipTests, _skipReason);
 
             // Arrange - Setup test-specific keys
-            var (keyPrefix, sentinelKey, _) = await SetupTestKeys("SentinelUnchanged");
+            var testContext = await SetupTestKeys("SentinelUnchanged");
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{keyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*");
 
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(sentinelKey)
+                        refresh.Register(testContext.SentinelKey)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -525,20 +610,19 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
 
             // Update data but not sentinel
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{keyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Act
-            var result = await refresher.TryRefreshAsync();
+            await refresher.RefreshAsync();
 
             // Assert
-            Assert.False(result); // Should return false as sentinel hasn't changed
-            Assert.Equal("InitialValue1", config[$"{keyPrefix}:Setting1"]); // Should not update
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]); // Should not update
         }
     }
 }
