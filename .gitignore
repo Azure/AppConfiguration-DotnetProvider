@@ -3,8 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-# Azure Functions localsettings file
-local.settings.json
+# Integration test secrets
+appsettings.Secrets.json
 
 # User-specific files
 *.suo

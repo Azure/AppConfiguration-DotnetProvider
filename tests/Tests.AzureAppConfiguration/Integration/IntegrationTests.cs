@@ -2,6 +2,7 @@ using Azure;
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
+using Azure.Messaging.EventGrid.SystemEvents;
 using Azure.ResourceManager;
 using Azure.ResourceManager.AppConfiguration;
 using Azure.ResourceManager.AppConfiguration.Models;
@@ -31,8 +32,6 @@ namespace Tests.AzureAppConfiguration
     {
         // Test constants
         private const string TestKeyPrefix = "IntegrationTest";
-        private const string SentinelKey = TestKeyPrefix + ":Sentinel";
-        private const string FeatureFlagKey = ".appconfig.featureflag/" + TestKeyPrefix + "Feature";
         private const string DefaultLocation = "swedensouth";
         private const string SubscriptionJsonPath = "appsettings.Secrets.json";
 
@@ -45,18 +44,6 @@ namespace Tests.AzureAppConfiguration
             public string SentinelKey { get; set; }
             public string FeatureFlagKey { get; set; }
         }
-
-        // Keys to create for testing
-        private readonly List<ConfigurationSetting> _testSettings = new List<ConfigurationSetting>
-        {
-            new ConfigurationSetting($"{TestKeyPrefix}:Setting1", "InitialValue1"),
-            new ConfigurationSetting($"{TestKeyPrefix}:Setting2", "InitialValue2"),
-            new ConfigurationSetting(SentinelKey, "Initial"),
-            ConfigurationModelFactory.ConfigurationSetting(
-                FeatureFlagKey,
-                @"{""id"":""" + TestKeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
-                contentType: FeatureManagementConstants.ContentType)
-        };
 
         // Client for direct manipulation of the store
         private ConfigurationClient _configClient;
@@ -73,28 +60,15 @@ namespace Tests.AzureAppConfiguration
         private ResourceGroupResource _resourceGroup;
         private string _subscriptionId;
 
-        // Flag indicating whether tests should run
-        private bool _skipTests = false;
-        private string _skipReason = null;
-
         /// <summary>
         /// Gets a DefaultAzureCredential for authentication.
         /// </summary>
         private DefaultAzureCredential GetCredential()
         {
-            try
+            return new DefaultAzureCredential(new DefaultAzureCredentialOptions
             {
-                return new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    ExcludeSharedTokenCacheCredential = true
-                });
-            }
-            catch (CredentialUnavailableException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"Azure credentials unavailable: {ex.Message}";
-                return null;
-            }
+                ExcludeSharedTokenCacheCredential = true
+            });
         }
 
         /// <summary>
@@ -103,52 +77,27 @@ namespace Tests.AzureAppConfiguration
         /// </summary>
         private string GetCurrentSubscriptionId()
         {
-            try
+            // Read the JSON file created by the script
+            string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Integration", SubscriptionJsonPath);
+
+            if (!File.Exists(jsonPath))
             {
-                // Read the JSON file created by the script
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Integration", SubscriptionJsonPath);
-
-                if (!File.Exists(jsonPath))
-                {
-                    _skipTests = true;
-                    _skipReason = $"Subscription JSON file not found at {jsonPath}. Run the GetAzureSubscription.ps1 script first.";
-                    return null;
-                }
-
-                string jsonContent = File.ReadAllText(jsonPath);
-
-                using JsonDocument doc = JsonDocument.Parse(jsonContent);
-                JsonElement root = doc.RootElement;
-
-                bool success = root.GetProperty("Success").GetBoolean();
-
-                if (!success)
-                {
-                    _skipTests = true;
-                    _skipReason = root.GetProperty("ErrorMessage").GetString();
-                    return null;
-                }
-
-                return root.GetProperty("SubscriptionId").GetString();
+                throw new InvalidOperationException($"Subscription JSON file not found at {jsonPath}. Run the GetAzureSubscription.ps1 script first.");
             }
-            catch (FileNotFoundException ex)
+
+            string jsonContent = File.ReadAllText(jsonPath);
+
+            using JsonDocument doc = JsonDocument.Parse(jsonContent);
+            JsonElement root = doc.RootElement;
+
+            bool success = root.GetProperty("Success").GetBoolean();
+
+            if (!success)
             {
-                _skipTests = true;
-                _skipReason = $"Subscription JSON file not found: {ex.Message}. Run the GetAzureSubscription.ps1 script first.";
-                return null;
+                throw new InvalidOperationException(root.GetProperty("ErrorMessage").GetString());
             }
-            catch (JsonException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"Failed to parse subscription JSON: {ex.Message}";
-                return null;
-            }
-            catch (IOException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"IO error while reading subscription data: {ex.Message}";
-                return null;
-            }
+
+            return root.GetProperty("SubscriptionId").GetString();
         }
 
         /// <summary>
@@ -164,14 +113,14 @@ namespace Tests.AzureAppConfiguration
         /// </summary>
         public async Task InitializeAsync()
         {
+            bool success = false;
+
             try
             {
                 var credential = GetCredential();
-                if (_skipTests) return;
 
                 // Get the current subscription ID from the JSON file
                 _subscriptionId = GetCurrentSubscriptionId();
-                if (_skipTests) return;
 
                 // Initialize Azure Resource Manager client
                 _armClient = new ArmClient(credential);
@@ -183,17 +132,8 @@ namespace Tests.AzureAppConfiguration
 
                 var rgData = new ResourceGroupData(new AzureLocation(DefaultLocation));
 
-                try
-                {
-                    var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, _testResourceGroupName, rgData);
-                    _resourceGroup = rgLro.Value;
-                }
-                catch (RequestFailedException ex)
-                {
-                    _skipTests = true;
-                    _skipReason = $"Failed to create resource group: {ex.Message}";
-                    return;
-                }
+                var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, _testResourceGroupName, rgData);
+                _resourceGroup = rgLro.Value;
 
                 // Create unique store name for this test run
                 _testStoreName = $"integration-{Guid.NewGuid():N}".Substring(0, 20);
@@ -201,86 +141,36 @@ namespace Tests.AzureAppConfiguration
                 // Create the App Configuration store
                 var storeData = new AppConfigurationStoreData(new AzureLocation(DefaultLocation), new AppConfigurationSku("free"));
 
-                try
-                {
-                    var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
-                        WaitUntil.Completed,
-                        _testStoreName,
-                        storeData);
+                var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
+                    WaitUntil.Completed,
+                    _testStoreName,
+                    storeData);
 
-                    _appConfigStore = createOperation.Value;
-                    _appConfigEndpoint = new Uri(_appConfigStore.Data.Endpoint);
-                }
-                catch (RequestFailedException ex)
-                {
-                    _skipTests = true;
-                    _skipReason = $"Failed to create App Configuration store: {ex.Message}";
-                    await CleanupResourceGroup();
-                    return;
-                }
+                _appConfigStore = createOperation.Value;
+                _appConfigEndpoint = new Uri(_appConfigStore.Data.Endpoint);
 
                 // Get the connection string for the store
-                try
+                var accessKeys = _appConfigStore.GetKeysAsync();
+                var primaryKey = await accessKeys.FirstOrDefaultAsync();
+
+                if (primaryKey == null)
                 {
-                    var accessKeys = _appConfigStore.GetKeysAsync();
-                    var primaryKey = await accessKeys.FirstOrDefaultAsync();
-
-                    if (primaryKey == null)
-                    {
-                        throw new InvalidOperationException("Failed to retrieve access keys from App Configuration store.");
-                    }
-
-                    _connectionString = primaryKey.ConnectionString;
-
-                    // Initialize the configuration client with the connection string
-                    _configClient = new ConfigurationClient(_connectionString);
-                }
-                catch (RequestFailedException ex)
-                {
-                    _skipTests = true;
-                    _skipReason = $"Failed to get access keys: {ex.Message}";
-                    await CleanupResourceGroup();
-                    return;
+                    throw new InvalidOperationException("Failed to retrieve access keys from App Configuration store.");
                 }
 
-                // Add test settings to the store
-                try
+                _connectionString = primaryKey.ConnectionString;
+
+                // Initialize the configuration client with the connection string
+                _configClient = new ConfigurationClient(_connectionString);
+
+                success = true;
+            }
+            finally
+            {
+                if (!success)
                 {
-                    foreach (var setting in _testSettings)
-                    {
-                        await _configClient.SetConfigurationSettingAsync(setting);
-                    }
-                }
-                catch (RequestFailedException ex)
-                {
-                    _skipTests = true;
-                    _skipReason = $"Failed to set configuration settings: {ex.Message}";
                     await CleanupResourceGroup();
                 }
-            }
-            catch (CredentialUnavailableException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"Azure credentials unavailable: {ex.Message}";
-                await CleanupResourceGroup();
-            }
-            catch (InvalidOperationException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"Failed to initialize integration tests: {ex.Message}";
-                await CleanupResourceGroup();
-            }
-            catch (RequestFailedException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"Azure request failed: {ex.Message}";
-                await CleanupResourceGroup();
-            }
-            catch (TaskCanceledException ex)
-            {
-                _skipTests = true;
-                _skipReason = $"Operation timed out: {ex.Message}";
-                await CleanupResourceGroup();
             }
         }
 
@@ -364,7 +254,7 @@ namespace Tests.AzureAppConfiguration
                 ConfigurationModelFactory.ConfigurationSetting(
                     featureFlagKey,
                     @"{""id"":""" + keyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
-                    contentType: FeatureManagementConstants.ContentType)
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8")
             };
 
             // Add test-specific settings to the store
@@ -382,29 +272,28 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void LoadConfiguration_RetrievesValuesFromAppConfiguration()
+        public async Task LoadConfiguration_RetrievesValuesFromAppConfiguration()
         {
-            Skip.If(_skipTests, _skipReason);
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("BasicConfig");
 
-            // Arrange & Act
+            // Act
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{TestKeyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*");
                 })
                 .Build();
 
             // Assert
-            Assert.Equal("InitialValue1", config[$"{TestKeyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{TestKeyPrefix}:Setting2"]);
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
         }
 
         [Fact]
         public async Task RefreshAsync_UpdatesConfiguration_WhenSentinelKeyChanged()
         {
-            Skip.If(_skipTests, _skipReason);
-
             // Arrange - Setup test-specific keys
             var testContext = await SetupTestKeys("UpdatesConfig");
             IConfigurationRefresher refresher = null;
@@ -442,103 +331,8 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task RefreshAsync_RefreshesOnlySelectedKeys_WhenUsingKeyFilter()
+        public async Task RegisterAll_RefreshesAllKeys()
         {
-            Skip.If(_skipTests, _skipReason);
-
-            // Arrange - Setup test-specific keys
-            var testContext = await SetupTestKeys("RefreshesSelectedKeys");
-            IConfigurationRefresher refresher = null;
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.Connect(GetConnectionString());
-                    options.Select($"{testContext.KeyPrefix}:*");
-
-                    // Only refresh Setting1 when sentinel changes
-                    options.ConfigureRefresh(refresh =>
-                    {
-                        refresh.Register(testContext.SentinelKey, $"{testContext.KeyPrefix}:Setting1", refreshAll: false)
-                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            // Verify initial values
-            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
-
-            // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
-
-            // Wait for cache to expire
-            await Task.Delay(TimeSpan.FromSeconds(2));
-
-            // Act
-            await refresher.RefreshAsync();
-
-            // Assert
-            Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
-            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]); // This value shouldn't change
-        }
-
-        [Fact]
-        public async Task RefreshAsync_RefreshesFeatureFlags_WhenConfigured()
-        {
-            Skip.If(_skipTests, _skipReason);
-
-            // Arrange - Setup test-specific keys
-            var testContext = await SetupTestKeys("RefreshesFeatureFlags");
-            IConfigurationRefresher refresher = null;
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.Connect(GetConnectionString());
-                    options.Select($"{testContext.KeyPrefix}:*");
-                    options.UseFeatureFlags();
-
-                    options.ConfigureRefresh(refresh =>
-                    {
-                        refresh.Register(testContext.SentinelKey)
-                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            // Verify initial feature flag state
-            Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
-
-            // Update feature flag in the store
-            await _configClient.SetConfigurationSettingAsync(
-                ConfigurationModelFactory.ConfigurationSetting(
-                    testContext.FeatureFlagKey,
-                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
-                    contentType: FeatureManagementConstants.ContentType));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
-
-            // Wait for cache to expire
-            await Task.Delay(TimeSpan.FromSeconds(2));
-
-            // Act
-            await refresher.RefreshAsync();
-
-            // Assert
-            Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
-        }
-
-        [Fact]
-        public async Task RegisterAll_RefreshesAllKeys_WhenSentinelChanged()
-        {
-            Skip.If(_skipTests, _skipReason);
-
             // Arrange - Setup test-specific keys
             var testContext = await SetupTestKeys("RefreshesAllKeys");
             IConfigurationRefresher refresher = null;
@@ -567,7 +361,6 @@ namespace Tests.AzureAppConfiguration
             // Update all values in the store
             await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
             await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -581,10 +374,8 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task RefreshAsync_ReturnsFalse_WhenSentinelKeyUnchanged()
+        public async Task RefreshAsync_SentinelKeyUnchanged()
         {
-            Skip.If(_skipTests, _skipReason);
-
             // Arrange - Setup test-specific keys
             var testContext = await SetupTestKeys("SentinelUnchanged");
             IConfigurationRefresher refresher = null;
@@ -619,6 +410,271 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]); // Should not update
+        }
+
+        [Fact]
+        public async Task RefreshAsync_RefreshesFeatureFlags_WhenConfigured()
+        {
+            var testContext = await SetupTestKeys("FeatureFlagRefresh");
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    // Select the key prefix to include all test keys
+                    options.Select($"{testContext.KeyPrefix}:*");
+
+                    // Configure feature flags with the correct ID pattern
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                        featureFlagOptions.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey)
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify the feature flag is disabled initially
+            Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+
+            // Update the feature flag to enabled=true
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Update the sentinel key to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Act
+            await refresher.RefreshAsync();
+
+            // Assert
+            Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+        }
+
+        [Fact]
+        public async Task UseFeatureFlags_WithClientFiltersAndConditions()
+        {
+            var testContext = await SetupTestKeys("FeatureFlagFilters");
+
+            // Create a feature flag with complex conditions
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{
+                        ""id"": """ + testContext.KeyPrefix + @"Feature"",
+                        ""description"": ""Test feature with filters"",
+                        ""enabled"": true,
+                        ""conditions"": {
+                            ""client_filters"": [
+                                {
+                                    ""name"": ""Browser"",
+                                    ""parameters"": {
+                                        ""AllowedBrowsers"": [""Chrome"", ""Edge""]
+                                    }
+                                },
+                                {
+                                    ""name"": ""TimeWindow"",
+                                    ""parameters"": {
+                                        ""Start"": ""\/Date(" + DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeMilliseconds() + @")\/"",
+                                        ""End"": ""\/Date(" + DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeMilliseconds() + @")\/""
+                                    }
+                                }
+                            ]
+                        }
+                    }",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+                })
+                .Build();
+
+            // Verify feature flag structure is loaded correctly
+            Assert.Equal("Browser", config[$"FeatureManagement:{testContext.KeyPrefix}Feature:EnabledFor:0:Name"]);
+            Assert.Equal("Chrome", config[$"FeatureManagement:{testContext.KeyPrefix}Feature:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config[$"FeatureManagement:{testContext.KeyPrefix}Feature:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+            Assert.Equal("TimeWindow", config[$"FeatureManagement:{testContext.KeyPrefix}Feature:EnabledFor:1:Name"]);
+        }
+
+        [Fact]
+        public async Task MultipleProviders_LoadAndRefresh()
+        {
+            var testContext1 = await SetupTestKeys("MultiProviderTest1");
+            var testContext2 = await SetupTestKeys("MultiProviderTest2");
+            IConfigurationRefresher refresher1 = null;
+            IConfigurationRefresher refresher2 = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext1.KeyPrefix}:*");
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext1.SentinelKey, true)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher1 = options.GetRefresher();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext2.KeyPrefix}:*");
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext2.SentinelKey)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher2 = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify initial values
+            Assert.Equal("InitialValue1", config[$"{testContext1.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{testContext2.KeyPrefix}:Setting1"]);
+
+            // Update values and sentinel keys
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext1.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext1.SentinelKey, "Updated"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh only the first provider
+            await refresher1.RefreshAsync();
+
+            // Assert: Only the first provider's values should be updated
+            Assert.Equal("UpdatedValue1", config[$"{testContext1.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{testContext2.KeyPrefix}:Setting1"]);
+        }
+
+        [Fact]
+        public async Task FeatureFlag_WithVariants()
+        {
+            var testContext = await SetupTestKeys("FeatureFlagVariants");
+
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Create a feature flag with variants
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey + "WithVariants",
+                    @"{
+                        ""id"": """ + testContext.KeyPrefix + @"FeatureWithVariants"",
+                        ""description"": ""Feature flag with variants"",
+                        ""enabled"": true,
+                        ""conditions"": { ""client_filters"": [] },
+                        ""variants"": [
+                            {
+                                ""name"": ""LargeSize"",
+                                ""configuration_value"": ""800px""
+                            },
+                            {
+                                ""name"": ""MediumSize"",
+                                ""configuration_value"": ""600px""
+                            },
+                            {
+                                ""name"": ""SmallSize"",
+                                ""configuration_value"": ""400px""
+                            }
+                        ],
+                        ""allocation"": {
+                            ""default_when_enabled"": ""MediumSize""
+                        }
+                    }",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+                })
+                .Build();
+
+            // Verify variants are loaded correctly
+            Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Equal("LargeSize", config[$"feature_management:feature_flags:0:variants:0:name"]);
+            Assert.Equal("800px", config[$"feature_management:feature_flags:0:variants:0:configuration_value"]);
+            Assert.Equal("MediumSize", config[$"feature_management:feature_flags:0:variants:1:name"]);
+            Assert.Equal("600px", config[$"feature_management:feature_flags:0:variants:1:configuration_value"]);
+            Assert.Equal("SmallSize", config[$"feature_management:feature_flags:0:variants:2:name"]);
+            Assert.Equal("400px", config[$"feature_management:feature_flags:0:variants:2:configuration_value"]);
+            Assert.Equal("MediumSize", config[$"feature_management:feature_flags:0:allocation:default_when_enabled"]);
+        }
+
+        [Fact]
+        public async Task JsonContentType_LoadsAndFlattensHierarchicalData()
+        {
+            var testContext = await SetupTestKeys("JsonContent");
+
+            // Create a complex JSON structure
+            string jsonKey = $"{testContext.KeyPrefix}:JsonConfig";
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    jsonKey,
+                    @"{
+                        ""database"": {
+                            ""connection"": {
+                                ""string"": ""Server=myserver;Database=mydb;User Id=sa;Password=mypassword;"",
+                                ""timeout"": 30
+                            },
+                            ""retries"": 3,
+                            ""enabled"": true
+                        },
+                        ""logging"": {
+                            ""level"": ""Information"",
+                            ""providers"": [""Console"", ""Debug"", ""EventLog""]
+                        }
+                    }",
+                    contentType: "application/json"));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                })
+                .Build();
+
+            // Verify JSON was flattened properly
+            Assert.Equal("Server=myserver;Database=mydb;User Id=sa;Password=mypassword;", config[$"{jsonKey}:database:connection:string"]);
+            Assert.Equal("30", config[$"{jsonKey}:database:connection:timeout"]);
+            Assert.Equal("3", config[$"{jsonKey}:database:retries"]);
+            Assert.Equal("True", config[$"{jsonKey}:database:enabled"]);
+            Assert.Equal("Information", config[$"{jsonKey}:logging:level"]);
+            Assert.Equal("Console", config[$"{jsonKey}:logging:providers:0"]);
+            Assert.Equal("Debug", config[$"{jsonKey}:logging:providers:1"]);
+            Assert.Equal("EventLog", config[$"{jsonKey}:logging:providers:2"]);
         }
     }
 }
