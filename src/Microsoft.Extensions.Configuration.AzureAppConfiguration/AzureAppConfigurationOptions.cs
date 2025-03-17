@@ -228,7 +228,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
                     {
-                        throw new ArgumentException($"Tag '{tag}' does not follow the format \"tag=value\" or \"tag=\".", nameof(tagsFilter));
+                        throw new ArgumentException($"Tag '{tag}' does not follow the format \"tag=value\".", nameof(tagsFilter));
                     }
                 }
             }
