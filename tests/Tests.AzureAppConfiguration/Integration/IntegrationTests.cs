@@ -2,7 +2,6 @@ using Azure;
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
-using Azure.Messaging.EventGrid.SystemEvents;
 using Azure.ResourceManager;
 using Azure.ResourceManager.AppConfiguration;
 using Azure.ResourceManager.AppConfiguration.Models;
@@ -36,7 +35,7 @@ namespace Tests.AzureAppConfiguration
         private const string SubscriptionJsonPath = "appsettings.Secrets.json";
 
         // Resource tagging and cleanup constants
-        private const string ResourceGroupNamePrefix = "appconfig-test-";
+        private const string ResourceGroupNamePrefix = "appconfig-dotnetprovider-test-";
         private const string StoreNamePrefix = "integration-";
         private const string TestResourceTag = "TestResource";
         private const string CreatedByTag = "CreatedBy";
@@ -127,46 +126,81 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Creates a dictionary of resource tags for identifying test resources
+        /// Generates a deterministic resource group name based on machine information
         /// </summary>
-        private IDictionary<string, string> CreateResourceTags()
+        private string GetDeterministicResourceGroupName()
         {
-            return new Dictionary<string, string>
-            {
-                { TestResourceTag, "true" },
-                { CreatedByTag, "IntegrationTests" }
-            };
+            string machineName = Environment.MachineName.ToLowerInvariant();
+            string machineHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.Create()
+                .ComputeHash(System.Text.Encoding.UTF8.GetBytes(machineName)))
+                .Replace("/", "-").Replace("+", "-").Replace("=", "").Substring(0, 8);
+
+            return $"{ResourceGroupNamePrefix}{machineHash}";
         }
 
         /// <summary>
-        /// Cleans up stale test resources from previous test runs
+        /// Cleans up only stale App Configuration stores, not resource groups
         /// </summary>
-        private async Task CleanupStaleResources()
+        private async Task CleanupStaleStores()
         {
+            if (_resourceGroup == null) return;
+
             try
             {
-                Console.WriteLine("Checking for leftover test resources...");
+                var stores = _resourceGroup.GetAppConfigurationStores();
+                var staleTime = DateTime.UtcNow.AddHours(-StaleResourceThresholdHours);
 
-                // Use the updated cleanup utility that removes all test resources regardless of age
-                var cleanupUtility = new AzureResourceCleanupUtility(
-                    _armClient,
-                    _subscriptionId,
-                    ResourceGroupNamePrefix,
-                    TestResourceTag);
+                await foreach (var store in stores.GetAllAsync())
+                {
+                    // Only delete stores that:
+                    // 1. Start with our test prefix
+                    // 2. Have the TestResourceTag
+                    // 3. Are older than the threshold
+                    if (!store.Data.Name.StartsWith(StoreNamePrefix) ||
+                        !store.Data.Tags.ContainsKey(TestResourceTag))
+                    {
+                        continue;
+                    }
 
-                // Run the cleanup with console logging
-                await cleanupUtility.CleanupStaleResources(
-                    dryRun: false,
-                    progressCallback: message => Console.WriteLine(message));
+                    // Check if the store is a temporary test store
+                    if (store.Data.Tags.ContainsKey("TemporaryStore") &&
+                        store.Data.Tags["TemporaryStore"] == "true")
+                    {
+                        // If it has a creation time tag, check if it's stale
+                        if (store.Data.Tags.TryGetValue("CreatedOn", out string createdOnStr) &&
+                            DateTime.TryParse(createdOnStr, out DateTime createdOn))
+                        {
+                            if (createdOn < staleTime)
+                            {
+                                await store.DeleteAsync(WaitUntil.Started);
+                            }
+                        }
+                        else
+                        {
+                            // If no creation time or it can't be parsed, use a heuristic
+                            // based on the timestamp in the name
+                            string name = store.Data.Name;
+                            if (name.Length > StoreNamePrefix.Length + 12) // yyyyMMddHHmm format is 12 chars
+                            {
+                                string timeStampPart = name.Substring(StoreNamePrefix.Length, 12);
+                                if (DateTime.TryParseExact(timeStampPart, "yyyyMMddHHmm",
+                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    System.Globalization.DateTimeStyles.None, out DateTime timestamp))
+                                {
+                                    if (timestamp < staleTime)
+                                    {
+                                        await store.DeleteAsync(WaitUntil.Started);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            catch (Exception ex) when (
-                ex is RequestFailedException ||
-                ex is InvalidOperationException ||
-                ex is TaskCanceledException ||
-                ex is UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                // Log but don't fail the test run
-                Console.WriteLine($"Error during test resource cleanup: {ex.Message}");
+                Console.WriteLine($"Error during stale store cleanup: {ex.Message}");
             }
         }
 
@@ -187,23 +221,41 @@ namespace Tests.AzureAppConfiguration
                 // Initialize Azure Resource Manager client
                 _armClient = new ArmClient(credential);
 
-                // Clean up any stale resources before creating new ones
-                await CleanupStaleResources();
+                _testResourceGroupName = GetDeterministicResourceGroupName();
 
                 SubscriptionResource subscription = _armClient.GetSubscriptions().Get(_subscriptionId);
 
-                // Create a temporary resource group for this test run with timestamp and tags
-                _testResourceGroupName = GenerateTimestampedResourceName(ResourceGroupNamePrefix);
-
-                var rgData = new ResourceGroupData(new AzureLocation(DefaultLocation));
-                // Add tags for resource identification
-                foreach (var tag in CreateResourceTags())
+                // Check if the resource group already exists
+                bool resourceGroupExists = false;
+                try
                 {
-                    rgData.Tags.Add(tag.Key, tag.Value);
+                    _resourceGroup = subscription.GetResourceGroup(_testResourceGroupName);
+                    // If we get here, the resource group exists
+                    resourceGroupExists = true;
+                }
+                catch (RequestFailedException ex) when (ex.Status == 404)
+                {
+                    // Resource group doesn't exist, we'll create it
+                    resourceGroupExists = false;
                 }
 
-                var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(WaitUntil.Completed, _testResourceGroupName, rgData);
-                _resourceGroup = rgLro.Value;
+                // Create the resource group if it doesn't exist
+                if (!resourceGroupExists)
+                {
+                    var rgData = new ResourceGroupData(new AzureLocation(DefaultLocation));
+
+                    // Add tags to identify this as a persistent test resource group
+                    rgData.Tags.Add("PersistentTestResource", "true");
+                    rgData.Tags.Add(CreatedByTag, "IntegrationTests");
+                    rgData.Tags.Add("CreatedOn", DateTime.UtcNow.ToString("o"));
+
+                    var rgLro = await subscription.GetResourceGroups().CreateOrUpdateAsync(
+                        WaitUntil.Completed, _testResourceGroupName, rgData);
+                    _resourceGroup = rgLro.Value;
+                }
+
+                // Clean up any stale resources before creating new ones
+                await CleanupStaleStores();
 
                 // Create unique store name for this test run with timestamp
                 _testStoreName = GenerateTimestampedResourceName(StoreNamePrefix);
@@ -211,11 +263,9 @@ namespace Tests.AzureAppConfiguration
                 // Create the App Configuration store
                 var storeData = new AppConfigurationStoreData(new AzureLocation(DefaultLocation), new AppConfigurationSku("free"));
 
-                // Add the same tags to the store
-                foreach (var tag in CreateResourceTags())
-                {
-                    storeData.Tags.Add(tag.Key, tag.Value);
-                }
+                storeData.Tags.Add(TestResourceTag, "true");
+                storeData.Tags.Add(CreatedByTag, "IntegrationTests");
+                storeData.Tags.Add("TemporaryStore", "true");
 
                 var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
                     WaitUntil.Completed,
@@ -245,53 +295,42 @@ namespace Tests.AzureAppConfiguration
             {
                 if (!success)
                 {
-                    await CleanupResourceGroup();
+                    await CleanupAppConfigurationStore();
                 }
             }
         }
 
         /// <summary>
-        /// Helper method to clean up the resource group if initialization fails
+        /// Deletes only the App Configuration store, not the resource group
         /// </summary>
-        private async Task CleanupResourceGroup()
+        private async Task CleanupAppConfigurationStore()
         {
-            if (_resourceGroup != null)
+            if (_appConfigStore != null)
             {
-                await _resourceGroup.DeleteAsync(WaitUntil.Completed);
-                _resourceGroup = null;
+                try
+                {
+                    Console.WriteLine($"Cleaning up test store: {_testStoreName}");
+                    await _appConfigStore.DeleteAsync(WaitUntil.Completed);
+                    _appConfigStore = null;
+                    Console.WriteLine("App Configuration store cleanup completed successfully");
+                }
+                catch (Exception ex) when (
+                    ex is RequestFailedException ||
+                    ex is InvalidOperationException ||
+                    ex is TaskCanceledException)
+                {
+                    Console.WriteLine($"Store cleanup failed: {ex.Message}.");
+                }
             }
         }
 
-        /// <summary>
-        /// Cleans up the temporary App Configuration store after tests are complete.
-        /// </summary>
         public async Task DisposeAsync()
         {
-            // Don't attempt cleanup if we don't have a resource group to delete
-            if (_resourceGroup == null)
-            {
-                return;
-            }
+            await CleanupAppConfigurationStore();
 
             try
             {
-                Console.WriteLine($"Cleaning up test resources: Store={_testStoreName}, ResourceGroup={_testResourceGroupName}");
-                await _resourceGroup.DeleteAsync(WaitUntil.Completed);
-                _resourceGroup = null;
-                Console.WriteLine("Resource cleanup completed successfully");
-            }
-            catch (Exception ex) when (
-                ex is RequestFailedException ||
-                ex is InvalidOperationException ||
-                ex is TaskCanceledException)
-            {
-                Console.WriteLine($"Test cleanup failed: {ex.Message}.");
-            }
-
-            // Try to clean up any other stale resources that might exist from failed previous runs
-            try
-            {
-                await CleanupStaleResources();
+                await CleanupStaleStores();
             }
             catch (Exception ex) when (
                 ex is RequestFailedException ||
@@ -299,7 +338,7 @@ namespace Tests.AzureAppConfiguration
                 ex is TaskCanceledException ||
                 ex is UnauthorizedAccessException)
             {
-                Console.WriteLine($"Error during final stale resource cleanup: {ex.Message}");
+                Console.WriteLine($"Error during stale store cleanup: {ex.Message}");
             }
         }
 
