@@ -792,9 +792,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
-                    foreach (string tagFilter in loadOption.TagsFilter)
+                    if (loadOption.TagsFilter != null)
                     {
-                        selector.TagsFilter.Add(tagFilter);
+                        foreach (string tagFilter in loadOption.TagsFilter)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
                     }
 
                     var matchConditions = new List<MatchConditions>();

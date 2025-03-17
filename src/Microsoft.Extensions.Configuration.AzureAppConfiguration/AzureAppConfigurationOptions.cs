@@ -202,6 +202,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The tag filter to apply when querying Azure App Configuration for key-values. By default no tags will be used.
         /// Each tag provided must follow the format "tag=value". A key-value will only be returned if its tags match all tags provided
         /// in the filter, or if the filter is empty.
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
         /// </param>
         public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagsFilter = null)
         {
@@ -219,6 +220,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (string.IsNullOrWhiteSpace(labelFilter))
             {
                 labelFilter = LabelFilter.Null;
+            }
+
+            if (tagsFilter != null)
+            {
+                foreach (var tag in tagsFilter)
+                {
+                    if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
+                    {
+                        throw new ArgumentException($"Tag '{tag}' does not follow the format \"tag=value\" or \"tag=\".", nameof(tagsFilter));
+                    }
+                }
             }
 
             if (!_selectCalled)
