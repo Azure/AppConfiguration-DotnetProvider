@@ -23,14 +23,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string LabelFilter { get; set; }
 
         /// <summary>
-        /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
-        /// </summary>
-        public IEnumerable<string> TagsFilter { get; set; }
-
-        /// <summary>
         /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.
         /// </summary>
         public string SnapshotName { get; set; }
+
+        /// <summary>
+        /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
+        /// </summary>
+        public IEnumerable<string> TagsFilter { get; set; }
 
         /// <summary>
         /// A boolean that signifies whether this selector is intended to select feature flags.
