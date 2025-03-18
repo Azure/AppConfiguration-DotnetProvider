@@ -5,6 +5,7 @@ using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace Tests.AzureAppConfiguration
     public class TagsFilterTests
     {
         private List<ConfigurationSetting> _kvCollection;
+        private List<ConfigurationSetting> _ffCollection;
 
         public TagsFilterTests()
         {
@@ -37,6 +39,24 @@ namespace Tests.AzureAppConfiguration
                     new Dictionary<string, string> { { "Special:Tag", "Value:With:Colons" }, { "Tag@With@At", "Value@With@At" } }),
 
                 CreateConfigurationSetting("TestKey6", "label", "TestValue6", "bb203f2b-c113-44fc-995d-b933c2143342",
+                    new Dictionary<string, string> { { "Tag,With,Commas", "Value,With,Commas" }, { "Simple", "Tag" } }),
+
+                CreateFeatureFlagSetting("Feature1", "label", true, "0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63",
+                    new Dictionary<string, string> { { "Environment", "Development" }, { "App", "TestApp" } }),
+
+                CreateFeatureFlagSetting("Feature2", "label", false, "31c38369-831f-4bf1-b9ad-79db56c8b989",
+                    new Dictionary<string, string> { { "Environment", "Production" }, { "App", "TestApp" } }),
+
+                CreateFeatureFlagSetting("Feature3", "label", true, "bb203f2b-c113-44fc-995d-b933c2143339",
+                    new Dictionary<string, string> { { "Environment", "Development" }, { "Component", "API" } }),
+
+                CreateFeatureFlagSetting("Feature4", "label", false, "bb203f2b-c113-44fc-995d-b933c2143340",
+                    new Dictionary<string, string> { { "Environment", "Staging" }, { "App", "TestApp" }, { "Component", "Frontend" } }),
+
+                CreateFeatureFlagSetting("Feature5", "label", true, "bb203f2b-c113-44fc-995d-b933c2143341",
+                    new Dictionary<string, string> { { "Special:Tag", "Value:With:Colons" }, { "Tag@With@At", "Value@With@At" } }),
+
+                CreateFeatureFlagSetting("Feature6", "label", false, "bb203f2b-c113-44fc-995d-b933c2143342",
                     new Dictionary<string, string> { { "Tag,With,Commas", "Value,With,Commas" }, { "Simple", "Tag" } })
             };
         }
@@ -50,6 +70,38 @@ namespace Tests.AzureAppConfiguration
                 value: value,
                 eTag: new ETag(etag),
                 contentType: "text");
+
+            // Add tags to the setting
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    setting.Tags.Add(tag.Key, tag.Value);
+                }
+            }
+
+            return setting;
+        }
+
+        private ConfigurationSetting CreateFeatureFlagSetting(string featureId, string label, bool enabled, string etag, IDictionary<string, string> tags)
+        {
+            string jsonValue = $@"
+            {{
+                ""id"": ""{featureId}"",
+                ""description"": ""Test feature flag"",
+                ""enabled"": {enabled.ToString().ToLowerInvariant()},
+                ""conditions"": {{
+                    ""client_filters"": []
+                }}
+            }}";
+
+            // Create the feature flag setting
+            var setting = ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + featureId,
+                label: label,
+                value: jsonValue,
+                eTag: new ETag(etag),
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8");
 
             // Add tags to the setting
             if (tags != null)
@@ -80,6 +132,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select(KeyFilter.Any, "label", new List<string> { "Environment=Development" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "Environment=Development" });
+                    });
                 })
                 .Build();
 
@@ -90,6 +146,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey4"]);
             Assert.Null(config["TestKey5"]);
             Assert.Null(config["TestKey6"]);
+
+            Assert.NotNull(config["FeatureManagement:Feature1"]);
+            Assert.NotNull(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
         }
 
         [Fact]
@@ -111,6 +174,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select(KeyFilter.Any, "label", new List<string> { "App=TestApp", "Environment=" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "App=TestApp", "Environment=" });
+                    });
                 })
                 .Build();
 
@@ -121,6 +188,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey3"]);  // Has Environment tag but not App=TestApp
             Assert.Null(config["TestKey5"]);
             Assert.Null(config["TestKey6"]);
+
+            Assert.NotNull(config["FeatureManagement:Feature1"]);
+            Assert.NotNull(config["FeatureManagement:Feature2"]);
+            Assert.NotNull(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
         }
 
         [Fact]
@@ -151,12 +225,12 @@ namespace Tests.AzureAppConfiguration
 
             // Setup mock to verify that all three filters (key, label, tags) are correctly applied together
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s =>
-                s.KeyFilter == "TestKey*" &&
+                (s.KeyFilter == "TestKey*" || s.KeyFilter == FeatureManagementConstants.FeatureFlagMarker + "Feature1") &&
                 s.LabelFilter == "label" &&
                 s.TagsFilter.Contains("Environment=Development")),
                 It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
-                    kv.Key.StartsWith("TestKey") &&
+                    (kv.Key.StartsWith("TestKey") || kv.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker + "Feature1")) &&
                     kv.Label == "label" &&
                     kv.Tags.ContainsKey("Environment") &&
                     kv.Tags["Environment"] == "Development")));
@@ -166,6 +240,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label", new List<string> { "Environment=Development" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select("Feature1", "label", new List<string> { "Environment=Development" });
+                    });
                 })
                 .Build();
 
@@ -176,6 +254,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey4"]);
             Assert.Null(config["TestKey5"]);
             Assert.Null(config["TestKey6"]);
+
+            Assert.NotNull(config["FeatureManagement:Feature1"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
         }
 
         [Fact]
@@ -195,6 +280,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select(KeyFilter.Any, "label", new List<string>());
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string>());
+                    });
                 })
                 .Build();
 
@@ -204,6 +293,14 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue3", config["TestKey3"]);
             Assert.Equal("TestValue4", config["TestKey4"]);
             Assert.Equal("TestValue5", config["TestKey5"]);
+            Assert.Equal("TestValue6", config["TestKey6"]);
+
+            Assert.NotNull(config["FeatureManagement:Feature1"]);
+            Assert.NotNull(config["FeatureManagement:Feature2"]);
+            Assert.NotNull(config["FeatureManagement:Feature3"]);
+            Assert.NotNull(config["FeatureManagement:Feature4"]);
+            Assert.NotNull(config["FeatureManagement:Feature5"]);
+            Assert.NotNull(config["FeatureManagement:Feature6"]);
         }
 
         [Fact]
@@ -224,6 +321,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select(KeyFilter.Any, "label", new List<string> { "Special:Tag=Value:With:Colons" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "Special:Tag=Value:With:Colons" });
+                    });
                 })
                 .Build();
 
@@ -234,6 +335,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey3"]);
             Assert.Null(config["TestKey4"]);
             Assert.Null(config["TestKey6"]);
+
+            Assert.NotNull(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature1"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
         }
 
         [Fact]
@@ -254,6 +362,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select(KeyFilter.Any, "label", new List<string> { @"Tag\,With\,Commas=Value\,With\,Commas" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string> { @"Tag\,With\,Commas=Value\,With\,Commas" });
+                    });
                 })
                 .Build();
 
@@ -264,6 +376,13 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["TestKey3"]);
             Assert.Null(config["TestKey4"]);
             Assert.Null(config["TestKey5"]);
+
+            Assert.NotNull(config["FeatureManagement:Feature6"]);
+            Assert.Null(config["FeatureManagement:Feature1"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
         }
     }
 }
