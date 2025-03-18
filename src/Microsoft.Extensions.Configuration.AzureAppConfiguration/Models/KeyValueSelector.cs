@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -48,7 +49,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 return KeyFilter == selector.KeyFilter
                     && LabelFilter == selector.LabelFilter
                     && SnapshotName == selector.SnapshotName
-                    && TagsFilter == selector.TagsFilter;
+                    && (TagsFilter?.SequenceEqual(selector.TagsFilter) ?? selector.TagsFilter == null);
             }
 
             return false;
