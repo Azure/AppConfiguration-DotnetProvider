@@ -76,7 +76,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// </param>
         /// <param name="tagsFilter">
         /// The tag filter to apply when querying Azure App Configuration for key-values. By default no tags will be used.
-        /// Each tag provided must follow the format "tag=value". A key-value will only be returned if its tags match all tags provided
+        /// Each tag provided must follow the format "tag=value". A key-value will only be returned if its tags contain all tags provided
         /// in the filter, or if the filter is empty.
         /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
         /// </param>
