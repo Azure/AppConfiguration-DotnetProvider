@@ -39,7 +39,7 @@ namespace Tests.AzureAppConfiguration
         private const string StoreNamePrefix = "integration-";
         private const string TestResourceTag = "TestResource";
         private const string CreatedByTag = "CreatedBy";
-        private const int StaleResourceThresholdHours = 24; // Resources older than this are considered stale
+        private const int StaleResourceThresholdHours = 3; // Resources older than this are considered stale
 
         /// <summary>
         /// Class to hold test-specific key information
@@ -831,7 +831,7 @@ namespace Tests.AzureAppConfiguration
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(testContext.SentinelKey)
+                        refresh.Register(testContext.SentinelKey, true)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     options.UseFeatureFlags(featureFlagOptions =>
@@ -851,7 +851,7 @@ namespace Tests.AzureAppConfiguration
                     options.Connect(GetConnectionString());
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(testContext.SentinelKey)
+                        refresh.Register(testContext.SentinelKey, true)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     options.Select($"{testContext.KeyPrefix}:*");
@@ -877,7 +877,7 @@ namespace Tests.AzureAppConfiguration
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(testContext.SentinelKey)
+                        refresh.Register(testContext.SentinelKey, true)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
 
@@ -897,7 +897,7 @@ namespace Tests.AzureAppConfiguration
                     });
                     options.ConfigureRefresh(refresh =>
                     {
-                        refresh.Register(testContext.SentinelKey)
+                        refresh.Register(testContext.SentinelKey, true)
                               .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     options.Select($"{testContext.KeyPrefix}:*");
