@@ -118,6 +118,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (options.RegisterAllEnabled)
             {
+                if (options.KvCollectionRefreshInterval <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException(
+                        $"{nameof(options.KvCollectionRefreshInterval)} must be greater than zero seconds when using RegisterAll for refresh",
+                        nameof(options));
+                }
+
                 MinRefreshInterval = TimeSpan.FromTicks(Math.Min(minWatcherRefreshInterval.Ticks, options.KvCollectionRefreshInterval.Ticks));
             }
             else if (hasWatchers)
@@ -206,7 +213,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     var utcNow = DateTimeOffset.UtcNow;
                     IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers = _options.IndividualKvWatchers.Where(kvWatcher => utcNow >= kvWatcher.NextRefreshTime);
                     IEnumerable<KeyValueWatcher> refreshableFfWatchers = _options.FeatureFlagWatchers.Where(ffWatcher => utcNow >= ffWatcher.NextRefreshTime);
-                    bool isRefreshDue = utcNow >= _nextCollectionRefreshTime;
+                    bool isRefreshDue = _options.RegisterAllEnabled && utcNow >= _nextCollectionRefreshTime;
 
                     // Skip refresh if mappedData is loaded, but none of the watchers or adapters are refreshable.
                     if (_mappedData != null &&
@@ -219,6 +226,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
 
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+
+                    if (_requestTracingOptions != null)
+                    {
+                        _requestTracingOptions.ReplicaCount = clients.Count() - 1;
+                    }
 
                     //
                     // Filter clients based on their backoff status
@@ -407,7 +419,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }
 
-                    if (isRefreshDue)
+                    if (_options.RegisterAllEnabled && isRefreshDue)
                     {
                         _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
                     }
@@ -543,6 +555,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (_configClientManager.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
             {
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.IsPushRefreshUsed = true;
+                }
+
                 SetDirty(maxDelay);
             }
             else
@@ -618,6 +635,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 while (true)
                 {
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+
+                    if (_requestTracingOptions != null)
+                    {
+                        _requestTracingOptions.ReplicaCount = clients.Count() - 1;
+                    }
 
                     if (await TryInitializeAsync(clients, startupExceptions, cancellationToken).ConfigureAwait(false))
                     {
@@ -810,8 +832,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             using Response response = page.GetRawResponse();
 
-                            ETag serverEtag = (ETag)response.Headers.ETag;
-
                             foreach (ConfigurationSetting setting in page.Values)
                             {
                                 data[setting.Key] = setting;
@@ -822,7 +842,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
                             }
 
-                            matchConditions.Add(new MatchConditions { IfNoneMatch = serverEtag });
+                            // The ETag will never be null here because it's not a conditional request
+                            // Each successful response should have 200 status code and an ETag
+                            matchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
                         }
                     }).ConfigureAwait(false);
 
@@ -1038,7 +1060,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsDevEnvironment = TracingUtils.IsDevEnvironment(),
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
-                ReplicaCount = _options.Endpoints?.Count() - 1 ?? _options.ConnectionStrings?.Count() - 1 ?? 0,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
                 IsLoadBalancingEnabled = _options.LoadBalancingEnabled
             };
@@ -1196,6 +1217,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
+            TaskCanceledException tce = ex.InnerExceptions?.LastOrDefault(e => e is TaskCanceledException) as TaskCanceledException;
+
+            if (tce != null && tce.InnerException is TimeoutException)
+            {
+                return true;
+            }
+
             RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
             return rfe != null ? IsFailOverable(rfe) : false;
