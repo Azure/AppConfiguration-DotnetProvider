@@ -164,36 +164,35 @@ namespace Tests.AzureAppConfiguration
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s =>
                 s.TagsFilter.Contains("App=TestApp") &&
-                s.TagsFilter.Contains("Environment=")),
+                s.TagsFilter.Contains("Environment=Development")),
                 It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("App") && kv.Tags["App"] == "TestApp" &&
-                    kv.Tags.ContainsKey("Environment"))));
+                    kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select(KeyFilter.Any, "label", new List<string> { "App=TestApp", "Environment=" });
+                    options.Select(KeyFilter.Any, "label", new List<string> { "App=TestApp", "Environment=Development" });
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.Select(KeyFilter.Any, "label", new List<string> { "App=TestApp", "Environment=" });
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "App=TestApp", "Environment=Development" });
                     });
                 })
                 .Build();
 
-            // TestKey1, TestKey2, and TestKey4 have App=TestApp tag and have Environment tag
             Assert.Equal("TestValue1", config["TestKey1"]);
-            Assert.Equal("TestValue2", config["TestKey2"]);
-            Assert.Equal("TestValue4", config["TestKey4"]);
-            Assert.Null(config["TestKey3"]);  // Has Environment tag but not App=TestApp
+            Assert.Null(config["TestKey2"]);
+            Assert.Null(config["TestKey3"]);
+            Assert.Null(config["TestKey4"]);
             Assert.Null(config["TestKey5"]);
             Assert.Null(config["TestKey6"]);
 
             Assert.NotNull(config["FeatureManagement:Feature1"]);
-            Assert.NotNull(config["FeatureManagement:Feature2"]);
-            Assert.NotNull(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
             Assert.Null(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
             Assert.Null(config["FeatureManagement:Feature5"]);
             Assert.Null(config["FeatureManagement:Feature6"]);
         }
