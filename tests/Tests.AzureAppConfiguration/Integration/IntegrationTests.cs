@@ -791,5 +791,180 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Debug", config[$"{jsonKey}:logging:providers:1"]);
             Assert.Equal("EventLog", config[$"{jsonKey}:logging:providers:2"]);
         }
+
+        [Fact]
+        public async Task MethodOrderingDoesNotAffectConfiguration()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("MethodOrdering");
+
+            // Add an additional feature flag for testing
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey + "_Ordering",
+                    @"{
+                        ""id"": """ + testContext.KeyPrefix + @"FeatureOrdering"",
+                        ""description"": ""Test feature for ordering"",
+                        ""enabled"": true,
+                        ""conditions"": {
+                            ""client_filters"": []
+                        }
+                    }",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Add a section-based setting
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{testContext.KeyPrefix}:Section1:Setting1", "SectionValue1"));
+
+            // Create four different configurations with different method orderings
+            var configurations = new List<IConfiguration>();
+            IConfigurationRefresher refresher1 = null;
+            IConfigurationRefresher refresher2 = null;
+            IConfigurationRefresher refresher3 = null;
+            IConfigurationRefresher refresher4 = null;
+
+            // Configuration 1: Select -> ConfigureRefresh -> UseFeatureFlags
+            var config1 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+
+                    refresher1 = options.GetRefresher();
+                })
+                .Build();
+            configurations.Add(config1);
+
+            // Configuration 2: ConfigureRefresh -> Select -> UseFeatureFlags
+            var config2 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+
+                    refresher2 = options.GetRefresher();
+                })
+                .Build();
+            configurations.Add(config2);
+
+            // Configuration 3: UseFeatureFlags -> Select -> ConfigureRefresh
+            var config3 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher3 = options.GetRefresher();
+                })
+                .Build();
+            configurations.Add(config3);
+
+            // Configuration 4: UseFeatureFlags (with Select inside) -> ConfigureRefresh -> Select
+            var config4 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.Select($"{testContext.KeyPrefix}:*");
+
+                    refresher4 = options.GetRefresher();
+                })
+                .Build();
+            configurations.Add(config4);
+
+            // Assert - Initial values should be the same across all configurations
+            foreach (var config in configurations)
+            {
+                // Regular settings
+                Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+                Assert.Equal("SectionValue1", config[$"{testContext.KeyPrefix}:Section1:Setting1"]);
+
+                // Feature flags - check both flags are enabled
+                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}FeatureOrdering"]);
+            }
+
+            // Update values in the store
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{testContext.KeyPrefix}:Section1:Setting1", "UpdatedSectionValue1"));
+
+            // Update a feature flag
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{
+                        ""id"": """ + testContext.KeyPrefix + @"Feature"",
+                        ""description"": ""Updated test feature"",
+                        ""enabled"": false,
+                        ""conditions"": {
+                            ""client_filters"": []
+                        }
+                    }",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Update the sentinel key to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh all configurations
+            await refresher1.RefreshAsync();
+            await refresher2.RefreshAsync();
+            await refresher3.RefreshAsync();
+            await refresher4.RefreshAsync();
+
+            // Assert - Updated values should be the same across all configurations
+            foreach (var config in configurations)
+            {
+                // Regular settings
+                Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+                Assert.Equal("UpdatedSectionValue1", config[$"{testContext.KeyPrefix}:Section1:Setting1"]);
+
+                // Feature flags - first one should be updated to false
+                Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}FeatureOrdering"]);
+            }
+        }
     }
 }
