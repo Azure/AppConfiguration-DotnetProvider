@@ -464,6 +464,34 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["FeatureManagement:Feature4"]);
             Assert.Null(config["FeatureManagement:Feature5"]);
             Assert.Null(config["FeatureManagement:Feature6"]);
+
+            _kvCollection.Find(setting => setting.Key == FeatureManagementConstants.FeatureFlagMarker + "Feature1").Value = $@"
+            {{
+                ""id"": ""Feature1"",
+                ""description"": ""Test feature flag"",
+                ""enabled"": true,
+                ""conditions"": {{
+                    ""client_filters"": []
+                }}
+            }}";
+
+            await Task.Delay(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("UpdatedValue1", config["TestKey1"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Null(config["TestKey2"]);
+            Assert.Null(config["TestKey4"]);
+            Assert.Null(config["TestKey5"]);
+            Assert.Null(config["TestKey6"]);
+
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.NotNull(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
         }
     }
 }
