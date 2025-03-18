@@ -10,6 +10,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -383,6 +384,86 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["FeatureManagement:Feature3"]);
             Assert.Null(config["FeatureManagement:Feature4"]);
             Assert.Null(config["FeatureManagement:Feature5"]);
+        }
+
+        [Fact]
+        public async Task TagsFilterTests_BasicRefresh()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            IConfigurationRefresher refresher = null;
+
+            var mockAsyncPageable = new MockAsyncPageable(_kvCollection);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection.FindAll(kv =>
+                    kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")))
+                .Returns(mockAsyncPageable);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select(KeyFilter.Any, "label", new List<string> { "Environment=Development" });
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll();
+                        refreshOptions.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "Environment=Development" });
+                        ff.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Only TestKey1 and TestKey3 have Environment=Development tag
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Null(config["TestKey2"]);
+            Assert.Null(config["TestKey4"]);
+            Assert.Null(config["TestKey5"]);
+            Assert.Null(config["TestKey6"]);
+
+            Assert.Equal("True", config["FeatureManagement:Feature1"]);
+            Assert.NotNull(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
+
+            _kvCollection.Find(setting => setting.Key == "TestKey1").Value = "UpdatedValue1";
+
+            _kvCollection.Find(setting => setting.Key == FeatureManagementConstants.FeatureFlagMarker + "Feature1").Value = $@"
+            {{
+                ""id"": ""Feature1"",
+                ""description"": ""Test feature flag"",
+                ""enabled"": false,
+                ""conditions"": {{
+                    ""client_filters"": []
+                }}
+            }}";
+
+            await Task.Delay(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("UpdatedValue1", config["TestKey1"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+            Assert.Null(config["TestKey2"]);
+            Assert.Null(config["TestKey4"]);
+            Assert.Null(config["TestKey5"]);
+            Assert.Null(config["TestKey6"]);
+
+            Assert.Equal("False", config["FeatureManagement:Feature1"]);
+            Assert.NotNull(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.Null(config["FeatureManagement:Feature6"]);
         }
     }
 }
