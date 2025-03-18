@@ -239,7 +239,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("SentinelValue", config["SentinelKey"]);
 
             // Update sentinel key-value to trigger refreshAll operation
-            sentinelKv.Value = "UpdatedSentinelValue";
+            sentinelKv = TestHelpers.ChangeValue(sentinelKv, "UpdatedSentinelValue");
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
 
@@ -377,7 +377,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -389,7 +389,7 @@ namespace Tests.AzureAppConfiguration
                 .Throws(new RequestFailedException(HttpStatusCodes.TooManyRequests, "Too many requests"));
             mockClient2.Setup(c => c.ToString()).Returns("client");
 
-            FirstKeyValue.Value = "TestValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "TestValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -431,7 +431,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -480,7 +480,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            FirstKeyValue.Value = "newValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();
@@ -528,7 +528,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.Equal("TestValue1", config["TestKey1"]);
-            FirstKeyValue.Value = "newValue1";
+            _kvCollection[0] = TestHelpers.ChangeValue(FirstKeyValue, "newValue1");
 
             Thread.Sleep(RefreshInterval);
             await refresher.TryRefreshAsync();

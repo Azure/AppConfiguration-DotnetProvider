@@ -11,8 +11,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public JsonElement ConfigurationValue { get; set; }
 
-        public string ConfigurationReference { get; set; }
-
         public string StatusOverride { get; set; }
     }
 }
