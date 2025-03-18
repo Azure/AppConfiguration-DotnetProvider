@@ -915,8 +915,8 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
                 Assert.Equal("SectionValue1", config[$"{testContext.KeyPrefix}:Section1:Setting1"]);
 
-                // Feature flags - check both flags are enabled
-                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+                // Feature flags
+                Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
                 Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}FeatureOrdering"]);
             }
 
@@ -933,7 +933,7 @@ namespace Tests.AzureAppConfiguration
                     @"{
                         ""id"": """ + testContext.KeyPrefix + @"Feature"",
                         ""description"": ""Updated test feature"",
-                        ""enabled"": false,
+                        ""enabled"": true,
                         ""conditions"": {
                             ""client_filters"": []
                         }
@@ -961,10 +961,144 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
                 Assert.Equal("UpdatedSectionValue1", config[$"{testContext.KeyPrefix}:Section1:Setting1"]);
 
-                // Feature flags - first one should be updated to false
-                Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+                // Feature flags - first one should be updated to true
+                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
                 Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}FeatureOrdering"]);
             }
+        }
+
+        [Fact]
+        public async Task RegisterWithRefreshAllAndRegisterAll_BehaveIdentically()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("RefreshEquivalency");
+
+            // Add another feature flag for testing
+            string secondFeatureFlagKey = $".appconfig.featureflag/{testContext.KeyPrefix}Feature2";
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    secondFeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature2"",""description"":""Second test feature"",""enabled"":false}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Create two separate configuration builders with different refresh methods
+            // First configuration uses Register with refreshAll: true
+            IConfigurationRefresher refresher1 = null;
+            var config1 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher1 = options.GetRefresher();
+                })
+                .Build();
+
+            // Second configuration uses RegisterAll()
+            IConfigurationRefresher refresher2 = null;
+            var config2 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.UseFeatureFlags(featureFlagOptions =>
+                    {
+                        featureFlagOptions.Select(testContext.KeyPrefix + "*");
+                    });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.RegisterAll()
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher2 = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify initial values for both configurations
+            Assert.Equal("InitialValue1", config1[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config1[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("False", config1[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Equal("False", config1[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
+
+            Assert.Equal("InitialValue1", config2[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config2[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("False", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Equal("False", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
+
+            // Update all values in the store
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
+
+            // Update the feature flags
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    secondFeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature2"",""description"":""Second test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Update the sentinel key to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Act - Refresh both configurations
+            await refresher1.RefreshAsync();
+            await refresher2.RefreshAsync();
+
+            // Assert - Both configurations should be updated the same way
+            // For config1 (Register with refreshAll: true)
+            Assert.Equal("UpdatedValue1", config1[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("UpdatedValue2", config1[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("True", config1[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Equal("True", config1[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
+
+            // For config2 (RegisterAll)
+            Assert.Equal("UpdatedValue1", config2[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("UpdatedValue2", config2[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("True", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Equal("True", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
+
+            // Test deleting a key and a feature flag
+            await _configClient.DeleteConfigurationSettingAsync($"{testContext.KeyPrefix}:Setting2");
+            await _configClient.DeleteConfigurationSettingAsync(secondFeatureFlagKey);
+
+            // Update the sentinel key again to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "UpdatedAgain"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh both configurations again
+            await refresher1.RefreshAsync();
+            await refresher2.RefreshAsync();
+
+            // Both configurations should have removed the deleted key-value and feature flag
+            Assert.Equal("UpdatedValue1", config1[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Null(config1[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("True", config1[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Null(config1[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
+
+            Assert.Equal("UpdatedValue1", config2[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Null(config2[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("True", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            Assert.Null(config2[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
         }
     }
 }
