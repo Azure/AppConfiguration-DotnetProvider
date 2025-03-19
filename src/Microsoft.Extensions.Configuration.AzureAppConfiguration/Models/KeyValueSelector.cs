@@ -25,6 +25,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string SnapshotName { get; set; }
 
         /// <summary>
+        /// A boolean that signifies whether this selector is intended to select feature flags.
+        /// </summary>
+        public bool IsFeatureFlagSelector { get; set; }
+
+        /// <summary>
         /// Determines whether the specified object is equal to the current object.
         /// </summary>
         /// <param name="obj">The object to compare with the current object.</param>

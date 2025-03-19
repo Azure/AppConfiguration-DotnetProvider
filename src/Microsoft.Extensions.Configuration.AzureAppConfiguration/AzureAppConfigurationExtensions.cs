@@ -33,7 +33,9 @@ namespace Microsoft.Extensions.Configuration
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="connectionString">The connection string used to connect to the configuration store.</param>
-        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.
+        /// <exception cref="ArgumentException"/> will always be thrown when the caller gives an invalid input configuration (connection strings, endpoints, key/label filters...etc).
+        /// </param>
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
@@ -48,7 +50,9 @@ namespace Microsoft.Extensions.Configuration
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="connectionStrings">The list of connection strings used to connect to the configuration store and its replicas.</param>
-        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.
+        /// <exception cref="ArgumentException"/> will always be thrown when the caller gives an invalid input configuration (connection strings, endpoints, key/label filters...etc).
+        /// </param>
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
@@ -63,7 +67,9 @@ namespace Microsoft.Extensions.Configuration
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="action">A callback used to configure Azure App Configuration options.</param>
-        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.
+        /// <exception cref="ArgumentException"/> will always be thrown when the caller gives an invalid input configuration (connection strings, endpoints, key/label filters...etc).
+        /// </param>
         /// <returns>The provided configuration builder.</returns>
         public static IConfigurationBuilder AddAzureAppConfiguration(
             this IConfigurationBuilder configurationBuilder,
