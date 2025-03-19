@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Core;
+using Azure.Core.Diagnostics;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Azure.ResourceManager;
@@ -9,10 +10,13 @@ using Azure.ResourceManager.Resources;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
@@ -1099,6 +1103,43 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config2[$"{testContext.KeyPrefix}:Setting2"]);
             Assert.Equal("True", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
             Assert.Null(config2[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
+        }
+
+        [Fact]
+        public async Task HandlesFailoverOnStartup()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("FailoverStartup");
+            IConfigurationRefresher refresher = null;
+
+            string connectionString = GetConnectionString();
+
+            // Create a connection string that will fail
+            string primaryConnectionString = ConnectionStringUtils.Build(
+                TestHelpers.PrimaryConfigStoreEndpoint,
+                ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection),
+                ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection));
+            string secondaryConnectionString = connectionString;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(new List<string> { primaryConnectionString, secondaryConnectionString });
+                    options.Select($"{testContext.KeyPrefix}:*");
+
+                    // Configure refresh
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify initial values
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
         }
     }
 }
