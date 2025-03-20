@@ -62,10 +62,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
+            int tagsFilterHash = 3;
+
+            if (TagsFilter != null && TagsFilter.Any())
+            {
+                var sortedTags = new SortedSet<string>(TagsFilter);
+
+                if (sortedTags.Any())
+                {
+                    // Concatenate tags into a single string with a delimiter
+                    string tagsString = string.Join("|", sortedTags);
+
+                    // Use SHA256 to generate a hash for the tags
+                    using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                    {
+                        byte[] hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(tagsString));
+
+                        // Convert the first 4 bytes of the hash to an int
+                        tagsFilterHash = System.BitConverter.ToInt32(hashBytes, 0);
+                    }
+                }
+            }
+
             return (KeyFilter?.GetHashCode() ?? 0) ^
                    (LabelFilter?.GetHashCode() ?? 1) ^
                    (SnapshotName?.GetHashCode() ?? 2) ^
-                   (TagsFilter?.GetHashCode() ?? 3) ^
+                   tagsFilterHash ^
                    (IsFeatureFlagSelector.GetHashCode());
         }
     }
