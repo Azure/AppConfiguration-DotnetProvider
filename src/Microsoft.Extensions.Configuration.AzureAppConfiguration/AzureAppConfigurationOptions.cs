@@ -202,7 +202,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
+        /// <param name="tagsFilter">
+        /// The tag filter to apply when querying Azure App Configuration for key-values. By default no tags will be used.
+        /// Each tag provided must follow the format "tag=value". A key-value will only be returned if its tags contain all tags provided
+        /// in the filter, or if the filter is empty.
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
+        /// </param>
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagsFilter = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -220,6 +226,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 labelFilter = LabelFilter.Null;
             }
 
+            if (tagsFilter != null)
+            {
+                foreach (var tag in tagsFilter)
+                {
+                    if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
+                    {
+                        throw new ArgumentException($"Tag '{tag}' does not follow the format \"tag=value\".", nameof(tagsFilter));
+                    }
+                }
+            }
+
             if (!_selectCalled)
             {
                 _selectors.Remove(DefaultQuery);
@@ -230,7 +247,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                TagsFilter = tagsFilter
             });
 
             return this;

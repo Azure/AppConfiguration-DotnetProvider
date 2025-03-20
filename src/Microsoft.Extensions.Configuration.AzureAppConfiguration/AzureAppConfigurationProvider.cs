@@ -814,6 +814,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
+                    if (loadOption.TagsFilter != null)
+                    {
+                        foreach (string tagFilter in loadOption.TagsFilter)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
+                    }
+
                     var matchConditions = new List<MatchConditions>();
 
                     await CallWithRequestTracing(async () =>
