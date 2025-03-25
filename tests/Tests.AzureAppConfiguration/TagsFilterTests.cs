@@ -25,40 +25,82 @@ namespace Tests.AzureAppConfiguration
             _kvCollection = new List<ConfigurationSetting>
             {
                 CreateConfigurationSetting("TestKey1", "label", "TestValue1", "0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63",
-                    new Dictionary<string, string> { { "Environment", "Development" }, { "App", "TestApp" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "App", "TestApp" }
+                    }),
 
                 CreateConfigurationSetting("TestKey2", "label", "TestValue2", "31c38369-831f-4bf1-b9ad-79db56c8b989",
-                    new Dictionary<string, string> { { "Environment", "Production" }, { "App", "TestApp" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Production" },
+                        { "App", "TestApp" }
+                    }),
 
                 CreateConfigurationSetting("TestKey3", "label", "TestValue3", "bb203f2b-c113-44fc-995d-b933c2143339",
-                    new Dictionary<string, string> { { "Environment", "Development" }, { "Component", "API" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "Component", "API" }
+                    }),
 
                 CreateConfigurationSetting("TestKey4", "label", "TestValue4", "bb203f2b-c113-44fc-995d-b933c2143340",
-                    new Dictionary<string, string> { { "Environment", "Staging" }, { "App", "TestApp" }, { "Component", "Frontend" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Staging" },
+                        { "App", "TestApp" },
+                        { "Component", "Frontend" }
+                    }),
 
                 CreateConfigurationSetting("TestKey5", "label", "TestValue5", "bb203f2b-c113-44fc-995d-b933c2143341",
-                    new Dictionary<string, string> { { "Special:Tag", "Value:With:Colons" }, { "Tag@With@At", "Value@With@At" } }),
+                    new Dictionary<string, string> {
+                        { "Special:Tag", "Value:With:Colons" },
+                        { "Tag@With@At", "Value@With@At" }
+                    }),
 
                 CreateConfigurationSetting("TestKey6", "label", "TestValue6", "bb203f2b-c113-44fc-995d-b933c2143342",
-                    new Dictionary<string, string> { { "Tag,With,Commas", "Value,With,Commas" }, { "Simple", "Tag" } }),
+                    new Dictionary<string, string> {
+                        { "Tag,With,Commas", "Value,With,Commas" },
+                        { "Simple", "Tag" },
+                        { "EmptyTag", "" },
+                        { "NullTag", null }
+                    }),
 
                 CreateFeatureFlagSetting("Feature1", "label", true, "0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63",
-                    new Dictionary<string, string> { { "Environment", "Development" }, { "App", "TestApp" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "App", "TestApp" }
+                    }),
 
                 CreateFeatureFlagSetting("Feature2", "label", false, "31c38369-831f-4bf1-b9ad-79db56c8b989",
-                    new Dictionary<string, string> { { "Environment", "Production" }, { "App", "TestApp" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Production" },
+                        { "App", "TestApp" }
+                    }),
 
                 CreateFeatureFlagSetting("Feature3", "label", true, "bb203f2b-c113-44fc-995d-b933c2143339",
-                    new Dictionary<string, string> { { "Environment", "Development" }, { "Component", "API" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "Component", "API" }
+                    }),
 
                 CreateFeatureFlagSetting("Feature4", "label", false, "bb203f2b-c113-44fc-995d-b933c2143340",
-                    new Dictionary<string, string> { { "Environment", "Staging" }, { "App", "TestApp" }, { "Component", "Frontend" } }),
+                    new Dictionary<string, string> {
+                        { "Environment", "Staging" },
+                        { "App", "TestApp" },
+                        { "Component", "Frontend" }
+                    }),
 
                 CreateFeatureFlagSetting("Feature5", "label", true, "bb203f2b-c113-44fc-995d-b933c2143341",
-                    new Dictionary<string, string> { { "Special:Tag", "Value:With:Colons" }, { "Tag@With@At", "Value@With@At" } }),
+                    new Dictionary<string, string> {
+                        { "Special:Tag", "Value:With:Colons" },
+                        { "Tag@With@At", "Value@With@At" }
+                    }),
 
                 CreateFeatureFlagSetting("Feature6", "label", false, "bb203f2b-c113-44fc-995d-b933c2143342",
-                    new Dictionary<string, string> { { "Tag,With,Commas", "Value,With,Commas" }, { "Simple", "Tag" } })
+                    new Dictionary<string, string> {
+                        { "Tag,With,Commas", "Value,With,Commas" },
+                        { "Simple", "Tag" },
+                        { "EmptyTag", "" },
+                        { "NullTag", null }
+                    }),
             };
         }
 
@@ -157,6 +199,48 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void TagsFilterTests_NullOrEmptyValue()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s =>
+                s.TagsFilter.Contains("EmptyTag=") &&
+                s.TagsFilter.Contains($"NullTag={TagValue.Null}")),
+                It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
+                    kv.Tags.ContainsKey("EmptyTag") && kv.Tags["EmptyTag"] == "" &&
+                    kv.Tags.ContainsKey("NullTag") && kv.Tags["NullTag"] == null)));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select(KeyFilter.Any, "label", new List<string> { "EmptyTag=", $"NullTag={TagValue.Null}" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "EmptyTag=", $"NullTag={TagValue.Null}" });
+                    });
+                })
+                .Build();
+
+            // Only TestKey6 and Feature6 have EmptyTag and NullTag
+            Assert.Null(config["TestKey1"]);
+            Assert.Null(config["TestKey2"]);
+            Assert.Null(config["TestKey3"]);
+            Assert.Null(config["TestKey4"]);
+            Assert.Null(config["TestKey5"]);
+            Assert.Equal("TestValue6", config["TestKey6"]);
+
+            Assert.Null(config["FeatureManagement:Feature1"]);
+            Assert.Null(config["FeatureManagement:Feature2"]);
+            Assert.Null(config["FeatureManagement:Feature3"]);
+            Assert.Null(config["FeatureManagement:Feature4"]);
+            Assert.Null(config["FeatureManagement:Feature5"]);
+            Assert.NotNull(config["FeatureManagement:Feature6"]);
+        }
+
+        [Fact]
         public void TagsFilterTests_MultipleTagsFiltering()
         {
             var mockResponse = new Mock<Response>();
@@ -202,19 +286,24 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            // Verify that an ArgumentException is thrown when using an invalid tag format
-            var exception = Assert.Throws<ArgumentException>(() =>
-            {
-                new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
-                    {
-                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                        options.Select(KeyFilter.Any, "label", new List<string> { "InvalidTagFormat" });
-                    })
-                .Build();
-            });
+            List<string> invalidTagsFilters = new List<string> { "InvalidTagFormat", "=tagValue", "", null };
 
-            Assert.Contains($"Tag 'InvalidTagFormat' does not follow the format \"tagName=tagValue\".", exception.Message);
+            foreach (string tagsFilter in invalidTagsFilters)
+            {
+                // Verify that an ArgumentException is thrown when using an invalid tag format
+                var exception = Assert.Throws<ArgumentException>(() =>
+                {
+                    new ConfigurationBuilder()
+                        .AddAzureAppConfiguration(options =>
+                        {
+                            options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                            options.Select(KeyFilter.Any, "label", new List<string> { tagsFilter });
+                        })
+                    .Build();
+                });
+
+                Assert.Contains($"Tag '{tagsFilter}' does not follow the format \"tagName=tagValue\".", exception.Message);
+            }
         }
 
         [Fact]
