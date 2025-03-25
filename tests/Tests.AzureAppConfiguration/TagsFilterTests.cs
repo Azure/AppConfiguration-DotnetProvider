@@ -214,7 +214,7 @@ namespace Tests.AzureAppConfiguration
                 .Build();
             });
 
-            Assert.Contains($"Tag 'InvalidTagFormat' does not follow the format \"tag=value\".", exception.Message);
+            Assert.Contains($"Tag 'InvalidTagFormat' does not follow the format \"tagName=tagValue\".", exception.Message);
         }
 
         [Fact]

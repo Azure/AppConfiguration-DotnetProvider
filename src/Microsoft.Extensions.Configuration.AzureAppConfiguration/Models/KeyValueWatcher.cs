@@ -3,6 +3,8 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -17,6 +19,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// Label of the key-value to be watched.
         /// </summary>
         public string Label { get; set; }
+
+        /// <summary>
+        /// Tags of the key-value to be watched.
+        /// </summary>
+        public IEnumerable<string> Tags { get; set; }
 
         /// <summary>
         /// A flag to refresh all key-values.

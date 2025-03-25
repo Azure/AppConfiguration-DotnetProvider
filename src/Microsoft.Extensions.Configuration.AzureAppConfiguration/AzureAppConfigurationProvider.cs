@@ -344,6 +344,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 KeyFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
+                                TagsFilter = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
                             _ffEtags,
