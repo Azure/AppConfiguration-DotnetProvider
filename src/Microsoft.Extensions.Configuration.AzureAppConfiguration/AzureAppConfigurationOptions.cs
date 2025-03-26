@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
 using Azure.Core;
 using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
@@ -24,6 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class AzureAppConfigurationOptions
     {
         private const int MaxRetries = 2;
+        private const int MaxTagFilters = 5;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
         private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
@@ -202,7 +204,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
+        /// <param name="tagsFilter">
+        /// In addition to key and label filters, key-values from Azure App Configuration can be filtered based on their tag names and values.
+        /// Each tag filter must follow the format "tagName=tagValue". Only those key-values will be loaded whose tags match all the tags provided here.
+        /// Built in tag filter values: <see cref="TagValue"/>. For example, $"tagName={<see cref="TagValue.Null"/>}".
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
+        /// Up to 5 tag filters can be provided. If no tag filters are provided, key-values will not be filtered based on tags.
+        /// </param>
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagsFilter = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -220,6 +229,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 labelFilter = LabelFilter.Null;
             }
 
+            if (tagsFilter != null)
+            {
+                if (tagsFilter.Count() > MaxTagFilters)
+                {
+                    throw new ArgumentException($"Cannot provide more than {MaxTagFilters} tag filters.", nameof(tagsFilter));
+                }
+
+                foreach (var tag in tagsFilter)
+                {
+                    if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
+                    {
+                        throw new ArgumentException($"Tag '{tag}' does not follow the format \"tagName=tagValue\".", nameof(tagsFilter));
+                    }
+                }
+            }
+
             if (!_selectCalled)
             {
                 _selectors.Remove(DefaultQuery);
@@ -230,7 +255,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                TagsFilter = tagsFilter
             });
 
             return this;
@@ -304,6 +330,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = featureFlagSelector.KeyFilter,
                     Label = featureFlagSelector.LabelFilter,
+                    Tags = featureFlagSelector.TagsFilter,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
