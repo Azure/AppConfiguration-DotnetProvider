@@ -307,6 +307,28 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void TagsFilterTests_TooManyTags()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            List<string> longTagsFilter = new List<string> { "T1=1", "T2=V2", "T3=V3", "T4=V4", "T5=V5", "T6=V6" };
+
+            // Verify that an ArgumentException is thrown when passing more than the allowed number of tags
+            var exception = Assert.Throws<ArgumentException>(() =>
+            {
+                new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                        options.Select(KeyFilter.Any, "label", longTagsFilter);
+                    })
+                .Build();
+            });
+
+            Assert.Contains($"Cannot provide more than 5 tag filters.", exception.Message);
+        }
+
+        [Fact]
         public void TagsFilterTests_TagFilterInteractionWithKeyLabelFilters()
         {
             var mockResponse = new Mock<Response>();

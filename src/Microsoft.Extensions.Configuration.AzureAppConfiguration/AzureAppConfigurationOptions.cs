@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
 using Azure.Core;
 using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
@@ -24,6 +25,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     public class AzureAppConfigurationOptions
     {
         private const int MaxRetries = 2;
+        private const int MaxTagFilters = 5;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
         private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
@@ -229,6 +231,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (tagsFilter != null)
             {
+                if (tagsFilter.Count() > MaxTagFilters)
+                {
+                    throw new ArgumentException($"Cannot provide more than {MaxTagFilters} tag filters.", nameof(tagsFilter));
+                }
+
                 foreach (var tag in tagsFilter)
                 {
                     if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
