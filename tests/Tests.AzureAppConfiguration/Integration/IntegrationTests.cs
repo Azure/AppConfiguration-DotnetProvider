@@ -1,6 +1,5 @@
 using Azure;
 using Azure.Core;
-using Azure.Core.Diagnostics;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Azure.ResourceManager;
@@ -10,13 +9,10 @@ using Azure.ResourceManager.Resources;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
@@ -48,7 +44,7 @@ namespace Tests.AzureAppConfiguration
         /// <summary>
         /// Class to hold test-specific key information
         /// </summary>
-        private class TestContext
+        public class TestContext
         {
             public string KeyPrefix { get; set; }
             public string SentinelKey { get; set; }
@@ -141,6 +137,35 @@ namespace Tests.AzureAppConfiguration
                 .Replace("/", "-").Replace("+", "-").Replace("=", "").Substring(0, 8);
 
             return $"{ResourceGroupNamePrefix}{machineHash}";
+        }
+
+        /// <summary>
+        /// Creates a snapshot with the given name containing the test context's settings
+        /// </summary>
+        private async Task<string> CreateSnapshot(string snapshotName, TestContext testContext)
+        {
+            // Create a snapshot with the test keys
+            var settingsToInclude = new List<ConfigurationSettingsFilter>
+            {
+                new ConfigurationSettingsFilter($"{testContext.KeyPrefix}:*")
+            };
+
+            ConfigurationSnapshot snapshot = new ConfigurationSnapshot(settingsToInclude);
+
+            snapshot.SnapshotComposition = SnapshotComposition.Key;
+
+            try
+            {
+                // Create the snapshot
+                CreateSnapshotOperation operation = await _configClient.CreateSnapshotAsync(WaitUntil.Completed, snapshotName, snapshot);
+
+                return operation.Value.Name;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating snapshot: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -1140,6 +1165,444 @@ namespace Tests.AzureAppConfiguration
 
             // Verify initial values
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+        }
+
+        /// <summary>
+        /// Test verifies that a snapshot can be created and loaded correctly
+        /// </summary>
+        [Fact]
+        public async Task LoadSnapshot_RetrievesValuesFromSnapshot()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("SnapshotTest");
+            string snapshotName = $"snapshot-{testContext.KeyPrefix}";
+
+            // Create a snapshot with the test keys
+            await CreateSnapshot(snapshotName, testContext);
+
+            // Update values after snapshot is taken to verify snapshot has original values
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
+
+            // Act - Load configuration from snapshot
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.SelectSnapshot(snapshotName);
+                })
+                .Build();
+
+            // Assert - Should have original values from snapshot, not updated values
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+
+            // Cleanup - Delete the snapshot
+            await _configClient.ArchiveSnapshotAsync(snapshotName);
+        }
+
+        /// <summary>
+        /// Test verifies error handling when a snapshot doesn't exist
+        /// </summary>
+        [Fact]
+        public async Task LoadSnapshot_ThrowsException_WhenSnapshotDoesNotExist()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("NonExistentSnapshotTest");
+            string nonExistentSnapshotName = $"snapshot-does-not-exist-{Guid.NewGuid()}";
+
+            // Act & Assert - Loading a non-existent snapshot should throw
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            {
+                return Task.FromResult(new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(nonExistentSnapshotName);
+                    })
+                    .Build());
+            });
+
+            // Verify the exception message contains snapshot name
+            Assert.Contains(nonExistentSnapshotName, exception.Message);
+        }
+
+        /// <summary>
+        /// Test verifies that multiple snapshots can be loaded in the same configuration
+        /// </summary>
+        [Fact]
+        public async Task LoadMultipleSnapshots_MergesConfigurationCorrectly()
+        {
+            // Arrange - Setup test-specific keys for two separate snapshots
+            var testContext1 = await SetupTestKeys("SnapshotMergeTest1");
+            var testContext2 = await SetupTestKeys("SnapshotMergeTest2");
+
+            // Create specific values for second snapshot
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{testContext2.KeyPrefix}:UniqueKey", "UniqueValue"));
+
+            string snapshotName1 = $"snapshot-{testContext1.KeyPrefix}";
+            string snapshotName2 = $"snapshot-{testContext2.KeyPrefix}";
+
+            // Create snapshots
+            await CreateSnapshot(snapshotName1, testContext1);
+            await CreateSnapshot(snapshotName2, testContext2);
+
+            try
+            {
+                // Act - Load configuration from both snapshots
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(snapshotName1);
+                        options.SelectSnapshot(snapshotName2);
+                    })
+                    .Build();
+
+                // Assert - Should have values from both snapshots
+                Assert.Equal("InitialValue1", config[$"{testContext1.KeyPrefix}:Setting1"]);
+                Assert.Equal("InitialValue1", config[$"{testContext2.KeyPrefix}:Setting1"]);
+                Assert.Equal("UniqueValue", config[$"{testContext2.KeyPrefix}:UniqueKey"]);
+            }
+            finally
+            {
+                // Cleanup - Delete the snapshots
+                await _configClient.ArchiveSnapshotAsync(snapshotName1);
+                await _configClient.ArchiveSnapshotAsync(snapshotName2);
+            }
+        }
+
+        /// <summary>
+        /// Test verifies that a snapshot can be refreshed and updates are detected
+        /// </summary>
+        [Fact]
+        public async Task RefreshSnapshot_UpdatesConfigurationWhenSnapshotChanges()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("SnapshotRefreshTest");
+            string snapshotName = $"snapshot-{testContext.KeyPrefix}";
+
+            // Create a snapshot with the test keys
+            await CreateSnapshot(snapshotName, testContext);
+            IConfigurationRefresher refresher = null;
+
+            try
+            {
+                // Act - Load configuration from snapshot with refresher
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(snapshotName);
+                        options.ConfigureRefresh(refresh =>
+                        {
+                            refresh.RegisterAll()
+                                  .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                        });
+
+                        refresher = options.GetRefresher();
+                    })
+                    .Build();
+
+                // Verify initial values
+                Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+
+                // Update a key in the config store
+                await _configClient.SetConfigurationSettingAsync(
+                    new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+
+                // Create a new snapshot with the updated value
+                await _configClient.ArchiveSnapshotAsync(snapshotName);
+                await CreateSnapshot(snapshotName, testContext);
+
+                // Wait for cache to expire
+                await Task.Delay(TimeSpan.FromSeconds(2));
+
+                // Refresh the configuration
+                await refresher.RefreshAsync();
+
+                // Assert - Should have updated values from refreshed snapshot
+                Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            }
+            finally
+            {
+                // Cleanup - Delete the snapshot
+                await _configClient.ArchiveSnapshotAsync(snapshotName);
+            }
+        }
+
+        /// <summary>
+        /// Test verifies that different snapshot composition types are handled correctly
+        /// </summary>
+        [Fact]
+        public async Task SnapshotCompositionTypes_AreHandledCorrectly()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("SnapshotCompositionTest");
+            string keyOnlySnapshotName = $"snapshot-key-{testContext.KeyPrefix}";
+            string invalidCompositionSnapshotName = $"snapshot-invalid-{testContext.KeyPrefix}";
+
+            // Create a snapshot with the test keys
+            var settingsToInclude = new List<ConfigurationSettingsFilter>
+            {
+                new ConfigurationSettingsFilter($"{testContext.KeyPrefix}:*")
+            };
+
+            ConfigurationSnapshot keyOnlySnapshot = new ConfigurationSnapshot(settingsToInclude);
+
+            keyOnlySnapshot.SnapshotComposition = SnapshotComposition.Key;
+
+            // Create the snapshot
+            await _configClient.CreateSnapshotAsync(WaitUntil.Completed, keyOnlySnapshotName, keyOnlySnapshot);
+
+            ConfigurationSnapshot invalidSnapshot = new ConfigurationSnapshot(settingsToInclude);
+
+            invalidSnapshot.SnapshotComposition = SnapshotComposition.KeyLabel;
+
+            // Create the snapshot
+            await _configClient.CreateSnapshotAsync(WaitUntil.Completed, invalidCompositionSnapshotName, invalidSnapshot);
+
+            try
+            {
+                // Act & Assert - Loading a key-only snapshot should work
+                var config1 = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(keyOnlySnapshotName);
+                    })
+                    .Build();
+
+                Assert.Equal("InitialValue1", config1[$"{testContext.KeyPrefix}:Setting1"]);
+
+                // Act & Assert - Loading a snapshot with invalid composition should throw
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                {
+                    return Task.FromResult(new ConfigurationBuilder()
+                        .AddAzureAppConfiguration(options =>
+                        {
+                            options.Connect(GetConnectionString());
+                            options.SelectSnapshot(invalidCompositionSnapshotName);
+                        })
+                        .Build());
+                });
+
+                // Verify the exception message mentions composition type
+                Assert.Contains("SnapshotComposition", exception.Message);
+                Assert.Contains("key", exception.Message);
+                Assert.Contains("KeyAndLabel", exception.Message);
+            }
+            finally
+            {
+                // Cleanup - Delete the snapshots
+                await _configClient.ArchiveSnapshotAsync(keyOnlySnapshotName);
+                await _configClient.ArchiveSnapshotAsync(invalidCompositionSnapshotName);
+            }
+        }
+
+        /// <summary>
+        /// Test verifies that snapshots work with feature flags
+        /// </summary>
+        [Fact]
+        public async Task SnapshotWithFeatureFlags_LoadsConfigurationCorrectly()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("SnapshotFeatureFlagTest");
+            string snapshotName = $"snapshot-ff-{testContext.KeyPrefix}";
+
+            // Update the feature flag to be enabled before creating the snapshot
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Create a snapshot with the test keys
+            var settingsToInclude = new List<ConfigurationSettingsFilter>
+            {
+                new ConfigurationSettingsFilter($"{testContext.KeyPrefix}:*"),
+                new ConfigurationSettingsFilter($".appconfig.featureflag/{testContext.KeyPrefix}*")
+            };
+
+            ConfigurationSnapshot snapshot = new ConfigurationSnapshot(settingsToInclude);
+
+            snapshot.SnapshotComposition = SnapshotComposition.Key;
+
+            // Create the snapshot
+            await _configClient.CreateSnapshotAsync(WaitUntil.Completed, snapshotName, snapshot);
+
+            // Update feature flag to disabled after creating snapshot
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            try
+            {
+                // Act - Load configuration from snapshot with feature flags
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(snapshotName);
+                        options.UseFeatureFlags();
+                    })
+                    .Build();
+
+                // Assert - Should have feature flag enabled state from snapshot
+                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+            }
+            finally
+            {
+                // Cleanup - Delete the snapshot
+                await _configClient.ArchiveSnapshotAsync(snapshotName);
+            }
+        }
+
+        /// <summary>
+        /// Test verifies call ordering of snapshots, select, and feature flags
+        /// </summary>
+        [Fact]
+        public async Task CallOrdering_SnapshotsWithSelectAndFeatureFlags()
+        {
+            // Arrange - Setup test-specific keys for multiple snapshots
+            var mainContext = await SetupTestKeys("SnapshotOrdering");
+            var secondContext = await SetupTestKeys("SnapshotOrdering2");
+            var thirdContext = await SetupTestKeys("SnapshotOrdering3");
+
+            // Create specific values for each snapshot
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{mainContext.KeyPrefix}:UniqueMain", "MainValue"));
+
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{secondContext.KeyPrefix}:UniqueSecond", "SecondValue"));
+
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{thirdContext.KeyPrefix}:UniqueThird", "ThirdValue"));
+
+            // Create additional feature flags
+            string secondFeatureFlagKey = $".appconfig.featureflag/{mainContext.KeyPrefix}Feature2";
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    secondFeatureFlagKey,
+                    @"{""id"":""" + mainContext.KeyPrefix + @"Feature2"",""description"":""Second test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            string thirdFeatureFlagKey = $".appconfig.featureflag/{secondContext.KeyPrefix}Feature";
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    thirdFeatureFlagKey,
+                    @"{""id"":""" + secondContext.KeyPrefix + @"Feature"",""description"":""Third test feature"",""enabled"":true}",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            // Create snapshots
+            string snapshot1 = $"snapshot-{mainContext.KeyPrefix}-1";
+            string snapshot2 = $"snapshot-{secondContext.KeyPrefix}-2";
+            string snapshot3 = $"snapshot-{thirdContext.KeyPrefix}-3";
+
+            await CreateSnapshot(snapshot1, mainContext);
+            await CreateSnapshot(snapshot2, secondContext);
+            await CreateSnapshot(snapshot3, thirdContext);
+
+            try
+            {
+                // Test different orderings of SelectSnapshot, Select and UseFeatureFlags
+
+                // Order 1: SelectSnapshot -> Select -> UseFeatureFlags
+                var config1 = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(snapshot1);
+                        options.Select($"{mainContext.KeyPrefix}:*");
+                        options.UseFeatureFlags(ff =>
+                        {
+                            ff.Select($"{mainContext.KeyPrefix}Feature*");
+                        });
+                    })
+                    .Build();
+
+                // Order 2: Select -> SelectSnapshot -> UseFeatureFlags
+                var config2 = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.Select($"{secondContext.KeyPrefix}:*");
+                        options.SelectSnapshot(snapshot2);
+                        options.UseFeatureFlags(ff =>
+                        {
+                            ff.Select($"{secondContext.KeyPrefix}Feature*");
+                        });
+                    })
+                    .Build();
+
+                // Order 3: UseFeatureFlags -> SelectSnapshot -> Select
+                var config3 = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.UseFeatureFlags();
+                        options.SelectSnapshot(snapshot3);
+                        options.Select($"{thirdContext.KeyPrefix}:*");
+                    })
+                    .Build();
+
+                // Order 4: Multiple snapshots with interleaved operations
+                var config4 = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.Connect(GetConnectionString());
+                        options.SelectSnapshot(snapshot1);
+                        options.UseFeatureFlags(ff =>
+                        {
+                            ff.Select($"{mainContext.KeyPrefix}Feature*");
+                        });
+                        options.SelectSnapshot(snapshot2);
+                        options.Select($"{secondContext.KeyPrefix}:*");
+                        options.UseFeatureFlags(ff =>
+                        {
+                            ff.Select($"{secondContext.KeyPrefix}Feature*");
+                        });
+                        options.SelectSnapshot(snapshot3);
+                    })
+                    .Build();
+
+                // Verify config1: Should have values from snapshot1 and feature flags from mainContext
+                Assert.Equal("InitialValue1", config1[$"{mainContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("MainValue", config1[$"{mainContext.KeyPrefix}:UniqueMain"]);
+                Assert.Equal("True", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+                Assert.Equal("True", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
+
+                // Verify config2: Should have values from snapshot2 and feature flags from secondContext
+                Assert.Equal("InitialValue1", config2[$"{secondContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("SecondValue", config2[$"{secondContext.KeyPrefix}:UniqueSecond"]);
+                Assert.Equal("True", config2[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
+
+                // Verify config3: Should have values from snapshot3 and all feature flags
+                Assert.Equal("InitialValue1", config3[$"{thirdContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("ThirdValue", config3[$"{thirdContext.KeyPrefix}:UniqueThird"]);
+                Assert.Equal("True", config3[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+                Assert.Equal("True", config3[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
+
+                // Verify config4: Should have values from all three snapshots
+                Assert.Equal("InitialValue1", config4[$"{mainContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("MainValue", config4[$"{mainContext.KeyPrefix}:UniqueMain"]);
+                Assert.Equal("InitialValue1", config4[$"{secondContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("SecondValue", config4[$"{secondContext.KeyPrefix}:UniqueSecond"]);
+                Assert.Equal("InitialValue1", config4[$"{thirdContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("ThirdValue", config4[$"{thirdContext.KeyPrefix}:UniqueThird"]);
+                Assert.Equal("True", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+                Assert.Equal("True", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
+                Assert.Equal("True", config4[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
+            }
+            finally
+            {
+                // Cleanup - Delete the snapshots
+                await _configClient.ArchiveSnapshotAsync(snapshot1);
+                await _configClient.ArchiveSnapshotAsync(snapshot2);
+                await _configClient.ArchiveSnapshotAsync(snapshot3);
+            }
         }
     }
 }
