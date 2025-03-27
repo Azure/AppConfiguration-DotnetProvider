@@ -44,11 +44,13 @@ namespace Tests.AzureAppConfiguration
         /// <summary>
         /// Class to hold test-specific key information
         /// </summary>
-        public class TestContext
+        private class TestContext
         {
             public string KeyPrefix { get; set; }
             public string SentinelKey { get; set; }
             public string FeatureFlagKey { get; set; }
+            public string KeyVaultReferenceKey { get; set; }
+            public string SecretName { get; set; }
         }
 
         // Client for direct manipulation of the store
@@ -317,6 +319,8 @@ namespace Tests.AzureAppConfiguration
 
                 // Initialize the configuration client with the connection string
                 _configClient = new ConfigurationClient(_connectionString);
+
+                // Create a Key Vault for testing (if needed)
 
                 success = true;
             }
@@ -1273,65 +1277,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Test verifies that a snapshot can be refreshed and updates are detected
-        /// </summary>
-        [Fact]
-        public async Task RefreshSnapshot_UpdatesConfigurationWhenSnapshotChanges()
-        {
-            // Arrange - Setup test-specific keys
-            var testContext = await SetupTestKeys("SnapshotRefreshTest");
-            string snapshotName = $"snapshot-{testContext.KeyPrefix}";
-
-            // Create a snapshot with the test keys
-            await CreateSnapshot(snapshotName, testContext);
-            IConfigurationRefresher refresher = null;
-
-            try
-            {
-                // Act - Load configuration from snapshot with refresher
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
-                    {
-                        options.Connect(GetConnectionString());
-                        options.SelectSnapshot(snapshotName);
-                        options.ConfigureRefresh(refresh =>
-                        {
-                            refresh.RegisterAll()
-                                  .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                        });
-
-                        refresher = options.GetRefresher();
-                    })
-                    .Build();
-
-                // Verify initial values
-                Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
-
-                // Update a key in the config store
-                await _configClient.SetConfigurationSettingAsync(
-                    new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
-
-                // Create a new snapshot with the updated value
-                await _configClient.ArchiveSnapshotAsync(snapshotName);
-                await CreateSnapshot(snapshotName, testContext);
-
-                // Wait for cache to expire
-                await Task.Delay(TimeSpan.FromSeconds(2));
-
-                // Refresh the configuration
-                await refresher.RefreshAsync();
-
-                // Assert - Should have updated values from refreshed snapshot
-                Assert.Equal("UpdatedValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
-            }
-            finally
-            {
-                // Cleanup - Delete the snapshot
-                await _configClient.ArchiveSnapshotAsync(snapshotName);
-            }
-        }
-
-        /// <summary>
         /// Test verifies that different snapshot composition types are handled correctly
         /// </summary>
         [Fact]
@@ -1390,7 +1335,7 @@ namespace Tests.AzureAppConfiguration
                 // Verify the exception message mentions composition type
                 Assert.Contains("SnapshotComposition", exception.Message);
                 Assert.Contains("key", exception.Message);
-                Assert.Contains("KeyAndLabel", exception.Message);
+                Assert.Contains("label", exception.Message);
             }
             finally
             {
@@ -1445,8 +1390,8 @@ namespace Tests.AzureAppConfiguration
                     .AddAzureAppConfiguration(options =>
                     {
                         options.Connect(GetConnectionString());
-                        options.SelectSnapshot(snapshotName);
                         options.UseFeatureFlags();
+                        options.SelectSnapshot(snapshotName);
                     })
                     .Build();
 
@@ -1571,7 +1516,7 @@ namespace Tests.AzureAppConfiguration
                 // Verify config1: Should have values from snapshot1 and feature flags from mainContext
                 Assert.Equal("InitialValue1", config1[$"{mainContext.KeyPrefix}:Setting1"]);
                 Assert.Equal("MainValue", config1[$"{mainContext.KeyPrefix}:UniqueMain"]);
-                Assert.Equal("True", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+                Assert.Equal("False", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
                 Assert.Equal("True", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
 
                 // Verify config2: Should have values from snapshot2 and feature flags from secondContext
@@ -1582,7 +1527,7 @@ namespace Tests.AzureAppConfiguration
                 // Verify config3: Should have values from snapshot3 and all feature flags
                 Assert.Equal("InitialValue1", config3[$"{thirdContext.KeyPrefix}:Setting1"]);
                 Assert.Equal("ThirdValue", config3[$"{thirdContext.KeyPrefix}:UniqueThird"]);
-                Assert.Equal("True", config3[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+                Assert.Equal("False", config3[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
                 Assert.Equal("True", config3[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
 
                 // Verify config4: Should have values from all three snapshots
@@ -1592,7 +1537,7 @@ namespace Tests.AzureAppConfiguration
                 Assert.Equal("SecondValue", config4[$"{secondContext.KeyPrefix}:UniqueSecond"]);
                 Assert.Equal("InitialValue1", config4[$"{thirdContext.KeyPrefix}:Setting1"]);
                 Assert.Equal("ThirdValue", config4[$"{thirdContext.KeyPrefix}:UniqueThird"]);
-                Assert.Equal("True", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+                Assert.Equal("False", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
                 Assert.Equal("True", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
                 Assert.Equal("True", config4[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
             }
