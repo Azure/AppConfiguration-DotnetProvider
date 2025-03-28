@@ -5,9 +5,13 @@ using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.AppConfiguration;
 using Azure.ResourceManager.AppConfiguration.Models;
+using Azure.ResourceManager.KeyVault;
+using Azure.ResourceManager.KeyVault.Models;
 using Azure.ResourceManager.Resources;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
@@ -37,6 +41,7 @@ namespace Tests.AzureAppConfiguration
         // Resource tagging and cleanup constants
         private const string ResourceGroupNamePrefix = "appconfig-dotnetprovider-test-";
         private const string StoreNamePrefix = "integration-";
+        private const string KeyVaultNamePrefix = "kv-int-";
         private const string TestResourceTag = "TestResource";
         private const string CreatedByTag = "CreatedBy";
         private const int StaleResourceThresholdHours = 3; // Resources older than this are considered stale
@@ -56,15 +61,21 @@ namespace Tests.AzureAppConfiguration
         // Client for direct manipulation of the store
         private ConfigurationClient _configClient;
 
+        // Client for Key Vault operations
+        private SecretClient _secretClient;
+
         // Connection string for the store
         private string _connectionString;
 
         // Store management resources
         private ArmClient _armClient;
         private string _testStoreName;
+        private string _testKeyVaultName;
         private string _testResourceGroupName;
         private AppConfigurationStoreResource _appConfigStore;
+        private KeyVaultResource _keyVault;
         private Uri _appConfigEndpoint;
+        private Uri _keyVaultEndpoint;
         private ResourceGroupResource _resourceGroup;
         private string _subscriptionId;
 
@@ -171,14 +182,15 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Cleans up only stale App Configuration stores, not resource groups
+        /// Cleans up only stale App Configuration stores and Key Vaults, not resource groups
         /// </summary>
-        private async Task CleanupStaleStores()
+        private async Task CleanupStaleResources()
         {
             if (_resourceGroup == null) return;
 
             try
             {
+                // Clean up stale App Configuration stores
                 var stores = _resourceGroup.GetAppConfigurationStores();
                 var staleTime = DateTime.UtcNow.AddHours(-StaleResourceThresholdHours);
 
@@ -228,15 +240,65 @@ namespace Tests.AzureAppConfiguration
                         }
                     }
                 }
+
+                // Clean up stale Key Vaults
+                var keyVaults = _resourceGroup.GetKeyVaults();
+
+                await foreach (var vault in keyVaults.GetAllAsync())
+                {
+                    // Only delete key vaults that:
+                    // 1. Start with our test prefix
+                    // 2. Have the TestResourceTag
+                    // 3. Are older than the threshold
+                    if (!vault.Data.Name.StartsWith(KeyVaultNamePrefix) ||
+                        !vault.Data.Tags.ContainsKey(TestResourceTag))
+                    {
+                        continue;
+                    }
+
+                    // Check if the key vault is a temporary test resource
+                    if (vault.Data.Tags.ContainsKey("TemporaryStore") &&
+                        vault.Data.Tags["TemporaryStore"] == "true")
+                    {
+                        // If it has a creation time tag, check if it's stale
+                        if (vault.Data.Tags.TryGetValue("CreatedOn", out string createdOnStr) &&
+                            DateTime.TryParse(createdOnStr, out DateTime createdOn))
+                        {
+                            if (createdOn < staleTime)
+                            {
+                                await vault.DeleteAsync(WaitUntil.Started);
+                            }
+                        }
+                        else
+                        {
+                            // If no creation time or it can't be parsed, use a heuristic
+                            // based on the timestamp in the name
+                            string name = vault.Data.Name;
+                            if (name.Length > KeyVaultNamePrefix.Length + 12) // yyyyMMddHHmm format is 12 chars
+                            {
+                                string timeStampPart = name.Substring(KeyVaultNamePrefix.Length, 12);
+                                if (DateTime.TryParseExact(timeStampPart, "yyyyMMddHHmm",
+                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    System.Globalization.DateTimeStyles.None, out DateTime timestamp))
+                                {
+                                    if (timestamp < staleTime)
+                                    {
+                                        await vault.DeleteAsync(WaitUntil.Started);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during stale store cleanup: {ex.Message}");
+                Console.WriteLine($"Error during stale resource cleanup: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Creates a temporary Azure App Configuration store and adds test data.
+        /// Creates a temporary Azure App Configuration store and Key Vault, then adds test data.
         /// </summary>
         public async Task InitializeAsync()
         {
@@ -286,10 +348,11 @@ namespace Tests.AzureAppConfiguration
                 }
 
                 // Clean up any stale resources before creating new ones
-                await CleanupStaleStores();
+                await CleanupStaleResources();
 
                 // Create unique store name for this test run with timestamp
                 _testStoreName = GenerateTimestampedResourceName(StoreNamePrefix);
+                _testKeyVaultName = GenerateTimestampedResourceName(KeyVaultNamePrefix);
 
                 // Create the App Configuration store
                 var storeData = new AppConfigurationStoreData(new AzureLocation(DefaultLocation), new AppConfigurationSku("free"));
@@ -297,6 +360,7 @@ namespace Tests.AzureAppConfiguration
                 storeData.Tags.Add(TestResourceTag, "true");
                 storeData.Tags.Add(CreatedByTag, "IntegrationTests");
                 storeData.Tags.Add("TemporaryStore", "true");
+                storeData.Tags.Add("CreatedOn", DateTime.UtcNow.ToString("o"));
 
                 var createOperation = await _resourceGroup.GetAppConfigurationStores().CreateOrUpdateAsync(
                     WaitUntil.Completed,
@@ -320,7 +384,60 @@ namespace Tests.AzureAppConfiguration
                 // Initialize the configuration client with the connection string
                 _configClient = new ConfigurationClient(_connectionString);
 
-                // Create a Key Vault for testing (if needed)
+                // Create the Key Vault
+                try
+                {
+                    // Create an access policy for the current user
+                    var userObjectId = await GetCurrentUserObjectId(credential);
+
+                    // Define vault properties
+                    var vaultProperties = new KeyVaultProperties(
+                        new Guid(await GetTenantId(credential)),
+                        new KeyVaultSku(KeyVaultSkuFamily.A, KeyVaultSkuName.Standard));
+
+                    //vaultProperties.AccessPolicies = {
+                    //    new KeyVaultAccessPolicy
+                    //    {
+                    //        ObjectId = userObjectId,
+                    //        TenantId = new Guid(await GetTenantId(credential)),
+                    //        Permissions = new KeyVaultPermissions
+                    //        {
+                    //            Secrets = {
+                    //                KeyVaultSecretPermission.Get,
+                    //                KeyVaultSecretPermission.List,
+                    //                KeyVaultSecretPermission.Set,
+                    //                KeyVaultSecretPermission.Delete
+                    //            }
+                    //        }
+                    //    }
+                    //},
+
+                    // Create Key Vault resource data
+                    var vaultData = new KeyVaultCreateOrUpdateContent(new AzureLocation(DefaultLocation), vaultProperties);
+
+                    // Add tags
+                    vaultData.Tags.Add(TestResourceTag, "true");
+                    vaultData.Tags.Add(CreatedByTag, "IntegrationTests");
+                    vaultData.Tags.Add("TemporaryStore", "true");
+                    vaultData.Tags.Add("CreatedOn", DateTime.UtcNow.ToString("o"));
+
+                    // Create the vault
+                    var vaultCreateOperation = await _resourceGroup.GetKeyVaults().CreateOrUpdateAsync(
+                        WaitUntil.Completed,
+                        _testKeyVaultName,
+                        vaultData);
+
+                    _keyVault = vaultCreateOperation.Value;
+                    _keyVaultEndpoint = _keyVault.Data.Properties.VaultUri;
+
+                    // Create a Secret Client for the vault
+                    _secretClient = new SecretClient(_keyVaultEndpoint, credential);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error creating Key Vault: {ex.Message}");
+                    // We'll continue without Key Vault if it fails
+                }
 
                 success = true;
             }
@@ -328,16 +445,83 @@ namespace Tests.AzureAppConfiguration
             {
                 if (!success)
                 {
-                    await CleanupAppConfigurationStore();
+                    await CleanupResources();
                 }
             }
         }
 
         /// <summary>
-        /// Deletes only the App Configuration store, not the resource group
+        /// Get the current user's Object ID
         /// </summary>
-        private async Task CleanupAppConfigurationStore()
+        private async Task<Guid> GetCurrentUserObjectId(TokenCredential credential)
         {
+            // Use the Microsoft Graph API to get the current user's object ID
+            var token = await credential.GetTokenAsync(
+                new TokenRequestContext(new[] { "https://graph.microsoft.com/.default" }),
+                default);
+
+            // Parse the token to get user information
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jsonToken = handler.ReadToken(token.Token) as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
+
+            // Read the object id (oid) claim
+            string oid = jsonToken?.Claims.FirstOrDefault(c => c.Type == "oid")?.Value;
+
+            if (string.IsNullOrEmpty(oid))
+            {
+                throw new InvalidOperationException("Could not determine the current user's object ID.");
+            }
+
+            return new Guid(oid);
+        }
+
+        /// <summary>
+        /// Get the tenant ID
+        /// </summary>
+        private async Task<string> GetTenantId(TokenCredential credential)
+        {
+            var token = await credential.GetTokenAsync(
+                new TokenRequestContext(new[] { "https://management.azure.com/.default" }),
+                default);
+
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jsonToken = handler.ReadToken(token.Token) as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
+
+            string tid = jsonToken?.Claims.FirstOrDefault(c => c.Type == "tid")?.Value;
+
+            if (string.IsNullOrEmpty(tid))
+            {
+                throw new InvalidOperationException("Could not determine the tenant ID.");
+            }
+
+            return tid;
+        }
+
+        /// <summary>
+        /// Deletes all created resources
+        /// </summary>
+        private async Task CleanupResources()
+        {
+            // First delete Key Vault
+            if (_keyVault != null)
+            {
+                try
+                {
+                    Console.WriteLine($"Cleaning up test Key Vault: {_testKeyVaultName}");
+                    await _keyVault.DeleteAsync(WaitUntil.Completed);
+                    _keyVault = null;
+                    Console.WriteLine("Key Vault cleanup completed successfully");
+                }
+                catch (Exception ex) when (
+                    ex is RequestFailedException ||
+                    ex is InvalidOperationException ||
+                    ex is TaskCanceledException)
+                {
+                    Console.WriteLine($"Key Vault cleanup failed: {ex.Message}.");
+                }
+            }
+
+            // Then delete App Configuration store
             if (_appConfigStore != null)
             {
                 try
@@ -359,11 +543,11 @@ namespace Tests.AzureAppConfiguration
 
         public async Task DisposeAsync()
         {
-            await CleanupAppConfigurationStore();
+            await CleanupResources();
 
             try
             {
-                await CleanupStaleStores();
+                await CleanupStaleResources();
             }
             catch (Exception ex) when (
                 ex is RequestFailedException ||
@@ -371,7 +555,7 @@ namespace Tests.AzureAppConfiguration
                 ex is TaskCanceledException ||
                 ex is UnauthorizedAccessException)
             {
-                Console.WriteLine($"Error during stale store cleanup: {ex.Message}");
+                Console.WriteLine($"Error during stale resource cleanup: {ex.Message}");
             }
         }
 
@@ -392,6 +576,8 @@ namespace Tests.AzureAppConfiguration
             string keyPrefix = GetUniqueKeyPrefix(testName);
             string sentinelKey = $"{keyPrefix}:Sentinel";
             string featureFlagKey = $".appconfig.featureflag/{keyPrefix}Feature";
+            string secretName = $"{keyPrefix}-secret";
+            string keyVaultReferenceKey = $"{keyPrefix}:KeyVaultRef";
 
             // Create test-specific settings
             var testSettings = new List<ConfigurationSetting>
@@ -411,11 +597,38 @@ namespace Tests.AzureAppConfiguration
                 await _configClient.SetConfigurationSettingAsync(setting);
             }
 
+            // If Key Vault is available, add a test secret and reference
+            if (_secretClient != null)
+            {
+                try
+                {
+                    // Create a secret in Key Vault
+                    await _secretClient.SetSecretAsync(secretName, "SecretValue");
+
+                    // Create a Key Vault reference in App Configuration
+                    string keyVaultUri = $"{_keyVaultEndpoint}secrets/{secretName}";
+                    string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
+
+                    await _configClient.SetConfigurationSettingAsync(
+                        ConfigurationModelFactory.ConfigurationSetting(
+                            keyVaultReferenceKey,
+                            keyVaultRefValue,
+                            contentType: KeyVaultConstants.ContentType));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error setting up Key Vault reference: {ex.Message}");
+                    // Continue without Key Vault reference if it fails
+                }
+            }
+
             return new TestContext
             {
                 KeyPrefix = keyPrefix,
                 SentinelKey = sentinelKey,
-                FeatureFlagKey = featureFlagKey
+                FeatureFlagKey = featureFlagKey,
+                KeyVaultReferenceKey = keyVaultReferenceKey,
+                SecretName = secretName
             };
         }
 
@@ -1548,6 +1761,93 @@ namespace Tests.AzureAppConfiguration
                 await _configClient.ArchiveSnapshotAsync(snapshot2);
                 await _configClient.ArchiveSnapshotAsync(snapshot3);
             }
+        }
+
+        /// <summary>
+        /// Test verifies Key Vault references can be resolved
+        /// </summary>
+        [Fact]
+        public async Task KeyVaultReferences_ResolveCorrectly()
+        {
+            // Skip if Key Vault is not available
+            if (_keyVault == null || _secretClient == null)
+            {
+                Console.WriteLine("Skipping Key Vault test - Key Vault is not available");
+                return;
+            }
+
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("KeyVaultReference");
+
+            // Act - Create configuration with Key Vault support
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureKeyVault(kv => kv.SetCredential(GetCredential()));
+                })
+                .Build();
+
+            // Assert - Key Vault reference should be resolved to the secret value
+            Assert.Equal("SecretValue", config[testContext.KeyVaultReferenceKey]);
+        }
+
+        /// <summary>
+        /// Test verifies Key Vault references refresh correctly
+        /// </summary>
+        [Fact]
+        public async Task KeyVaultReferences_RefreshCorrectly()
+        {
+            // Skip if Key Vault is not available
+            if (_keyVault == null || _secretClient == null)
+            {
+                Console.WriteLine("Skipping Key Vault test - Key Vault is not available");
+                return;
+            }
+
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("KeyVaultRefresh");
+            IConfigurationRefresher refresher = null;
+
+            // Create configuration with Key Vault support and refresh
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetCredential(GetCredential());
+                        kv.SetSecretRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify initial value
+            Assert.Equal("SecretValue", config[testContext.KeyVaultReferenceKey]);
+
+            // Act - Update the secret in Key Vault
+            await _secretClient.SetSecretAsync(testContext.SecretName, "UpdatedSecretValue");
+
+            // Update the sentinel key to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh
+            await refresher.RefreshAsync();
+
+            // Assert - Key Vault reference should be updated with the new secret value
+            Assert.Equal("UpdatedSecretValue", config[testContext.KeyVaultReferenceKey]);
         }
     }
 }
