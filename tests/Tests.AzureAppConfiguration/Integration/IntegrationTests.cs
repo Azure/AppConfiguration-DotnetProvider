@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Core;
+using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Azure.ResourceManager;
@@ -18,6 +19,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -56,6 +58,7 @@ namespace Tests.AzureAppConfiguration
             public string FeatureFlagKey { get; set; }
             public string KeyVaultReferenceKey { get; set; }
             public string SecretName { get; set; }
+            public string SecretValue { get; set; }
         }
 
         // Client for direct manipulation of the store
@@ -577,6 +580,7 @@ namespace Tests.AzureAppConfiguration
             string sentinelKey = $"{keyPrefix}:Sentinel";
             string featureFlagKey = $".appconfig.featureflag/{keyPrefix}Feature";
             string secretName = $"{keyPrefix}-secret";
+            string secretValue = "SecretValue";
             string keyVaultReferenceKey = $"{keyPrefix}:KeyVaultRef";
 
             // Create test-specific settings
@@ -603,7 +607,7 @@ namespace Tests.AzureAppConfiguration
                 try
                 {
                     // Create a secret in Key Vault
-                    await _secretClient.SetSecretAsync(secretName, "SecretValue");
+                    await _secretClient.SetSecretAsync(secretName, secretValue);
 
                     // Create a Key Vault reference in App Configuration
                     string keyVaultUri = $"{_keyVaultEndpoint}secrets/{secretName}";
@@ -628,7 +632,8 @@ namespace Tests.AzureAppConfiguration
                 SentinelKey = sentinelKey,
                 FeatureFlagKey = featureFlagKey,
                 KeyVaultReferenceKey = keyVaultReferenceKey,
-                SecretName = secretName
+                SecretName = secretName,
+                SecretValue = secretValue
             };
         }
 
@@ -1848,6 +1853,244 @@ namespace Tests.AzureAppConfiguration
 
             // Assert - Key Vault reference should be updated with the new secret value
             Assert.Equal("UpdatedSecretValue", config[testContext.KeyVaultReferenceKey]);
+        }
+
+        /// <summary>
+        /// Helper class to monitor Key Vault requests
+        /// </summary>
+        private class HttpPipelineTransportWithRequestCount : HttpPipelineTransport
+        {
+            private readonly HttpClientTransport _innerTransport = new HttpClientTransport();
+            private readonly Action _onRequest;
+
+            public HttpPipelineTransportWithRequestCount(Action onRequest)
+            {
+                _onRequest = onRequest;
+            }
+
+            public override Request CreateRequest()
+            {
+                return _innerTransport.CreateRequest();
+            }
+
+            public override void Process(HttpMessage message)
+            {
+                _onRequest();
+                _innerTransport.Process(message);
+            }
+
+            public override ValueTask ProcessAsync(HttpMessage message)
+            {
+                _onRequest();
+                return _innerTransport.ProcessAsync(message);
+            }
+        }
+
+        /// <summary>
+        /// Tests that Key Vault secrets are properly cached to avoid unnecessary requests.
+        /// </summary>
+        [Fact]
+        public async Task KeyVaultReference_UsesCache_DoesNotCallKeyVaultAgain()
+        {
+            // Skip if Key Vault is not available
+            if (_keyVault == null || _secretClient == null)
+            {
+                Console.WriteLine("Skipping Key Vault test - Key Vault is not available");
+                return;
+            }
+
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("KeyVaultCacheTest");
+
+            // Create a monitoring client to track calls to Key Vault
+            int requestCount = 0;
+            var testSecretClient = new SecretClient(
+                _keyVaultEndpoint,
+                GetCredential(),
+                new SecretClientOptions
+                {
+                    Transport = new HttpPipelineTransportWithRequestCount(() => requestCount++)
+                });
+
+            // Act
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.Register(testSecretClient);
+                    });
+                })
+                .Build();
+
+            // First access should resolve from Key Vault
+            var firstValue = config[testContext.KeyVaultReferenceKey];
+            int firstRequestCount = requestCount;
+
+            // Second access should use the cache
+            var secondValue = config[testContext.KeyVaultReferenceKey];
+            int secondRequestCount = requestCount;
+
+            // Assert
+            Assert.Equal(testContext.SecretValue, firstValue);
+            Assert.Equal(testContext.SecretValue, secondValue);
+            Assert.Equal(1, firstRequestCount);  // Should make exactly one request
+            Assert.Equal(firstRequestCount, secondRequestCount); // No additional requests for the second access
+        }
+
+        /// <summary>
+        /// Tests that Key Vault secrets are properly refreshed when the refresh feature is enabled.
+        /// </summary>
+        [Fact]
+        public async Task KeyVaultReference_Refresh_WhenSecretChanges()
+        {
+            // Skip if Key Vault is not available
+            if (_keyVault == null || _secretClient == null)
+            {
+                Console.WriteLine("Skipping Key Vault test - Key Vault is not available");
+                return;
+            }
+
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("KeyVaultRefreshTest");
+            IConfigurationRefresher refresher = null;
+
+            // Act - Create configuration with refresh capability
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetCredential(GetCredential());
+                        // Set a short refresh interval to make testing faster
+                        kv.SetSecretRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify initial value
+            Assert.Equal(testContext.SecretValue, config[testContext.KeyVaultReferenceKey]);
+
+            // Change the secret in Key Vault
+            string updatedSecretValue = $"UpdatedSecretValue-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            await _secretClient.SetSecretAsync(testContext.SecretName, updatedSecretValue);
+
+            // Update the sentinel key to trigger a refresh
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for caches to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh the configuration
+            await refresher.RefreshAsync();
+
+            // Assert - Should have the updated secret value
+            Assert.Equal(updatedSecretValue, config[testContext.KeyVaultReferenceKey]);
+        }
+
+        /// <summary>
+        /// Tests that different Key Vault references can have different refresh intervals.
+        /// </summary>
+        [Fact]
+        public async Task KeyVaultReference_DifferentRefreshIntervals()
+        {
+            // Skip if Key Vault is not available
+            if (_keyVault == null || _secretClient == null)
+            {
+                Console.WriteLine("Skipping Key Vault test - Key Vault is not available");
+                return;
+            }
+
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("KeyVaultDifferentIntervals");
+            IConfigurationRefresher refresher = null;
+
+            // Create a secret in Key Vault with short refresh interval
+            string secretName1 = $"test-secret1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            string secretValue1 = $"SecretValue1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            await _secretClient.SetSecretAsync(secretName1, secretValue1);
+
+            // Create another secret in Key Vault with long refresh interval
+            string secretName2 = $"test-secret2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            string secretValue2 = $"SecretValue2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            await _secretClient.SetSecretAsync(secretName2, secretValue2);
+
+            // Create Key Vault references in App Configuration
+            string keyVaultUri = _keyVaultEndpoint.ToString().TrimEnd('/');
+            string kvRefKey1 = $"{testContext.KeyPrefix}:KeyVaultRef1";
+            string kvRefKey2 = $"{testContext.KeyPrefix}:KeyVaultRef2";
+
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    kvRefKey1,
+                    $@"{{""uri"":""{keyVaultUri}/secrets/{secretName1}""}}",
+                    contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
+
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    kvRefKey2,
+                    $@"{{""uri"":""{keyVaultUri}/secrets/{secretName2}""}}",
+                    contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
+
+            // Act - Create configuration with different refresh intervals
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.SetCredential(GetCredential());
+                        // Set different refresh intervals for each secret
+                        kv.SetSecretRefreshInterval(kvRefKey1, TimeSpan.FromSeconds(1)); // Short interval
+                        kv.SetSecretRefreshInterval(kvRefKey2, TimeSpan.FromDays(1));    // Long interval
+                    });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify initial values
+            Assert.Equal(secretValue1, config[kvRefKey1]);
+            Assert.Equal(secretValue2, config[kvRefKey2]);
+
+            // Update both secrets in Key Vault
+            string updatedValue1 = $"UpdatedValue1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            string updatedValue2 = $"UpdatedValue2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+
+            await _secretClient.SetSecretAsync(secretName1, updatedValue1);
+            await _secretClient.SetSecretAsync(secretName2, updatedValue2);
+
+            // Update the sentinel key to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for the short interval cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh the configuration
+            await refresher.RefreshAsync();
+
+            // Assert - Only the first secret should be refreshed due to having a short interval
+            Assert.Equal(updatedValue1, config[kvRefKey1]); // Updated - short refresh interval
+            Assert.Equal(secretValue2, config[kvRefKey2]);  // Not updated - long refresh interval
         }
     }
 }
