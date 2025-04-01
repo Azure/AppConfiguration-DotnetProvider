@@ -15,13 +15,13 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    public class TagsFilterTests
+    public class TagsFiltersTests
     {
         private List<ConfigurationSetting> _kvCollection;
         private List<ConfigurationSetting> _ffCollection;
         private const int MaxTagsFilters = 5;
 
-        public TagsFilterTests()
+        public TagsFiltersTests()
         {
             _kvCollection = new List<ConfigurationSetting>
             {
@@ -300,7 +300,7 @@ namespace Tests.AzureAppConfiguration
                     .Build();
                 });
 
-                Assert.Contains($"Tag '{tagsFilter}' does not follow the format \"tagName=tagValue\".", exception.Message);
+                Assert.Contains($"Tag filter '{tagsFilter}' does not follow the format \"tagName=tagValue\".", exception.Message);
             }
         }
 
