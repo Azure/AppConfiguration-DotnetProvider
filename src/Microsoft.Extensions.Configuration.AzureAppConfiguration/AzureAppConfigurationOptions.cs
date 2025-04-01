@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
 using Azure.Core;
 using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
@@ -234,7 +233,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
                     {
-                        throw new ArgumentException($"Tag '{tag}' does not follow the format \"tagName=tagValue\".", nameof(tagsFilters));
+                        throw new ArgumentException($"Tag filter '{tag}' does not follow the format \"tagName=tagValue\".", nameof(tagsFilters));
                     }
                 }
             }

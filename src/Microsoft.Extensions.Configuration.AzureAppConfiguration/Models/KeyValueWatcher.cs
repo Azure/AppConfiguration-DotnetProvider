@@ -3,7 +3,6 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
