@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
         /// </summary>
-        public IEnumerable<string> TagsFilter { get; set; }
+        public IEnumerable<string> TagsFilters { get; set; }
 
         /// <summary>
         /// A boolean that signifies whether this selector is intended to select feature flags.
@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 return KeyFilter == selector.KeyFilter
                     && LabelFilter == selector.LabelFilter
                     && SnapshotName == selector.SnapshotName
-                    && (TagsFilter != null ? new HashSet<string>(TagsFilter).SetEquals(selector.TagsFilter) : selector.TagsFilter == null)
+                    && (TagsFilters != null ? new HashSet<string>(TagsFilters).SetEquals(selector.TagsFilters) : selector.TagsFilters == null)
                     && IsFeatureFlagSelector == selector.IsFeatureFlagSelector;
             }
 
@@ -63,23 +63,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
-            int tagsFilterHashCode = 3;
+            int tagsFiltersHashCode = 3;
 
-            if (TagsFilter != null && TagsFilter.Any())
+            if (TagsFilters != null && TagsFilters.Any())
             {
-                var sortedTags = new SortedSet<string>(TagsFilter);
+                var sortedTags = new SortedSet<string>(TagsFilters);
 
                 // Concatenate tags into a single string with a delimiter
                 string tagsString = string.Join("|", sortedTags);
 
-                tagsFilterHashCode = tagsString.GetHashCode();
+                tagsFiltersHashCode = tagsString.GetHashCode();
             }
 
             return HashCode.Combine(
                 KeyFilter?.GetHashCode() ?? 0,
                 LabelFilter?.GetHashCode() ?? 1,
                 SnapshotName?.GetHashCode() ?? 2,
-                tagsFilterHashCode,
+                tagsFiltersHashCode,
                 IsFeatureFlagSelector.GetHashCode());
         }
     }
