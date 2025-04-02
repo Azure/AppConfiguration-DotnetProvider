@@ -36,6 +36,7 @@ namespace Tests.AzureAppConfiguration
         private const string TestKeyPrefix = "IntegrationTest";
         private const string SubscriptionJsonPath = "appsettings.Secrets.json";
         private static readonly TimeSpan StaleResourceThreshold = TimeSpan.FromHours(3);
+        private const string KeyVaultReferenceLabel = "KeyVaultRef";
 
         // Fixed resource names - already existing
         private const string AppConfigStoreName = "appconfig-dotnetprovider-integrationtest";
@@ -457,6 +458,7 @@ namespace Tests.AzureAppConfiguration
                     var keyVaultRefSetting = ConfigurationModelFactory.ConfigurationSetting(
                         keyVaultReferenceKey,
                         keyVaultRefValue,
+                        label: KeyVaultReferenceLabel,
                         contentType: KeyVaultConstants.ContentType);
 
                     await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
@@ -1658,7 +1660,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
                     options.ConfigureKeyVault(kv => kv.SetCredential(GetCredential()));
                 })
                 .Build();
@@ -1722,7 +1724,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.Register(testSecretClient);
@@ -1774,12 +1776,14 @@ namespace Tests.AzureAppConfiguration
                 ConfigurationModelFactory.ConfigurationSetting(
                     kvRefKey1,
                     $@"{{""uri"":""{keyVaultUri}/secrets/{secretName1}""}}",
+                    label: KeyVaultReferenceLabel,
                     contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
 
             await _configClient.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     kvRefKey2,
                     $@"{{""uri"":""{keyVaultUri}/secrets/{secretName2}""}}",
+                    label: KeyVaultReferenceLabel,
                     contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
 
             // Act - Create configuration with different refresh intervals
@@ -1787,7 +1791,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(GetConnectionString());
-                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
                     options.ConfigureKeyVault(kv =>
                     {
                         kv.SetCredential(GetCredential());
