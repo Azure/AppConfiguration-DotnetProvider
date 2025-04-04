@@ -332,11 +332,6 @@ namespace Tests.AzureAppConfiguration
                 Console.WriteLine($"Error during stale resource cleanup: {ex.Message}");
                 // Continue execution even if cleanup fails
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Unexpected error during stale resource cleanup: {ex.Message}");
-                // Continue execution even if cleanup fails
-            }
         }
 
         /// <summary>
@@ -402,10 +397,6 @@ namespace Tests.AzureAppConfiguration
             catch (InvalidOperationException ex)
             {
                 Console.WriteLine($"Operation error during test cleanup: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Unexpected error during test cleanup: {ex.ToString()}");
             }
         }
 

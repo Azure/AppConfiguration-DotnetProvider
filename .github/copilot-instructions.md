@@ -1,0 +1,1 @@
+We always catch specific exceptions and avoid catching the base Exception class in catch blocks.
