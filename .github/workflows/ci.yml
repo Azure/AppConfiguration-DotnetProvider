@@ -40,6 +40,22 @@ jobs:
       - name: Dotnet Pack
         run: pwsh pack.ps1
 
+      - name: Azure Login with OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+      - name: Create Subscription Settings File
+        run: |
+          cat > ${{ github.workspace }}/tests/Integration/appsettings.Secrets.json <<EOF
+          {
+            "Success": true,
+            "SubscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          }
+          EOF
+
       - name: Dotnet Test
         run: pwsh test.ps1
 
