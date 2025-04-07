@@ -21,6 +21,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
         };
+        
+        private RequestTracingOptions _requestTracingOptions;
+
+        public JsonKeyValueAdapter(RequestTracingOptions requestTracingOptions = null)
+        {
+            _requestTracingOptions = requestTracingOptions;
+        }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
@@ -64,7 +71,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                mediaType = new ContentType(setting.ContentType.Trim()).MediaType;
+                ContentType contentType = new ContentType(setting.ContentType.Trim());
+                mediaType = contentType.MediaType;
+                
+                // Check for profile parameter in the content type
+                if (_requestTracingOptions != null && 
+                    contentType.Parameters.ContainsKey("profile") && 
+                    !string.IsNullOrEmpty(contentType.Parameters["profile"]))
+                {
+                    _requestTracingOptions.HasProfileContentType = true;
+                }
             }
             catch (FormatException)
             {

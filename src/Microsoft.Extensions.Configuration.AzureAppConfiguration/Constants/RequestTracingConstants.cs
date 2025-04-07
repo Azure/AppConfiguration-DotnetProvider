@@ -31,6 +31,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
+
+        public const string ProfileContentTypeTag = "PRFL";
+
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
         public const string PushRefreshTag = "PushRefresh";
@@ -52,7 +55,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
-
         public const string Delimiter = "+";
     }
 }

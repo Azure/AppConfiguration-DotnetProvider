@@ -69,12 +69,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether any key-value uses a content type with the format "application/json;profile="<url>"".
+        /// </summary>
+        public bool HasProfileContentType { get; set; } = false;
+
+        /// <summary>
         /// Checks whether any tracing feature is used.
         /// </summary>
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
-            return IsLoadBalancingEnabled || IsSignalRUsed;
+            return IsLoadBalancingEnabled || IsSignalRUsed || HasProfileContentType;
         }
 
         /// <summary>
@@ -103,6 +108,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.SignalRUsedTag);
+            }
+
+            if (HasProfileContentType)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.ProfileContentTypeTag);
             }
 
             return sb.ToString();
