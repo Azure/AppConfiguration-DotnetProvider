@@ -69,7 +69,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether any key-value uses a content type with the format "application/json;profile="<url>"".
+        /// Flag to indicate whether any key-value uses a content type with the format application/json;profile="".
         /// </summary>
         public bool HasProfileContentType { get; set; } = false;
 
