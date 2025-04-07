@@ -22,6 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             get
             {
+                // Ensure latest refreshers are discovered if the configuration has changed since the constructor was called
                 if (!_rediscoveredRefreshers)
                 {
                     _refreshers = DiscoverRefreshers();
