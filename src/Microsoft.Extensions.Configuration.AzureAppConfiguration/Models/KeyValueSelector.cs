@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
-            int tagsFiltersHashCode = 3;
+            int tagFiltersHashCode = 3;
 
             if (TagFilters != null && TagFilters.Any())
             {
@@ -72,14 +72,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 // Concatenate tags into a single string with a delimiter
                 string tagsString = string.Join("|", sortedTags);
 
-                tagsFiltersHashCode = tagsString.GetHashCode();
+                tagFiltersHashCode = tagsString.GetHashCode();
             }
 
             return HashCode.Combine(
                 KeyFilter?.GetHashCode() ?? 0,
                 LabelFilter?.GetHashCode() ?? 1,
                 SnapshotName?.GetHashCode() ?? 2,
-                tagsFiltersHashCode,
+                tagFiltersHashCode,
                 IsFeatureFlagSelector.GetHashCode());
         }
     }
