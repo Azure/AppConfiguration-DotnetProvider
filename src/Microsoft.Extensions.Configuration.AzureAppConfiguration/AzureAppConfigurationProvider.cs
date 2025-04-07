@@ -344,7 +344,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 KeyFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
-                                TagsFilters = watcher.Tags,
+                                TagFilters = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
                             _ffEtags,
@@ -815,9 +815,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
-                    if (loadOption.TagsFilters != null)
+                    if (loadOption.TagFilters != null)
                     {
-                        foreach (string tagFilter in loadOption.TagsFilters)
+                        foreach (string tagFilter in loadOption.TagFilters)
                         {
                             selector.TagsFilter.Add(tagFilter);
                         }

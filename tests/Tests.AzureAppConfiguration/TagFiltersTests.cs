@@ -15,13 +15,13 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    public class TagsFiltersTests
+    public class TagFiltersTests
     {
         private List<ConfigurationSetting> _kvCollection;
         private List<ConfigurationSetting> _ffCollection;
-        private const int MaxTagsFilters = 5;
+        private const int MaxTagFilters = 5;
 
-        public TagsFiltersTests()
+        public TagFiltersTests()
         {
             _kvCollection = new List<ConfigurationSetting>
             {
@@ -160,7 +160,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_BasicTagFiltering()
+        public void TagFiltersTests_BasicTagFiltering()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -199,7 +199,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_NullOrEmptyValue()
+        public void TagFiltersTests_NullOrEmptyValue()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -240,7 +240,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_MultipleTagsFiltering()
+        public void TagFiltersTests_MultipleTagsFiltering()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -280,13 +280,13 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_InvalidTagFormat()
+        public void TagFiltersTests_InvalidTagFormat()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            List<string> invalidTagsFilters = new List<string> { "InvalidTagFormat", "=tagValue", "", null };
+            List<string> invalidTagFilters = new List<string> { "InvalidTagFormat", "=tagValue", "", null };
 
-            foreach (string tagsFilter in invalidTagsFilters)
+            foreach (string tagsFilter in invalidTagFilters)
             {
                 // Verify that an ArgumentException is thrown when using an invalid tag format
                 var exception = Assert.Throws<ArgumentException>(() =>
@@ -305,21 +305,21 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_TooManyTags()
+        public void TagFiltersTests_TooManyTags()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var mockResponse = new Mock<Response>();
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s =>
-                s.TagsFilter.Contains("Environment=Development") && s.TagsFilter.Count <= MaxTagsFilters),
+                s.TagsFilter.Contains("Environment=Development") && s.TagsFilter.Count <= MaxTagFilters),
                 It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")));
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.Is<SettingSelector>(s =>
-                s.TagsFilter.Count > MaxTagsFilters),
+                s.TagsFilter.Count > MaxTagFilters),
                 It.IsAny<CancellationToken>()))
-                .Throws(new RequestFailedException($"Invalid parameter TagsFilter. Maximum filters is {MaxTagsFilters}"));
+                .Throws(new RequestFailedException($"Invalid parameter TagsFilter. Maximum filters is {MaxTagFilters}"));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -357,7 +357,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_TagFilterInteractionWithKeyLabelFilters()
+        public void TagFiltersTests_TagFilterInteractionWithKeyLabelFilters()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -402,7 +402,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_EmptyTagsCollection()
+        public void TagFiltersTests_EmptyTagsCollection()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -441,7 +441,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_SpecialCharactersInTags()
+        public void TagFiltersTests_SpecialCharactersInTags()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -481,7 +481,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void TagsFiltersTests_EscapedCommaCharactersInTags()
+        public void TagFiltersTests_EscapedCommaCharactersInTags()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -521,7 +521,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task TagsFiltersTests_BasicRefresh()
+        public async Task TagFiltersTests_BasicRefresh()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             IConfigurationRefresher refresher = null;

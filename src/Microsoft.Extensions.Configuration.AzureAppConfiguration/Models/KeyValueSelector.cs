@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <summary>
         /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
         /// </summary>
-        public IEnumerable<string> TagsFilters { get; set; }
+        public IEnumerable<string> TagFilters { get; set; }
 
         /// <summary>
         /// A boolean that signifies whether this selector is intended to select feature flags.
@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 return KeyFilter == selector.KeyFilter
                     && LabelFilter == selector.LabelFilter
                     && SnapshotName == selector.SnapshotName
-                    && (TagsFilters != null ? new HashSet<string>(TagsFilters).SetEquals(selector.TagsFilters) : selector.TagsFilters == null)
+                    && (TagFilters != null ? new HashSet<string>(TagFilters).SetEquals(selector.TagFilters) : selector.TagFilters == null)
                     && IsFeatureFlagSelector == selector.IsFeatureFlagSelector;
             }
 
@@ -65,9 +65,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         {
             int tagsFiltersHashCode = 3;
 
-            if (TagsFilters != null && TagsFilters.Any())
+            if (TagFilters != null && TagFilters.Any())
             {
-                var sortedTags = new SortedSet<string>(TagsFilters);
+                var sortedTags = new SortedSet<string>(TagFilters);
 
                 // Concatenate tags into a single string with a delimiter
                 string tagsString = string.Join("|", sortedTags);
