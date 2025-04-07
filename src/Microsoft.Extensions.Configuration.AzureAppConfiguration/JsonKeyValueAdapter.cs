@@ -21,7 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
         };
-        
+
         private RequestTracingOptions _requestTracingOptions;
 
         public JsonKeyValueAdapter(RequestTracingOptions requestTracingOptions = null)
@@ -73,10 +73,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 ContentType contentType = new ContentType(setting.ContentType.Trim());
                 mediaType = contentType.MediaType;
-                
+
                 // Check for profile parameter in the content type
-                if (_requestTracingOptions != null && 
-                    contentType.Parameters.ContainsKey("profile") && 
+                if (_requestTracingOptions != null &&
+                    contentType.Parameters.ContainsKey("profile") &&
                     !string.IsNullOrEmpty(contentType.Parameters["profile"]))
                 {
                     _requestTracingOptions.HasProfileContentType = true;
