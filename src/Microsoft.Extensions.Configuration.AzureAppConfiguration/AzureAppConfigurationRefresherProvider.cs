@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -13,11 +14,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private static readonly PropertyInfo _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
 
-        public IEnumerable<IConfigurationRefresher> Refreshers { get; }
+        private readonly IConfiguration _configuration;
+        private readonly ILoggerFactory _loggerFactory;
+        private IEnumerable<IConfigurationRefresher> _refreshers;
+        private bool _rediscoveredRefreshers = false;
 
-        public AzureAppConfigurationRefresherProvider(IConfiguration configuration, ILoggerFactory _loggerFactory)
+        public IEnumerable<IConfigurationRefresher> Refreshers
         {
-            var configurationRoot = configuration as IConfigurationRoot;
+            get
+            {
+                if (!_rediscoveredRefreshers)
+                {
+                    _refreshers = DiscoverRefreshers();
+
+                    _rediscoveredRefreshers = true;
+                }
+
+                return _refreshers;
+            }
+        }
+
+        public AzureAppConfigurationRefresherProvider(IConfiguration configuration, ILoggerFactory loggerFactory)
+        {
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _loggerFactory = loggerFactory;
+
+            _refreshers = DiscoverRefreshers();
+        }
+
+        private IEnumerable<IConfigurationRefresher> DiscoverRefreshers()
+        {
+            var configurationRoot = _configuration as IConfigurationRoot;
             var refreshers = new List<IConfigurationRefresher>();
 
             FindRefreshers(configurationRoot, _loggerFactory, refreshers);
@@ -27,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException("Unable to access the Azure App Configuration provider. Please ensure that it has been configured correctly.");
             }
 
-            Refreshers = refreshers;
+            return refreshers;
         }
 
         private void FindRefreshers(IConfigurationRoot configurationRoot, ILoggerFactory loggerFactory, List<IConfigurationRefresher> refreshers)
