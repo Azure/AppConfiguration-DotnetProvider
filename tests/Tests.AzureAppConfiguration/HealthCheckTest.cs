@@ -1,0 +1,112 @@
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Moq;
+using System.Threading;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Xunit;
+using System;
+using System.Linq;
+
+namespace Tests.AzureAppConfiguration
+{
+    public class HealthCheckTest
+    {
+        readonly List<ConfigurationSetting> kvCollection = new List<ConfigurationSetting>
+        {
+            ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", "label",
+                eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63"),
+                contentType:"text"),
+            ConfigurationModelFactory.ConfigurationSetting("TestKey2", "TestValue2", "label",
+                eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("TestKey3", "TestValue3", "label",
+
+                eTag: new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
+                contentType: "text"),
+            ConfigurationModelFactory.ConfigurationSetting("TestKey4", "TestValue4", "label",
+                eTag: new ETag("3ca43b3e-d544-4b0c-b3a2-e7a7284217a2"),
+                contentType: "text"),
+        };
+
+        [Fact]
+        public async Task HealthCheckTests_ReturnsUnhealthyWhenInitialLoadIsNotCompleted()
+        {
+            var healthCheck = new AzureAppConfigurationHealthCheck();
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            Assert.Equal(HealthStatus.Unhealthy, result.Status);
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(kvCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.HealthCheck = healthCheck;
+                })
+                .Build();
+
+            Assert.True(config["TestKey1"] == "TestValue1");
+            result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            Assert.Equal(HealthStatus.Healthy, result.Status);
+        }
+
+        [Fact]
+        public async Task HealthCheckTests_ReturnsUnhealthyWhenRefreshFailed()
+        {
+            IConfigurationRefresher refresher = null;
+            var healthCheck = new AzureAppConfigurationHealthCheck();
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Returns(new MockAsyncPageable(kvCollection))
+                       .Throws(new RequestFailedException(503, "Request failed."))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.MinBackoffDuration = TimeSpan.FromSeconds(2);
+                    options.HealthCheck = healthCheck;
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            Assert.Equal(HealthStatus.Healthy, result.Status);
+
+            // Wait for the refresh interval to expire
+            Thread.Sleep(1000);
+
+            await refresher.TryRefreshAsync();
+            result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            Assert.Equal(HealthStatus.Unhealthy, result.Status);
+
+            // Wait for client backoff to end
+            Thread.Sleep(3000);
+
+            await refresher.RefreshAsync();
+            result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            Assert.Equal(HealthStatus.Healthy, result.Status);
+        }
+    }
+}

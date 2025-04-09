@@ -58,6 +58,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             public DateTimeOffset BackoffEndTime { get; set; }
         }
 
+        public DateTimeOffset? LastSuccessfulAttempt { get; private set; } = null;
+        public DateTimeOffset? LastFailedAttempt { get; private set; } = null;
+
         public Uri AppConfigurationEndpoint
         {
             get
@@ -115,6 +118,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             bool hasWatchers = watchers.Any();
             TimeSpan minWatcherRefreshInterval = hasWatchers ? watchers.Min(w => w.RefreshInterval) : TimeSpan.MaxValue;
+
+            if (options.HealthCheck != null)
+            {
+                options.HealthCheck.SetProvider(this);
+            }
 
             if (options.RegisterAllEnabled)
             {
@@ -198,6 +206,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
+            LastSuccessfulAttempt = DateTime.UtcNow;
         }
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -254,6 +263,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _configClientManager.RefreshClients();
 
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+
+                        LastFailedAttempt = DateTime.UtcNow;
 
                         return;
                     }
@@ -449,6 +460,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(_mappedData, cancellationToken).ConfigureAwait(false));
                     }
+
+                    LastSuccessfulAttempt = DateTime.UtcNow;
                 }
                 finally
                 {
@@ -1143,6 +1156,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
+                        LastFailedAttempt = DateTime.UtcNow;
 
                         throw;
                     }
@@ -1152,6 +1166,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
+                        LastFailedAttempt = DateTime.UtcNow;
 
                         throw;
                     }

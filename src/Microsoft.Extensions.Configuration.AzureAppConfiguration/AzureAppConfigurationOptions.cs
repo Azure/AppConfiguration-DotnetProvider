@@ -40,6 +40,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
 
         /// <summary>
+        /// Health check for Azure App Configuration.
+        /// </summary>
+        public AzureAppConfigurationHealthCheck HealthCheck { get; set; } = new AzureAppConfigurationHealthCheck();
+
+        /// <summary>
         /// Flag to indicate whether replica discovery is enabled.
         /// </summary>
         public bool ReplicaDiscoveryEnabled { get; set; } = true;
