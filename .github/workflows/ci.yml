@@ -58,7 +58,7 @@ jobs:
             "SubscriptionId": "$subscriptionId"
           }
           "@
-          Set-Content -Path "${{ github.workspace }}/tests/Integration/appsettings.Secrets.json" -Value $jsonContent
+          Set-Content -Path "./tests/Integration/appsettings.Secrets.json" -Value $jsonContent
 
       - name: Dotnet Test
         run: pwsh test.ps1
