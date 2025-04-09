@@ -8,10 +8,7 @@ using System.Threading;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    /// <summary>
-    /// Health check for Azure App Configuration.
-    /// </summary>
-    public sealed class AzureAppConfigurationHealthCheck : IHealthCheck
+    internal class AzureAppConfigurationHealthCheck : IConfigurationHealthCheck
     {
         private AzureAppConfigurationProvider _provider = null;
 
@@ -20,9 +17,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
-        /// <summary>
-        /// Checks the health of the Azure App Configuration provider.
-        /// </summary>
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             if (_provider == null)

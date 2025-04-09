@@ -36,11 +36,9 @@ namespace Tests.AzureAppConfiguration
         };
 
         [Fact]
-        public async Task HealthCheckTests_ReturnsUnhealthyWhenInitialLoadIsNotCompleted()
+        public async Task HealthCheckTests_ReturnsHealthyWhenInitialLoadIsCompleted()
         {
-            var healthCheck = new AzureAppConfigurationHealthCheck();
-            HealthCheckResult result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
-            Assert.Equal(HealthStatus.Unhealthy, result.Status);
+            IHealthCheck healthCheck = null;
 
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -52,12 +50,12 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.HealthCheck = healthCheck;
+                    healthCheck = options.GetHealthCheck();
                 })
                 .Build();
 
             Assert.True(config["TestKey1"] == "TestValue1");
-            result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
             Assert.Equal(HealthStatus.Healthy, result.Status);
         }
 
@@ -65,7 +63,7 @@ namespace Tests.AzureAppConfiguration
         public async Task HealthCheckTests_ReturnsUnhealthyWhenRefreshFailed()
         {
             IConfigurationRefresher refresher = null;
-            var healthCheck = new AzureAppConfigurationHealthCheck();
+            IHealthCheck healthCheck = null;
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -80,7 +78,6 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.MinBackoffDuration = TimeSpan.FromSeconds(2);
-                    options.HealthCheck = healthCheck;
                     options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
                     options.ConfigureRefresh(refreshOptions =>
                     {
@@ -88,10 +85,11 @@ namespace Tests.AzureAppConfiguration
                             .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     refresher = options.GetRefresher();
+                    healthCheck = options.GetHealthCheck();
                 })
                 .Build();
 
-            HealthCheckResult result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+            var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
             Assert.Equal(HealthStatus.Healthy, result.Status);
 
             // Wait for the refresh interval to expire

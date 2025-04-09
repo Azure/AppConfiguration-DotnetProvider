@@ -33,16 +33,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _selectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
+        private IConfigurationHealthCheck _healthCheck = new AzureAppConfigurationHealthCheck();
         private bool _selectCalled = false;
 
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
         private SortedSet<string> _keyPrefixes = new SortedSet<string>(Comparer<string>.Create((k1, k2) => -string.Compare(k1, k2, StringComparison.OrdinalIgnoreCase)));
-
-        /// <summary>
-        /// Health check for Azure App Configuration.
-        /// </summary>
-        public AzureAppConfigurationHealthCheck HealthCheck { get; set; } = new AzureAppConfigurationHealthCheck();
 
         /// <summary>
         /// Flag to indicate whether replica discovery is enabled.
@@ -462,6 +458,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public IConfigurationRefresher GetRefresher()
         {
             return _refresher;
+        }
+
+        /// <summary>
+        /// Get an instance of <see cref="IConfigurationHealthCheck"/> that can be used to do health checks for the configuration provider.
+        /// </summary>
+        /// <returns>An instance of <see cref="IConfigurationHealthCheck"/>.</returns>
+        public IConfigurationHealthCheck GetHealthCheck()
+        {
+            return _healthCheck;
         }
 
         /// <summary>
