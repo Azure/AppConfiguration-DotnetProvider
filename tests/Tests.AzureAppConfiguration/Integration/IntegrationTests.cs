@@ -91,6 +91,13 @@ namespace Tests.AzureAppConfiguration
         /// </summary>
         private string GetCurrentSubscriptionId()
         {
+            string subscriptionIdFromEnv = Environment.GetEnvironmentVariable("AZURE_SUBSCRIPTION_ID");
+
+            if (!string.IsNullOrEmpty(subscriptionIdFromEnv))
+            {
+                return subscriptionIdFromEnv;
+            }
+
             // Read the JSON file created by the script
             string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Integration", SubscriptionJsonPath);
 
