@@ -49,13 +49,16 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
       - name: Create Subscription Settings File
+        shell: pwsh
         run: |
-          cat > ${{ github.workspace }}/tests/Integration/appsettings.Secrets.json <<EOF
+          $subscriptionId = "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          $jsonContent = @"
           {
             "Success": true,
-            "SubscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            "SubscriptionId": "$subscriptionId"
           }
-          EOF
+          "@
+          Set-Content -Path "${{ github.workspace }}/tests/Integration/appsettings.Secrets.json" -Value $jsonContent
 
       - name: Dotnet Test
         run: pwsh test.ps1
