@@ -2,6 +2,7 @@
 
 # GetAzureSubscription.ps1
 # This script gets the current Azure subscription ID and saves it to a JSON file
+# Must be logged into AppConfig - Dev subscription for the integration tests to work.
 
 $ErrorActionPreference = "Stop"
 $outputPath = Join-Path $PSScriptRoot "appsettings.Secrets.json"
