@@ -204,7 +204,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Mark all settings have loaded at startup.
             _isInitialLoadComplete = true;
-            LastSuccessfulAttempt = DateTime.UtcNow;
         }
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -458,8 +457,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         SetData(await PrepareData(_mappedData, cancellationToken).ConfigureAwait(false));
                     }
-
-                    LastSuccessfulAttempt = DateTime.UtcNow;
                 }
                 finally
                 {
@@ -1146,6 +1143,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     success = true;
 
                     _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
+                    LastSuccessfulAttempt = DateTime.UtcNow;
 
                     return result;
                 }
