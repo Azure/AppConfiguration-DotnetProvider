@@ -69,14 +69,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether any key-value uses a content type with the format application/json;profile="https://azconfig.io/mime-profiles/ai".
+        /// Indicates certain content types used by the application.
         /// </summary>
-        public bool HasAIContentTypeProfile { get; set; } = false;
-
-        /// <summary>
-        /// Flag to indicate whether any key-value uses a content type that contains application/json;profile="https://azconfig.io/mime-profiles/ai/chat-completion".
-        /// </summary>
-        public bool HasAIChatCompletionContentTypeProfile { get; set; } = false;
+        public ContentTypeTracing ContentTypeTracing { get; set; } = new ContentTypeTracing();
 
         /// <summary>
         /// Checks whether any tracing feature is used.
@@ -84,7 +79,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
-            return IsLoadBalancingEnabled || IsSignalRUsed || HasAIContentTypeProfile || HasAIChatCompletionContentTypeProfile;
+            return IsLoadBalancingEnabled ||
+                IsSignalRUsed ||
+                ContentTypeTracing.HasAIContentTypeProfile ||
+                ContentTypeTracing.HasAIChatCompletionContentTypeProfile;
         }
 
         /// <summary>
@@ -115,7 +113,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.SignalRUsedTag);
             }
 
-            if (HasAIContentTypeProfile)
+            if (ContentTypeTracing.HasAIContentTypeProfile)
             {
                 if (sb.Length > 0)
                 {
@@ -125,7 +123,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.AIContentTypeProfileTag);
             }
 
-            if (HasAIChatCompletionContentTypeProfile)
+            if (ContentTypeTracing.HasAIChatCompletionContentTypeProfile)
             {
                 if (sb.Length > 0)
                 {

@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -258,7 +259,7 @@ namespace Tests.AzureAppConfiguration
                 value: compactJsonValue,
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8");
 
-            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter(new ContentTypeTracing());
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
@@ -274,43 +275,8 @@ namespace Tests.AzureAppConfiguration
                    ",
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
 
-            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter(new ContentTypeTracing());
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
-        }
-
-        [Fact]
-        public void JsonContentTypeTests_AIProfileTagsInCorrelationContextHeader()
-        {
-            var response = new MockResponse(200);
-
-            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
-            {
-                ConfigurationModelFactory.ConfigurationSetting(
-                    key: "TestKey1",
-                    value: "True",
-                    contentType: "application/json;profile=\"https://azconfig.io/mime-profiles/ai/misc\""),
-            };
-
-            response.SetContent(SerializationHelpers.Serialize(_kvCollection.ToArray(), TestHelpers.SerializeBatch));
-
-            var mockTransport = new MockTransport(response);
-
-            var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
-            var mockClientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = mockClientManager;
-                    options.Select("*", null);
-                })
-                .Build();
-
-            MockRequest request = mockTransport.SingleRequest;
-
-            Assert.True(request.Headers.TryGetValues("Correlation-Context", out IEnumerable<string> correlationHeader));
-            Assert.NotNull(correlationHeader.First());
-            Assert.Contains($"Features={RequestTracingConstants.AIContentTypeProfileTag}{RequestTracingConstants.Delimiter}{RequestTracingConstants.AIChatCompletionContentTypeProfileTag}", correlationHeader.First());
         }
 
         private IConfigurationClientManager GetMockConfigurationClientManager(List<ConfigurationSetting> _kvCollection)

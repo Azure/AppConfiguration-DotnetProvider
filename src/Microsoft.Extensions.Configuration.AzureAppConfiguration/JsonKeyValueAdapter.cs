@@ -22,11 +22,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             KeyVaultConstants.ContentType
         };
 
-        private RequestTracingOptions _requestTracingOptions;
+        private ContentTypeTracing _contentTypeTracing;
 
-        public JsonKeyValueAdapter(RequestTracingOptions requestTracingOptions)
+        public JsonKeyValueAdapter(ContentTypeTracing contentTypeTracing)
         {
-            _requestTracingOptions = requestTracingOptions;
+            _contentTypeTracing = contentTypeTracing;
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -75,16 +75,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 mediaType = contentType.MediaType;
 
                 // Check for profile parameter in the content type
-                if (_requestTracingOptions != null &&
+                if (_contentTypeTracing != null &&
                     contentType.Parameters.ContainsKey("profile") &&
                     !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
                     contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIContentTypeProfile))
                 {
-                    _requestTracingOptions.HasAIContentTypeProfile = true;
+                    _contentTypeTracing.HasAIContentTypeProfile = true;
 
                     if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionContentTypeProfile))
                     {
-                        _requestTracingOptions.HasAIChatCompletionContentTypeProfile = true;
+                        _contentTypeTracing.HasAIChatCompletionContentTypeProfile = true;
                     }
                 }
             }

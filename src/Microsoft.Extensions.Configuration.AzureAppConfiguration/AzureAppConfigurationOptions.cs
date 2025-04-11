@@ -141,9 +141,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
-        /// Indicates all types of feature filters used by the application.
+        /// Indicates all feature flag features used by the application.
         /// </summary>
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
+
+        /// <summary>
+        /// Indicates certain content types used by the application.
+        /// </summary>
+        internal ContentTypeTracing ContentTypeTracing { get; set; } = new ContentTypeTracing();
 
         /// <summary>
         /// Options used to configure provider startup.
@@ -158,7 +163,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters = new List<IKeyValueAdapter>()
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-                new JsonKeyValueAdapter(),
+                new JsonKeyValueAdapter(ContentTypeTracing),
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
 

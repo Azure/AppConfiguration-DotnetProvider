@@ -31,7 +31,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
-
         public const string AIContentTypeProfileTag = "AI";
         public const string AIChatCompletionContentTypeProfileTag = "AICC";
 
