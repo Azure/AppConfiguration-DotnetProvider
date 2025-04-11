@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private RequestTracingOptions _requestTracingOptions;
 
-        public JsonKeyValueAdapter(RequestTracingOptions requestTracingOptions = null)
+        public JsonKeyValueAdapter(RequestTracingOptions requestTracingOptions)
         {
             _requestTracingOptions = requestTracingOptions;
         }

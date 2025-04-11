@@ -155,15 +155,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public AzureAppConfigurationOptions()
         {
-            RequestTracingOptions requestTracingOptions = new RequestTracingOptions
-            {
-                FeatureFlagTracing = FeatureFlagTracing
-            };
-
             _adapters = new List<IKeyValueAdapter>()
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-                new JsonKeyValueAdapter(requestTracingOptions),
+                new JsonKeyValueAdapter(),
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
 

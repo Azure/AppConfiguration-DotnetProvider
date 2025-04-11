@@ -32,8 +32,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
 
-        public const string AIContentTypeProfileTag = "AIPRFL";
-        public const string AIChatCompletionContentTypeProfileTag = "CHATCOMP";
+        public const string AIContentTypeProfileTag = "AI";
+        public const string AIChatCompletionContentTypeProfileTag = "AICC";
 
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";

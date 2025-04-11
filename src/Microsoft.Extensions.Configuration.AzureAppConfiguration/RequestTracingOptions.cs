@@ -84,7 +84,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
-            return IsLoadBalancingEnabled || IsSignalRUsed || HasAIContentTypeProfile;
+            return IsLoadBalancingEnabled || IsSignalRUsed || HasAIContentTypeProfile || HasAIChatCompletionContentTypeProfile;
         }
 
         /// <summary>
