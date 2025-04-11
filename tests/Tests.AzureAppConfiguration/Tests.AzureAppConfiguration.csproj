@@ -25,17 +25,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
-    <PackageReference Include="Microsoft.Graph" Version="5.75.0" />
   </ItemGroup>
 
   <!-- Add to Tests.AzureAppConfiguration.csproj -->
   <ItemGroup>
     <None Update="Integration\appsettings.Secrets.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Integration\GetAzureSubscription.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
