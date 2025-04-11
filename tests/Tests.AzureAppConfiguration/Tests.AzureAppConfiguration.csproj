@@ -28,7 +28,6 @@
     <DotNetCliToolReference Include="dotnet-xunit" Version="2.3.1" />
   </ItemGroup>
 
-  <!-- Add to Tests.AzureAppConfiguration.csproj -->
   <ItemGroup>
     <None Update="Integration\appsettings.Secrets.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

@@ -26,7 +26,7 @@ namespace Tests.AzureAppConfiguration
     /// Integration tests for Azure App Configuration that connect to a real service.
     /// Uses an existing App Configuration store and Key Vault for testing.
     /// Requires Azure credentials with appropriate permissions.
-    /// NOTE: Before running these tests, execute the GetAzureSubscription.ps1 script to create appsettings.Secrets.json.
+    /// NOTE: Before running these tests locally, execute the GetAzureSubscription.ps1 script to create appsettings.Secrets.json.
     /// </summary>
     [Trait("Category", "Integration")]
     [CollectionDefinition(nameof(IntegrationTests), DisableParallelization = true)]
@@ -484,33 +484,6 @@ namespace Tests.AzureAppConfiguration
                 SecretName = secretName,
                 SecretValue = secretValue
             };
-        }
-
-        // Helper method to track additional configuration keys created during tests
-        private void TrackConfigurationKey(string key)
-        {
-            if (!string.IsNullOrEmpty(key))
-            {
-                _createdConfigKeys.Add(key);
-            }
-        }
-
-        // Helper method to track additional secrets created during tests
-        private void TrackKeyVaultSecret(string secretName)
-        {
-            if (!string.IsNullOrEmpty(secretName))
-            {
-                _createdSecretNames.Add(secretName);
-            }
-        }
-
-        // Helper method to track additional snapshots created during tests
-        private void TrackSnapshot(string snapshotName)
-        {
-            if (!string.IsNullOrEmpty(snapshotName))
-            {
-                _createdSnapshotNames.Add(snapshotName);
-            }
         }
 
         [Fact]
