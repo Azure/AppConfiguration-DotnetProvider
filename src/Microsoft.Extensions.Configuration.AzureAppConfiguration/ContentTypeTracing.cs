@@ -10,13 +10,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ContentTypeTracing
     {
         /// <summary>
-        /// Flag to indicate whether any key-value uses a content type with the format application/json;profile="https://azconfig.io/mime-profiles/ai".
+        /// Flag to indicate whether any key-value uses the json content type and contains
+        /// a parameter indicating an AI profile.
         /// </summary>
-        public bool HasAIContentTypeProfile { get; set; } = false;
+        public bool HasAIProfile { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether any key-value uses a content type that contains application/json;profile="https://azconfig.io/mime-profiles/ai/chat-completion".
+        /// Flag to indicate whether any key-value uses the json content type and contains
+        /// a parameter indicating an AI chat completion profile.
         /// </summary>
-        public bool HasAIChatCompletionContentTypeProfile { get; set; } = false;
+        public bool HasAIChatCompletionProfile { get; set; } = false;
     }
 }

@@ -80,11 +80,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
                     contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIContentTypeProfile))
                 {
-                    _contentTypeTracing.HasAIContentTypeProfile = true;
+                    _contentTypeTracing.HasAIProfile = true;
 
                     if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionContentTypeProfile))
                     {
-                        _contentTypeTracing.HasAIChatCompletionContentTypeProfile = true;
+                        _contentTypeTracing.HasAIChatCompletionProfile = true;
                     }
                 }
             }

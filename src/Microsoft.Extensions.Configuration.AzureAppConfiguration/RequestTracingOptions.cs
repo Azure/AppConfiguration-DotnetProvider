@@ -81,8 +81,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return IsLoadBalancingEnabled ||
                 IsSignalRUsed ||
-                ContentTypeTracing.HasAIContentTypeProfile ||
-                ContentTypeTracing.HasAIChatCompletionContentTypeProfile;
+                ContentTypeTracing.HasAIProfile ||
+                ContentTypeTracing.HasAIChatCompletionProfile;
         }
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.SignalRUsedTag);
             }
 
-            if (ContentTypeTracing.HasAIContentTypeProfile)
+            if (ContentTypeTracing.HasAIProfile)
             {
                 if (sb.Length > 0)
                 {
@@ -123,7 +123,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.AIContentTypeProfileTag);
             }
 
-            if (ContentTypeTracing.HasAIChatCompletionContentTypeProfile)
+            if (ContentTypeTracing.HasAIChatCompletionProfile)
             {
                 if (sb.Length > 0)
                 {
