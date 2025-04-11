@@ -32,7 +32,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
 
-        public const string ProfileContentTypeTag = "PRFL";
+        public const string AIContentTypeProfileTag = "AIPRFL";
+        public const string AIChatCompletionContentTypeProfileTag = "CHATCOMP";
 
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
@@ -56,5 +57,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
         public const string Delimiter = "+";
+
+        public const string AIContentTypeProfile = "https://azconfig.io/mime-profiles/ai";
+        public const string AIChatCompletionContentTypeProfile = "https://azconfig.io/mime-profiles/ai/chat-completion";
     }
 }

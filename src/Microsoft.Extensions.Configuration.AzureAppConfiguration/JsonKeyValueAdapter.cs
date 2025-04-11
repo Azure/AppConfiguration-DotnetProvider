@@ -77,9 +77,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Check for profile parameter in the content type
                 if (_requestTracingOptions != null &&
                     contentType.Parameters.ContainsKey("profile") &&
-                    !string.IsNullOrEmpty(contentType.Parameters["profile"]))
+                    !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
+                    contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIContentTypeProfile))
                 {
-                    _requestTracingOptions.HasProfileContentType = true;
+                    _requestTracingOptions.HasAIContentTypeProfile = true;
+
+                    if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionContentTypeProfile))
+                    {
+                        _requestTracingOptions.HasAIChatCompletionContentTypeProfile = true;
+                    }
                 }
             }
             catch (FormatException)

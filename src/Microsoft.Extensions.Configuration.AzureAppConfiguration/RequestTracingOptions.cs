@@ -69,9 +69,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate whether any key-value uses a content type with the format application/json;profile="".
+        /// Flag to indicate whether any key-value uses a content type with the format application/json;profile="https://azconfig.io/mime-profiles/ai".
         /// </summary>
-        public bool HasProfileContentType { get; set; } = false;
+        public bool HasAIContentTypeProfile { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether any key-value uses a content type that contains application/json;profile="https://azconfig.io/mime-profiles/ai/chat-completion".
+        /// </summary>
+        public bool HasAIChatCompletionContentTypeProfile { get; set; } = false;
 
         /// <summary>
         /// Checks whether any tracing feature is used.
@@ -79,7 +84,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
-            return IsLoadBalancingEnabled || IsSignalRUsed || HasProfileContentType;
+            return IsLoadBalancingEnabled || IsSignalRUsed || HasAIContentTypeProfile;
         }
 
         /// <summary>
@@ -110,14 +115,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.SignalRUsedTag);
             }
 
-            if (HasProfileContentType)
+            if (HasAIContentTypeProfile)
             {
                 if (sb.Length > 0)
                 {
                     sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(RequestTracingConstants.ProfileContentTypeTag);
+                sb.Append(RequestTracingConstants.AIContentTypeProfileTag);
+            }
+
+            if (HasAIChatCompletionContentTypeProfile)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.AIChatCompletionContentTypeProfileTag);
             }
 
             return sb.ToString();
