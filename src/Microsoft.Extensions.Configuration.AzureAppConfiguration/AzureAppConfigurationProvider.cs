@@ -636,7 +636,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (_requestTracingOptions != null)
+                    if (_requestTracingEnabled && _requestTracingOptions != null)
                     {
                         _requestTracingOptions.ReplicaCount = clients.Count() - 1;
                     }
