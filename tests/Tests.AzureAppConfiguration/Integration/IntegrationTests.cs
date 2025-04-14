@@ -195,7 +195,7 @@ namespace Tests.AzureAppConfiguration
                     // Get App Configuration store directly using the resource group and store name
                     appConfigStore = await resourceGroup.GetAppConfigurationStores().GetAsync(AppConfigStoreName);
                 }
-                catch (RequestFailedException ex)
+                catch (RequestFailedException ex) when (ex.Status == 404)
                 {
                     throw new InvalidOperationException($"App Configuration store '{AppConfigStoreName}' not found in resource group '{ResourceGroupName}'. Please create it before running tests.", ex);
                 }
@@ -230,9 +230,6 @@ namespace Tests.AzureAppConfiguration
                 _secretClient = new SecretClient(_keyVaultEndpoint, credential);
 
                 Console.WriteLine($"Successfully connected to App Configuration store '{AppConfigStoreName}' and Key Vault '{KeyVaultName}'");
-
-                // Clean up stale resources on startup
-                await CleanupStaleResources();
             }
             catch (RequestFailedException ex)
             {
@@ -406,6 +403,9 @@ namespace Tests.AzureAppConfiguration
             {
                 Console.WriteLine($"Operation error during test cleanup: {ex.Message}");
             }
+
+            // Clean up stale resources on dispose
+            await CleanupStaleResources();
         }
 
         /// <summary>
