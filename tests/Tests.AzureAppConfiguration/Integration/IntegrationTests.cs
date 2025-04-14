@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.FeatureManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -1800,6 +1801,123 @@ namespace Tests.AzureAppConfiguration
             // Assert - Only the first secret should be refreshed due to having a short interval
             Assert.Equal(updatedValue1, config[kvRefKey1]); // Updated - short refresh interval
             Assert.Equal(secretValue2, config[kvRefKey2]);  // Not updated - long refresh interval
+        }
+
+        [Fact]
+        public async Task RequestTracing_SetsCorrectCorrelationContextHeader()
+        {
+            // Arrange - Setup test-specific keys
+            var testContext = await SetupTestKeys("RequestTracing");
+
+            // Used to trigger FMVer tag in request tracing
+            IFeatureManager featureManager;
+
+            // Create a custom HttpPipeline that can inspect outgoing requests
+            var requestInspector = new RequestInspectionHandler();
+
+            await _configClient.SetConfigurationSettingAsync(
+                ConfigurationModelFactory.ConfigurationSetting(
+                    testContext.FeatureFlagKey,
+                    @"{
+                        ""id"": """ + testContext.KeyPrefix + @"Feature"",
+                        ""description"": ""Test feature with filters"",
+                        ""enabled"": true,
+                        ""conditions"": {
+                            ""client_filters"": [
+                                {
+                                    ""name"": ""Browser"",
+                                    ""parameters"": {
+                                        ""AllowedBrowsers"": [""Chrome"", ""Edge""]
+                                    }
+                                },
+                                {
+                                    ""name"": ""TimeWindow"",
+                                    ""parameters"": {
+                                        ""Start"": ""\/Date(" + DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeMilliseconds() + @")\/"",
+                                        ""End"": ""\/Date(" + DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeMilliseconds() + @")\/""
+                                    }
+                                }
+                            ]
+                        }
+                    }",
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8"));
+
+            IConfigurationRefresher refresher = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(GetConnectionString());
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.ConfigureClientOptions(clientOptions =>
+                    {
+                        clientOptions.Transport = new HttpClientTransportWithRequestInspection(requestInspector);
+                    });
+                    options.ConfigureKeyVault(kv => kv.SetCredential(GetCredential()));
+                    options.UseFeatureFlags();
+                    options.LoadBalancingEnabled = true;
+                    refresher = options.GetRefresher();
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.RegisterAll();
+                        refresh.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                })
+                .Build();
+
+            // Assert - Verify correlation context headers
+
+            // Basic request should have at least the request type
+            Assert.Contains(RequestTracingConstants.RequestTypeKey, requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains("Startup", requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains(RequestTracingConstants.KeyVaultConfiguredTag, requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains(RequestTracingConstants.LoadBalancingEnabledTag, requestInspector.CorrelationContextHeaders.Last());
+
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await Task.Delay(1500);
+            await refresher.RefreshAsync();
+
+            Assert.Contains("Watch", requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains(RequestTracingConstants.FeatureFlagFilterTypeKey, requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains(RequestTracingConstants.TimeWindowFilter, requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains(RequestTracingConstants.CustomFilter, requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains(RequestTracingConstants.FeatureFlagMaxVariantsKey, requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains($"{RequestTracingConstants.FeatureManagementVersionKey}=4.0.0", requestInspector.CorrelationContextHeaders.Last());
+        }
+
+        /// <summary>
+        /// Helper class to track HTTP requests and extract correlation context headers
+        /// </summary>
+        private class RequestInspectionHandler
+        {
+            public List<string> CorrelationContextHeaders { get; } = new List<string>();
+
+            public void InspectRequest(HttpMessage message)
+            {
+                if (message.Request.Headers.TryGetValue(RequestTracingConstants.CorrelationContextHeader, out string header))
+                {
+                    CorrelationContextHeaders.Add(header);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Custom HttpPipelineTransport that inspects requests before sending
+        /// </summary>
+        private class HttpClientTransportWithRequestInspection : HttpClientTransport
+        {
+            private readonly RequestInspectionHandler _inspector;
+
+            public HttpClientTransportWithRequestInspection(RequestInspectionHandler inspector)
+            {
+                _inspector = inspector;
+            }
+
+            public override async ValueTask ProcessAsync(HttpMessage message)
+            {
+                _inspector.InspectRequest(message);
+                await base.ProcessAsync(message);
+            }
         }
     }
 }
