@@ -22,13 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             KeyVaultConstants.ContentType
         };
 
-        private ContentTypeTracing _contentTypeTracing;
-
-        public JsonKeyValueAdapter(ContentTypeTracing contentTypeTracing)
-        {
-            _contentTypeTracing = contentTypeTracing;
-        }
-
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
             if (setting == null)
@@ -73,29 +66,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 ContentType contentType = new ContentType(setting.ContentType.Trim());
                 mediaType = contentType.MediaType;
-
-                // Check for profile parameter in the content type
-                if (_contentTypeTracing != null &&
-                    contentType.Parameters.ContainsKey("profile") &&
-                    !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
-                    contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIContentTypeProfile))
-                {
-                    _contentTypeTracing.HasAIProfile = true;
-
-                    if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionContentTypeProfile))
-                    {
-                        _contentTypeTracing.HasAIChatCompletionProfile = true;
-                    }
-                }
             }
             catch (FormatException)
             {
-                return false;
-            }
-            catch (IndexOutOfRangeException)
-            {
-                // Bug in System.Net.Mime.ContentType throws this if contentType is "xyz/"
-                // https://github.com/dotnet/runtime/issues/39337
                 return false;
             }
 

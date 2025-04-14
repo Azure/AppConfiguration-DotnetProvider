@@ -69,9 +69,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
-        /// Indicates certain content types used by the application.
+        /// Flag to indicate whether any key-value uses the json content type and contains
+        /// a parameter indicating an AI profile.
         /// </summary>
-        public ContentTypeTracing ContentTypeTracing { get; set; } = new ContentTypeTracing();
+        public bool HasAIProfile { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether any key-value uses the json content type and contains
+        /// a parameter indicating an AI chat completion profile.
+        /// </summary>
+        public bool HasAIChatCompletionProfile { get; set; } = false;
 
         /// <summary>
         /// Checks whether any tracing feature is used.
@@ -81,8 +88,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return IsLoadBalancingEnabled ||
                 IsSignalRUsed ||
-                ContentTypeTracing.HasAIProfile ||
-                ContentTypeTracing.HasAIChatCompletionProfile;
+                HasAIProfile ||
+                HasAIChatCompletionProfile;
         }
 
         /// <summary>
@@ -113,7 +120,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.SignalRUsedTag);
             }
 
-            if (ContentTypeTracing.HasAIProfile)
+            if (HasAIProfile)
             {
                 if (sb.Length > 0)
                 {
@@ -123,7 +130,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.AIContentTypeProfileTag);
             }
 
-            if (ContentTypeTracing.HasAIChatCompletionProfile)
+            if (HasAIChatCompletionProfile)
             {
                 if (sb.Length > 0)
                 {

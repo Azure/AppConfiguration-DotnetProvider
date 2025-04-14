@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Net.Sockets;
 using System.Security;
 using System.Text;
@@ -600,6 +601,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    ContentType contentType = null;
+
+                    try
+                    {
+                        contentType = new ContentType(kvp.Value.ContentType.Trim());
+                    }
+                    catch (FormatException) { }
+
+                    if (contentType != null &&
+                        contentType.Parameters.ContainsKey("profile") &&
+                        !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
+                        contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIContentTypeProfile))
+                    {
+                        _requestTracingOptions.HasAIProfile = true;
+
+                        if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionContentTypeProfile))
+                        {
+                            _requestTracingOptions.HasAIChatCompletionProfile = true;
+                        }
+                    }
+                }
+
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
 
                 foreach (KeyValuePair<string, string> kv in keyValuePairs)
@@ -1053,8 +1079,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
-                IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
-                ContentTypeTracing = _options.ContentTypeTracing
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
             };
         }
 
