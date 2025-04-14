@@ -146,11 +146,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
         /// <summary>
-        /// Indicates certain content types used by the application.
-        /// </summary>
-        internal ContentTypeTracing ContentTypeTracing { get; set; } = new ContentTypeTracing();
-
-        /// <summary>
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
@@ -163,7 +158,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters = new List<IKeyValueAdapter>()
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-                new JsonKeyValueAdapter(ContentTypeTracing),
+                new JsonKeyValueAdapter(),
                 new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
             };
 

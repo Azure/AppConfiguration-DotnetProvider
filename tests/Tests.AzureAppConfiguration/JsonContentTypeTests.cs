@@ -259,7 +259,7 @@ namespace Tests.AzureAppConfiguration
                 value: compactJsonValue,
                 contentType: FeatureManagementConstants.ContentType + ";charset=utf-8");
 
-            var jsonKeyValueAdapter = new JsonKeyValueAdapter(new ContentTypeTracing());
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
@@ -275,7 +275,7 @@ namespace Tests.AzureAppConfiguration
                    ",
                 contentType: KeyVaultConstants.ContentType + "; charset=utf-8");
 
-            var jsonKeyValueAdapter = new JsonKeyValueAdapter(new ContentTypeTracing());
+            var jsonKeyValueAdapter = new JsonKeyValueAdapter();
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
