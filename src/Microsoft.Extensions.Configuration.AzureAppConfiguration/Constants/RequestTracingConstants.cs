@@ -55,6 +55,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
+
         public const string Delimiter = "+";
 
         public const string AIContentTypeProfile = "https://azconfig.io/mime-profiles/ai";
