@@ -175,14 +175,8 @@ namespace Tests.AzureAppConfiguration
 
             // Get connection string from the store
             AsyncPageable<AppConfigurationStoreApiKey> accessKeys = appConfigStore.GetKeysAsync();
-            AppConfigurationStoreApiKey primaryKey = await accessKeys.FirstOrDefaultAsync();
 
-            if (primaryKey == null)
-            {
-                throw new InvalidOperationException("Failed to retrieve access keys from App Configuration store.");
-            }
-
-            _connectionString = primaryKey.ConnectionString;
+            _connectionString = (await accessKeys.FirstAsync()).ConnectionString;
 
             // Initialize the configuration client with the connection string
             _configClient = new ConfigurationClient(_connectionString);
