@@ -229,7 +229,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (tagFilters != null)
             {
-                foreach (var tag in tagFilters)
+                foreach (string tag in tagFilters)
                 {
                     if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
                     {

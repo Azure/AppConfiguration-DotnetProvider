@@ -4,7 +4,7 @@
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// Defines well known tag filter values that are used within Azure App Configuration.
+    /// Defines well known tag values that are used within Azure App Configuration.
     /// </summary>
     public class TagValue
     {
