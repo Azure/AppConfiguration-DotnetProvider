@@ -31,8 +31,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
-        public const string AIContentTypeProfileTag = "AI";
-        public const string AIChatCompletionContentTypeProfileTag = "AICC";
+        public const string AIConfigurationTag = "AI";
+        public const string AIChatCompletionConfigurationTag = "AICC";
 
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string Delimiter = "+";
 
-        public const string AIContentTypeProfile = "https://azconfig.io/mime-profiles/ai";
-        public const string AIChatCompletionContentTypeProfile = "https://azconfig.io/mime-profiles/ai/chat-completion";
+        public const string AIMimeProfile = "https://azconfig.io/mime-profiles/ai";
+        public const string AIChatCompletionMimeProfile = "https://azconfig.io/mime-profiles/ai/chat-completion";
     }
 }

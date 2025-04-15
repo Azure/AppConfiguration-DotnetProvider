@@ -598,6 +598,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Reset old feature flag tracing in order to track the information present in the current response from server.
             _options.FeatureFlagTracing.ResetFeatureFlagTracing();
 
+            // Reset old request tracing values for content type
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.UsesAIConfiguration = false;
+                _requestTracingOptions.UsesAIChatCompletionConfiguration = false;
+            }
+
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
@@ -619,13 +626,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (contentType != null &&
                         contentType.Parameters.ContainsKey("profile") &&
                         !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
-                        contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIContentTypeProfile))
+                        contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIMimeProfile))
                     {
-                        _requestTracingOptions.HasAIProfile = true;
+                        _requestTracingOptions.UsesAIConfiguration = true;
 
-                        if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionContentTypeProfile))
+                        if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionMimeProfile))
                         {
-                            _requestTracingOptions.HasAIChatCompletionProfile = true;
+                            _requestTracingOptions.UsesAIChatCompletionConfiguration = true;
                         }
                     }
                 }
