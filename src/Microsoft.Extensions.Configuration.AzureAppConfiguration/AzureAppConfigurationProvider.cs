@@ -602,13 +602,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
 
-                if (_requestTracingEnabled && _requestTracingOptions != null)
+                if (_requestTracingEnabled && _requestTracingOptions != null && !string.IsNullOrEmpty(kvp.Value?.ContentType))
                 {
                     ContentType contentType = null;
 
                     try
                     {
-                        contentType = new ContentType(kvp.Value.ContentType.Trim());
+                        contentType = new ContentType(kvp.Value?.ContentType?.Trim());
                     }
                     catch (FormatException) { }
 
