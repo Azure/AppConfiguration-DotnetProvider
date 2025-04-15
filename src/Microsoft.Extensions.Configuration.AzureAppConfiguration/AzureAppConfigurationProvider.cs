@@ -608,9 +608,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     try
                     {
-                        contentType = new ContentType(kvp.Value?.ContentType?.Trim());
+                        contentType = new ContentType(kvp.Value.ContentType.Trim());
                     }
                     catch (FormatException) { }
+                    catch (IndexOutOfRangeException) { }
 
                     if (contentType != null &&
                         contentType.Parameters.ContainsKey("profile") &&

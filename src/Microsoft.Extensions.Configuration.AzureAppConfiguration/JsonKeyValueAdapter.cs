@@ -64,11 +64,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                ContentType contentType = new ContentType(setting.ContentType.Trim());
-                mediaType = contentType.MediaType;
+                mediaType = new ContentType(setting.ContentType.Trim()).MediaType;
             }
             catch (FormatException)
             {
+                return false;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Bug in System.Net.Mime.ContentType throws this if contentType is "xyz/"
+                // https://github.com/dotnet/runtime/issues/39337
                 return false;
             }
 
