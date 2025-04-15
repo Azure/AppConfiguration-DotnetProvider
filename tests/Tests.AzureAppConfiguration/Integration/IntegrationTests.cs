@@ -51,9 +51,6 @@ namespace Tests.AzureAppConfiguration
                 ExcludeSharedTokenCacheCredential = true
             });
 
-        /// <summary>
-        /// Class to hold test-specific key information
-        /// </summary>
         private class TestContext
         {
             public string KeyPrefix { get; set; }
@@ -82,10 +79,6 @@ namespace Tests.AzureAppConfiguration
         private readonly HashSet<string> _createdSecretNames = new HashSet<string>();
         private readonly HashSet<string> _createdSnapshotNames = new HashSet<string>();
 
-        /// <summary>
-        /// Gets the current subscription ID by reading from the JSON file created by the PowerShell script.
-        /// NOTE: The PowerShell script must be run manually before running the tests.
-        /// </summary>
         private string GetCurrentSubscriptionId()
         {
             string subscriptionIdFromEnv = Environment.GetEnvironmentVariable("AZURE_SUBSCRIPTION_ID");
@@ -111,26 +104,14 @@ namespace Tests.AzureAppConfiguration
             return root.GetProperty("SubscriptionId").GetString();
         }
 
-        /// <summary>
-        /// Creates a unique prefix for test keys to ensure test isolation
-        /// </summary>
         private string GetUniqueKeyPrefix(string testName)
         {
             // Use a combination of the test prefix and test method name to ensure uniqueness
             return $"{TestKeyPrefix}-{testName}-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
         }
 
-        /// <summary>
-        /// Creates a snapshot with the given name containing the test context's settings
-        /// </summary>
-        private async Task<string> CreateSnapshot(string snapshotName, TestContext testContext)
+        private async Task<string> CreateSnapshot(string snapshotName, IEnumerable<ConfigurationSettingsFilter> settingsToInclude)
         {
-            // Create a snapshot with the test keys
-            var settingsToInclude = new List<ConfigurationSettingsFilter>
-            {
-                new ConfigurationSettingsFilter($"{testContext.KeyPrefix}:*")
-            };
-
             ConfigurationSnapshot snapshot = new ConfigurationSnapshot(settingsToInclude);
 
             snapshot.SnapshotComposition = SnapshotComposition.Key;
@@ -144,9 +125,6 @@ namespace Tests.AzureAppConfiguration
             return operation.Value.Name;
         }
 
-        /// <summary>
-        /// Initialize clients to connect to the existing App Configuration store and Key Vault.
-        /// </summary>
         public async Task InitializeAsync()
         {
             DefaultAzureCredential credential = _defaultAzureCredential;
@@ -197,9 +175,6 @@ namespace Tests.AzureAppConfiguration
             Console.WriteLine($"Successfully connected to App Configuration store '{AppConfigStoreName}' and Key Vault '{KeyVaultName}'");
         }
 
-        /// <summary>
-        /// Cleans up stale resources that are older than the threshold
-        /// </summary>
         private async Task CleanupStaleResources()
         {
             Console.WriteLine($"Checking for stale resources older than {StaleResourceThreshold}...");
@@ -287,9 +262,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Clean up test artifacts but don't delete the actual resources
-        /// </summary>
         public async Task DisposeAsync()
         {
             var cleanupTasks = new List<Task>();
@@ -356,9 +328,6 @@ namespace Tests.AzureAppConfiguration
             await CleanupStaleResources();
         }
 
-        /// <summary>
-        /// Setup test-specific keys and settings
-        /// </summary>
         private async Task<TestContext> SetupTestKeys(string testName)
         {
             string keyPrefix = GetUniqueKeyPrefix(testName);
@@ -1187,9 +1156,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
         }
 
-        /// <summary>
-        /// Test verifies that a snapshot can be created and loaded correctly
-        /// </summary>
         [Fact]
         public async Task LoadSnapshot_RetrievesValuesFromSnapshot()
         {
@@ -1198,7 +1164,7 @@ namespace Tests.AzureAppConfiguration
             string snapshotName = $"snapshot-{testContext.KeyPrefix}";
 
             // Create a snapshot with the test keys
-            await CreateSnapshot(snapshotName, testContext);
+            await CreateSnapshot(snapshotName, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext.KeyPrefix + "*") });
 
             // Update values after snapshot is taken to verify snapshot has original values
             await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
@@ -1220,9 +1186,6 @@ namespace Tests.AzureAppConfiguration
             await _configClient.ArchiveSnapshotAsync(snapshotName);
         }
 
-        /// <summary>
-        /// Test verifies error handling when a snapshot doesn't exist
-        /// </summary>
         [Fact]
         public async Task LoadSnapshot_ThrowsException_WhenSnapshotDoesNotExist()
         {
@@ -1246,9 +1209,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains(nonExistentSnapshotName, exception.Message);
         }
 
-        /// <summary>
-        /// Test verifies that multiple snapshots can be loaded in the same configuration
-        /// </summary>
         [Fact]
         public async Task LoadMultipleSnapshots_MergesConfigurationCorrectly()
         {
@@ -1264,8 +1224,8 @@ namespace Tests.AzureAppConfiguration
             string snapshotName2 = $"snapshot-{testContext2.KeyPrefix}";
 
             // Create snapshots
-            await CreateSnapshot(snapshotName1, testContext1);
-            await CreateSnapshot(snapshotName2, testContext2);
+            await CreateSnapshot(snapshotName1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext1.KeyPrefix + "*") });
+            await CreateSnapshot(snapshotName2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext2.KeyPrefix + "*") });
 
             try
             {
@@ -1292,9 +1252,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Test verifies that different snapshot composition types are handled correctly
-        /// </summary>
         [Fact]
         public async Task SnapshotCompositionTypes_AreHandledCorrectly()
         {
@@ -1361,9 +1318,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Test verifies that snapshots work with feature flags
-        /// </summary>
         [Fact]
         public async Task SnapshotWithFeatureFlags_LoadsConfigurationCorrectly()
         {
@@ -1421,9 +1375,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Test verifies call ordering of snapshots, select, and feature flags
-        /// </summary>
         [Fact]
         public async Task CallOrdering_SnapshotsWithSelectAndFeatureFlags()
         {
@@ -1462,9 +1413,9 @@ namespace Tests.AzureAppConfiguration
             string snapshot2 = $"snapshot-{secondContext.KeyPrefix}-2";
             string snapshot3 = $"snapshot-{thirdContext.KeyPrefix}-3";
 
-            await CreateSnapshot(snapshot1, mainContext);
-            await CreateSnapshot(snapshot2, secondContext);
-            await CreateSnapshot(snapshot3, thirdContext);
+            await CreateSnapshot(snapshot1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(mainContext.KeyPrefix + "*") });
+            await CreateSnapshot(snapshot2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(secondContext.KeyPrefix + "*") });
+            await CreateSnapshot(snapshot3, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(thirdContext.KeyPrefix + "*") });
 
             try
             {
@@ -1566,9 +1517,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Test verifies Key Vault references can be resolved
-        /// </summary>
         [Fact]
         public async Task KeyVaultReferences_ResolveCorrectly()
         {
@@ -1589,9 +1537,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("SecretValue", config[testContext.KeyVaultReferenceKey]);
         }
 
-        /// <summary>
-        /// Helper class to monitor Key Vault requests
-        /// </summary>
         private class HttpPipelineTransportWithRequestCount : HttpPipelineTransport
         {
             private readonly HttpClientTransport _innerTransport = new HttpClientTransport();
@@ -1667,9 +1612,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(firstRequestCount, secondRequestCount); // No additional requests for the second access
         }
 
-        /// <summary>
-        /// Tests that different Key Vault references can have different refresh intervals.
-        /// </summary>
         [Fact]
         public async Task KeyVaultReference_DifferentRefreshIntervals()
         {
@@ -1833,9 +1775,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains($"{RequestTracingConstants.FeatureManagementVersionKey}=4.0.0", requestInspector.CorrelationContextHeaders.Last());
         }
 
-        /// <summary>
-        /// Helper class to track HTTP requests and extract correlation context headers
-        /// </summary>
         private class RequestInspectionHandler
         {
             public List<string> CorrelationContextHeaders { get; } = new List<string>();
@@ -1849,9 +1788,6 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        /// <summary>
-        /// Custom HttpPipelineTransport that inspects requests before sending
-        /// </summary>
         private class HttpClientTransportWithRequestInspection : HttpClientTransport
         {
             private readonly RequestInspectionHandler _inspector;
