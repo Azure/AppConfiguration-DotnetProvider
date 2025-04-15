@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     internal static class StringExtensions
     {
         private static readonly IEnumerable<string> ExcludedJsonContentTypes = new[]
-{
+        {
             FeatureManagementConstants.ContentType,
             KeyVaultConstants.ContentType
         };
