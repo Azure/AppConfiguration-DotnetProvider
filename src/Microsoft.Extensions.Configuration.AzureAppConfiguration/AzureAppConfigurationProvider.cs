@@ -602,7 +602,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
 
-                if (_requestTracingEnabled && _requestTracingOptions != null && !string.IsNullOrEmpty(kvp.Value?.ContentType))
+                if (_requestTracingEnabled &&
+                    _requestTracingOptions != null &&
+                    !string.IsNullOrWhiteSpace(kvp.Value.ContentType) &&
+                    kvp.Value.ContentType.IsJsonContentType())
                 {
                     ContentType contentType = null;
 
