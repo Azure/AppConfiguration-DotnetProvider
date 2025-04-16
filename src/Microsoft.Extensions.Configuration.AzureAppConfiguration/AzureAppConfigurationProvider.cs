@@ -601,40 +601,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Reset old request tracing values for content type
             if (_requestTracingEnabled && _requestTracingOptions != null)
             {
-                _requestTracingOptions.UsesAIConfiguration = false;
-                _requestTracingOptions.UsesAIChatCompletionConfiguration = false;
+                _requestTracingOptions.ResetAiConfigurationTracing();
             }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
 
-                if (_requestTracingEnabled &&
-                    _requestTracingOptions != null &&
-                    !string.IsNullOrWhiteSpace(kvp.Value.ContentType) &&
-                    kvp.Value.ContentType.IsJsonContentType())
+                if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-                    ContentType contentType = null;
-
-                    try
-                    {
-                        contentType = new ContentType(kvp.Value.ContentType.Trim());
-                    }
-                    catch (FormatException) { }
-                    catch (IndexOutOfRangeException) { }
-
-                    if (contentType != null &&
-                        contentType.Parameters.ContainsKey("profile") &&
-                        !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
-                        contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIMimeProfile))
-                    {
-                        _requestTracingOptions.UsesAIConfiguration = true;
-
-                        if (contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionMimeProfile))
-                        {
-                            _requestTracingOptions.UsesAIChatCompletionConfiguration = true;
-                        }
-                    }
+                    _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
                 }
 
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);

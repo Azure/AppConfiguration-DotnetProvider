@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
+using System.Net.Mime;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,7 +51,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return false;
             }
 
-            return setting.ContentType.IsJsonContentType();
+            if (setting.ContentType.TryParseContentType(out ContentType contentType))
+            {
+                return contentType.IsJson();
+            }
+
+            return false;
         }
 
         public void OnChangeDetected(ConfigurationSetting setting = null)

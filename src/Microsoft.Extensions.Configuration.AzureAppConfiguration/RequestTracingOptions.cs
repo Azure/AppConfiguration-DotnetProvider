@@ -1,7 +1,9 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using System.Net.Mime;
 using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -79,6 +81,35 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// a parameter indicating an AI chat completion profile.
         /// </summary>
         public bool UsesAIChatCompletionConfiguration { get; set; } = false;
+
+        /// <summary>
+        /// Resets the AI configuration tracing flags.
+        /// </summary>
+        public void ResetAiConfigurationTracing()
+        {
+            UsesAIConfiguration = false;
+            UsesAIChatCompletionConfiguration = false;
+        }
+
+        /// <summary>
+        /// Updates AI configuration tracing flags based on the provided content type.
+        /// </summary>
+        /// <param name="contentTypeString">The content type to analyze.</param>
+        public void UpdateAiConfigurationTracing(string contentTypeString)
+        {
+            if (!string.IsNullOrWhiteSpace(contentTypeString) && contentTypeString.TryParseContentType(out ContentType contentType))
+            {
+                if (contentType.IsAi())
+                {
+                    UsesAIConfiguration = true;
+
+                    if (contentType.IsAiChatCompletion())
+                    {
+                        UsesAIChatCompletionConfiguration = true;
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// Checks whether any tracing feature is used.
