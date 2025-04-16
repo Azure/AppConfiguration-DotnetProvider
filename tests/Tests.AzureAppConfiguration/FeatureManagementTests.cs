@@ -1178,8 +1178,6 @@ namespace Tests.AzureAppConfiguration
                 return new MockAsyncPageable(copy);
             }
 
-            ;
-
             var testClient = mockClient.Object;
 
             foreach (ConfigurationSetting setting in _invalidFormatFeatureFlagCollection)
