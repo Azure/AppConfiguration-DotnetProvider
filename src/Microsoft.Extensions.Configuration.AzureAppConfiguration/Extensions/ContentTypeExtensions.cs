@@ -38,21 +38,39 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
         public static bool IsJson(this ContentType contentType)
         {
+            if (contentType == null)
+            {
+                return false;
+            }
+
             string acceptedMainType = "application";
             string acceptedSubType = "json";
             string mediaType = contentType.MediaType;
 
             if (!ExcludedJsonContentTypes.Contains(mediaType, StringComparer.OrdinalIgnoreCase))
             {
+                ReadOnlySpan<char> mediaTypeSpan = mediaType.AsSpan();
+
                 // Since contentType has been validated using System.Net.Mime.ContentType,
                 // mediaType will always have exactly 2 parts after splitting on '/'
-                string[] types = mediaType.Split('/');
-                if (string.Equals(types[0], acceptedMainType, StringComparison.OrdinalIgnoreCase))
+                int slashIndex = mediaTypeSpan.IndexOf('/');
+
+                if (mediaTypeSpan.Slice(0, slashIndex).Equals(acceptedMainType.AsSpan(), StringComparison.OrdinalIgnoreCase))
                 {
-                    string[] subTypes = types[1].Split('+');
-                    if (subTypes.Contains(acceptedSubType, StringComparer.OrdinalIgnoreCase))
+                    ReadOnlySpan<char> subTypeSpan = mediaTypeSpan.Slice(slashIndex + 1);
+
+                    while (!subTypeSpan.IsEmpty)
                     {
-                        return true;
+                        int plusIndex = subTypeSpan.IndexOf('+');
+
+                        ReadOnlySpan<char> currentSubType = plusIndex == -1 ? subTypeSpan : subTypeSpan.Slice(0, plusIndex);
+
+                        if (currentSubType.Equals(acceptedSubType.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+
+                        subTypeSpan = plusIndex == -1 ? ReadOnlySpan<char>.Empty : subTypeSpan.Slice(plusIndex + 1);
                     }
                 }
             }
