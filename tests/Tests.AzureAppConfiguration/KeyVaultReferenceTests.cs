@@ -982,7 +982,9 @@ namespace Tests.AzureAppConfiguration
                 if (newSetting != null)
                     copy.Add(TestHelpers.CloneSetting(newSetting));
                 return new MockAsyncPageable(copy);
-            };
+            }
+
+            ;
 
             var testClient = mockClient.Object;
 
@@ -1028,7 +1030,9 @@ namespace Tests.AzureAppConfiguration
                 if (newSetting != null)
                     copy.Add(TestHelpers.CloneSetting(newSetting));
                 return new MockAsyncPageable(copy);
-            };
+            }
+
+            ;
 
             var testClient = mockClient.Object;
 

@@ -731,6 +731,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        [Obsolete]
         public async Task WatchesFeatureFlagsUsingCacheExpirationInterval()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
@@ -874,6 +875,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        [Obsolete]
         public async Task SkipRefreshIfCacheNotExpired()
         {
             var featureFlags = new List<ConfigurationSetting> { _kv };
@@ -1174,7 +1176,9 @@ namespace Tests.AzureAppConfiguration
                 if (newSetting != null)
                     copy.Add(TestHelpers.CloneSetting(newSetting));
                 return new MockAsyncPageable(copy);
-            };
+            }
+
+            ;
 
             var testClient = mockClient.Object;
 
@@ -1199,6 +1203,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        [Obsolete]
         public void AlternateValidFeatureFlagFormats()
         {
             var mockResponse = new Mock<Response>();
@@ -1215,7 +1220,9 @@ namespace Tests.AzureAppConfiguration
                 if (newSetting != null)
                     copy.Add(TestHelpers.CloneSetting(newSetting));
                 return new MockAsyncPageable(copy);
-            };
+            }
+
+            ;
 
             var testClient = mockClient.Object;
 

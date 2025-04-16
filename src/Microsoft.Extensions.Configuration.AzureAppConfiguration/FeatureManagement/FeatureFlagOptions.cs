@@ -41,6 +41,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         [Obsolete("The " + nameof(CacheExpirationInterval) + " property is deprecated and will be removed in a future release. " +
             "Please use the new " + nameof(SetRefreshInterval) + " method instead. " +
             "Note that the usage has changed, but the functionality remains the same.")]
+        [Obsolete]
         public TimeSpan CacheExpirationInterval
         {
             get { return _refreshInterval; }
