@@ -97,16 +97,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="contentTypeString">The content type to analyze.</param>
         public void UpdateAiConfigurationTracing(string contentTypeString)
         {
-            if (!string.IsNullOrWhiteSpace(contentTypeString) && contentTypeString.TryParseContentType(out ContentType contentType))
+            if (!UsesAIChatCompletionConfiguration &&
+                !string.IsNullOrWhiteSpace(contentTypeString) &&
+                contentTypeString.TryParseContentType(out ContentType contentType) &&
+                contentType.IsAi())
             {
-                if (contentType.IsAi())
-                {
-                    UsesAIConfiguration = true;
+                UsesAIConfiguration = true;
 
-                    if (contentType.IsAiChatCompletion())
-                    {
-                        UsesAIChatCompletionConfiguration = true;
-                    }
+                if (contentType.IsAiChatCompletion())
+                {
+                    UsesAIChatCompletionConfiguration = true;
                 }
             }
         }
