@@ -322,8 +322,6 @@ namespace Tests.AzureAppConfiguration
                         copy.Add(TestHelpers.CloneSetting(setting));
                     }
 
-                    ;
-
                     return new MockAsyncPageable(copy);
                 });
 
@@ -396,8 +394,6 @@ namespace Tests.AzureAppConfiguration
                         copy.Add(TestHelpers.CloneSetting(setting));
                     }
 
-                    ;
-
                     return new MockAsyncPageable(copy);
                 });
 
@@ -466,8 +462,6 @@ namespace Tests.AzureAppConfiguration
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
                     }
-
-                    ;
 
                     return new MockAsyncPageable(copy, operationDelay);
                 });

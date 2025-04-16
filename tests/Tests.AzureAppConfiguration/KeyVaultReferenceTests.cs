@@ -984,8 +984,6 @@ namespace Tests.AzureAppConfiguration
                 return new MockAsyncPageable(copy);
             }
 
-            ;
-
             var testClient = mockClient.Object;
 
             foreach (ConfigurationSetting setting in _invalidJsonKvCollection)
@@ -1031,8 +1029,6 @@ namespace Tests.AzureAppConfiguration
                     copy.Add(TestHelpers.CloneSetting(newSetting));
                 return new MockAsyncPageable(copy);
             }
-
-            ;
 
             var testClient = mockClient.Object;
 
