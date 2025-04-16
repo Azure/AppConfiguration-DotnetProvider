@@ -23,6 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
+        private readonly ActivitySource _activitySource = new ActivitySource(ActivityConstants.AzureAppConfigurationActivitySource);
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private bool _isAssemblyInspected;
@@ -158,46 +159,48 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public override void Load()
         {
             var watch = Stopwatch.StartNew();
-
-            try
+            using (var activity = _activitySource.StartActivity(ActivityConstants.LoadActivityName))
             {
-                using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
-
-                // Load() is invoked only once during application startup. We don't need to check for concurrent network
-                // operations here because there can't be any other startup or refresh operation in progress at this time.
-                LoadAsync(_optional, startupCancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            catch (ArgumentException)
-            {
-                // Instantly re-throw the exception
-                throw;
-            }
-            catch
-            {
-                // AzureAppConfigurationProvider.Load() method is called in the application's startup code path.
-                // Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
-                // Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
-
-                var waitInterval = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
-
-                if (waitInterval.Ticks > 0)
+                try
                 {
-                    Task.Delay(waitInterval).ConfigureAwait(false).GetAwaiter().GetResult();
+                    using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
+
+                    // Load() is invoked only once during application startup. We don't need to check for concurrent network
+                    // operations here because there can't be any other startup or refresh operation in progress at this time.
+                    LoadAsync(_optional, startupCancellationTokenSource.Token).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+                catch (ArgumentException)
+                {
+                    // Instantly re-throw the exception
+                    throw;
+                }
+                catch
+                {
+                    // AzureAppConfigurationProvider.Load() method is called in the application's startup code path.
+                    // Unhandled exceptions cause application crash which can result in crash loops as orchestrators attempt to restart the application.
+                    // Knowing the intended usage of the provider in startup code path, we mitigate back-to-back crash loops from overloading the server with requests by waiting a minimum time to propogate fatal errors.
+
+                    var waitInterval = MinDelayForUnhandledFailure.Subtract(watch.Elapsed);
+
+                    if (waitInterval.Ticks > 0)
+                    {
+                        Task.Delay(waitInterval).ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+
+                    // Re-throw the exception after the additional delay (if required)
+                    throw;
+                }
+                finally
+                {
+                    // Set the provider for AzureAppConfigurationRefresher instance after LoadAll has completed.
+                    // This stops applications from calling RefreshAsync until config has been initialized during startup.
+                    var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
+                    refresher.SetProvider(this);
                 }
 
-                // Re-throw the exception after the additional delay (if required)
-                throw;
+                // Mark all settings have loaded at startup.
+                _isInitialLoadComplete = true;
             }
-            finally
-            {
-                // Set the provider for AzureAppConfigurationRefresher instance after LoadAll has completed.
-                // This stops applications from calling RefreshAsync until config has been initialized during startup.
-                var refresher = (AzureAppConfigurationRefresher)_options.GetRefresher();
-                refresher.SetProvider(this);
-            }
-
-            // Mark all settings have loaded at startup.
-            _isInitialLoadComplete = true;
         }
 
         public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -258,196 +261,199 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    // Check if initial configuration load had failed
-                    if (_mappedData == null)
+                    using (var activity = _activitySource.StartActivity(ActivityConstants.RefreshActivityName))
                     {
-                        if (InitializationCacheExpires < utcNow)
+                        // Check if initial configuration load had failed
+                        if (_mappedData == null)
                         {
-                            InitializationCacheExpires = utcNow.Add(MinRefreshInterval);
-
-                            await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
-                        }
-
-                        return;
-                    }
-
-                    //
-                    // Avoid instance state modification
-                    Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags = null;
-                    Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags = null;
-                    HashSet<string> ffKeys = null;
-                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
-                    List<KeyValueChange> keyValueChanges = null;
-                    Dictionary<string, ConfigurationSetting> data = null;
-                    Dictionary<string, ConfigurationSetting> ffCollectionData = null;
-                    bool ffCollectionUpdated = false;
-                    bool refreshAll = false;
-                    StringBuilder logInfoBuilder = new StringBuilder();
-                    StringBuilder logDebugBuilder = new StringBuilder();
-
-                    await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
-                    {
-                        kvEtags = null;
-                        ffEtags = null;
-                        ffKeys = null;
-                        watchedIndividualKvs = null;
-                        keyValueChanges = new List<KeyValueChange>();
-                        data = null;
-                        ffCollectionData = null;
-                        ffCollectionUpdated = false;
-                        refreshAll = false;
-                        logDebugBuilder.Clear();
-                        logInfoBuilder.Clear();
-                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
-
-                        if (_options.RegisterAllEnabled)
-                        {
-                            // Get key value collection changes if RegisterAll was called
-                            if (isRefreshDue)
+                            if (InitializationCacheExpires < utcNow)
                             {
-                                refreshAll = await HaveCollectionsChanged(
-                                    _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
-                                    _kvEtags,
-                                    client,
-                                    cancellationToken).ConfigureAwait(false);
+                                InitializationCacheExpires = utcNow.Add(MinRefreshInterval);
+
+                                await InitializeAsync(clients, cancellationToken).ConfigureAwait(false);
                             }
-                        }
-                        else
-                        {
-                            refreshAll = await RefreshIndividualKvWatchers(
-                                client,
-                                keyValueChanges,
-                                refreshableIndividualKvWatchers,
-                                endpoint,
-                                logDebugBuilder,
-                                logInfoBuilder,
-                                cancellationToken).ConfigureAwait(false);
-                        }
 
-                        if (refreshAll)
-                        {
-                            // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true,
-                            // or if any key-value collection change was detected.
-                            kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
-                            ffKeys = new HashSet<string>();
-
-                            data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
-                            watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
-                            logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                             return;
                         }
 
-                        // Get feature flag changes
-                        ffCollectionUpdated = await HaveCollectionsChanged(
-                            refreshableFfWatchers.Select(watcher => new KeyValueSelector
-                            {
-                                KeyFilter = watcher.Key,
-                                LabelFilter = watcher.Label,
-                                IsFeatureFlagSelector = true
-                            }),
-                            _ffEtags,
-                            client,
-                            cancellationToken).ConfigureAwait(false);
+                        //
+                        // Avoid instance state modification
+                        Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags = null;
+                        Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags = null;
+                        HashSet<string> ffKeys = null;
+                        Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
+                        List<KeyValueChange> keyValueChanges = null;
+                        Dictionary<string, ConfigurationSetting> data = null;
+                        Dictionary<string, ConfigurationSetting> ffCollectionData = null;
+                        bool ffCollectionUpdated = false;
+                        bool refreshAll = false;
+                        StringBuilder logInfoBuilder = new StringBuilder();
+                        StringBuilder logDebugBuilder = new StringBuilder();
 
-                        if (ffCollectionUpdated)
+                        await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
                         {
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
-                            ffKeys = new HashSet<string>();
+                            kvEtags = null;
+                            ffEtags = null;
+                            ffKeys = null;
+                            watchedIndividualKvs = null;
+                            keyValueChanges = new List<KeyValueChange>();
+                            data = null;
+                            ffCollectionData = null;
+                            ffCollectionUpdated = false;
+                            refreshAll = false;
+                            logDebugBuilder.Clear();
+                            logInfoBuilder.Clear();
+                            Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
-                            ffCollectionData = await LoadSelected(
+                            if (_options.RegisterAllEnabled)
+                            {
+                                // Get key value collection changes if RegisterAll was called
+                                if (isRefreshDue)
+                                {
+                                    refreshAll = await HaveCollectionsChanged(
+                                        _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
+                                        _kvEtags,
+                                        client,
+                                        cancellationToken).ConfigureAwait(false);
+                                }
+                            }
+                            else
+                            {
+                                refreshAll = await RefreshIndividualKvWatchers(
+                                    client,
+                                    keyValueChanges,
+                                    refreshableIndividualKvWatchers,
+                                    endpoint,
+                                    logDebugBuilder,
+                                    logInfoBuilder,
+                                    cancellationToken).ConfigureAwait(false);
+                            }
+
+                            if (refreshAll)
+                            {
+                                // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true,
+                                // or if any key-value collection change was detected.
+                                kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+                                ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+                                ffKeys = new HashSet<string>();
+
+                                data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
+                                watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
+                                logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
+                                return;
+                            }
+
+                            // Get feature flag changes
+                            ffCollectionUpdated = await HaveCollectionsChanged(
+                                refreshableFfWatchers.Select(watcher => new KeyValueSelector
+                                {
+                                    KeyFilter = watcher.Key,
+                                    LabelFilter = watcher.Label,
+                                    IsFeatureFlagSelector = true
+                                }),
+                                _ffEtags,
                                 client,
-                                new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(),
-                                ffEtags,
-                                _options.Selectors.Where(selector => selector.IsFeatureFlagSelector),
-                                ffKeys,
                                 cancellationToken).ConfigureAwait(false);
 
-                            logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
+                            if (ffCollectionUpdated)
+                            {
+                                ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
+                                ffKeys = new HashSet<string>();
+
+                                ffCollectionData = await LoadSelected(
+                                    client,
+                                    new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>(),
+                                    ffEtags,
+                                    _options.Selectors.Where(selector => selector.IsFeatureFlagSelector),
+                                    ffKeys,
+                                    cancellationToken).ConfigureAwait(false);
+
+                                logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
+                            }
+                            else
+                            {
+                                logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
+                            }
+                        },
+                        cancellationToken)
+                        .ConfigureAwait(false);
+
+                        if (refreshAll)
+                        {
+                            _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
+
+                            // Invalidate all the cached KeyVault secrets
+                            foreach (IKeyValueAdapter adapter in _options.Adapters)
+                            {
+                                adapter.OnChangeDetected();
+                            }
+
+                            // Update the next refresh time for all refresh registered settings and feature flags
+                            foreach (KeyValueWatcher changeWatcher in _options.IndividualKvWatchers.Concat(_options.FeatureFlagWatchers))
+                            {
+                                UpdateNextRefreshTime(changeWatcher);
+                            }
                         }
                         else
                         {
-                            logDebugBuilder.AppendLine(LogHelper.BuildFeatureFlagsUnchangedMessage(endpoint.ToString()));
-                        }
-                    },
-                    cancellationToken)
-                    .ConfigureAwait(false);
+                            watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedIndividualKvs);
 
-                    if (refreshAll)
-                    {
-                        _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
+                            await ProcessKeyValueChangesAsync(keyValueChanges, _mappedData, watchedIndividualKvs).ConfigureAwait(false);
 
-                        // Invalidate all the cached KeyVault secrets
-                        foreach (IKeyValueAdapter adapter in _options.Adapters)
-                        {
-                            adapter.OnChangeDetected();
-                        }
-
-                        // Update the next refresh time for all refresh registered settings and feature flags
-                        foreach (KeyValueWatcher changeWatcher in _options.IndividualKvWatchers.Concat(_options.FeatureFlagWatchers))
-                        {
-                            UpdateNextRefreshTime(changeWatcher);
-                        }
-                    }
-                    else
-                    {
-                        watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedIndividualKvs);
-
-                        await ProcessKeyValueChangesAsync(keyValueChanges, _mappedData, watchedIndividualKvs).ConfigureAwait(false);
-
-                        if (ffCollectionUpdated)
-                        {
-                            // Remove all feature flag keys that are not present in the latest loading of feature flags, but were loaded previously
-                            foreach (string key in _ffKeys.Except(ffKeys))
+                            if (ffCollectionUpdated)
                             {
-                                _mappedData.Remove(key);
+                                // Remove all feature flag keys that are not present in the latest loading of feature flags, but were loaded previously
+                                foreach (string key in _ffKeys.Except(ffKeys))
+                                {
+                                    _mappedData.Remove(key);
+                                }
+
+                                Dictionary<string, ConfigurationSetting> mappedFfData = await MapConfigurationSettings(ffCollectionData).ConfigureAwait(false);
+
+                                foreach (KeyValuePair<string, ConfigurationSetting> kvp in mappedFfData)
+                                {
+                                    _mappedData[kvp.Key] = kvp.Value;
+                                }
                             }
 
-                            Dictionary<string, ConfigurationSetting> mappedFfData = await MapConfigurationSettings(ffCollectionData).ConfigureAwait(false);
-
-                            foreach (KeyValuePair<string, ConfigurationSetting> kvp in mappedFfData)
+                            //
+                            // update the next refresh time for all refresh registered settings and feature flags
+                            foreach (KeyValueWatcher changeWatcher in refreshableIndividualKvWatchers.Concat(refreshableFfWatchers))
                             {
-                                _mappedData[kvp.Key] = kvp.Value;
+                                UpdateNextRefreshTime(changeWatcher);
                             }
                         }
 
-                        //
-                        // update the next refresh time for all refresh registered settings and feature flags
-                        foreach (KeyValueWatcher changeWatcher in refreshableIndividualKvWatchers.Concat(refreshableFfWatchers))
+                        if (_options.RegisterAllEnabled && isRefreshDue)
                         {
-                            UpdateNextRefreshTime(changeWatcher);
-                        }
-                    }
-
-                    if (_options.RegisterAllEnabled && isRefreshDue)
-                    {
-                        _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
-                    }
-
-                    if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || keyValueChanges.Any() || refreshAll || ffCollectionUpdated)
-                    {
-                        _watchedIndividualKvs = watchedIndividualKvs ?? _watchedIndividualKvs;
-
-                        _ffEtags = ffEtags ?? _ffEtags;
-
-                        _kvEtags = kvEtags ?? _kvEtags;
-
-                        _ffKeys = ffKeys ?? _ffKeys;
-
-                        if (logDebugBuilder.Length > 0)
-                        {
-                            _logger.LogDebug(logDebugBuilder.ToString().Trim());
+                            _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
                         }
 
-                        if (logInfoBuilder.Length > 0)
+                        if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || keyValueChanges.Any() || refreshAll || ffCollectionUpdated)
                         {
-                            _logger.LogInformation(logInfoBuilder.ToString().Trim());
-                        }
+                            _watchedIndividualKvs = watchedIndividualKvs ?? _watchedIndividualKvs;
 
-                        // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
-                        // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
-                        // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
-                        SetData(await PrepareData(_mappedData, cancellationToken).ConfigureAwait(false));
+                            _ffEtags = ffEtags ?? _ffEtags;
+
+                            _kvEtags = kvEtags ?? _kvEtags;
+
+                            _ffKeys = ffKeys ?? _ffKeys;
+
+                            if (logDebugBuilder.Length > 0)
+                            {
+                                _logger.LogDebug(logDebugBuilder.ToString().Trim());
+                            }
+
+                            if (logInfoBuilder.Length > 0)
+                            {
+                                _logger.LogInformation(logInfoBuilder.ToString().Trim());
+                            }
+
+                            // PrepareData makes calls to KeyVault and may throw exceptions. But, we still update watchers before
+                            // SetData because repeating appconfig calls (by not updating watchers) won't help anything for keyvault calls.
+                            // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
+                            SetData(await PrepareData(_mappedData, cancellationToken).ConfigureAwait(false));
+                        }
                     }
                 }
                 finally
@@ -1401,6 +1407,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public void Dispose()
         {
             (_configClientManager as ConfigurationClientManager)?.Dispose();
+            _activitySource.Dispose();
         }
     }
 }
