@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Xunit;
 using System;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -38,8 +39,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task HealthCheckTests_ReturnsHealthyWhenInitialLoadIsCompleted()
         {
-            IHealthCheck healthCheck = null;
-
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -50,9 +49,10 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    healthCheck = options.GetHealthCheck();
                 })
                 .Build();
+
+            IHealthCheck healthCheck = new AzureAppConfigurationHealthCheck(config);
 
             Assert.True(config["TestKey1"] == "TestValue1");
             var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -63,7 +63,6 @@ namespace Tests.AzureAppConfiguration
         public async Task HealthCheckTests_ReturnsUnhealthyWhenRefreshFailed()
         {
             IConfigurationRefresher refresher = null;
-            IHealthCheck healthCheck = null;
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -85,9 +84,10 @@ namespace Tests.AzureAppConfiguration
                             .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     refresher = options.GetRefresher();
-                    healthCheck = options.GetHealthCheck();
                 })
                 .Build();
+
+            IHealthCheck healthCheck = new AzureAppConfigurationHealthCheck(config);
 
             var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
             Assert.Equal(HealthStatus.Healthy, result.Status);
@@ -105,6 +105,36 @@ namespace Tests.AzureAppConfiguration
             await refresher.RefreshAsync();
             result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
             Assert.Equal(HealthStatus.Healthy, result.Status);
+        }
+
+        [Fact]
+        public async Task HealthCheckTests_RegisterAzureAppConfigurationHealthCheck()
+        {
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(kvCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                })
+                .Build();
+
+            var services = new ServiceCollection();
+            services.AddSingleton<IConfiguration>(config);
+            services.AddLogging(); // add logging for health check service
+            services.AddHealthChecks()
+                .AddAzureAppConfiguration();
+            var provider = services.BuildServiceProvider();
+            var healthCheckService = provider.GetRequiredService<HealthCheckService>();
+
+            var result = await healthCheckService.CheckHealthAsync();
+            Assert.Equal(HealthStatus.Healthy, result.Status);
+            Assert.Contains(HealthCheckConstants.HealthCheckRegistrationName, result.Entries.Keys);
+            Assert.Equal(HealthStatus.Healthy, result.Entries[HealthCheckConstants.HealthCheckRegistrationName].Status);
         }
     }
 }

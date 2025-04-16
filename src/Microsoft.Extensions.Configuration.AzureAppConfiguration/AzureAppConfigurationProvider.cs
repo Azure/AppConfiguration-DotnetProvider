@@ -119,9 +119,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             bool hasWatchers = watchers.Any();
             TimeSpan minWatcherRefreshInterval = hasWatchers ? watchers.Min(w => w.RefreshInterval) : TimeSpan.MaxValue;
 
-            var healthCheck = (AzureAppConfigurationHealthCheck)_options.GetHealthCheck();
-            healthCheck.SetProvider(this);
-
             if (options.RegisterAllEnabled)
             {
                 if (options.KvCollectionRefreshInterval <= TimeSpan.Zero)

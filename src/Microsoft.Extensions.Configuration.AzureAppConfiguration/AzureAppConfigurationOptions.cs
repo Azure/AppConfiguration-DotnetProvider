@@ -33,7 +33,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _selectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
-        private IConfigurationHealthCheck _healthCheck = new AzureAppConfigurationHealthCheck();
         private bool _selectCalled = false;
 
         // The following set is sorted in descending order.
@@ -458,15 +457,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public IConfigurationRefresher GetRefresher()
         {
             return _refresher;
-        }
-
-        /// <summary>
-        /// Get an instance of <see cref="IConfigurationHealthCheck"/> that can be used to do health checks for the configuration provider.
-        /// </summary>
-        /// <returns>An instance of <see cref="IConfigurationHealthCheck"/>.</returns>
-        public IConfigurationHealthCheck GetHealthCheck()
-        {
-            return _healthCheck;
         }
 
         /// <summary>
