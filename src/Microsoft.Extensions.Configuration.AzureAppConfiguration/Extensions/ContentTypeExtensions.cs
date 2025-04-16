@@ -21,6 +21,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         public static bool IsAi(this ContentType contentType)
         {
             return contentType != null &&
+                   contentType.IsJson() &&
                    contentType.Parameters.ContainsKey("profile") &&
                    !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
                    contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIMimeProfile);
@@ -29,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         public static bool IsAiChatCompletion(this ContentType contentType)
         {
             return contentType != null &&
+                   contentType.IsJson() &&
                    contentType.Parameters.ContainsKey("profile") &&
                    !string.IsNullOrEmpty(contentType.Parameters["profile"]) &&
                    contentType.Parameters["profile"].StartsWith(RequestTracingConstants.AIChatCompletionMimeProfile);
