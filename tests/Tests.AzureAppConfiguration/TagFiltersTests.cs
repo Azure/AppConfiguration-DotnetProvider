@@ -18,7 +18,6 @@ namespace Tests.AzureAppConfiguration
     public class TagFiltersTests
     {
         private List<ConfigurationSetting> _kvCollection;
-        private List<ConfigurationSetting> _ffCollection;
         private const int MaxTagFilters = 5;
 
         public TagFiltersTests()

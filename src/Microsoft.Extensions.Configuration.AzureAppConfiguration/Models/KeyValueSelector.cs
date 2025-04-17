@@ -72,7 +72,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 var sortedTags = new SortedSet<string>(TagFilters);
 
                 // Concatenate tags into a single string with a delimiter
-                tagFiltersString = string.Join("|", sortedTags);
+                tagFiltersString = string.Join("\n", sortedTags);
             }
 
             return HashCode.Combine(
