@@ -320,7 +320,7 @@ namespace Tests.AzureAppConfiguration
                     foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
-                    };
+                    }
 
                     return new MockAsyncPageable(copy);
                 });
@@ -392,7 +392,7 @@ namespace Tests.AzureAppConfiguration
                     foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
-                    };
+                    }
 
                     return new MockAsyncPageable(copy);
                 });
@@ -461,7 +461,7 @@ namespace Tests.AzureAppConfiguration
                     foreach (var setting in keyValueCollection)
                     {
                         copy.Add(TestHelpers.CloneSetting(setting));
-                    };
+                    }
 
                     return new MockAsyncPageable(copy, operationDelay);
                 });
