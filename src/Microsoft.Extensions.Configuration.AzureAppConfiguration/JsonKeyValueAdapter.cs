@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (setting.ContentType.TryParseContentType(out ContentType contentType))
             {
-                return contentType.IsJson();
+                return contentType.IsJson() && !contentType.IsFeatureFlag() && !contentType.IsKeyVaultReference();
             }
 
             return false;
