@@ -58,12 +58,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return true;
             }
 
-            if (setting.ContentType.TryParseContentType(out ContentType contentType))
-            {
-                return contentType.IsFeatureFlag();
-            }
-
-            return false;
+            return setting.ContentType.TryParseContentType(out ContentType contentType) &&
+                contentType.IsFeatureFlag();
         }
 
         public bool NeedsRefresh()

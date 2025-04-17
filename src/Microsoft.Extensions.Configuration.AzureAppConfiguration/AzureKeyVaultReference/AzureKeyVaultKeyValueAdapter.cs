@@ -82,12 +82,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return false;
             }
 
-            if (setting.ContentType.TryParseContentType(out ContentType contentType))
-            {
-                return contentType.IsKeyVaultReference();
-            }
-
-            return false;
+            return setting.ContentType.TryParseContentType(out ContentType contentType)
+                && contentType.IsKeyVaultReference();
         }
 
         public void OnChangeDetected(ConfigurationSetting setting = null)
