@@ -344,6 +344,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 KeyFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
+                                TagFilters = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
                             _ffEtags,
@@ -813,6 +814,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         KeyFilter = loadOption.KeyFilter,
                         LabelFilter = loadOption.LabelFilter
                     };
+
+                    if (loadOption.TagFilters != null)
+                    {
+                        foreach (string tagFilter in loadOption.TagFilters)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
+                    }
 
                     var matchConditions = new List<MatchConditions>();
 
