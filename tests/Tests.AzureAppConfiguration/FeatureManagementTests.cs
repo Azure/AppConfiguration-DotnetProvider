@@ -1201,7 +1201,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        [Obsolete]
         public void AlternateValidFeatureFlagFormats()
         {
             var mockResponse = new Mock<Response>();
@@ -1233,7 +1232,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.SetRefreshInterval(cacheExpiration);
                         ff.Select(flagKey);
                     });
                 })
