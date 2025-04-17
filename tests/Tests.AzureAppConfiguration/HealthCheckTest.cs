@@ -52,7 +52,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            IHealthCheck healthCheck = new CompositeAzureAppConfigurationHealthCheck(config);
+            IHealthCheck healthCheck = new AzureAppConfigurationHealthCheck(config);
 
             Assert.True(config["TestKey1"] == "TestValue1");
             var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -87,7 +87,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            IHealthCheck healthCheck = new CompositeAzureAppConfigurationHealthCheck(config);
+            IHealthCheck healthCheck = new AzureAppConfigurationHealthCheck(config);
 
             var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
             Assert.Equal(HealthStatus.Healthy, result.Status);

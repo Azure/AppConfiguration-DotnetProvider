@@ -34,7 +34,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             return builder.Add(new HealthCheckRegistration(
                 name ?? HealthCheckConstants.HealthCheckRegistrationName,
-                sp => new CompositeAzureAppConfigurationHealthCheck(
+                sp => new AzureAppConfigurationHealthCheck(
                     factory?.Invoke(sp) ?? sp.GetRequiredService<IConfiguration>()),
                 failureStatus,
                 tags,
