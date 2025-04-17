@@ -137,13 +137,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
             }
 
-            if (options.MinBackoffDuration < TimeSpan.FromSeconds(1))
-            {
-                throw new ArgumentException(
-                    $"{nameof(options.MinBackoffDuration)} must be at least 1 second",
-                    nameof(options));
-            }
-
             // Enable request tracing if not opt-out
             string requestTracingDisabled = null;
             try
