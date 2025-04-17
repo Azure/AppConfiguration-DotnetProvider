@@ -1,5 +1,5 @@
-﻿using Azure.Data.AppConfiguration;
-using Azure;
+﻿using Azure;
+using Azure.Data.AppConfiguration;
 using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
