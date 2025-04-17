@@ -5,6 +5,7 @@ using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -57,6 +58,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             public int FailedAttempts { get; set; }
             public DateTimeOffset BackoffEndTime { get; set; }
         }
+
+        public AzureAppConfigurationHealthCheck HealthCheck { get; private set; }
 
         public DateTimeOffset? LastSuccessfulAttempt { get; private set; } = null;
         public DateTimeOffset? LastFailedAttempt { get; private set; } = null;
@@ -113,6 +116,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientManager = configClientManager ?? throw new ArgumentNullException(nameof(configClientManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
+
+            HealthCheck = new AzureAppConfigurationHealthCheck(this);
 
             IEnumerable<KeyValueWatcher> watchers = options.IndividualKvWatchers.Union(options.FeatureFlagWatchers);
 
@@ -1149,7 +1154,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
-                        LastFailedAttempt = DateTime.UtcNow;
 
                         throw;
                     }
@@ -1159,7 +1163,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (!IsFailOverable(ae) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
-                        LastFailedAttempt = DateTime.UtcNow;
 
                         throw;
                     }
@@ -1168,6 +1171,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
+                        LastFailedAttempt = DateTime.UtcNow;
                         _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
 
                         do

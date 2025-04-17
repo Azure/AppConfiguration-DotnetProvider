@@ -5,72 +5,32 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationHealthCheck : IHealthCheck
     {
-        private static readonly PropertyInfo _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
-        private readonly List<AzureAppConfigurationProvider> _providers = new List<AzureAppConfigurationProvider>();
+        private AzureAppConfigurationProvider _provider = null;
 
-        public AzureAppConfigurationHealthCheck(IConfiguration configuration)
+        public AzureAppConfigurationHealthCheck(AzureAppConfigurationProvider provider)
         {
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
-
-            var configurationRoot = configuration as IConfigurationRoot;
-            FindProviders(configurationRoot);
+            _provider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            if (!_providers.Any())
+            if (!_provider.LastSuccessfulAttempt.HasValue)
             {
-                return HealthCheckResult.Unhealthy(HealthCheckConstants.NoProviderFoundMessage);
+                return HealthCheckResult.Unhealthy(HealthCheckConstants.LoadNotCompletedMessage);
             }
 
-            foreach (var provider in _providers)
+            if (_provider.LastFailedAttempt.HasValue &&
+                _provider.LastSuccessfulAttempt.Value < _provider.LastFailedAttempt.Value)
             {
-                if (!provider.LastSuccessfulAttempt.HasValue)
-                {
-                    return HealthCheckResult.Unhealthy(HealthCheckConstants.LoadNotCompletedMessage);
-                }
-
-                if (provider.LastFailedAttempt.HasValue &&
-                    provider.LastSuccessfulAttempt.Value < provider.LastFailedAttempt.Value)
-                {
-                    return HealthCheckResult.Unhealthy(HealthCheckConstants.RefreshFailedMessage);
-                }
+                return HealthCheckResult.Unhealthy(HealthCheckConstants.RefreshFailedMessage);
             }
 
             return HealthCheckResult.Healthy();
-        }
-
-        private void FindProviders(IConfigurationRoot configurationRoot)
-        {
-            if (configurationRoot != null)
-            {
-                foreach (IConfigurationProvider provider in configurationRoot.Providers)
-                {
-                    if (provider is AzureAppConfigurationProvider appConfigurationProvider)
-                    {
-                        _providers.Add(appConfigurationProvider);
-                    }
-                    else if (provider is ChainedConfigurationProvider chainedProvider)
-                    {
-                        if (_propertyInfo != null)
-                        {
-                            var chainedProviderConfigurationRoot = _propertyInfo.GetValue(chainedProvider) as IConfigurationRoot;
-                            FindProviders(chainedProviderConfigurationRoot);
-                        }
-                    }
-                }
-            }
         }
     }
 }
