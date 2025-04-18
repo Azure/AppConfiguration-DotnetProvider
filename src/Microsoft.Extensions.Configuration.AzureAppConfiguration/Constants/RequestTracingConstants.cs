@@ -31,6 +31,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
+        public const string AIConfigurationTag = "AI";
+        public const string AIChatCompletionConfigurationTag = "AICC";
+
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
         public const string PushRefreshTag = "PushRefresh";
@@ -54,5 +57,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
 
         public const string Delimiter = "+";
+
+        public const string AIMimeProfile = "https://azconfig.io/mime-profiles/ai";
+        public const string AIChatCompletionMimeProfile = "https://azconfig.io/mime-profiles/ai/chat-completion";
     }
 }

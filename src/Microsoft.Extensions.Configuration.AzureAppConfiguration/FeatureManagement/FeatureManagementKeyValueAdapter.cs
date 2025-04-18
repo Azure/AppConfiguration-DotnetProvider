@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -46,10 +47,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            if (setting == null ||
+                string.IsNullOrWhiteSpace(setting.Value) ||
+                string.IsNullOrWhiteSpace(setting.ContentType))
+            {
+                return false;
+            }
 
-            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                                 setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+            if (setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+            {
+                return true;
+            }
+
+            return setting.ContentType.TryParseContentType(out ContentType contentType) &&
+                contentType.IsFeatureFlag();
         }
 
         public bool NeedsRefresh()

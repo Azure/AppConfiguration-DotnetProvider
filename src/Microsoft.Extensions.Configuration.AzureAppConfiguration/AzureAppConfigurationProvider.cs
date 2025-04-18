@@ -597,9 +597,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Reset old feature flag tracing in order to track the information present in the current response from server.
             _options.FeatureFlagTracing.ResetFeatureFlagTracing();
 
+            // Reset old request tracing values for content type
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.ResetAiConfigurationTracing();
+            }
+
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
+                }
+
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
 
                 foreach (KeyValuePair<string, string> kv in keyValuePairs)
@@ -636,7 +648,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (_requestTracingOptions != null)
+                    if (_requestTracingEnabled && _requestTracingOptions != null)
                     {
                         _requestTracingOptions.ReplicaCount = clients.Count() - 1;
                     }
