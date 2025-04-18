@@ -1201,12 +1201,11 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        [Obsolete]
         public void AlternateValidFeatureFlagFormats()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var cacheExpiration = TimeSpan.FromSeconds(1);
+            var refreshInterval = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
@@ -1233,7 +1232,7 @@ namespace Tests.AzureAppConfiguration
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(testClient);
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.CacheExpirationInterval = cacheExpiration;
+                        ff.SetRefreshInterval(refreshInterval);
                         ff.Select(flagKey);
                     });
                 })
