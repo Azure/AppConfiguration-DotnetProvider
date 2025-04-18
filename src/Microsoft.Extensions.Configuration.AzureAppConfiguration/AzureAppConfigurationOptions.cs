@@ -50,6 +50,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool LoadBalancingEnabled { get; set; }
 
         /// <summary>
+        /// An optional timespan value to set the minimum backoff duration to a value other than the default.
+        /// </summary>
+        public TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
+
+        /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
         internal IEnumerable<string> ConnectionStrings { get; private set; }
@@ -119,11 +124,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.
         /// </summary>
         internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
-
-        /// <summary>
-        /// An optional timespan value to set the minimum backoff duration to a value other than the default.
-        /// </summary>
-        internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
 
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
