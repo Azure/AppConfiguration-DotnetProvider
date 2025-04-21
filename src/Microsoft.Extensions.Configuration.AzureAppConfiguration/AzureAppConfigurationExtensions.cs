@@ -3,6 +3,7 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Security;
@@ -99,11 +100,11 @@ namespace Microsoft.Extensions.Configuration
             if (!_isProviderDisabled)
             {
                 services.AddLogging();
-                services.AddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
+                services.TryAddSingleton<IConfigurationRefresherProvider, AzureAppConfigurationRefresherProvider>();
             }
             else
             {
-                services.AddSingleton<IConfigurationRefresherProvider, EmptyConfigurationRefresherProvider>();
+                services.TryAddSingleton<IConfigurationRefresherProvider, EmptyConfigurationRefresherProvider>();
             }
 
             return services;

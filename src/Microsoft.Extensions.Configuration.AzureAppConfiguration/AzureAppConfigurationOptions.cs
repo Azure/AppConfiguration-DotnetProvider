@@ -138,7 +138,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
-        /// Indicates all types of feature filters used by the application.
+        /// Indicates all feature flag features used by the application.
         /// </summary>
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
