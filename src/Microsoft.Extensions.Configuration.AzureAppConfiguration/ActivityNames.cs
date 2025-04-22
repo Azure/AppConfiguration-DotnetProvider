@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal static class ActivityNames
     {
         public const string AzureAppConfigurationActivitySource = "Microsoft.Extensions.Configuration.AzureAppConfiguration";
-        public const string LoadActivityName = "Load";
-        public const string RefreshActivityName = "Refresh";
+        public const string Load = "Load";
+        public const string Refresh = "Refresh";
     }
 }

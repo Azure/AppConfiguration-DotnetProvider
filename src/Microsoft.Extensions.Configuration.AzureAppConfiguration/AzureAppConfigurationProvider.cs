@@ -159,7 +159,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public override void Load()
         {
             var watch = Stopwatch.StartNew();
-            using Activity activity = _activitySource.StartActivity(ActivityNames.LoadActivityName);
+            using Activity activity = _activitySource.StartActivity(ActivityNames.Load);
             try
             {
                 using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
@@ -259,7 +259,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    using Activity activity = _activitySource.StartActivity(ActivityNames.RefreshActivityName);
+                    using Activity activity = _activitySource.StartActivity(ActivityNames.Refresh);
                     // Check if initial configuration load had failed
                     if (_mappedData == null)
                     {
