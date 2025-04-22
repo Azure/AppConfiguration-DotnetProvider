@@ -4,7 +4,7 @@
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class ActivityConstants
+    internal static class ActivityNames
     {
         public const string AzureAppConfigurationActivitySource = "Microsoft.Extensions.Configuration.AzureAppConfiguration";
         public const string LoadActivityName = "Load";
