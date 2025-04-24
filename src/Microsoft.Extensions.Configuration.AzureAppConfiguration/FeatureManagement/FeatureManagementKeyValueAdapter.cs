@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private FeatureFlagTracing _featureFlagTracing;
-        private int _featureFlagIndex = 0;
+        private int _featureFlagIndex = 1000000;
 
         public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public void OnConfigUpdated()
         {
-            _featureFlagIndex = 0;
+            _featureFlagIndex = _instanceStartIndex;
 
             return;
         }
