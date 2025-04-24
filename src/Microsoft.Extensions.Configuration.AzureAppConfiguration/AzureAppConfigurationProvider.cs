@@ -23,6 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
+        private readonly ActivitySource _activitySource = new ActivitySource(ActivityNames.AzureAppConfigurationActivitySource);
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private bool _isAssemblyInspected;
@@ -158,7 +159,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public override void Load()
         {
             var watch = Stopwatch.StartNew();
-
+            using Activity activity = _activitySource.StartActivity(ActivityNames.Load);
             try
             {
                 using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
@@ -258,6 +259,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
+                    using Activity activity = _activitySource.StartActivity(ActivityNames.Refresh);
                     // Check if initial configuration load had failed
                     if (_mappedData == null)
                     {
@@ -598,9 +600,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Reset old feature flag tracing in order to track the information present in the current response from server.
             _options.FeatureFlagTracing.ResetFeatureFlagTracing();
 
+            // Reset old request tracing values for content type
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.ResetAiConfigurationTracing();
+            }
+
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
                 IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+
+                if (_requestTracingEnabled && _requestTracingOptions != null)
+                {
+                    _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
+                }
+
                 keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
 
                 foreach (KeyValuePair<string, string> kv in keyValuePairs)
@@ -637,7 +651,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
 
-                    if (_requestTracingOptions != null)
+                    if (_requestTracingEnabled && _requestTracingOptions != null)
                     {
                         _requestTracingOptions.ReplicaCount = clients.Count() - 1;
                     }
@@ -1218,13 +1232,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
-            TaskCanceledException tce = ex.InnerExceptions?.LastOrDefault(e => e is TaskCanceledException) as TaskCanceledException;
-
-            if (tce != null && tce.InnerException is TimeoutException)
-            {
-                return true;
-            }
-
             RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
             return rfe != null ? IsFailOverable(rfe) : false;
@@ -1410,6 +1417,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public void Dispose()
         {
             (_configClientManager as ConfigurationClientManager)?.Dispose();
+            _activitySource.Dispose();
         }
     }
 }
