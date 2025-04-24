@@ -39,12 +39,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         {
             return s == LabelFilter.Null ? null : s;
         }
-
-        public static string ToBase64String(this string s)
-        {
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(s);
-
-            return Convert.ToBase64String(bytes);
-        }
     }
 }
