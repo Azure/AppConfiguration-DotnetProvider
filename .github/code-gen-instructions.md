@@ -44,6 +44,10 @@ This document outlines coding guidelines for the Azure App Configuration .NET Pr
    * Prefix private fields with an underscore (`_`).
    * Define constants for error messages and other string literals.
 
+9. **Comments**:
+    * Only add comments when it's not obvious what the code is doing. For example, if a variable name is already fairly descriptive, a comment isn't needed explaining its name.
+    * Add summary comments to public classes and members of those classes.
+
 ## AppConfiguration-Specific Guidelines
 
 1. **Feature Flag Handling**:
