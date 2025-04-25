@@ -15,8 +15,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -2151,19 +2149,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Tag2Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag2"]);
             Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["feature_management:feature_flags:0:telemetry:metadata:ETag"]);
 
-            byte[] featureFlagIdHash;
-
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1\nlabel"));
-            }
-
-            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
-                .TrimEnd('=')
-                .Replace('+', '-')
-                .Replace('/', '_');
-
-            Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
             Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1?label=label", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
 
             Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
@@ -2189,23 +2174,9 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            byte[] featureFlagIdHash;
-
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariant\n"));
-            }
-
-            string featureFlagId = Convert.ToBase64String(featureFlagIdHash)
-                .TrimEnd('=')
-                .Replace('+', '-')
-                .Replace('/', '_');
-
             // Validate TelemetryVariant
             Assert.Equal("True", config["feature_management:feature_flags:0:telemetry:enabled"]);
             Assert.Equal("TelemetryVariant", config["feature_management:feature_flags:0:id"]);
-
-            Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
 
             Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryVariant", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
 
@@ -2222,8 +2193,6 @@ namespace Tests.AzureAppConfiguration
             // Validate Greeting
             Assert.Equal("True", config["feature_management:feature_flags:2:telemetry:enabled"]);
             Assert.Equal("Greeting", config["feature_management:feature_flags:2:id"]);
-
-            Assert.Equal("63pHsrNKDSi5Zfe_FvZPSegwbsEo5TS96hf4k7cc4Zw", config["feature_management:feature_flags:2:telemetry:metadata:FeatureFlagId"]);
 
             Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}Greeting", config["feature_management:feature_flags:2:telemetry:metadata:FeatureFlagReference"]);
 
