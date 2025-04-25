@@ -1955,66 +1955,66 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("VariantsFeature1", config["feature_management:feature_flags:0:id"]);
-            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
-            Assert.Equal("Big", config["feature_management:feature_flags:0:variants:0:name"]);
-            Assert.Equal("600px", config["feature_management:feature_flags:0:variants:0:configuration_value"]);
-            Assert.Equal("Small", config["feature_management:feature_flags:0:variants:1:name"]);
-            Assert.Equal("Disabled", config["feature_management:feature_flags:0:variants:1:status_override"]);
-            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_disabled"]);
-            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:default_when_enabled"]);
-            Assert.Equal("Big", config["feature_management:feature_flags:0:allocation:user:0:variant"]);
-            Assert.Equal("Marsha", config["feature_management:feature_flags:0:allocation:user:0:users:0"]);
-            Assert.Equal("John", config["feature_management:feature_flags:0:allocation:user:0:users:1"]);
-            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:user:1:variant"]);
-            Assert.Equal("Alice", config["feature_management:feature_flags:0:allocation:user:1:users:0"]);
-            Assert.Equal("Bob", config["feature_management:feature_flags:0:allocation:user:1:users:1"]);
-            Assert.Equal("Big", config["feature_management:feature_flags:0:allocation:group:0:variant"]);
-            Assert.Equal("Ring1", config["feature_management:feature_flags:0:allocation:group:0:groups:0"]);
-            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:group:1:variant"]);
-            Assert.Equal("Ring2", config["feature_management:feature_flags:0:allocation:group:1:groups:0"]);
-            Assert.Equal("Ring3", config["feature_management:feature_flags:0:allocation:group:1:groups:1"]);
-            Assert.Equal("Big", config["feature_management:feature_flags:0:allocation:percentile:0:variant"]);
-            Assert.Equal("0", config["feature_management:feature_flags:0:allocation:percentile:0:from"]);
-            Assert.Equal("50", config["feature_management:feature_flags:0:allocation:percentile:0:to"]);
-            Assert.Equal("Small", config["feature_management:feature_flags:0:allocation:percentile:1:variant"]);
-            Assert.Equal("50", config["feature_management:feature_flags:0:allocation:percentile:1:from"]);
-            Assert.Equal("100", config["feature_management:feature_flags:0:allocation:percentile:1:to"]);
-            Assert.Equal("13992821", config["feature_management:feature_flags:0:allocation:seed"]);
+            Assert.Equal("VariantsFeature1", config["feature_management:feature_flags:1000000:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:1000000:enabled"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:1000000:variants:0:name"]);
+            Assert.Equal("600px", config["feature_management:feature_flags:1000000:variants:0:configuration_value"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:1000000:variants:1:name"]);
+            Assert.Equal("Disabled", config["feature_management:feature_flags:1000000:variants:1:status_override"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:1000000:allocation:default_when_disabled"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:1000000:allocation:default_when_enabled"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:1000000:allocation:user:0:variant"]);
+            Assert.Equal("Marsha", config["feature_management:feature_flags:1000000:allocation:user:0:users:0"]);
+            Assert.Equal("John", config["feature_management:feature_flags:1000000:allocation:user:0:users:1"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:1000000:allocation:user:1:variant"]);
+            Assert.Equal("Alice", config["feature_management:feature_flags:1000000:allocation:user:1:users:0"]);
+            Assert.Equal("Bob", config["feature_management:feature_flags:1000000:allocation:user:1:users:1"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:1000000:allocation:group:0:variant"]);
+            Assert.Equal("Ring1", config["feature_management:feature_flags:1000000:allocation:group:0:groups:0"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:1000000:allocation:group:1:variant"]);
+            Assert.Equal("Ring2", config["feature_management:feature_flags:1000000:allocation:group:1:groups:0"]);
+            Assert.Equal("Ring3", config["feature_management:feature_flags:1000000:allocation:group:1:groups:1"]);
+            Assert.Equal("Big", config["feature_management:feature_flags:1000000:allocation:percentile:0:variant"]);
+            Assert.Equal("0", config["feature_management:feature_flags:1000000:allocation:percentile:0:from"]);
+            Assert.Equal("50", config["feature_management:feature_flags:1000000:allocation:percentile:0:to"]);
+            Assert.Equal("Small", config["feature_management:feature_flags:1000000:allocation:percentile:1:variant"]);
+            Assert.Equal("50", config["feature_management:feature_flags:1000000:allocation:percentile:1:from"]);
+            Assert.Equal("100", config["feature_management:feature_flags:1000000:allocation:percentile:1:to"]);
+            Assert.Equal("13992821", config["feature_management:feature_flags:1000000:allocation:seed"]);
 
-            Assert.Equal("VariantsFeature2", config["feature_management:feature_flags:1:id"]);
-            Assert.Equal("False", config["feature_management:feature_flags:1:enabled"]);
-            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:variants:0:name"]);
-            Assert.Equal("Value1", config["feature_management:feature_flags:1:variants:0:configuration_value:Key1"]);
-            Assert.Equal("Value2", config["feature_management:feature_flags:1:variants:0:configuration_value:Key2:InsideKey2"]);
-            Assert.Equal("NumberVariant", config["feature_management:feature_flags:1:variants:1:name"]);
-            Assert.Equal("100", config["feature_management:feature_flags:1:variants:1:configuration_value"]);
-            Assert.Equal("NullVariant", config["feature_management:feature_flags:1:variants:2:name"]);
-            Assert.Equal("", config["feature_management:feature_flags:1:variants:2:configuration_value"]);
+            Assert.Equal("VariantsFeature2", config["feature_management:feature_flags:1000001:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:1000001:enabled"]);
+            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1000001:variants:0:name"]);
+            Assert.Equal("Value1", config["feature_management:feature_flags:1000001:variants:0:configuration_value:Key1"]);
+            Assert.Equal("Value2", config["feature_management:feature_flags:1000001:variants:0:configuration_value:Key2:InsideKey2"]);
+            Assert.Equal("NumberVariant", config["feature_management:feature_flags:1000001:variants:1:name"]);
+            Assert.Equal("100", config["feature_management:feature_flags:1000001:variants:1:configuration_value"]);
+            Assert.Equal("NullVariant", config["feature_management:feature_flags:1000001:variants:2:name"]);
+            Assert.Equal("", config["feature_management:feature_flags:1000001:variants:2:configuration_value"]);
             Assert.True(config
-                .GetSection("feature_management:feature_flags:1:variants:2")
+                .GetSection("feature_management:feature_flags:1000001:variants:2")
                 .AsEnumerable()
                 .ToDictionary(x => x.Key, x => x.Value)
-                .ContainsKey("feature_management:feature_flags:1:variants:2:configuration_value"));
-            Assert.Equal("MissingValueVariant", config["feature_management:feature_flags:1:variants:3:name"]);
-            Assert.Null(config["feature_management:feature_flags:1:variants:3:configuration_value"]);
+                .ContainsKey("feature_management:feature_flags:1000001:variants:2:configuration_value"));
+            Assert.Equal("MissingValueVariant", config["feature_management:feature_flags:1000001:variants:3:name"]);
+            Assert.Null(config["feature_management:feature_flags:1000001:variants:3:configuration_value"]);
             Assert.False(config
-                .GetSection("feature_management:feature_flags:1:variants:3")
+                .GetSection("feature_management:feature_flags:1000001:variants:3")
                 .AsEnumerable()
                 .ToDictionary(x => x.Key, x => x.Value)
-                .ContainsKey("feature_management:feature_flags:1:variants:3:configuration_value"));
-            Assert.Equal("BooleanVariant", config["feature_management:feature_flags:1:variants:4:name"]);
-            Assert.Equal("True", config["feature_management:feature_flags:1:variants:4:configuration_value"]);
-            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:allocation:default_when_disabled"]);
-            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1:allocation:default_when_enabled"]);
+                .ContainsKey("feature_management:feature_flags:1000001:variants:3:configuration_value"));
+            Assert.Equal("BooleanVariant", config["feature_management:feature_flags:1000001:variants:4:name"]);
+            Assert.Equal("True", config["feature_management:feature_flags:1000001:variants:4:configuration_value"]);
+            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1000001:allocation:default_when_disabled"]);
+            Assert.Equal("ObjectVariant", config["feature_management:feature_flags:1000001:allocation:default_when_enabled"]);
 
-            Assert.Equal("VariantsFeature3", config["feature_management:feature_flags:2:id"]);
-            Assert.Equal("True", config["feature_management:feature_flags:2:enabled"]);
-            Assert.Equal("NumberVariant", config["feature_management:feature_flags:2:allocation:default_when_enabled"]);
-            Assert.Equal("1", config["feature_management:feature_flags:2:variants:0:configuration_value"]);
-            Assert.Equal("2", config["feature_management:feature_flags:2:variants:1:configuration_value"]);
-            Assert.Equal("Other", config["feature_management:feature_flags:2:variants:2:configuration_value"]);
-            Assert.Equal("NumberVariant", config["feature_management:feature_flags:2:allocation:default_when_enabled"]);
+            Assert.Equal("VariantsFeature3", config["feature_management:feature_flags:1000002:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:1000002:enabled"]);
+            Assert.Equal("NumberVariant", config["feature_management:feature_flags:1000002:allocation:default_when_enabled"]);
+            Assert.Equal("1", config["feature_management:feature_flags:1000002:variants:0:configuration_value"]);
+            Assert.Equal("2", config["feature_management:feature_flags:1000002:variants:1:configuration_value"]);
+            Assert.Equal("Other", config["feature_management:feature_flags:1000002:variants:2:configuration_value"]);
+            Assert.Equal("NumberVariant", config["feature_management:feature_flags:1000002:allocation:default_when_enabled"]);
 
             Assert.Equal("True", config["FeatureManagement:VariantsFeature4"]);
         }
@@ -2037,11 +2037,11 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Equal("True", config["feature_management:feature_flags:0:telemetry:enabled"]);
-            Assert.Equal("TelemetryFeature1", config["feature_management:feature_flags:0:id"]);
-            Assert.Equal("Tag1Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag1"]);
-            Assert.Equal("Tag2Value", config["feature_management:feature_flags:0:telemetry:metadata:Tags.Tag2"]);
-            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["feature_management:feature_flags:0:telemetry:metadata:ETag"]);
+            Assert.Equal("True", config["feature_management:feature_flags:1000000:telemetry:enabled"]);
+            Assert.Equal("TelemetryFeature1", config["feature_management:feature_flags:1000000:id"]);
+            Assert.Equal("Tag1Value", config["feature_management:feature_flags:1000000:telemetry:metadata:Tags.Tag1"]);
+            Assert.Equal("Tag2Value", config["feature_management:feature_flags:1000000:telemetry:metadata:Tags.Tag2"]);
+            Assert.Equal("c3c231fd-39a0-4cb6-3237-4614474b92c1", config["feature_management:feature_flags:1000000:telemetry:metadata:ETag"]);
 
             byte[] featureFlagIdHash;
 
@@ -2055,12 +2055,12 @@ namespace Tests.AzureAppConfiguration
                 .Replace('+', '-')
                 .Replace('/', '_');
 
-            Assert.Equal(featureFlagId, config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagId"]);
-            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1?label=label", config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
+            Assert.Equal(featureFlagId, config["feature_management:feature_flags:1000000:telemetry:metadata:FeatureFlagId"]);
+            Assert.Equal($"{TestHelpers.PrimaryConfigStoreEndpoint}kv/{FeatureManagementConstants.FeatureFlagMarker}TelemetryFeature1?label=label", config["feature_management:feature_flags:1000000:telemetry:metadata:FeatureFlagReference"]);
 
-            Assert.Equal("True", config["feature_management:feature_flags:1:telemetry:enabled"]);
-            Assert.Equal("TelemetryFeature2", config["feature_management:feature_flags:1:id"]);
-            Assert.Equal("Tag2Value", config["feature_management:feature_flags:1:telemetry:metadata:Tags.Tag1"]);
+            Assert.Equal("True", config["feature_management:feature_flags:1000001:telemetry:enabled"]);
+            Assert.Equal("TelemetryFeature2", config["feature_management:feature_flags:1000001:id"]);
+            Assert.Equal("Tag2Value", config["feature_management:feature_flags:1000001:telemetry:metadata:Tags.Tag1"]);
         }
 
         [Fact]
@@ -2100,12 +2100,12 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            Assert.Null(config["feature_management:feature_flags:0:requirement_type"]);
-            Assert.Equal("Feature_NoFilters", config["feature_management:feature_flags:0:id"]);
-            Assert.Equal("All", config["feature_management:feature_flags:1:conditions:requirement_type"]);
-            Assert.Equal("Feature_RequireAll", config["feature_management:feature_flags:1:id"]);
-            Assert.Equal("Any", config["feature_management:feature_flags:2:conditions:requirement_type"]);
-            Assert.Equal("Feature_RequireAny", config["feature_management:feature_flags:2:id"]);
+            Assert.Null(config["feature_management:feature_flags:1000000:requirement_type"]);
+            Assert.Equal("Feature_NoFilters", config["feature_management:feature_flags:1000000:id"]);
+            Assert.Equal("All", config["feature_management:feature_flags:1000001:conditions:requirement_type"]);
+            Assert.Equal("Feature_RequireAll", config["feature_management:feature_flags:1000001:id"]);
+            Assert.Equal("Any", config["feature_management:feature_flags:1000002:conditions:requirement_type"]);
+            Assert.Equal("Feature_RequireAny", config["feature_management:feature_flags:1000002:id"]);
         }
 
         [Fact]

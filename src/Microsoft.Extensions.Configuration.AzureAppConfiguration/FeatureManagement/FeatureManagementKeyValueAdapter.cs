@@ -18,11 +18,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private FeatureFlagTracing _featureFlagTracing;
-        private int _featureFlagIndex = 1000000;
+        private static int _globalFeatureFlagCounter = 1000000;
+        private readonly int _startFeatureFlagIndex;
+        private int _currentFeatureFlagIndex;
+        private int _processedFlagsCount;
+        private int _maxProcessedFlagsPerRefresh;
 
         public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
+
+            _startFeatureFlagIndex = Interlocked.Add(ref _globalFeatureFlagCounter, 0);
+            _currentFeatureFlagIndex = _startFeatureFlagIndex;
+            _processedFlagsCount = 0;
+            _maxProcessedFlagsPerRefresh = 0;
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -42,6 +51,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+        }
+
+        // Track a new feature flag being processed and update the global counter
+        private void TrackProcessedFlag()
+        {
+            _processedFlagsCount++;
+
+            // Update the max flags count if we have more flags in this cycle
+            if (_processedFlagsCount > _maxProcessedFlagsPerRefresh)
+            {
+                _maxProcessedFlagsPerRefresh = _processedFlagsCount;
+
+                // Update the global counter to reserve enough space for our maximum observed flags
+                Interlocked.CompareExchange(
+                    ref _globalFeatureFlagCounter,
+                    _startFeatureFlagIndex + _maxProcessedFlagsPerRefresh,
+                    _globalFeatureFlagCounter);
+            }
         }
 
         public bool CanProcess(ConfigurationSetting setting)
@@ -74,8 +101,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public void OnConfigUpdated()
         {
-            _featureFlagIndex = ;
-
+            _currentFeatureFlagIndex = _startFeatureFlagIndex;
+            _processedFlagsCount = 0;
             return;
         }
 
@@ -141,9 +168,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_currentFeatureFlagIndex}";
 
-            _featureFlagIndex++;
+            _currentFeatureFlagIndex++;
+            TrackProcessedFlag();
 
             keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Id}", featureFlag.Id));
 
