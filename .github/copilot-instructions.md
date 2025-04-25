@@ -1,3 +1,3 @@
-We always catch specific exceptions and avoid catching the base Exception class in catch blocks.
+This is the Azure App Configuration .NET Provider codebase. The service abides by coding guidelines specified in `github\code-gen-instructions.md`file.
 
-We never use `var` to declare a variable if the assignment does not include the type of the variable, or the type is not immediately obvious.
+When suggesting code changes, do not modify the files directly. Instead, provide a detailed explanation of the changes you would make and ask for confirmation before editing the files. You may create markdown files to demonstrate the changes you would like to make.
