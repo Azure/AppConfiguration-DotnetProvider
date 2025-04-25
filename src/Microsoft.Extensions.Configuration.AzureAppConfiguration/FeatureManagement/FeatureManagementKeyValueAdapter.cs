@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public void OnConfigUpdated()
         {
-            _featureFlagIndex = _instanceStartIndex;
+            _featureFlagIndex = ;
 
             return;
         }
