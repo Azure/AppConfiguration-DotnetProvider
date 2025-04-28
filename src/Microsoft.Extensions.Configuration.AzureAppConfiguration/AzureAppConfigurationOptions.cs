@@ -526,7 +526,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public void Dispose()
         {
-            if (ClientOptions?.Transport is HttpClientTransport transport)
+            if (ClientOptions.Transport is HttpClientTransport transport)
             {
                 transport.Dispose();
             }
