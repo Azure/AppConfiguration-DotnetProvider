@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// Options used to configure the behavior of an Azure App Configuration provider.         
     /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with no label are included in the configuration provider.
     /// </summary>
-    public class AzureAppConfigurationOptions
+    public class AzureAppConfigurationOptions : IDisposable
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
@@ -513,13 +513,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
-            // Need to dispose this HttpClientTransport when no longer needed
             clientOptions.Transport = new HttpClientTransport(new HttpClient()
             {
                 Timeout = NetworkTimeout
             });
 
             return clientOptions;
+        }
+
+        /// <summary>
+        /// Disposes of this instance of <see cref="AzureAppConfigurationOptions"/> and any resources it holds.
+        /// </summary>
+        public void Dispose()
+        {
+            if (ClientOptions?.Transport is HttpClientTransport transport)
+            {
+                transport.Dispose();
+            }
         }
     }
 }
