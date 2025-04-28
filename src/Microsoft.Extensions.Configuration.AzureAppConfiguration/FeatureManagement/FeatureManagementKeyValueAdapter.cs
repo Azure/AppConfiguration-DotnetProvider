@@ -53,12 +53,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
         }
 
-        // Track a new feature flag being processed and update the global counter
         private void TrackProcessedFlag()
         {
             _processedFlagsCount++;
 
-            // Update the max flags count if we have more flags in this cycle
+            // Update the max flags count if we have more flags this time compared to last load/refresh
             if (_processedFlagsCount > _maxProcessedFlagsPerRefresh)
             {
                 _maxProcessedFlagsPerRefresh = _processedFlagsCount;
@@ -102,7 +101,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public void OnConfigUpdated()
         {
             _currentFeatureFlagIndex = _startFeatureFlagIndex;
+
             _processedFlagsCount = 0;
+
             return;
         }
 
