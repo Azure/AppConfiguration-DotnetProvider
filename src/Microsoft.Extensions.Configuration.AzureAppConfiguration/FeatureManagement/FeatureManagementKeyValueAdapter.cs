@@ -310,10 +310,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         }
                     }
 
-                    string featureFlagId = CalculateFeatureFlagId(setting.Key, setting.Label);
-
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
-
                     if (endpoint != null)
                     {
                         string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(!string.IsNullOrWhiteSpace(setting.Label) ? $"?label={setting.Label}" : "")}";
@@ -1372,20 +1368,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             return featureTelemetry;
-        }
-
-        private static string CalculateFeatureFlagId(string key, string label)
-        {
-            byte[] featureFlagIdHash;
-
-            // Convert the value consisting of key, newline character, and label to a byte array using UTF8 encoding to hash it using SHA 256
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{key}\n{(string.IsNullOrWhiteSpace(label) ? null : label)}"));
-            }
-
-            // Convert the hashed byte array to Base64Url
-            return featureFlagIdHash.ToBase64Url();
         }
     }
 }
