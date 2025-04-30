@@ -2155,6 +2155,89 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
+        [Fact]
+        public void MultipleFeatureManagementConfigurationsIndexCorrectly()
+        {
+            // Create two separate collections of feature flags to represent different providers
+            var provider1FeatureFlags = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "Provider1Feature",
+                    value: @"
+                            {
+                                ""id"": ""Provider1Feature"",
+                                ""enabled"": true,
+                                ""variants"": [
+                                {
+                                    ""name"": ""VariantA"",
+                                    ""configuration_value"": ""Value1""
+                                }
+                                ]
+                            }
+                            ",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag("provider1-etag"))
+            };
+
+            var provider2FeatureFlags = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "Provider2Feature",
+                    value: @"
+                            {
+                                ""id"": ""Provider2Feature"",
+                                ""enabled"": true,
+                                ""variants"": [
+                                {
+                                    ""name"": ""VariantC"",
+                                    ""configuration_value"": ""Value3""
+                                }
+                                ]
+                            }
+                            ",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag("provider2-etag"))
+            };
+
+            var mockClient1 = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockClient2 = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(provider1FeatureFlags));
+
+            mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(provider2FeatureFlags));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options1 =>
+                {
+                    options1.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient1.Object);
+                    options1.UseFeatureFlags(ff => ff.Select("Provider1Feature"));
+                })
+                .AddAzureAppConfiguration(options2 =>
+                {
+                    options2.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient2.Object);
+                    options2.UseFeatureFlags(ff => ff.Select("Provider2Feature"));
+                })
+                .Build();
+
+            int index1 = 1_000_000;
+            int index2 = 1_100_000;
+
+            // Verify the configuration values match
+            Assert.Equal("Provider1Feature", config[$"feature_management:feature_flags:{index1}:id"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:{index1}:enabled"]);
+            Assert.Equal("VariantA", config[$"feature_management:feature_flags:{index1}:variants:0:name"]);
+            Assert.Equal("Value1", config[$"feature_management:feature_flags:{index1}:variants:0:configuration_value"]);
+
+            Assert.Equal("Provider2Feature", config[$"feature_management:feature_flags:{index2}:id"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:{index2}:enabled"]);
+            Assert.Equal("VariantC", config[$"feature_management:feature_flags:{index2}:variants:0:name"]);
+            Assert.Equal("Value3", config[$"feature_management:feature_flags:{index2}:variants:0:configuration_value"]);
+        }
+
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
