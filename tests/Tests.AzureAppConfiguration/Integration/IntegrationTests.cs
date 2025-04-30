@@ -266,63 +266,52 @@ namespace Tests.AzureAppConfiguration
         {
             var cleanupTasks = new List<Task>();
 
-            try
+            // Clean up all configuration settings created by tests
+            foreach (string key in _createdConfigKeys)
             {
-                // Clean up all configuration settings created by tests
-                foreach (string key in _createdConfigKeys)
+                try
+                {
+                    cleanupTasks.Add(_configClient.DeleteConfigurationSettingAsync(key));
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Failed to delete configuration setting {key}: {ex.Message}");
+                }
+            }
+
+            // Clean up all snapshots created by tests
+            foreach (string snapshotName in _createdSnapshotNames)
+            {
+                try
+                {
+                    cleanupTasks.Add(_configClient.ArchiveSnapshotAsync(snapshotName));
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Failed to delete snapshot {snapshotName}: {ex.Message}");
+                }
+            }
+
+            // Clean up test-specific secrets in Key Vault
+            if (_secretClient != null)
+            {
+                foreach (string secretName in _createdSecretNames)
                 {
                     try
                     {
-                        cleanupTasks.Add(_configClient.DeleteConfigurationSettingAsync(key));
+                        cleanupTasks.Add(_secretClient.StartDeleteSecretAsync(secretName));
                     }
                     catch (RequestFailedException ex)
                     {
-                        Console.WriteLine($"Failed to delete configuration setting {key}: {ex.Message}");
+                        Console.WriteLine($"Failed to delete secret {secretName}: {ex.Message}");
                     }
                 }
-
-                // Clean up all snapshots created by tests
-                foreach (string snapshotName in _createdSnapshotNames)
-                {
-                    try
-                    {
-                        cleanupTasks.Add(_configClient.ArchiveSnapshotAsync(snapshotName));
-                    }
-                    catch (RequestFailedException ex)
-                    {
-                        Console.WriteLine($"Failed to delete snapshot {snapshotName}: {ex.Message}");
-                    }
-                }
-
-                // Clean up test-specific secrets in Key Vault
-                if (_secretClient != null)
-                {
-                    foreach (string secretName in _createdSecretNames)
-                    {
-                        try
-                        {
-                            cleanupTasks.Add(_secretClient.StartDeleteSecretAsync(secretName));
-                        }
-                        catch (RequestFailedException ex)
-                        {
-                            Console.WriteLine($"Failed to delete secret {secretName}: {ex.Message}");
-                        }
-                    }
-                }
-
-                // Wait for all cleanup tasks to complete
-                await Task.WhenAll(cleanupTasks);
-
-                Console.WriteLine($"Cleaned up {_createdConfigKeys.Count} configuration settings, {_createdSnapshotNames.Count} snapshots, and {_createdSecretNames.Count} secrets");
             }
-            catch (RequestFailedException ex)
-            {
-                Console.WriteLine($"Error during resource cleanup: {ex.Message}");
-            }
-            catch (InvalidOperationException ex)
-            {
-                Console.WriteLine($"Operation error during test cleanup: {ex.Message}");
-            }
+
+            // Wait for all cleanup tasks to complete
+            await Task.WhenAll(cleanupTasks);
+
+            Console.WriteLine($"Cleaned up {_createdConfigKeys.Count} configuration settings, {_createdSnapshotNames.Count} snapshots, and {_createdSecretNames.Count} secrets");
 
             // Clean up stale resources on dispose
             await CleanupStaleResources();
@@ -364,22 +353,6 @@ namespace Tests.AzureAppConfiguration
                 {
                     // Create a secret in Key Vault
                     await _secretClient.SetSecretAsync(secretName, secretValue);
-                    // Track the created secret for cleanup
-                    _createdSecretNames.Add(secretName);
-
-                    // Create a Key Vault reference in App Configuration
-                    string keyVaultUri = $"{_keyVaultEndpoint}secrets/{secretName}";
-                    string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
-
-                    ConfigurationSetting keyVaultRefSetting = ConfigurationModelFactory.ConfigurationSetting(
-                        keyVaultReferenceKey,
-                        keyVaultRefValue,
-                        label: KeyVaultReferenceLabel,
-                        contentType: KeyVaultConstants.ContentType);
-
-                    await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
-                    // Track the created key reference for cleanup
-                    _createdConfigKeys.Add(keyVaultReferenceKey);
                 }
                 catch (RequestFailedException ex)
                 {
@@ -391,6 +364,31 @@ namespace Tests.AzureAppConfiguration
                     Console.WriteLine($"Invalid Key Vault operation: {ex.Message}");
                     // Continue without Key Vault reference if it fails
                 }
+
+                // Track the created secret for cleanup
+                _createdSecretNames.Add(secretName);
+
+                // Create a Key Vault reference in App Configuration
+                string keyVaultUri = $"{_keyVaultEndpoint}secrets/{secretName}";
+                string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
+
+                ConfigurationSetting keyVaultRefSetting = ConfigurationModelFactory.ConfigurationSetting(
+                    keyVaultReferenceKey,
+                    keyVaultRefValue,
+                    label: KeyVaultReferenceLabel,
+                    contentType: KeyVaultConstants.ContentType);
+
+                try
+                {
+                    await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Error setting up Key Vault reference: {ex.Message}");
+                }
+
+                // Track the created key reference for cleanup
+                _createdConfigKeys.Add(keyVaultReferenceKey);
             }
 
             return new TestContext
