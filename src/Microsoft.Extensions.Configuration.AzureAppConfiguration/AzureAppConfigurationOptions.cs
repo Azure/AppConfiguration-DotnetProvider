@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -34,6 +35,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueSelector> _selectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
         private bool _selectCalled = false;
+        private HttpClientTransport _clientOptionsTransport = new HttpClientTransport(new HttpClient()
+        {
+            Timeout = NetworkTimeout
+        });
 
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
@@ -128,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
+        internal ConfigurationClientOptions ClientOptions { get; }
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -151,11 +156,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
-        /// Transport used by <see cref="ClientOptions"/>, stored for disposal.
-        /// </summary>
-        internal HttpClientTransport ClientOptionsTransport { get; private set; } = null;
-
-        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -169,6 +169,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
             _selectors = new List<KeyValueSelector> { DefaultQuery };
+
+            ClientOptions = GetDefaultClientOptions();
         }
 
         /// <summary>
@@ -518,11 +520,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
-            ClientOptionsTransport = new HttpClientTransport(new HttpClient()
-            {
-                Timeout = NetworkTimeout
-            });
-            clientOptions.Transport = ClientOptionsTransport;
+            clientOptions.Transport = _clientOptionsTransport;
 
             return clientOptions;
         }
@@ -532,9 +530,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public void Dispose()
         {
-            if (ClientOptionsTransport != null)
+            if (_clientOptionsTransport != null)
             {
-                ClientOptionsTransport.Dispose();
+                _clientOptionsTransport.Dispose();
             }
         }
     }
