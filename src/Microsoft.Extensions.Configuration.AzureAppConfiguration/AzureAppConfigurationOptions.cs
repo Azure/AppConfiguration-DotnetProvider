@@ -151,6 +151,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
+        /// Transport used by <see cref="ClientOptions"/>, stored for disposal.
+        /// </summary>
+        internal HttpClientTransport ClientOptionsTransport { get; private set; } = null;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -506,17 +511,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
-        private static ConfigurationClientOptions GetDefaultClientOptions()
+        private ConfigurationClientOptions GetDefaultClientOptions()
         {
             var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
-            clientOptions.Transport = new HttpClientTransport(new HttpClient()
+            ClientOptionsTransport = new HttpClientTransport(new HttpClient()
             {
                 Timeout = NetworkTimeout
             });
+            clientOptions.Transport = ClientOptionsTransport;
 
             return clientOptions;
         }
@@ -526,9 +532,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public void Dispose()
         {
-            if (ClientOptions.Transport is HttpClientTransport transport)
+            if (ClientOptionsTransport != null)
             {
-                transport.Dispose();
+                ClientOptionsTransport.Dispose();
             }
         }
     }
