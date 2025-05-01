@@ -41,8 +41,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         // Telemetry metadata keys
         public const string ETag = "ETag";
-        public const string FeatureFlagId = "FeatureFlagId";
         public const string FeatureFlagReference = "FeatureFlagReference";
+        public const string AllocationId = "AllocationId";
 
         // Dotnet schema keys
         public const string DotnetSchemaSectionName = "FeatureManagement";
