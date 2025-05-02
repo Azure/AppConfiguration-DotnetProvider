@@ -539,6 +539,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
+            clientOptions.Transport = _clientOptionsTransport;
 
             return clientOptions;
         }
