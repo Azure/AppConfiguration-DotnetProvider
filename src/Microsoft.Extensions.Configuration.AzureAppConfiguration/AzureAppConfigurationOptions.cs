@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
+using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -18,10 +20,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// Options used to configure the behavior of an Azure App Configuration provider.         
     /// If neither <see cref="Select"/> nor <see cref="SelectSnapshot"/> is ever called, all key-values with no label are included in the configuration provider.
     /// </summary>
-    public class AzureAppConfigurationOptions
+    public class AzureAppConfigurationOptions : IDisposable
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
         private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
@@ -31,6 +34,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<KeyValueSelector> _selectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
         private bool _selectCalled = false;
+        private HttpClientTransport _clientOptionsTransport = new HttpClientTransport(new HttpClient()
+        {
+            Timeout = NetworkTimeout
+        });
 
         // The following set is sorted in descending order.
         // Since multiple prefixes could start with the same characters, we need to trim the longest prefix first.
@@ -125,7 +132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
+        internal ConfigurationClientOptions ClientOptions { get; }
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -161,6 +168,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
             _selectors = new List<KeyValueSelector> { DefaultQuery };
+
+            ClientOptions = GetDefaultClientOptions();
         }
 
         /// <summary>
@@ -523,7 +532,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return this;
         }
 
-        private static ConfigurationClientOptions GetDefaultClientOptions()
+        private ConfigurationClientOptions GetDefaultClientOptions()
         {
             var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
             clientOptions.Retry.MaxRetries = MaxRetries;
@@ -532,6 +541,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
+        }
+
+        /// <summary>
+        /// Disposes of this instance of <see cref="AzureAppConfigurationOptions"/> and any resources it holds.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_clientOptionsTransport != null)
+            {
+                _clientOptionsTransport.Dispose();
+            }
         }
     }
 }
