@@ -175,8 +175,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Sets the client factory used to create ConfigurationClient instances.
         /// If a client factory is provided using this method, a call to Connect is
-        /// still required to provide an endpoint for the Azure App Configuration store
-        /// but will not be used to authenticate a <see cref="ConfigurationClient"/>.
+        /// still required to identify an Azure App Configuration store but will not
+        /// be used to authenticate a <see cref="ConfigurationClient"/>.
         /// </summary>
         /// <param name="factory">The client factory.</param>
         /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
