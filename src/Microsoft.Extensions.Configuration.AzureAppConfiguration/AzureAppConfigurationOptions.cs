@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
@@ -11,7 +10,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -24,7 +22,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
-        private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
         private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
@@ -185,7 +182,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
+        /// <param name="tagFilters">
+        /// In addition to key and label filters, key-values from Azure App Configuration can be filtered based on their tag names and values.
+        /// Each tag filter must follow the format "tagName=tagValue". Only those key-values will be loaded whose tags match all the tags provided here.
+        /// Built in tag filter values: <see cref="TagValue"/>. For example, $"tagName={<see cref="TagValue.Null"/>}".
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
+        /// Up to 5 tag filters can be provided. If no tag filters are provided, key-values will not be filtered based on tags.
+        /// </param>
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagFilters = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -203,6 +207,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 labelFilter = LabelFilter.Null;
             }
 
+            if (tagFilters != null)
+            {
+                foreach (string tag in tagFilters)
+                {
+                    if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
+                    {
+                        throw new ArgumentException($"Tag filter '{tag}' does not follow the format \"tagName=tagValue\".", nameof(tagFilters));
+                    }
+                }
+            }
+
             if (!_selectCalled)
             {
                 _selectors.Remove(DefaultQuery);
@@ -213,7 +228,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                TagFilters = tagFilters
             });
 
             return this;
@@ -287,6 +303,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = featureFlagSelector.KeyFilter,
                     Label = featureFlagSelector.LabelFilter,
+                    Tags = featureFlagSelector.TagFilters,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
@@ -513,10 +530,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
-            clientOptions.Transport = new HttpClientTransport(new HttpClient()
-            {
-                Timeout = NetworkTimeout
-            });
 
             return clientOptions;
         }
