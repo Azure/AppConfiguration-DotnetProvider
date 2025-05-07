@@ -410,6 +410,7 @@ namespace Tests.AzureAppConfiguration
             });
 
             // Make sure the startup exception is due to network timeout
+            // Aggregate exception is nested due to how provider stores all startup exceptions thrown
             Assert.True(exception.InnerException is AggregateException ae &&
                 ae.InnerException is AggregateException ae2 &&
                 ae2.InnerException is TaskCanceledException tce &&
