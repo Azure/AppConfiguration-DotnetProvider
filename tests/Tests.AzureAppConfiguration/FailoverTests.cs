@@ -413,6 +413,7 @@ namespace Tests.AzureAppConfiguration
             // Aggregate exception is nested due to how provider stores all startup exceptions thrown
             Assert.True(exception.InnerException is AggregateException ae &&
                 ae.InnerException is AggregateException ae2 &&
+                ae2.InnerExceptions.All(ex => ex is TaskCanceledException) &&
                 ae2.InnerException is TaskCanceledException tce &&
                 tce.InnerException is TaskCanceledException);
         }
