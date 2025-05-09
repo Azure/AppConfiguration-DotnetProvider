@@ -22,6 +22,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
         private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
@@ -529,6 +530,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
+            clientOptions.Retry.NetworkTimeout = NetworkTimeout;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
