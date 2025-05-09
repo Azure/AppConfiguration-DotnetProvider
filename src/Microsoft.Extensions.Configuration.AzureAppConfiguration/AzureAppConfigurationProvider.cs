@@ -1232,9 +1232,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
-            TaskCanceledException tce = ex.InnerExceptions?.LastOrDefault(e => e is TaskCanceledException) as TaskCanceledException;
-
-            if (tce != null)
+            if (ex.InnerExceptions?.Any(e => e is TaskCanceledException) == true)
             {
                 return true;
             }
