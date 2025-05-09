@@ -1234,7 +1234,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             TaskCanceledException tce = ex.InnerExceptions?.LastOrDefault(e => e is TaskCanceledException) as TaskCanceledException;
 
-            if (tce != null && tce.InnerException is TaskCanceledException)
+            if (tce != null)
             {
                 return true;
             }

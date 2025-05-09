@@ -414,8 +414,7 @@ namespace Tests.AzureAppConfiguration
             Assert.True(exception.InnerException is AggregateException ae &&
                 ae.InnerException is AggregateException ae2 &&
                 ae2.InnerExceptions.All(ex => ex is TaskCanceledException) &&
-                ae2.InnerException is TaskCanceledException tce &&
-                tce.InnerException is TaskCanceledException);
+                ae2.InnerException is TaskCanceledException tce);
         }
     }
 }
