@@ -346,6 +346,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 KeyFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
+                                TagFilters = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
                             _ffEtags,
@@ -828,6 +829,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
+                    if (loadOption.TagFilters != null)
+                    {
+                        foreach (string tagFilter in loadOption.TagFilters)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
+                    }
+
                     var matchConditions = new List<MatchConditions>();
 
                     await CallWithRequestTracing(async () =>
@@ -1223,6 +1232,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
+            if (ex.InnerExceptions?.Any(e => e is TaskCanceledException) == true)
+            {
+                return true;
+            }
+
             RequestFailedException rfe = ex.InnerExceptions?.LastOrDefault(e => e is RequestFailedException) as RequestFailedException;
 
             return rfe != null ? IsFailOverable(rfe) : false;
