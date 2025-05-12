@@ -5,6 +5,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Mime;
 using System.Security.Cryptography;
@@ -309,10 +310,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         }
                     }
 
-                    string featureFlagId = CalculateFeatureFlagId(setting.Key, setting.Label);
-
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
-
                     if (endpoint != null)
                     {
                         string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(!string.IsNullOrWhiteSpace(setting.Label) ? $"?label={setting.Label}" : "")}";
@@ -323,10 +320,96 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
 
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
+
+                    if (featureFlag.Allocation != null)
+                    {
+                        string allocationId = CalculateAllocationId(featureFlag);
+
+                        if (allocationId != null)
+                        {
+                            keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.AllocationId}", allocationId));
+                        }
+                    }
                 }
             }
 
             return keyValues;
+        }
+
+        private string CalculateAllocationId(FeatureFlag flag)
+        {
+            Debug.Assert(flag.Allocation != null);
+
+            StringBuilder inputBuilder = new StringBuilder();
+
+            // Seed
+            inputBuilder.Append($"seed={flag.Allocation.Seed ?? string.Empty}");
+
+            var allocatedVariants = new HashSet<string>();
+
+            // DefaultWhenEnabled
+            if (flag.Allocation.DefaultWhenEnabled != null)
+            {
+                allocatedVariants.Add(flag.Allocation.DefaultWhenEnabled);
+            }
+
+            inputBuilder.Append($"\ndefault_when_enabled={flag.Allocation.DefaultWhenEnabled ?? string.Empty}");
+
+            // Percentiles
+            inputBuilder.Append("\npercentiles=");
+
+            if (flag.Allocation.Percentile != null && flag.Allocation.Percentile.Any())
+            {
+                IEnumerable<FeaturePercentileAllocation> sortedPercentiles = flag.Allocation.Percentile
+                    .Where(p => p.From != p.To)
+                    .OrderBy(p => p.From)
+                    .ToList();
+
+                allocatedVariants.UnionWith(sortedPercentiles.Select(p => p.Variant));
+
+                inputBuilder.Append(string.Join(";", sortedPercentiles.Select(p => $"{p.From},{p.Variant.ToBase64String()},{p.To}")));
+            }
+
+            // If there's no custom seed and no variants allocated, stop now and return null
+            if (flag.Allocation.Seed == null &&
+                !allocatedVariants.Any())
+            {
+                return null;
+            }
+
+            // Variants
+            inputBuilder.Append("\nvariants=");
+
+            if (allocatedVariants.Any() && flag.Variants != null && flag.Variants.Any())
+            {
+                IEnumerable<FeatureVariant> sortedVariants = flag.Variants
+                    .Where(variant => allocatedVariants.Contains(variant.Name))
+                    .OrderBy(variant => variant.Name)
+                    .ToList();
+
+                inputBuilder.Append(string.Join(";", sortedVariants.Select(v =>
+                {
+                    var variantValue = string.Empty;
+
+                    if (v.ConfigurationValue.ValueKind != JsonValueKind.Null && v.ConfigurationValue.ValueKind != JsonValueKind.Undefined)
+                    {
+                        variantValue = v.ConfigurationValue.SerializeWithSortedKeys();
+                    }
+
+                    return $"{v.Name.ToBase64String()},{(variantValue)}";
+                })));
+            }
+
+            // Example input string
+            // input == "seed=123abc\ndefault_when_enabled=Control\npercentiles=0,Blshdk,20;20,Test,100\nvariants=TdLa,standard;Qfcd,special"
+            string input = inputBuilder.ToString();
+
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] truncatedHash = new byte[15];
+                Array.Copy(sha256.ComputeHash(Encoding.UTF8.GetBytes(input)), truncatedHash, 15);
+                return truncatedHash.ToBase64Url();
+            }
         }
 
         private FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string foundJsonValueKind, string expectedJsonValueKind)
@@ -1285,20 +1368,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             return featureTelemetry;
-        }
-
-        private static string CalculateFeatureFlagId(string key, string label)
-        {
-            byte[] featureFlagIdHash;
-
-            // Convert the value consisting of key, newline character, and label to a byte array using UTF8 encoding to hash it using SHA 256
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{key}\n{(string.IsNullOrWhiteSpace(label) ? null : label)}"));
-            }
-
-            // Convert the hashed byte array to Base64Url
-            return featureFlagIdHash.ToBase64Url();
         }
     }
 }
