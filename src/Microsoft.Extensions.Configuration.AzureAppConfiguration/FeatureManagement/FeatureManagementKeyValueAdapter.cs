@@ -18,11 +18,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private FeatureFlagTracing _featureFlagTracing;
-        private int _featureFlagIndex = 0;
+        private static int _globalFeatureFlagCounter = 1_000_000;
+        private const int _reservedIndexSpace = 100_000;
+        private readonly int _startFeatureFlagIndex;
+        private int _currentFeatureFlagIndex;
 
         public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
+
+            _startFeatureFlagIndex = Interlocked.Add(ref _globalFeatureFlagCounter, _reservedIndexSpace) - _reservedIndexSpace;
+            _currentFeatureFlagIndex = _startFeatureFlagIndex;
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -74,7 +80,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public void OnConfigUpdated()
         {
-            _featureFlagIndex = 0;
+            _currentFeatureFlagIndex = _startFeatureFlagIndex;
 
             return;
         }
@@ -141,9 +147,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_currentFeatureFlagIndex}";
 
-            _featureFlagIndex++;
+            _currentFeatureFlagIndex++;
 
             keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Id}", featureFlag.Id));
 
