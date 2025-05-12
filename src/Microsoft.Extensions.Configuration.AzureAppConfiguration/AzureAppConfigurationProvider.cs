@@ -23,6 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
     {
+        private readonly ActivitySource _activitySource = new ActivitySource(ActivityNames.AzureAppConfigurationActivitySource);
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private bool _isAssemblyInspected;
@@ -158,7 +159,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public override void Load()
         {
             var watch = Stopwatch.StartNew();
-
+            using Activity activity = _activitySource.StartActivity(ActivityNames.Load);
             try
             {
                 using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
@@ -258,6 +259,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
+                    using Activity activity = _activitySource.StartActivity(ActivityNames.Refresh);
                     // Check if initial configuration load had failed
                     if (_mappedData == null)
                     {
@@ -344,6 +346,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 KeyFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
+                                TagFilters = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
                             _ffEtags,
@@ -826,6 +829,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         LabelFilter = loadOption.LabelFilter
                     };
 
+                    if (loadOption.TagFilters != null)
+                    {
+                        foreach (string tagFilter in loadOption.TagFilters)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
+                    }
+
                     var matchConditions = new List<MatchConditions>();
 
                     await CallWithRequestTracing(async () =>
@@ -1221,9 +1232,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
-            TaskCanceledException tce = ex.InnerExceptions?.LastOrDefault(e => e is TaskCanceledException) as TaskCanceledException;
-
-            if (tce != null && tce.InnerException is TimeoutException)
+            if (ex.InnerExceptions?.Any(e => e is TaskCanceledException) == true)
             {
                 return true;
             }
@@ -1413,6 +1422,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public void Dispose()
         {
             (_configClientManager as ConfigurationClientManager)?.Dispose();
+            _activitySource.Dispose();
         }
     }
 }
