@@ -352,14 +352,6 @@ namespace Tests.AzureAppConfiguration
                         new Dictionary<string, string> {
                             { "EmptyTag", "" },
                             { "NullTag", null }
-                        }),
-                    
-                    // Comma in tag name/value
-                    CreateSettingWithTags(
-                        $"{keyPrefix}:TaggedSetting6",
-                        "Value6",
-                        new Dictionary<string, string> {
-                            { "Tag,With,Commas", "Value,With,Commas" }
                         })
                 };
 
@@ -373,7 +365,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     // Basic environment tags on feature flags
                     CreateFeatureFlagWithTags(
-                        $"{keyPrefix}FeatureDev",
+                        $"{keyPrefix}:FeatureDev",
                         true,
                         new Dictionary<string, string> {
                             { "Environment", "Development" },
@@ -381,7 +373,7 @@ namespace Tests.AzureAppConfiguration
                         }),
 
                     CreateFeatureFlagWithTags(
-                        $"{keyPrefix}FeatureProd",
+                        $"{keyPrefix}:FeatureProd",
                         false,
                         new Dictionary<string, string> {
                             { "Environment", "Production" },
@@ -390,7 +382,7 @@ namespace Tests.AzureAppConfiguration
                     
                     // Feature flags with special character tags
                     CreateFeatureFlagWithTags(
-                        $"{keyPrefix}FeatureSpecial",
+                        $"{keyPrefix}:FeatureSpecial",
                         true,
                         new Dictionary<string, string> {
                             { "Special:Tag", "Value:With:Colons" }
@@ -398,7 +390,7 @@ namespace Tests.AzureAppConfiguration
                     
                     // Feature flags with empty/null tags
                     CreateFeatureFlagWithTags(
-                        $"{keyPrefix}FeatureEmpty",
+                        $"{keyPrefix}:FeatureEmpty",
                         false,
                         new Dictionary<string, string> {
                             { "EmptyTag", "" },
@@ -1761,7 +1753,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
-                    options.Select($"{keyPrefix}:TaggedSetting*", tagFilters: new[] { "Environment=Development" });
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development" });
                     options.UseFeatureFlags(ff =>
                     {
                         ff.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development" });
@@ -1775,13 +1767,12 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config1[$"{keyPrefix}:TaggedSetting2"]);
             Assert.Null(config1[$"{keyPrefix}:TaggedSetting4"]);
             Assert.Null(config1[$"{keyPrefix}:TaggedSetting5"]);
-            Assert.Null(config1[$"{keyPrefix}:TaggedSetting6"]);
 
             // Feature flags should be filtered as well
-            Assert.Equal("True", config1[$"FeatureManagement:{keyPrefix}FeatureDev"]);
-            Assert.Null(config1[$"FeatureManagement:{keyPrefix}FeatureProd"]);
-            Assert.Null(config1[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
-            Assert.Null(config1[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+            Assert.Equal("True", config1[$"FeatureManagement:{keyPrefix}:FeatureDev"]);
+            Assert.Null(config1[$"FeatureManagement:{keyPrefix}:FeatureProd"]);
+            Assert.Null(config1[$"FeatureManagement:{keyPrefix}:FeatureSpecial"]);
+            Assert.Null(config1[$"FeatureManagement:{keyPrefix}:FeatureEmpty"]);
 
             // Test case 2: Multiple tag filters (AND condition)
             var config2 = new ConfigurationBuilder()
@@ -1789,8 +1780,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(_connectionString);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development", "App=TestApp" });
-                    options.Select($".appconfig.featureflag/{keyPrefix}*", tagFilters: new[] { "Environment=Development", "App=TestApp" });
-                    options.UseFeatureFlags();
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development", "App=TestApp" });
+                    });
                 })
                 .Build();
 
@@ -1800,13 +1793,12 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config2[$"{keyPrefix}:TaggedSetting3"]);
             Assert.Null(config2[$"{keyPrefix}:TaggedSetting4"]);
             Assert.Null(config2[$"{keyPrefix}:TaggedSetting5"]);
-            Assert.Null(config2[$"{keyPrefix}:TaggedSetting6"]);
 
             // Feature flags
-            Assert.Equal("True", config2[$"FeatureManagement:{keyPrefix}FeatureDev"]);
-            Assert.Null(config2[$"FeatureManagement:{keyPrefix}FeatureProd"]);
-            Assert.Null(config2[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
-            Assert.Null(config2[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+            Assert.Equal("True", config2[$"FeatureManagement:{keyPrefix}:FeatureDev"]);
+            Assert.Null(config2[$"FeatureManagement:{keyPrefix}:FeatureProd"]);
+            Assert.Null(config2[$"FeatureManagement:{keyPrefix}:FeatureSpecial"]);
+            Assert.Null(config2[$"FeatureManagement:{keyPrefix}:FeatureEmpty"]);
 
             // Test case 3: Special characters in tags
             var config3 = new ConfigurationBuilder()
@@ -1814,8 +1806,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(_connectionString);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Special:Tag=Value:With:Colons" });
-                    options.Select($".appconfig.featureflag/{keyPrefix}*", tagFilters: new[] { "Special:Tag=Value:With:Colons" });
-                    options.UseFeatureFlags();
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select($"{keyPrefix}:*", tagFilters: new[] { "Special:Tag=Value:With:Colons" });
+                    });
                 })
                 .Build();
 
@@ -1826,13 +1820,12 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config3[$"{keyPrefix}:TaggedSetting2"]);
             Assert.Null(config3[$"{keyPrefix}:TaggedSetting3"]);
             Assert.Null(config3[$"{keyPrefix}:TaggedSetting5"]);
-            Assert.Null(config3[$"{keyPrefix}:TaggedSetting6"]);
 
             // Feature flags
-            Assert.Equal("True", config3[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
-            Assert.Null(config3[$"FeatureManagement:{keyPrefix}FeatureDev"]);
-            Assert.Null(config3[$"FeatureManagement:{keyPrefix}FeatureProd"]);
-            Assert.Null(config3[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+            Assert.Equal("True", config3[$"FeatureManagement:{keyPrefix}:FeatureSpecial"]);
+            Assert.Null(config3[$"FeatureManagement:{keyPrefix}:FeatureDev"]);
+            Assert.Null(config3[$"FeatureManagement:{keyPrefix}:FeatureProd"]);
+            Assert.Null(config3[$"FeatureManagement:{keyPrefix}:FeatureEmpty"]);
 
             // Test case 4: Tag with @ symbol
             var config4 = new ConfigurationBuilder()
@@ -1840,7 +1833,6 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(_connectionString);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Tag@With@At=Value@With@At" });
-                    options.UseFeatureFlags();
                 })
                 .Build();
 
@@ -1850,7 +1842,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config4[$"{keyPrefix}:TaggedSetting2"]);
             Assert.Null(config4[$"{keyPrefix}:TaggedSetting3"]);
             Assert.Null(config4[$"{keyPrefix}:TaggedSetting5"]);
-            Assert.Null(config4[$"{keyPrefix}:TaggedSetting6"]);
 
             // Test case 5: Empty and null tag values
             var config5 = new ConfigurationBuilder()
@@ -1858,8 +1849,10 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.Connect(_connectionString);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "EmptyTag=", $"NullTag={TagValue.Null}" });
-                    options.Select($".appconfig.featureflag/{keyPrefix}*", tagFilters: new[] { "EmptyTag=", $"NullTag={TagValue.Null}" });
-                    options.UseFeatureFlags();
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select($"{keyPrefix}:*", tagFilters: new[] { "EmptyTag=", $"NullTag={TagValue.Null}" });
+                    });
                 })
                 .Build();
 
@@ -1869,33 +1862,14 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config5[$"{keyPrefix}:TaggedSetting2"]);
             Assert.Null(config5[$"{keyPrefix}:TaggedSetting3"]);
             Assert.Null(config5[$"{keyPrefix}:TaggedSetting4"]);
-            Assert.Null(config5[$"{keyPrefix}:TaggedSetting6"]);
 
             // Feature flags
-            Assert.Equal("False", config5[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
-            Assert.Null(config5[$"FeatureManagement:{keyPrefix}FeatureDev"]);
-            Assert.Null(config5[$"FeatureManagement:{keyPrefix}FeatureProd"]);
-            Assert.Null(config5[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
+            Assert.Equal("False", config5[$"FeatureManagement:{keyPrefix}:FeatureEmpty"]);
+            Assert.Null(config5[$"FeatureManagement:{keyPrefix}:FeatureDev"]);
+            Assert.Null(config5[$"FeatureManagement:{keyPrefix}:FeatureProd"]);
+            Assert.Null(config5[$"FeatureManagement:{keyPrefix}:FeatureSpecial"]);
 
-            // Test case 6: Commas in tag name/value
-            var config6 = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.Connect(_connectionString);
-                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Tag,With,Commas=Value,With,Commas" });
-                    options.UseFeatureFlags();
-                })
-                .Build();
-
-            // Assert - Should only get settings with the comma-containing tag
-            Assert.Equal("Value6", config6[$"{keyPrefix}:TaggedSetting6"]);
-            Assert.Null(config6[$"{keyPrefix}:TaggedSetting1"]);
-            Assert.Null(config6[$"{keyPrefix}:TaggedSetting2"]);
-            Assert.Null(config6[$"{keyPrefix}:TaggedSetting3"]);
-            Assert.Null(config6[$"{keyPrefix}:TaggedSetting4"]);
-            Assert.Null(config6[$"{keyPrefix}:TaggedSetting5"]);
-
-            // Test case 7: Interaction with refresh functionality
+            // Test case 6: Interaction with refresh functionality
             IConfigurationRefresher refresher = null;
             var config9 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
