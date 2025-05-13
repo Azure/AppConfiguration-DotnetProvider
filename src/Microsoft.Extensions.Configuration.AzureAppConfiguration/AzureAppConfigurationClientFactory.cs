@@ -59,7 +59,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             string connectionString = _connectionStrings.FirstOrDefault(cs => ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection) == endpoint);
 
             //
-            // falback to the first connection string
+            // fallback to the first connection string
             if (connectionString == null)
             {
                 string id = ConnectionStringUtils.Parse(_connectionStrings.First(), ConnectionStringUtils.IdSection);
