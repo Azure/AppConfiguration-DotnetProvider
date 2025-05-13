@@ -3,6 +3,7 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -22,6 +23,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
         private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
@@ -148,6 +150,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal StartupOptions Startup { get; set; } = new StartupOptions();
 
         /// <summary>
+        /// Client factory that is responsible for creating instances of ConfigurationClient.
+        /// </summary>
+        internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -161,6 +168,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
             _selectors = new List<KeyValueSelector> { DefaultQuery };
+        }
+
+        /// <summary>
+        /// Sets the client factory used to create ConfigurationClient instances.
+        /// If a client factory is provided using this method, a call to Connect is
+        /// still required to identify one or more Azure App Configuration stores but
+        /// will not be used to authenticate a <see cref="ConfigurationClient"/>.
+        /// </summary>
+        /// <param name="factory">The client factory.</param>
+        /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
+        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
+        {
+            ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+            return this;
         }
 
         /// <summary>
@@ -529,6 +550,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
+            clientOptions.Retry.NetworkTimeout = NetworkTimeout;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
