@@ -38,7 +38,7 @@ namespace Tests.AzureAppConfiguration
         // Test constants
         private const string TestKeyPrefix = "IntegrationTest";
         private const string SubscriptionJsonPath = "appsettings.Secrets.json";
-        private static readonly TimeSpan StaleResourceThreshold = TimeSpan.FromHours(3);
+        private static readonly TimeSpan StaleResourceThreshold = TimeSpan.FromHours(2);
         private const string KeyVaultReferenceLabel = "KeyVaultRef";
 
         // Content type constants
@@ -72,11 +72,6 @@ namespace Tests.AzureAppConfiguration
         private string _connectionString;
 
         private Uri _keyVaultEndpoint;
-
-        // Track resources created by tests for cleanup
-        private readonly HashSet<string> _createdConfigKeys = new HashSet<string>();
-        private readonly HashSet<string> _createdSecretNames = new HashSet<string>();
-        private readonly HashSet<string> _createdSnapshotNames = new HashSet<string>();
 
         private string GetCurrentSubscriptionId()
         {
@@ -120,9 +115,6 @@ namespace Tests.AzureAppConfiguration
                 snapshotName,
                 snapshot,
                 cancellationToken);
-
-            // Track created snapshot for cleanup
-            _createdSnapshotNames.Add(snapshotName);
 
             return operation.Value.Name;
         }
@@ -177,6 +169,7 @@ namespace Tests.AzureAppConfiguration
         private async Task CleanupStaleResources()
         {
             Console.WriteLine($"Checking for stale resources older than {StaleResourceThreshold}...");
+
             var cutoffTime = DateTimeOffset.UtcNow.Subtract(StaleResourceThreshold);
             var cleanupTasks = new List<Task>();
 
@@ -233,6 +226,7 @@ namespace Tests.AzureAppConfiguration
 
                 // Wait for all cleanup tasks to complete
                 await Task.WhenAll(cleanupTasks);
+
                 Console.WriteLine($"Cleaned up {staleConfigCount} stale configuration settings, {staleSnapshotCount} snapshots, and {staleSecretCount} secrets");
             }
             catch (RequestFailedException ex)
@@ -244,53 +238,6 @@ namespace Tests.AzureAppConfiguration
 
         public async Task DisposeAsync()
         {
-            var cleanupTasks = new List<Task>();
-
-            // Clean up stale configuration settings, snapshots, and Key Vault secrets
-            foreach (string key in _createdConfigKeys)
-            {
-                try
-                {
-                    cleanupTasks.Add(_configClient.DeleteConfigurationSettingAsync(key));
-                }
-                catch (RequestFailedException ex)
-                {
-                    Console.WriteLine($"Failed to delete configuration setting {key}: {ex.Message}");
-                }
-            }
-
-            foreach (string snapshotName in _createdSnapshotNames)
-            {
-                try
-                {
-                    cleanupTasks.Add(_configClient.ArchiveSnapshotAsync(snapshotName));
-                }
-                catch (RequestFailedException ex)
-                {
-                    Console.WriteLine($"Failed to delete snapshot {snapshotName}: {ex.Message}");
-                }
-            }
-
-            if (_secretClient != null)
-            {
-                foreach (string secretName in _createdSecretNames)
-                {
-                    try
-                    {
-                        cleanupTasks.Add(_secretClient.StartDeleteSecretAsync(secretName));
-                    }
-                    catch (RequestFailedException ex)
-                    {
-                        Console.WriteLine($"Failed to delete secret {secretName}: {ex.Message}");
-                    }
-                }
-            }
-
-            // Wait for all cleanup tasks to complete
-            await Task.WhenAll(cleanupTasks);
-
-            Console.WriteLine($"Cleaned up {_createdConfigKeys.Count} configuration settings, {_createdSnapshotNames.Count} snapshots, and {_createdSecretNames.Count} secrets");
-
             await CleanupStaleResources();
         }
 
@@ -301,6 +248,7 @@ namespace Tests.AzureAppConfiguration
             KeyValues = 1,
             FeatureFlags = 2,
             KeyVaultReferences = 4,
+            TaggedSettings = 8,
             All = KeyValues | FeatureFlags | KeyVaultReferences
         }
 
@@ -326,8 +274,6 @@ namespace Tests.AzureAppConfiguration
                 foreach (ConfigurationSetting setting in testSettings)
                 {
                     await _configClient.SetConfigurationSettingAsync(setting);
-                    // Track the created key for cleanup
-                    _createdConfigKeys.Add(setting.Key);
                 }
             }
 
@@ -340,30 +286,12 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureFlagContentType);
 
                 await _configClient.SetConfigurationSettingAsync(featureFlagSetting);
-                // Track the created key for cleanup
-                _createdConfigKeys.Add(featureFlagSetting.Key);
             }
 
             // Create KeyVault reference if requested
             if (dataTypesToCreate.HasFlag(TestDataTypes.KeyVaultReferences) && _secretClient != null)
             {
-                try
-                {
-                    await _secretClient.SetSecretAsync(secretName, secretValue);
-                }
-                catch (RequestFailedException ex)
-                {
-                    Console.WriteLine($"Error setting up Key Vault secret: {ex.Message}");
-                    // Continue without Key Vault reference if it fails
-                }
-                catch (InvalidOperationException ex)
-                {
-                    Console.WriteLine($"Invalid Key Vault operation: {ex.Message}");
-                    // Continue without Key Vault reference if it fails
-                }
-
-                // Track the created secret for cleanup
-                _createdSecretNames.Add(secretName);
+                await _secretClient.SetSecretAsync(secretName, secretValue);
 
                 string keyVaultUri = $"{_keyVaultEndpoint}secrets/{secretName}";
                 string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
@@ -374,17 +302,114 @@ namespace Tests.AzureAppConfiguration
                     label: KeyVaultReferenceLabel,
                     contentType: KeyVaultConstants.ContentType);
 
-                try
+                await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+            }
+
+            // Create tagged settings if requested
+            if (dataTypesToCreate.HasFlag(TestDataTypes.TaggedSettings))
+            {
+                // Create configuration settings with various tags
+                var taggedSettings = new List<ConfigurationSetting>
                 {
-                    await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
-                }
-                catch (RequestFailedException ex)
+                    // Basic environment tags
+                    CreateSettingWithTags(
+                        $"{keyPrefix}:TaggedSetting1",
+                        "Value1",
+                        new Dictionary<string, string> {
+                            { "Environment", "Development" },
+                            { "App", "TestApp" }
+                        }),
+
+                    CreateSettingWithTags(
+                        $"{keyPrefix}:TaggedSetting2",
+                        "Value2",
+                        new Dictionary<string, string> {
+                            { "Environment", "Production" },
+                            { "App", "TestApp" }
+                        }),
+
+                    CreateSettingWithTags(
+                        $"{keyPrefix}:TaggedSetting3",
+                        "Value3",
+                        new Dictionary<string, string> {
+                            { "Environment", "Development" },
+                            { "Component", "API" }
+                        }),
+                    
+                    // Special characters in tags
+                    CreateSettingWithTags(
+                        $"{keyPrefix}:TaggedSetting4",
+                        "Value4",
+                        new Dictionary<string, string> {
+                            { "Special:Tag", "Value:With:Colons" },
+                            { "Tag@With@At", "Value@With@At" }
+                        }),
+                    
+                    // Empty and null tag values
+                    CreateSettingWithTags(
+                        $"{keyPrefix}:TaggedSetting5",
+                        "Value5",
+                        new Dictionary<string, string> {
+                            { "EmptyTag", "" },
+                            { "NullTag", null }
+                        }),
+                    
+                    // Comma in tag name/value
+                    CreateSettingWithTags(
+                        $"{keyPrefix}:TaggedSetting6",
+                        "Value6",
+                        new Dictionary<string, string> {
+                            { "Tag,With,Commas", "Value,With,Commas" }
+                        })
+                };
+
+                foreach (ConfigurationSetting setting in taggedSettings)
                 {
-                    Console.WriteLine($"Error setting up Key Vault reference: {ex.Message}");
+                    await _configClient.SetConfigurationSettingAsync(setting);
                 }
 
-                // Track the created key reference for cleanup
-                _createdConfigKeys.Add(keyVaultReferenceKey);
+                // Create feature flags with tags
+                var taggedFeatureFlags = new List<ConfigurationSetting>
+                {
+                    // Basic environment tags on feature flags
+                    CreateFeatureFlagWithTags(
+                        $"{keyPrefix}FeatureDev",
+                        true,
+                        new Dictionary<string, string> {
+                            { "Environment", "Development" },
+                            { "App", "TestApp" }
+                        }),
+
+                    CreateFeatureFlagWithTags(
+                        $"{keyPrefix}FeatureProd",
+                        false,
+                        new Dictionary<string, string> {
+                            { "Environment", "Production" },
+                            { "App", "TestApp" }
+                        }),
+                    
+                    // Feature flags with special character tags
+                    CreateFeatureFlagWithTags(
+                        $"{keyPrefix}FeatureSpecial",
+                        true,
+                        new Dictionary<string, string> {
+                            { "Special:Tag", "Value:With:Colons" }
+                        }),
+                    
+                    // Feature flags with empty/null tags
+                    CreateFeatureFlagWithTags(
+                        $"{keyPrefix}FeatureEmpty",
+                        false,
+                        new Dictionary<string, string> {
+                            { "EmptyTag", "" },
+                            { "NullTag", null }
+                        })
+                };
+
+                foreach (ConfigurationSetting setting in taggedFeatureFlags)
+                {
+                    await _configClient.SetConfigurationSettingAsync(setting);
+                }
             }
 
             return new TestContext
@@ -1518,34 +1543,6 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("SecretValue", config[testContext.KeyVaultReferenceKey]);
         }
 
-        private class HttpPipelineTransportWithRequestCount : HttpPipelineTransport
-        {
-            private readonly HttpClientTransport _innerTransport = new HttpClientTransport();
-            private readonly Action _onRequest;
-
-            public HttpPipelineTransportWithRequestCount(Action onRequest)
-            {
-                _onRequest = onRequest;
-            }
-
-            public override Request CreateRequest()
-            {
-                return _innerTransport.CreateRequest();
-            }
-
-            public override void Process(HttpMessage message)
-            {
-                _onRequest();
-                _innerTransport.Process(message);
-            }
-
-            public override ValueTask ProcessAsync(HttpMessage message)
-            {
-                _onRequest();
-                return _innerTransport.ProcessAsync(message);
-            }
-        }
-
         /// <summary>
         /// Tests that Key Vault secrets are properly cached to avoid unnecessary requests.
         /// </summary>
@@ -1753,16 +1750,230 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains($"{RequestTracingConstants.FeatureManagementVersionKey}=4.0.0", requestInspector.CorrelationContextHeaders.Last());
         }
 
-        private class RequestInspectionHandler
+        [Fact]
+        public async Task TagFilters()
         {
-            public List<string> CorrelationContextHeaders { get; } = new List<string>();
+            TestContext testContext = await SetupTestKeys("TagFilters", TestDataTypes.TaggedSettings);
+            string keyPrefix = testContext.KeyPrefix;
 
-            public void InspectRequest(HttpMessage message)
-            {
-                if (message.Request.Headers.TryGetValue(RequestTracingConstants.CorrelationContextHeader, out string header))
+            // Test case 1: Basic tag filtering with single tag
+            var config1 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
                 {
-                    CorrelationContextHeaders.Add(header);
-                }
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:TaggedSetting*", tagFilters: new[] { "Environment=Development" });
+                    options.UseFeatureFlags(ff =>
+                    {
+                        ff.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development" });
+                    });
+                })
+                .Build();
+
+            // Assert - Should only get settings with Environment=Development tag
+            Assert.Equal("Value1", config1[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Equal("Value3", config1[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Null(config1[$"{keyPrefix}:TaggedSetting2"]);
+            Assert.Null(config1[$"{keyPrefix}:TaggedSetting4"]);
+            Assert.Null(config1[$"{keyPrefix}:TaggedSetting5"]);
+            Assert.Null(config1[$"{keyPrefix}:TaggedSetting6"]);
+
+            // Feature flags should be filtered as well
+            Assert.Equal("True", config1[$"FeatureManagement:{keyPrefix}FeatureDev"]);
+            Assert.Null(config1[$"FeatureManagement:{keyPrefix}FeatureProd"]);
+            Assert.Null(config1[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
+            Assert.Null(config1[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+
+            // Test case 2: Multiple tag filters (AND condition)
+            var config2 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development", "App=TestApp" });
+                    options.Select($".appconfig.featureflag/{keyPrefix}*", tagFilters: new[] { "Environment=Development", "App=TestApp" });
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Assert - Should only get settings with both Environment=Development AND App=TestApp tags
+            Assert.Equal("Value1", config2[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Null(config2[$"{keyPrefix}:TaggedSetting2"]);
+            Assert.Null(config2[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Null(config2[$"{keyPrefix}:TaggedSetting4"]);
+            Assert.Null(config2[$"{keyPrefix}:TaggedSetting5"]);
+            Assert.Null(config2[$"{keyPrefix}:TaggedSetting6"]);
+
+            // Feature flags
+            Assert.Equal("True", config2[$"FeatureManagement:{keyPrefix}FeatureDev"]);
+            Assert.Null(config2[$"FeatureManagement:{keyPrefix}FeatureProd"]);
+            Assert.Null(config2[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
+            Assert.Null(config2[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+
+            // Test case 3: Special characters in tags
+            var config3 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Special:Tag=Value:With:Colons" });
+                    options.Select($".appconfig.featureflag/{keyPrefix}*", tagFilters: new[] { "Special:Tag=Value:With:Colons" });
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Assert - Should only get settings with the special character tag
+            Assert.Equal("Value4", config3[$"{keyPrefix}:TaggedSetting4"]);
+            Assert.Null(config3[$"{keyPrefix}:TaggedSetting1"]);
+
+            Assert.Null(config3[$"{keyPrefix}:TaggedSetting2"]);
+            Assert.Null(config3[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Null(config3[$"{keyPrefix}:TaggedSetting5"]);
+            Assert.Null(config3[$"{keyPrefix}:TaggedSetting6"]);
+
+            // Feature flags
+            Assert.Equal("True", config3[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
+            Assert.Null(config3[$"FeatureManagement:{keyPrefix}FeatureDev"]);
+            Assert.Null(config3[$"FeatureManagement:{keyPrefix}FeatureProd"]);
+            Assert.Null(config3[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+
+            // Test case 4: Tag with @ symbol
+            var config4 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Tag@With@At=Value@With@At" });
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Assert - Should only get settings with the @ symbol tag
+            Assert.Equal("Value4", config4[$"{keyPrefix}:TaggedSetting4"]);
+            Assert.Null(config4[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Null(config4[$"{keyPrefix}:TaggedSetting2"]);
+            Assert.Null(config4[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Null(config4[$"{keyPrefix}:TaggedSetting5"]);
+            Assert.Null(config4[$"{keyPrefix}:TaggedSetting6"]);
+
+            // Test case 5: Empty and null tag values
+            var config5 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "EmptyTag=", $"NullTag={TagValue.Null}" });
+                    options.Select($".appconfig.featureflag/{keyPrefix}*", tagFilters: new[] { "EmptyTag=", $"NullTag={TagValue.Null}" });
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Assert - Should only get settings with both empty and null tag values
+            Assert.Equal("Value5", config5[$"{keyPrefix}:TaggedSetting5"]);
+            Assert.Null(config5[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Null(config5[$"{keyPrefix}:TaggedSetting2"]);
+            Assert.Null(config5[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Null(config5[$"{keyPrefix}:TaggedSetting4"]);
+            Assert.Null(config5[$"{keyPrefix}:TaggedSetting6"]);
+
+            // Feature flags
+            Assert.Equal("False", config5[$"FeatureManagement:{keyPrefix}FeatureEmpty"]);
+            Assert.Null(config5[$"FeatureManagement:{keyPrefix}FeatureDev"]);
+            Assert.Null(config5[$"FeatureManagement:{keyPrefix}FeatureProd"]);
+            Assert.Null(config5[$"FeatureManagement:{keyPrefix}FeatureSpecial"]);
+
+            // Test case 6: Commas in tag name/value
+            var config6 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Tag,With,Commas=Value,With,Commas" });
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Assert - Should only get settings with the comma-containing tag
+            Assert.Equal("Value6", config6[$"{keyPrefix}:TaggedSetting6"]);
+            Assert.Null(config6[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Null(config6[$"{keyPrefix}:TaggedSetting2"]);
+            Assert.Null(config6[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Null(config6[$"{keyPrefix}:TaggedSetting4"]);
+            Assert.Null(config6[$"{keyPrefix}:TaggedSetting5"]);
+
+            // Test case 7: Interaction with refresh functionality
+            IConfigurationRefresher refresher = null;
+            var config9 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development" });
+                    options.ConfigureRefresh(refresh =>
+                    {
+                        refresh.Register(testContext.SentinelKey, refreshAll: true)
+                              .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Assert initial state
+            Assert.Equal("Value1", config9[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Equal("Value3", config9[$"{keyPrefix}:TaggedSetting3"]);
+
+            // Update a tagged setting's value
+            await _configClient.SetConfigurationSettingAsync(
+                CreateSettingWithTags(
+                    $"{keyPrefix}:TaggedSetting1",
+                    "UpdatedValue1",
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "App", "TestApp" }
+                    }));
+
+            // Add a new setting with Development tag
+            await _configClient.SetConfigurationSettingAsync(
+                CreateSettingWithTags(
+                    $"{keyPrefix}:TaggedSetting7",
+                    "Value7",
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" }
+                    }));
+
+            // Update the sentinel key to trigger refresh
+            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+
+            // Wait for cache to expire
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            // Refresh the configuration
+            await refresher.RefreshAsync();
+
+            Assert.Equal("UpdatedValue1", config9[$"{keyPrefix}:TaggedSetting1"]);
+            Assert.Equal("Value3", config9[$"{keyPrefix}:TaggedSetting3"]);
+            Assert.Equal("Value7", config9[$"{keyPrefix}:TaggedSetting7"]);
+            Assert.Null(config9[$"{keyPrefix}:TaggedSetting2"]);
+        }
+
+        private class HttpPipelineTransportWithRequestCount : HttpPipelineTransport
+        {
+            private readonly HttpClientTransport _innerTransport = new HttpClientTransport();
+            private readonly Action _onRequest;
+
+            public HttpPipelineTransportWithRequestCount(Action onRequest)
+            {
+                _onRequest = onRequest;
+            }
+
+            public override Request CreateRequest()
+            {
+                return _innerTransport.CreateRequest();
+            }
+
+            public override void Process(HttpMessage message)
+            {
+                _onRequest();
+                _innerTransport.Process(message);
+            }
+
+            public override ValueTask ProcessAsync(HttpMessage message)
+            {
+                _onRequest();
+                return _innerTransport.ProcessAsync(message);
             }
         }
 
@@ -1780,6 +1991,63 @@ namespace Tests.AzureAppConfiguration
                 _inspector.InspectRequest(message);
                 await base.ProcessAsync(message);
             }
+        }
+
+        private class RequestInspectionHandler
+        {
+            public List<string> CorrelationContextHeaders { get; } = new List<string>();
+
+            public void InspectRequest(HttpMessage message)
+            {
+                if (message.Request.Headers.TryGetValue(RequestTracingConstants.CorrelationContextHeader, out string header))
+                {
+                    CorrelationContextHeaders.Add(header);
+                }
+            }
+        }
+
+        private ConfigurationSetting CreateSettingWithTags(string key, string value, IDictionary<string, string> tags)
+        {
+            var setting = new ConfigurationSetting(key, value);
+
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    setting.Tags.Add(tag.Key, tag.Value);
+                }
+            }
+
+            return setting;
+        }
+
+        private ConfigurationSetting CreateFeatureFlagWithTags(string featureId, bool enabled, IDictionary<string, string> tags)
+        {
+            string jsonValue = $@"{{
+                ""id"": ""{featureId}"",
+                ""description"": ""Test feature flag with tags"",
+                ""enabled"": {enabled.ToString().ToLowerInvariant()},
+                ""conditions"": {{
+                    ""client_filters"": []
+                }}
+            }}";
+
+            var setting = new ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + featureId,
+                value: jsonValue)
+            {
+                ContentType = FeatureFlagContentType
+            };
+
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    setting.Tags.Add(tag.Key, tag.Value);
+                }
+            }
+
+            return setting;
         }
     }
 }
