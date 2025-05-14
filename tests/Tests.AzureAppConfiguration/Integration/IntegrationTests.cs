@@ -1677,6 +1677,20 @@ namespace Tests.AzureAppConfiguration
                         ""id"": """ + testContext.KeyPrefix + @"Feature"",
                         ""description"": ""Test feature with filters"",
                         ""enabled"": true,
+                        ""variants"": [
+                            {
+                                ""name"": ""LargeSize"",
+                                ""configuration_value"": ""800px""
+                            },
+                            {
+                                ""name"": ""MediumSize"",
+                                ""configuration_value"": ""600px""
+                            },
+                            {
+                                ""name"": ""SmallSize"",
+                                ""configuration_value"": ""400px""
+                            }
+                        ],
                         ""conditions"": {
                             ""client_filters"": [
                                 {
