@@ -25,6 +25,8 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
+    using Xunit.Abstractions;
+
     /// <summary>
     /// Integration tests for Azure App Configuration that connect to a real service.
     /// Uses an existing App Configuration store and Key Vault for testing.
@@ -72,6 +74,13 @@ namespace Tests.AzureAppConfiguration
         private string _connectionString;
 
         private Uri _keyVaultEndpoint;
+
+        private readonly ITestOutputHelper _output;
+
+        public IntegrationTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
 
         private string GetCurrentSubscriptionId()
         {
@@ -163,12 +172,12 @@ namespace Tests.AzureAppConfiguration
 
             _secretClient = new SecretClient(_keyVaultEndpoint, credential);
 
-            Console.WriteLine($"Successfully connected to App Configuration store '{AppConfigStoreName}' and Key Vault '{KeyVaultName}'");
+            _output.WriteLine($"Successfully connected to App Configuration store '{AppConfigStoreName}' and Key Vault '{KeyVaultName}'");
         }
 
         private async Task CleanupStaleResources()
         {
-            Console.WriteLine($"Checking for stale resources older than {StaleResourceThreshold}...");
+            _output.WriteLine($"Checking for stale resources older than {StaleResourceThreshold}...");
 
             var cutoffTime = DateTimeOffset.UtcNow.Subtract(StaleResourceThreshold);
             var cleanupTasks = new List<Task>();
@@ -227,11 +236,11 @@ namespace Tests.AzureAppConfiguration
                 // Wait for all cleanup tasks to complete
                 await Task.WhenAll(cleanupTasks);
 
-                Console.WriteLine($"Cleaned up {staleConfigCount} stale configuration settings, {staleSnapshotCount} snapshots, and {staleSecretCount} secrets");
+                _output.WriteLine($"Cleaned up {staleConfigCount} stale configuration settings, {staleSnapshotCount} snapshots, and {staleSecretCount} secrets");
             }
             catch (RequestFailedException ex)
             {
-                Console.WriteLine($"Error during stale resource cleanup: {ex.Message}");
+                _output.WriteLine($"Error during stale resource cleanup: {ex.Message}");
                 // Continue execution even if cleanup fails
             }
         }
