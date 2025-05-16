@@ -38,7 +38,7 @@ namespace Tests.AzureAppConfiguration
         // Test constants
         private const string TestKeyPrefix = "IntegrationTest";
         private const string SubscriptionJsonPath = "appsettings.Secrets.json";
-        private static readonly TimeSpan StaleResourceThreshold = TimeSpan.FromHours(2);
+        private static readonly TimeSpan StaleResourceThreshold = TimeSpan.FromHours(3);
         private const string KeyVaultReferenceLabel = "KeyVaultRef";
 
         // Content type constants
