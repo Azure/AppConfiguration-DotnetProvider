@@ -188,12 +188,17 @@ namespace Tests.AzureAppConfiguration
                 int staleConfigCount = 0;
                 var configSettingsToCleanup = new List<ConfigurationSetting>();
 
-                AsyncPageable<ConfigurationSetting> allSettings = _configClient.GetConfigurationSettingsAsync(new SettingSelector
+                AsyncPageable<ConfigurationSetting> kvSettings = _configClient.GetConfigurationSettingsAsync(new SettingSelector
                 {
-                    KeyFilter = "*" + TestKeyPrefix + "*"  // This will match both regular keys and feature flags
+                    KeyFilter = TestKeyPrefix + "*"
                 });
 
-                await foreach (ConfigurationSetting setting in allSettings)
+                AsyncPageable<ConfigurationSetting> flagSettings = _configClient.GetConfigurationSettingsAsync(new SettingSelector
+                {
+                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + TestKeyPrefix + "*"
+                });
+
+                await foreach (ConfigurationSetting setting in kvSettings.Concat(flagSettings))
                 {
                     // Check if the setting is older than the threshold
                     if (setting.LastModified < cutoffTime)
