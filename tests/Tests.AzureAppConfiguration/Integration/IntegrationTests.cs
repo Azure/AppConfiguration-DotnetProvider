@@ -255,18 +255,7 @@ namespace Tests.AzureAppConfiguration
             await CleanupStaleResources();
         }
 
-        [Flags]
-        private enum TestDataTypes
-        {
-            None = 0,
-            KeyValues = 1,
-            FeatureFlags = 2,
-            KeyVaultReferences = 4,
-            TaggedSettings = 8,
-            All = KeyValues | FeatureFlags | KeyVaultReferences
-        }
-
-        private async Task<TestContext> SetupTestKeys(string testName, TestDataTypes dataTypesToCreate = TestDataTypes.All)
+        private TestContext CreateTestContext(string testName)
         {
             string keyPrefix = GetUniqueKeyPrefix(testName);
             string sentinelKey = $"{keyPrefix}:Sentinel";
@@ -274,149 +263,6 @@ namespace Tests.AzureAppConfiguration
             string secretName = $"{keyPrefix}-secret";
             string secretValue = "SecretValue";
             string keyVaultReferenceKey = $"{keyPrefix}:KeyVaultRef";
-
-            // Create test-specific settings if requested
-            if (dataTypesToCreate.HasFlag(TestDataTypes.KeyValues))
-            {
-                var testSettings = new List<ConfigurationSetting>
-                {
-                    new ConfigurationSetting($"{keyPrefix}:Setting1", "InitialValue1"),
-                    new ConfigurationSetting($"{keyPrefix}:Setting2", "InitialValue2"),
-                    new ConfigurationSetting(sentinelKey, "Initial")
-                };
-
-                foreach (ConfigurationSetting setting in testSettings)
-                {
-                    await _configClient.SetConfigurationSettingAsync(setting);
-                }
-            }
-
-            // Create feature flag if requested
-            if (dataTypesToCreate.HasFlag(TestDataTypes.FeatureFlags))
-            {
-                var featureFlagSetting = ConfigurationModelFactory.ConfigurationSetting(
-                    featureFlagKey,
-                    @"{""id"":""" + keyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
-                    contentType: FeatureFlagContentType);
-
-                await _configClient.SetConfigurationSettingAsync(featureFlagSetting);
-            }
-
-            // Create KeyVault reference if requested
-            if (dataTypesToCreate.HasFlag(TestDataTypes.KeyVaultReferences) && _secretClient != null)
-            {
-                await _secretClient.SetSecretAsync(secretName, secretValue);
-
-                string keyVaultUri = $"{_keyVaultEndpoint}secrets/{secretName}";
-                string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
-
-                ConfigurationSetting keyVaultRefSetting = ConfigurationModelFactory.ConfigurationSetting(
-                    keyVaultReferenceKey,
-                    keyVaultRefValue,
-                    label: KeyVaultReferenceLabel,
-                    contentType: KeyVaultConstants.ContentType);
-
-                await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
-            }
-
-            // Create tagged settings if requested
-            if (dataTypesToCreate.HasFlag(TestDataTypes.TaggedSettings))
-            {
-                // Create configuration settings with various tags
-                var taggedSettings = new List<ConfigurationSetting>
-                {
-                    // Basic environment tags
-                    CreateSettingWithTags(
-                        $"{keyPrefix}:TaggedSetting1",
-                        "Value1",
-                        new Dictionary<string, string> {
-                            { "Environment", "Development" },
-                            { "App", "TestApp" }
-                        }),
-
-                    CreateSettingWithTags(
-                        $"{keyPrefix}:TaggedSetting2",
-                        "Value2",
-                        new Dictionary<string, string> {
-                            { "Environment", "Production" },
-                            { "App", "TestApp" }
-                        }),
-
-                    CreateSettingWithTags(
-                        $"{keyPrefix}:TaggedSetting3",
-                        "Value3",
-                        new Dictionary<string, string> {
-                            { "Environment", "Development" },
-                            { "Component", "API" }
-                        }),
-                    
-                    // Special characters in tags
-                    CreateSettingWithTags(
-                        $"{keyPrefix}:TaggedSetting4",
-                        "Value4",
-                        new Dictionary<string, string> {
-                            { "Special:Tag", "Value:With:Colons" },
-                            { "Tag@With@At", "Value@With@At" }
-                        }),
-                    
-                    // Empty and null tag values
-                    CreateSettingWithTags(
-                        $"{keyPrefix}:TaggedSetting5",
-                        "Value5",
-                        new Dictionary<string, string> {
-                            { "EmptyTag", "" },
-                            { "NullTag", null }
-                        })
-                };
-
-                foreach (ConfigurationSetting setting in taggedSettings)
-                {
-                    await _configClient.SetConfigurationSettingAsync(setting);
-                }
-
-                // Create feature flags with tags
-                var taggedFeatureFlags = new List<ConfigurationSetting>
-                {
-                    // Basic environment tags on feature flags
-                    CreateFeatureFlagWithTags(
-                        $"{keyPrefix}:FeatureDev",
-                        true,
-                        new Dictionary<string, string> {
-                            { "Environment", "Development" },
-                            { "App", "TestApp" }
-                        }),
-
-                    CreateFeatureFlagWithTags(
-                        $"{keyPrefix}:FeatureProd",
-                        false,
-                        new Dictionary<string, string> {
-                            { "Environment", "Production" },
-                            { "App", "TestApp" }
-                        }),
-                    
-                    // Feature flags with special character tags
-                    CreateFeatureFlagWithTags(
-                        $"{keyPrefix}:FeatureSpecial",
-                        true,
-                        new Dictionary<string, string> {
-                            { "Special:Tag", "Value:With:Colons" }
-                        }),
-                    
-                    // Feature flags with empty/null tags
-                    CreateFeatureFlagWithTags(
-                        $"{keyPrefix}:FeatureEmpty",
-                        false,
-                        new Dictionary<string, string> {
-                            { "EmptyTag", "" },
-                            { "NullTag", null }
-                        })
-                };
-
-                foreach (ConfigurationSetting setting in taggedFeatureFlags)
-                {
-                    await _configClient.SetConfigurationSettingAsync(setting);
-                }
-            }
 
             return new TestContext
             {
@@ -428,11 +274,165 @@ namespace Tests.AzureAppConfiguration
             };
         }
 
+        private async Task SetupKeyValues(TestContext context)
+        {
+            var testSettings = new List<ConfigurationSetting>
+            {
+                new ConfigurationSetting($"{context.KeyPrefix}:Setting1", "InitialValue1"),
+                new ConfigurationSetting($"{context.KeyPrefix}:Setting2", "InitialValue2"),
+                new ConfigurationSetting(context.SentinelKey, "Initial")
+            };
+
+            foreach (ConfigurationSetting setting in testSettings)
+            {
+                await _configClient.SetConfigurationSettingAsync(setting);
+            }
+        }
+
+        private async Task SetupFeatureFlags(TestContext context)
+        {
+            var featureFlagSetting = ConfigurationModelFactory.ConfigurationSetting(
+                context.FeatureFlagKey,
+                @"{""id"":""" + context.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
+                contentType: FeatureFlagContentType);
+
+            await _configClient.SetConfigurationSettingAsync(featureFlagSetting);
+        }
+
+        private async Task SetupKeyVaultReferences(TestContext context)
+        {
+            if (_secretClient != null)
+            {
+                await _secretClient.SetSecretAsync(context.KeyPrefix + "-secret", context.SecretValue);
+
+                string keyVaultUri = $"{_keyVaultEndpoint}secrets/{context.KeyPrefix}-secret";
+                string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
+
+                ConfigurationSetting keyVaultRefSetting = ConfigurationModelFactory.ConfigurationSetting(
+                    context.KeyVaultReferenceKey,
+                    keyVaultRefValue,
+                    label: KeyVaultReferenceLabel,
+                    contentType: KeyVaultConstants.ContentType);
+
+                await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+            }
+        }
+
+        private async Task SetupTaggedSettings(TestContext context)
+        {
+            // Create configuration settings with various tags
+            var taggedSettings = new List<ConfigurationSetting>
+            {
+                // Basic environment tags
+                CreateSettingWithTags(
+                    $"{context.KeyPrefix}:TaggedSetting1",
+                    "Value1",
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "App", "TestApp" }
+                    }),
+
+                CreateSettingWithTags(
+                    $"{context.KeyPrefix}:TaggedSetting2",
+                    "Value2",
+                    new Dictionary<string, string> {
+                        { "Environment", "Production" },
+                        { "App", "TestApp" }
+                    }),
+
+                CreateSettingWithTags(
+                    $"{context.KeyPrefix}:TaggedSetting3",
+                    "Value3",
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "Component", "API" }
+                    }),
+                
+                // Special characters in tags
+                CreateSettingWithTags(
+                    $"{context.KeyPrefix}:TaggedSetting4",
+                    "Value4",
+                    new Dictionary<string, string> {
+                        { "Special:Tag", "Value:With:Colons" },
+                        { "Tag@With@At", "Value@With@At" }
+                    }),
+                
+                // Empty and null tag values
+                CreateSettingWithTags(
+                    $"{context.KeyPrefix}:TaggedSetting5",
+                    "Value5",
+                    new Dictionary<string, string> {
+                        { "EmptyTag", "" },
+                        { "NullTag", null }
+                    })
+            };
+
+            foreach (ConfigurationSetting setting in taggedSettings)
+            {
+                await _configClient.SetConfigurationSettingAsync(setting);
+            }
+
+            // Create feature flags with tags
+            var taggedFeatureFlags = new List<ConfigurationSetting>
+            {
+                // Basic environment tags on feature flags
+                CreateFeatureFlagWithTags(
+                    $"{context.KeyPrefix}:FeatureDev",
+                    true,
+                    new Dictionary<string, string> {
+                        { "Environment", "Development" },
+                        { "App", "TestApp" }
+                    }),
+
+                CreateFeatureFlagWithTags(
+                    $"{context.KeyPrefix}:FeatureProd",
+                    false,
+                    new Dictionary<string, string> {
+                        { "Environment", "Production" },
+                        { "App", "TestApp" }
+                    }),
+                
+                // Feature flags with special character tags
+                CreateFeatureFlagWithTags(
+                    $"{context.KeyPrefix}:FeatureSpecial",
+                    true,
+                    new Dictionary<string, string> {
+                        { "Special:Tag", "Value:With:Colons" }
+                    }),
+                
+                // Feature flags with empty/null tags
+                CreateFeatureFlagWithTags(
+                    $"{context.KeyPrefix}:FeatureEmpty",
+                    false,
+                    new Dictionary<string, string> {
+                        { "EmptyTag", "" },
+                        { "NullTag", null }
+                    })
+            };
+
+            foreach (ConfigurationSetting setting in taggedFeatureFlags)
+            {
+                await _configClient.SetConfigurationSettingAsync(setting);
+            }
+        }
+
+        private async Task<TestContext> SetupAllTestData(string testName)
+        {
+            TestContext context = CreateTestContext(testName);
+
+            await SetupKeyValues(context);
+            await SetupFeatureFlags(context);
+            await SetupKeyVaultReferences(context);
+
+            return context;
+        }
+
         [Fact]
         public async Task LoadConfiguration_RetrievesValuesFromAppConfiguration()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("BasicConfig", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("BasicConfig");
+            await SetupKeyValues(testContext);
 
             // Act
             var config = new ConfigurationBuilder()
@@ -452,7 +452,8 @@ namespace Tests.AzureAppConfiguration
         public async Task RefreshAsync_UpdatesConfiguration_WhenSentinelKeyChanged()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("UpdatesConfig", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("UpdatesConfig");
+            await SetupKeyValues(testContext);
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
@@ -491,7 +492,8 @@ namespace Tests.AzureAppConfiguration
         public async Task RegisterAll_RefreshesAllKeys()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("RefreshesAllKeys", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("RefreshesAllKeys");
+            await SetupKeyValues(testContext);
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
@@ -534,7 +536,8 @@ namespace Tests.AzureAppConfiguration
         public async Task RefreshAsync_SentinelKeyUnchanged()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("SentinelUnchanged", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("SentinelUnchanged");
+            await SetupKeyValues(testContext);
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
@@ -572,7 +575,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshAsync_RefreshesFeatureFlags_WhenConfigured()
         {
-            TestContext testContext = await SetupTestKeys("FeatureFlagRefresh", TestDataTypes.FeatureFlags);
+            TestContext testContext = CreateTestContext("FeatureFlagRefresh");
+            await SetupFeatureFlags(testContext);
             IConfigurationRefresher refresher = null;
 
             var config = new ConfigurationBuilder()
@@ -614,7 +618,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task UseFeatureFlags_WithClientFiltersAndConditions()
         {
-            TestContext testContext = await SetupTestKeys("FeatureFlagFilters", TestDataTypes.FeatureFlags);
+            TestContext testContext = CreateTestContext("FeatureFlagFilters");
+            await SetupFeatureFlags(testContext);
 
             // Create a feature flag with complex conditions
             await _configClient.SetConfigurationSettingAsync(
@@ -665,8 +670,10 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task MultipleProviders_LoadAndRefresh()
         {
-            TestContext testContext1 = await SetupTestKeys("MultiProviderTest1", TestDataTypes.KeyValues);
-            TestContext testContext2 = await SetupTestKeys("MultiProviderTest2", TestDataTypes.KeyValues);
+            TestContext testContext1 = CreateTestContext("MultiProviderTest1");
+            await SetupKeyValues(testContext1);
+            TestContext testContext2 = CreateTestContext("MultiProviderTest2");
+            await SetupKeyValues(testContext2);
             IConfigurationRefresher refresher1 = null;
             IConfigurationRefresher refresher2 = null;
 
@@ -719,7 +726,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task FeatureFlag_WithVariants()
         {
-            TestContext testContext = await SetupTestKeys("FeatureFlagVariants", TestDataTypes.FeatureFlags);
+            TestContext testContext = CreateTestContext("FeatureFlagVariants");
+            await SetupFeatureFlags(testContext);
 
             await _configClient.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
@@ -781,7 +789,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task JsonContentType_LoadsAndFlattensHierarchicalData()
         {
-            TestContext testContext = await SetupTestKeys("JsonContent", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("JsonContent");
+            await SetupKeyValues(testContext);
 
             // Create a complex JSON structure
             string jsonKey = $"{testContext.KeyPrefix}:JsonConfig";
@@ -827,7 +836,9 @@ namespace Tests.AzureAppConfiguration
         public async Task MethodOrderingDoesNotAffectConfiguration()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("MethodOrdering", TestDataTypes.KeyValues | TestDataTypes.FeatureFlags);
+            TestContext testContext = CreateTestContext("MethodOrdering");
+            await SetupKeyValues(testContext);
+            await SetupFeatureFlags(testContext);
 
             // Add an additional feature flag for testing
             await _configClient.SetConfigurationSettingAsync(
@@ -1002,7 +1013,9 @@ namespace Tests.AzureAppConfiguration
         public async Task RegisterWithRefreshAllAndRegisterAll_BehaveIdentically()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("RefreshEquivalency", TestDataTypes.KeyValues | TestDataTypes.FeatureFlags);
+            TestContext testContext = CreateTestContext("RefreshEquivalency");
+            await SetupKeyValues(testContext);
+            await SetupFeatureFlags(testContext);
 
             // Add another feature flag for testing
             string secondFeatureFlagKey = $".appconfig.featureflag/{testContext.KeyPrefix}Feature2";
@@ -1136,7 +1149,8 @@ namespace Tests.AzureAppConfiguration
         public async Task HandlesFailoverOnStartup()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("FailoverStartup", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("FailoverStartup");
+            await SetupKeyValues(testContext);
             IConfigurationRefresher refresher = null;
 
             string connectionString = _connectionString;
@@ -1173,7 +1187,8 @@ namespace Tests.AzureAppConfiguration
         public async Task LoadSnapshot_RetrievesValuesFromSnapshot()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("SnapshotTest", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("SnapshotTest");
+            await SetupKeyValues(testContext);
             string snapshotName = $"snapshot-{testContext.KeyPrefix}";
 
             // Create a snapshot with the test keys
@@ -1203,7 +1218,7 @@ namespace Tests.AzureAppConfiguration
         public async Task LoadSnapshot_ThrowsException_WhenSnapshotDoesNotExist()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("NonExistentSnapshotTest", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("NonExistentSnapshotTest");
             string nonExistentSnapshotName = $"snapshot-does-not-exist-{Guid.NewGuid()}";
 
             // Act & Assert - Loading a non-existent snapshot should throw
@@ -1226,8 +1241,10 @@ namespace Tests.AzureAppConfiguration
         public async Task LoadMultipleSnapshots_MergesConfigurationCorrectly()
         {
             // Arrange - Setup test-specific keys for two separate snapshots
-            TestContext testContext1 = await SetupTestKeys("SnapshotMergeTest1", TestDataTypes.KeyValues);
-            TestContext testContext2 = await SetupTestKeys("SnapshotMergeTest2", TestDataTypes.KeyValues);
+            TestContext testContext1 = CreateTestContext("SnapshotMergeTest1");
+            await SetupKeyValues(testContext1);
+            TestContext testContext2 = CreateTestContext("SnapshotMergeTest2");
+            await SetupKeyValues(testContext2);
 
             // Create specific values for second snapshot
             await _configClient.SetConfigurationSettingAsync(
@@ -1269,7 +1286,8 @@ namespace Tests.AzureAppConfiguration
         public async Task SnapshotCompositionTypes_AreHandledCorrectly()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("SnapshotCompositionTest", TestDataTypes.KeyValues);
+            TestContext testContext = CreateTestContext("SnapshotCompositionTest");
+            await SetupKeyValues(testContext);
             string keyOnlySnapshotName = $"snapshot-key-{testContext.KeyPrefix}";
             string invalidCompositionSnapshotName = $"snapshot-invalid-{testContext.KeyPrefix}";
 
@@ -1335,7 +1353,8 @@ namespace Tests.AzureAppConfiguration
         public async Task SnapshotWithFeatureFlags_LoadsConfigurationCorrectly()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("SnapshotFeatureFlagTest", TestDataTypes.FeatureFlags);
+            TestContext testContext = CreateTestContext("SnapshotFeatureFlagTest");
+            await SetupFeatureFlags(testContext);
             string snapshotName = $"snapshot-ff-{testContext.KeyPrefix}";
 
             // Update the feature flag to be enabled before creating the snapshot
@@ -1391,9 +1410,16 @@ namespace Tests.AzureAppConfiguration
         public async Task CallOrdering_SnapshotsWithSelectAndFeatureFlags()
         {
             // Arrange - Setup test-specific keys for multiple snapshots
-            TestContext mainContext = await SetupTestKeys("SnapshotOrdering", TestDataTypes.KeyValues | TestDataTypes.FeatureFlags);
-            TestContext secondContext = await SetupTestKeys("SnapshotOrdering2", TestDataTypes.KeyValues | TestDataTypes.FeatureFlags);
-            TestContext thirdContext = await SetupTestKeys("SnapshotOrdering3", TestDataTypes.KeyValues | TestDataTypes.FeatureFlags);
+            TestContext mainContext = CreateTestContext("SnapshotOrdering");
+            await SetupKeyValues(mainContext);
+            await SetupFeatureFlags(mainContext);
+
+            TestContext secondContext = CreateTestContext("SnapshotOrdering2");
+            await SetupKeyValues(secondContext);
+            await SetupFeatureFlags(secondContext);
+
+            TestContext thirdContext = CreateTestContext("SnapshotOrdering3");
+            await SetupKeyValues(thirdContext);
 
             // Create specific values for each snapshot
             await _configClient.SetConfigurationSettingAsync(
@@ -1533,7 +1559,8 @@ namespace Tests.AzureAppConfiguration
         public async Task KeyVaultReferences_ResolveCorrectly()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("KeyVaultReference", TestDataTypes.KeyVaultReferences);
+            TestContext testContext = CreateTestContext("KeyVaultReference");
+            await SetupKeyVaultReferences(testContext);
 
             // Act - Create configuration with Key Vault support
             var config = new ConfigurationBuilder()
@@ -1556,7 +1583,8 @@ namespace Tests.AzureAppConfiguration
         public async Task KeyVaultReference_UsesCache_DoesNotCallKeyVaultAgain()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("KeyVaultCacheTest", TestDataTypes.KeyVaultReferences);
+            TestContext testContext = CreateTestContext("KeyVaultCacheTest");
+            await SetupKeyVaultReferences(testContext);
 
             // Create a monitoring client to track calls to Key Vault
             int requestCount = 0;
@@ -1600,7 +1628,7 @@ namespace Tests.AzureAppConfiguration
         public async Task KeyVaultReference_DifferentRefreshIntervals()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("KeyVaultDifferentIntervals", TestDataTypes.KeyVaultReferences);
+            TestContext testContext = CreateTestContext("KeyVaultDifferentIntervals");
             IConfigurationRefresher refresher = null;
 
             // Create a secret in Key Vault with short refresh interval
@@ -1676,7 +1704,9 @@ namespace Tests.AzureAppConfiguration
         public async Task RequestTracing_SetsCorrectCorrelationContextHeader()
         {
             // Arrange - Setup test-specific keys
-            TestContext testContext = await SetupTestKeys("RequestTracing");
+            TestContext testContext = CreateTestContext("RequestTracing");
+            await SetupFeatureFlags(testContext);
+            await SetupKeyVaultReferences(testContext);
 
             // Used to trigger FMVer tag in request tracing
             IFeatureManager featureManager;
@@ -1773,7 +1803,8 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task TagFilters()
         {
-            TestContext testContext = await SetupTestKeys("TagFilters", TestDataTypes.TaggedSettings);
+            TestContext testContext = CreateTestContext("TagFilters");
+            await SetupTaggedSettings(testContext);
             string keyPrefix = testContext.KeyPrefix;
 
             // Test case 1: Basic tag filtering with single tag
