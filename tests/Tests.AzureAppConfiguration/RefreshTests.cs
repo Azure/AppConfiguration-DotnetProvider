@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1216,6 +1217,68 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("newerValue1", config["TestKey1"]);
             Assert.Null(config["FeatureManagement:MyFeature"]);
+        }
+
+        [Fact]
+        public async Task RefreshTests_StartsRefreshActivity()
+        {
+            string activitySourceName = Guid.NewGuid().ToString();
+
+            var _activities = new List<Activity>();
+            var _activityListener = new ActivityListener
+            {
+                ShouldListenTo = source => source.Name == activitySourceName,
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
+                ActivityStarted = activity => _activities.Add(activity),
+            };
+            ActivitySource.AddActivityListener(_activityListener);
+
+            IConfigurationRefresher refresher = null;
+            var mockClient = GetMockConfigurationClient();
+
+            var mockAsyncPageable = new MockAsyncPageable(_kvCollection);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
+                .Returns(mockAsyncPageable);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select("TestKey*", "label");
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    options.ActivitySourceName = activitySourceName;
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Single(_activities);
+            Assert.Contains(_activities, a => a.OperationName == "Load");
+
+            // Wait for the cache to expire
+            await Task.Delay(1500);
+            await refresher.RefreshAsync();
+
+            Assert.Equal(2, _activities.Count);
+            Assert.Equal("Refresh", _activities.Last().OperationName);
+
+            await refresher.RefreshAsync();
+            Assert.Equal(2, _activities.Count); // only start refresh activity when real refresh happens
+
+            // Wait for the cache to expire
+            await Task.Delay(1500);
+            await refresher.RefreshAsync();
+            Assert.Equal(3, _activities.Count);
+            Assert.Equal("Refresh", _activities.Last().OperationName);
+
+            _activityListener.Dispose();
         }
 
 #if NET8_0

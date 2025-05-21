@@ -10,8 +10,10 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Tests.AzureAppConfiguration
@@ -345,6 +347,36 @@ namespace Tests.AzureAppConfiguration
                 .Build();
 
             Assert.True(config["message"] == "message from dev label");
+        }
+
+        [Fact]
+        public void TestActivitySource()
+        {
+            var _activities = new List<Activity>();
+            var _activityListener = new ActivityListener
+            {
+                ShouldListenTo = source => source.Name == "Microsoft.Extensions.Configuration.AzureAppConfiguration",
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
+                ActivityStarted = activity => _activities.Add(activity),
+            };
+            ActivitySource.AddActivityListener(_activityListener);
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(_kvCollectionPageOne));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object))
+                .Build();
+
+            Assert.Contains(_activities, a => a.OperationName == "Load");
+
+            _activityListener.Dispose();
         }
     }
 }
