@@ -1222,10 +1222,12 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task RefreshTests_StartsRefreshActivity()
         {
+            string activitySourceName = Guid.NewGuid().ToString();
+
             var _activities = new List<Activity>();
             var _activityListener = new ActivityListener
             {
-                ShouldListenTo = source => source.Name == "Microsoft.Extensions.Configuration.AzureAppConfiguration",
+                ShouldListenTo = source => source.Name == activitySourceName,
                 Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
                 ActivityStarted = activity => _activities.Add(activity),
             };
@@ -1251,6 +1253,7 @@ namespace Tests.AzureAppConfiguration
                         refreshOptions.RegisterAll()
                             .SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
+                    options.ActivitySourceName = activitySourceName;
 
                     refresher = options.GetRefresher();
                 })
