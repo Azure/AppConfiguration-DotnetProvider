@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class AzureAppConfigurationHealthChecksBuilderExtensions
     {
         /// <summary>
-        /// Add a health check for Azure App Configuration by registering <see cref="AzureAppConfigurationHealthCheck"/> for given <paramref name="builder"/>.
+        /// Add a health check for Azure App Configuration to given <paramref name="builder"/>.
         /// </summary>
         /// <param name="builder">The <see cref="IHealthChecksBuilder"/> to add <see cref="HealthCheckRegistration"/> to.</param>
         /// <param name="factory"> A factory to obtain <see cref="IConfiguration"/> instance.</param>
