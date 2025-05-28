@@ -376,8 +376,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerRetry);
-
             return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
         }
 
