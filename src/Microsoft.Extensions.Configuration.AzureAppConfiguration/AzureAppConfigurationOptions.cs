@@ -157,6 +157,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
+        /// Accessor for CDN cache busting context that manages ETag injection into requests.
+        /// When null, CDN cache busting is disabled. When not null, CDN cache busting is enabled.
+        /// </summary>
+        internal ICdnCacheBustingAccessor CdnCacheBustingAccessor { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -375,6 +381,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new ArgumentNullException(nameof(endpoint));
             }
+
+            CdnCacheBustingAccessor = new CdnCacheBustingAccessor();
+
+            // Add CDN cache busting policy to client options
+            ClientOptions.AddPolicy(new CdnCacheBustingPolicy(CdnCacheBustingAccessor), HttpPipelinePosition.PerCall);
 
             return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
         }

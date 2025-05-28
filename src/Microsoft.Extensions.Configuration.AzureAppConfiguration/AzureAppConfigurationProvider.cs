@@ -949,6 +949,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
+            bool cdnMode = _options.CdnCacheBustingAccessor != null;
+
             foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
@@ -962,8 +964,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Find if there is a change associated with watcher
                 if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
+                    if (cdnMode)
+                    {
+                        _options.CdnCacheBustingAccessor.CurrentETag = watchedKv.ETag.ToString();
+                    }
+
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken, makeConditionalRequest: !cdnMode).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1000,6 +1007,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
+                        if (cdnMode)
+                        {
+                            _options.CdnCacheBustingAccessor.CurrentETag = change.Current.ETag.ToString();
+                        }
+
                         return true;
                     }
                 }
@@ -1007,6 +1019,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                 }
+            }
+
+            if (cdnMode)
+            {
+                _options.CdnCacheBustingAccessor.CurrentETag = null;
             }
 
             return false;
