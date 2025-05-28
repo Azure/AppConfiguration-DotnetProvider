@@ -1,7 +1,9 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using System.Net.Mime;
 using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -64,9 +66,55 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsFailoverRequest { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether push refresh is used.
+        /// </summary>
+        public bool IsPushRefreshUsed { get; set; } = false;
+
+        /// <summary>
         /// Flag to indicate wether the request is sent to a CDN.
         /// </summary>
         public bool IsCdnUsed { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether any key-value uses the json content type and contains
+        /// a parameter indicating an AI profile.
+        /// </summary>
+        public bool UsesAIConfiguration { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether any key-value uses the json content type and contains
+        /// a parameter indicating an AI chat completion profile.
+        /// </summary>
+        public bool UsesAIChatCompletionConfiguration { get; set; } = false;
+
+        /// <summary>
+        /// Resets the AI configuration tracing flags.
+        /// </summary>
+        public void ResetAiConfigurationTracing()
+        {
+            UsesAIConfiguration = false;
+            UsesAIChatCompletionConfiguration = false;
+        }
+
+        /// <summary>
+        /// Updates AI configuration tracing flags based on the provided content type.
+        /// </summary>
+        /// <param name="contentTypeString">The content type to analyze.</param>
+        public void UpdateAiConfigurationTracing(string contentTypeString)
+        {
+            if (!UsesAIChatCompletionConfiguration &&
+                !string.IsNullOrWhiteSpace(contentTypeString) &&
+                contentTypeString.TryParseContentType(out ContentType contentType) &&
+                contentType.IsAi())
+            {
+                UsesAIConfiguration = true;
+
+                if (contentType.IsAiChatCompletion())
+                {
+                    UsesAIChatCompletionConfiguration = true;
+                }
+            }
+        }
 
         /// <summary>
         /// Checks whether any tracing feature is used.
@@ -74,7 +122,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
         public bool UsesAnyTracingFeature()
         {
-            return IsLoadBalancingEnabled || IsSignalRUsed;
+            return IsLoadBalancingEnabled ||
+                IsSignalRUsed ||
+                UsesAIConfiguration ||
+                UsesAIChatCompletionConfiguration;
         }
 
         /// <summary>
@@ -103,6 +154,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.SignalRUsedTag);
+            }
+
+            if (UsesAIConfiguration)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.AIConfigurationTag);
+            }
+
+            if (UsesAIChatCompletionConfiguration)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
             }
 
             return sb.ToString();

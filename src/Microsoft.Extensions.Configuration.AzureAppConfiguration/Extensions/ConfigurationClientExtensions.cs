@@ -95,11 +95,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             {
                 using Response response = page.GetRawResponse();
 
-                ETag serverEtag = (ETag)response.Headers.ETag;
-
                 // Return true if the lists of etags are different
                 if ((!existingMatchConditionsEnumerator.MoveNext() ||
-                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(serverEtag)) &&
+                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
                     return true;

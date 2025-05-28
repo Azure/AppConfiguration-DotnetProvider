@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -46,10 +47,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            if (setting == null ||
+                string.IsNullOrWhiteSpace(setting.Value) ||
+                string.IsNullOrWhiteSpace(setting.ContentType))
+            {
+                return false;
+            }
 
-            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                                 setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+            if (setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+            {
+                return true;
+            }
+
+            return setting.ContentType.TryParseContentType(out ContentType contentType) &&
+                contentType.IsFeatureFlag();
         }
 
         public bool NeedsRefresh()
@@ -188,13 +199,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             (string.IsNullOrEmpty(kvp.Key) ? "" : $":{kvp.Key}"), kvp.Value));
                     }
 
-                    if (featureVariant.ConfigurationReference != null)
-                    {
-                        _featureFlagTracing.UsesVariantConfigurationReference = true;
-
-                        keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.ConfigurationReference}", featureVariant.ConfigurationReference));
-                    }
-
                     if (featureVariant.StatusOverride != null)
                     {
                         keyValues.Add(new KeyValuePair<string, string>($"{variantsPath}:{FeatureManagementConstants.StatusOverride}", featureVariant.StatusOverride));
@@ -305,10 +309,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{kvp.Key}", kvp.Value));
                         }
                     }
-
-                    string featureFlagId = CalculateFeatureFlagId(setting.Key, setting.Label);
-
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
 
                     if (endpoint != null)
                     {
@@ -1244,24 +1244,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                             break;
                         }
 
-                    case FeatureManagementConstants.ConfigurationReference:
-                        {
-                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                            {
-                                featureVariant.ConfigurationReference = reader.GetString();
-                            }
-                            else if (reader.TokenType != JsonTokenType.Null)
-                            {
-                                throw CreateFeatureFlagFormatException(
-                                    FeatureManagementConstants.ConfigurationReference,
-                                    settingKey,
-                                    reader.TokenType.ToString(),
-                                    JsonTokenType.String.ToString());
-                            }
-
-                            break;
-                        }
-
                     case FeatureManagementConstants.ConfigurationValue:
                         {
                             if (reader.Read())
@@ -1386,20 +1368,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             return featureTelemetry;
-        }
-
-        private static string CalculateFeatureFlagId(string key, string label)
-        {
-            byte[] featureFlagIdHash;
-
-            // Convert the value consisting of key, newline character, and label to a byte array using UTF8 encoding to hash it using SHA 256
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{key}\n{(string.IsNullOrWhiteSpace(label) ? null : label)}"));
-            }
-
-            // Convert the hashed byte array to Base64Url
-            return featureFlagIdHash.ToBase64Url();
         }
     }
 }

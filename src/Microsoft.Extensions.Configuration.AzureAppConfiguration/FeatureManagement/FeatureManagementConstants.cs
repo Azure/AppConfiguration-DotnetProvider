@@ -30,7 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string Parameters = "parameters";
         public const string Variant = "variant";
         public const string ConfigurationValue = "configuration_value";
-        public const string ConfigurationReference = "configuration_reference";
         public const string StatusOverride = "status_override";
         public const string DefaultWhenDisabled = "default_when_disabled";
         public const string DefaultWhenEnabled = "default_when_enabled";
@@ -42,7 +41,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         // Telemetry metadata keys
         public const string ETag = "ETag";
-        public const string FeatureFlagId = "FeatureFlagId";
         public const string FeatureFlagReference = "FeatureFlagReference";
         public const string AllocationId = "AllocationId";
 
