@@ -5,6 +5,7 @@ using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IHealthCheck, IDisposable
     {
         private readonly ActivitySource _activitySource = new ActivitySource(ActivityNames.AzureAppConfigurationActivitySource);
         private bool _optional;
@@ -52,6 +53,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private int _networkOperationsInProgress = 0;
         private Logger _logger = new Logger();
         private ILoggerFactory _loggerFactory;
+
+        // For health check
+        private DateTimeOffset? _lastSuccessfulAttempt = null;
+        private DateTimeOffset? _lastFailedAttempt = null;
 
         private class ConfigurationClientBackoffStatus
         {
@@ -255,6 +260,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _configClientManager.RefreshClients();
 
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
+
+                        _lastFailedAttempt = DateTime.UtcNow;
 
                         return;
                     }
@@ -569,6 +576,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _logger.LogWarning(LogHelper.BuildPushNotificationUnregisteredEndpointMessage(pushNotification.ResourceUri.ToString()));
             }
+        }
+
+        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        {
+            if (!_lastSuccessfulAttempt.HasValue)
+            {
+                return HealthCheckResult.Unhealthy(HealthCheckConstants.LoadNotCompletedMessage);
+            }
+
+            if (_lastFailedAttempt.HasValue &&
+                _lastSuccessfulAttempt.Value < _lastFailedAttempt.Value)
+            {
+                return HealthCheckResult.Unhealthy(HealthCheckConstants.RefreshFailedMessage);
+            }
+
+            return HealthCheckResult.Healthy();
         }
 
         private void SetDirty(TimeSpan? maxDelay)
@@ -1158,6 +1181,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     success = true;
 
                     _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
+                    _lastSuccessfulAttempt = DateTime.UtcNow;
 
                     return result;
                 }
@@ -1183,6 +1207,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
+                        _lastFailedAttempt = DateTime.UtcNow;
                         _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
 
                         do
