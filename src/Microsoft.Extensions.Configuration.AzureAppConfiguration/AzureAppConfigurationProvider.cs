@@ -971,6 +971,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (cdnMode)
                     {
+                        //
+                        // use a random generated token to bust CDN cache
                         _options.CdnCacheBustingAccessor.CurrentToken ??= Guid.NewGuid().ToString();
                     }
 

@@ -384,7 +384,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             CdnCacheBustingAccessor = new CdnCacheBustingAccessor();
 
-            // Add CDN cache busting policy to client options
             ClientOptions.AddPolicy(new CdnCacheBustingPolicy(CdnCacheBustingAccessor), HttpPipelinePosition.PerCall);
 
             return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
