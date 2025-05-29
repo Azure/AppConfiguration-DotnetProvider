@@ -19,55 +19,53 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Initializes a new instance of the <see cref="CdnCacheBustingPolicy"/> class.
         /// </summary>
-        /// <param name="cacheBustingAccessor">The CDN cache busting accessor.</param>
+        /// <param name="cacheBustingAccessor">The CDN cache busting accessor.</param>        
         public CdnCacheBustingPolicy(ICdnCacheBustingAccessor cacheBustingAccessor)
         {
             _cacheBustingAccessor = cacheBustingAccessor ?? throw new ArgumentNullException(nameof(cacheBustingAccessor));
         }
 
         /// <summary>
-        /// Processes the HTTP message and injects ETag into query string if CDN cache busting is enabled.
+        /// Processes the HTTP message and injects token into query string if CDN cache busting is enabled.
         /// </summary>
         /// <param name="message">The HTTP message.</param>
         /// <param name="pipeline">The pipeline.</param>
         public override void Process(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            string etag = _cacheBustingAccessor.CurrentETag;
-            if (!string.IsNullOrEmpty(etag))
+            string token = _cacheBustingAccessor.CurrentToken;
+            if (!string.IsNullOrEmpty(token))
             {
-                // Add ETag to the request URI
-                message.Request.Uri.Reset(AddCacheBustingToUri(message.Request.Uri.ToUri(), etag));
+                message.Request.Uri.Reset(AddTokenToUri(message.Request.Uri.ToUri(), token));
             }
 
             ProcessNext(message, pipeline);
         }
 
         /// <summary>
-        /// Processes the HTTP message asynchronously and injects ETag into query string if CDN cache busting is enabled.
+        /// Processes the HTTP message asynchronously and injects token into query string if CDN cache busting is enabled.
         /// </summary>
         /// <param name="message">The HTTP message.</param>
         /// <param name="pipeline">The pipeline.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async System.Threading.Tasks.ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            string etag = _cacheBustingAccessor.CurrentETag;
-            if (!string.IsNullOrEmpty(etag))
+            string token = _cacheBustingAccessor.CurrentToken;
+            if (!string.IsNullOrEmpty(token))
             {
-                // Add ETag to the request URI
-                message.Request.Uri.Reset(AddCacheBustingToUri(message.Request.Uri.ToUri(), etag));
+                message.Request.Uri.Reset(AddTokenToUri(message.Request.Uri.ToUri(), token));
             }
 
             await ProcessNextAsync(message, pipeline).ConfigureAwait(false);
         }
 
-        private static Uri AddCacheBustingToUri(Uri uri, string etag)
+        private static Uri AddTokenToUri(Uri uri, string token)
         {
-            Debug.Assert(!string.IsNullOrEmpty(etag));
+            Debug.Assert(!string.IsNullOrEmpty(token));
 
             var uriBuilder = new UriBuilder(uri);
 
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-            query["cdn-cache-bust"] = etag;
+            query["cdn-cache-bust"] = token;
 
             uriBuilder.Query = query.ToString();
 

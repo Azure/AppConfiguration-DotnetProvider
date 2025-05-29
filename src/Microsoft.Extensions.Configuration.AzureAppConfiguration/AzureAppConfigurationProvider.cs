@@ -951,6 +951,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             bool cdnMode = _options.CdnCacheBustingAccessor != null;
 
+            if (cdnMode)
+            {
+                _options.CdnCacheBustingAccessor.CurrentToken = null;
+            }
+
             foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
@@ -966,7 +971,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (cdnMode)
                     {
-                        _options.CdnCacheBustingAccessor.CurrentETag = watchedKv.ETag.ToString();
+                        _options.CdnCacheBustingAccessor.CurrentToken ??= Guid.NewGuid().ToString();
                     }
 
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
@@ -1009,7 +1014,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         if (cdnMode)
                         {
-                            _options.CdnCacheBustingAccessor.CurrentETag = change.Current.ETag.ToString();
+                            _options.CdnCacheBustingAccessor.CurrentToken = change.Current.ETag.ToString();
                         }
 
                         return true;
@@ -1023,7 +1028,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (cdnMode)
             {
-                _options.CdnCacheBustingAccessor.CurrentETag = null;
+                _options.CdnCacheBustingAccessor.CurrentToken = null;
             }
 
             return false;
