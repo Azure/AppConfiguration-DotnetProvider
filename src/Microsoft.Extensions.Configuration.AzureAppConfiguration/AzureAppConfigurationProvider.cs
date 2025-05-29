@@ -949,9 +949,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
-            bool cdnMode = _options.CdnCacheBustingAccessor != null;
+            bool isCdnEnabled = _options.CdnCacheBustingAccessor != null;
 
-            if (cdnMode)
+            if (isCdnEnabled)
             {
                 _options.CdnCacheBustingAccessor.CurrentToken = null;
             }
@@ -969,7 +969,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Find if there is a change associated with watcher
                 if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
-                    if (cdnMode)
+                    if (isCdnEnabled)
                     {
                         //
                         // use a random generated token to bust CDN cache
@@ -977,7 +977,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
 
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken, makeConditionalRequest: !cdnMode).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken, makeConditionalRequest: !isCdnEnabled).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1014,7 +1014,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
-                        if (cdnMode)
+                        if (isCdnEnabled)
                         {
                             _options.CdnCacheBustingAccessor.CurrentToken = change.Current.ETag.ToString();
                         }
@@ -1028,7 +1028,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            if (cdnMode)
+            if (isCdnEnabled)
             {
                 _options.CdnCacheBustingAccessor.CurrentToken = null;
             }
@@ -1359,24 +1359,52 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ConfigurationClient client,
             CancellationToken cancellationToken)
         {
+            bool isCdnEnabled = _options.CdnCacheBustingAccessor != null;
+
+            if (isCdnEnabled)
+            {
+                _options.CdnCacheBustingAccessor.CurrentToken = null;
+            }
+
             bool haveCollectionsChanged = false;
+            string changedPageEtag = null;
 
             foreach (KeyValueSelector selector in selectors)
             {
+                if (isCdnEnabled)
+                {
+                    //
+                    // use a random generated token to bust CDN cache
+                    _options.CdnCacheBustingAccessor.CurrentToken ??= Guid.NewGuid().ToString();
+                }
+
                 if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(
+                        async () => (haveCollectionsChanged, changedPageEtag) = await client.HaveCollectionsChanged(
                             selector,
                             matchConditions,
                             _options.ConfigurationSettingPageIterator,
+                            makeConditionalRequest: !isCdnEnabled,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
                 if (haveCollectionsChanged)
                 {
+                    if (isCdnEnabled)
+                    {
+                        //
+                        // If a page was deleted, we will use a random generated token since there is no changed etag
+                        _options.CdnCacheBustingAccessor.CurrentToken = changedPageEtag ?? Guid.NewGuid().ToString();
+                    }
+
                     return true;
                 }
+            }
+
+            if (isCdnEnabled)
+            {
+                _options.CdnCacheBustingAccessor.CurrentToken = null;
             }
 
             return haveCollectionsChanged;

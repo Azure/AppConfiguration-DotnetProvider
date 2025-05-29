@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, CancellationToken cancellationToken)
+        public static async Task<(bool, string)> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -91,7 +91,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
 
-            await foreach (Page<ConfigurationSetting> page in pageable.AsPages(pageIterator, matchConditions).ConfigureAwait(false))
+            IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest ? pageable.AsPages(pageIterator, matchConditions) : pageable.AsPages(pageIterator);
+
+            await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
 
@@ -100,12 +102,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
-                    return true;
+                    return (true, response.Headers.ETag.ToString());
                 }
             }
 
             // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            return existingMatchConditionsEnumerator.MoveNext();
+            return (existingMatchConditionsEnumerator.MoveNext(), null);
         }
     }
 }
