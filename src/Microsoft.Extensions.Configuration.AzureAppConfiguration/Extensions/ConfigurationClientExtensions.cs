@@ -95,11 +95,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             IAsyncEnumerable<Page<ConfigurationSetting>> pages = isCdnEnabled ? pageable.AsPages() : pageable.AsPages(pageIterator, matchConditions);
 
+            bool canPeek = existingMatchConditionsEnumerator.MoveNext();
+
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
-
-                bool canPeek = existingMatchConditionsEnumerator.MoveNext();
 
                 if ((!canPeek ||
                     !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
@@ -112,6 +112,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
                     return true;
                 }
+
+                canPeek = existingMatchConditionsEnumerator.MoveNext();
 
                 if (isCdnEnabled && canPeek)
                 {
