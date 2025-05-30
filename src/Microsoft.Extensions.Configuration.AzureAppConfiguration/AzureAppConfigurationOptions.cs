@@ -157,6 +157,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
+        /// Accessor for CDN cache busting context that manages ETag injection into requests.
+        /// When null, CDN cache busting is disabled. When not null, CDN cache busting is enabled.
+        /// </summary>
+        internal ICdnCacheBustingAccessor CdnCacheBustingAccessor { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -339,6 +345,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (Credential is EmptyTokenCredential)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -353,6 +364,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Credential = null;
             ConnectionStrings = connectionStrings;
             return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to CDN endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
+        {
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            CdnCacheBustingAccessor = new CdnCacheBustingAccessor();
+
+            ClientOptions.AddPolicy(new CdnCacheBustingPolicy(CdnCacheBustingAccessor), HttpPipelinePosition.PerCall);
+
+            return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
         }
 
         /// <summary>
@@ -382,6 +416,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (Credential is EmptyTokenCredential)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));

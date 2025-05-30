@@ -949,6 +949,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
+            bool isCdnEnabled = _options.CdnCacheBustingAccessor != null;
+
             foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
@@ -962,8 +964,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Find if there is a change associated with watcher
                 if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
+                    if (isCdnEnabled)
+                    {
+                        _options.CdnCacheBustingAccessor.CurrentToken = watchedKv.ETag.ToString();
+                    }
+
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !isCdnEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1000,6 +1007,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
+                        if (isCdnEnabled)
+                        {
+                            _options.CdnCacheBustingAccessor.CurrentToken = change.Current.ETag.ToString();
+                        }
+
                         return true;
                     }
                 }
@@ -1065,7 +1077,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
-                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
+                IsCdnUsed = _options.Credential is EmptyTokenCredential
             };
         }
 
@@ -1345,6 +1358,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             selector,
                             matchConditions,
                             _options.ConfigurationSettingPageIterator,
+                            _options.CdnCacheBustingAccessor,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
