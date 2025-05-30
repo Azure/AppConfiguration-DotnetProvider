@@ -951,11 +951,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             bool isCdnEnabled = _options.CdnCacheBustingAccessor != null;
 
-            if (isCdnEnabled)
-            {
-                _options.CdnCacheBustingAccessor.CurrentToken = null;
-            }
-
             foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
@@ -971,13 +966,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (isCdnEnabled)
                     {
-                        //
-                        // use a random generated token to bust CDN cache
-                        _options.CdnCacheBustingAccessor.CurrentToken ??= Guid.NewGuid().ToString();
+                        _options.CdnCacheBustingAccessor.CurrentToken = watchedKv.ETag.ToString();
                     }
 
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken, makeConditionalRequest: !isCdnEnabled).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !isCdnEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1026,11 +1019,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
                 }
-            }
-
-            if (isCdnEnabled)
-            {
-                _options.CdnCacheBustingAccessor.CurrentToken = null;
             }
 
             return false;
@@ -1359,52 +1347,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ConfigurationClient client,
             CancellationToken cancellationToken)
         {
-            bool isCdnEnabled = _options.CdnCacheBustingAccessor != null;
-
-            if (isCdnEnabled)
-            {
-                _options.CdnCacheBustingAccessor.CurrentToken = null;
-            }
-
             bool haveCollectionsChanged = false;
-            string changedPageEtag = null;
 
             foreach (KeyValueSelector selector in selectors)
             {
-                if (isCdnEnabled)
-                {
-                    //
-                    // use a random generated token to bust CDN cache
-                    _options.CdnCacheBustingAccessor.CurrentToken ??= Guid.NewGuid().ToString();
-                }
-
                 if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => (haveCollectionsChanged, changedPageEtag) = await client.HaveCollectionsChanged(
+                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(
                             selector,
                             matchConditions,
                             _options.ConfigurationSettingPageIterator,
-                            makeConditionalRequest: !isCdnEnabled,
+                            _options.CdnCacheBustingAccessor,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
                 if (haveCollectionsChanged)
                 {
-                    if (isCdnEnabled)
-                    {
-                        //
-                        // If a page was deleted, we will use a random generated token since there is no changed etag
-                        _options.CdnCacheBustingAccessor.CurrentToken = changedPageEtag ?? Guid.NewGuid().ToString();
-                    }
-
                     return true;
                 }
-            }
-
-            if (isCdnEnabled)
-            {
-                _options.CdnCacheBustingAccessor.CurrentToken = null;
             }
 
             return haveCollectionsChanged;

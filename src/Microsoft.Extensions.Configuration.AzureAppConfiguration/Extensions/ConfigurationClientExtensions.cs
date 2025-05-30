@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken, bool makeConditionalRequest = true)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<(bool, string)> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, ICdnCacheBustingAccessor cdnCacheBustingAccessor, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -91,23 +91,36 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
 
-            IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest ? pageable.AsPages(pageIterator, matchConditions) : pageable.AsPages(pageIterator);
+            bool isCdnEnabled = cdnCacheBustingAccessor != null;
+
+            IAsyncEnumerable<Page<ConfigurationSetting>> pages = isCdnEnabled ? pageable.AsPages() : pageable.AsPages(pageIterator, matchConditions);
 
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
 
-                // Return true if the lists of etags are different
-                if ((!existingMatchConditionsEnumerator.MoveNext() ||
+                bool canPeek = existingMatchConditionsEnumerator.MoveNext();
+
+                if ((!canPeek ||
                     !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
-                    return (true, response.Headers.ETag.ToString());
+                    if (isCdnEnabled)
+                    {
+                        cdnCacheBustingAccessor.CurrentToken = response.Headers.ETag.ToString();
+                    }
+
+                    return true;
+                }
+
+                if (isCdnEnabled && canPeek)
+                {
+                    cdnCacheBustingAccessor.CurrentToken = existingMatchConditionsEnumerator.Current.IfNoneMatch.ToString();
                 }
             }
 
             // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            return (existingMatchConditionsEnumerator.MoveNext(), null);
+            return existingMatchConditionsEnumerator.MoveNext();
         }
     }
 }
