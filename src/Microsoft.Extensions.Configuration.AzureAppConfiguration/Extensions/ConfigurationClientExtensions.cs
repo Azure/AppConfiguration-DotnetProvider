@@ -97,6 +97,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             bool canPeek = existingMatchConditionsEnumerator.MoveNext();
 
+            if (isCdnEnabled && canPeek)
+            {
+                cdnCacheBustingAccessor.CurrentToken = existingMatchConditionsEnumerator.Current.IfNoneMatch.ToString();
+            }
+
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
