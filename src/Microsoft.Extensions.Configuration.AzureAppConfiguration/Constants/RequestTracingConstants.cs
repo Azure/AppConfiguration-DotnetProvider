@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
         public const string PushRefreshTag = "PushRefresh";
-        public const string CdnUsedTag = "CDN";
+        public const string CdnTag = "CDN";
 
         public const string FeatureFlagFilterTypeKey = "Filter";
         public const string CustomFilter = "CSTM";

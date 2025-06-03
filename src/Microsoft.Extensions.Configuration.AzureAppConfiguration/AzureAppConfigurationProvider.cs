@@ -1132,7 +1132,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
                 IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
-                IsCdnUsed = _options.Credential is EmptyTokenCredential
+                IsCdnEnabled = _options.IsCdnEnabled
             };
         }
 

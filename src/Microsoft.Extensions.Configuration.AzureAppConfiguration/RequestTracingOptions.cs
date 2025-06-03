@@ -73,7 +73,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate wether the request is sent to a CDN.
         /// </summary>
-        public bool IsCdnUsed { get; set; } = false;
+        public bool IsCdnEnabled { get; set; } = false;
 
         /// <summary>
         /// Flag to indicate whether any key-value uses the json content type and contains

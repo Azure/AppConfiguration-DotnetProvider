@@ -350,7 +350,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
-            if (Credential is EmptyTokenCredential)
+            if (IsCdnEnabled)
             {
                 throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
             }
@@ -377,7 +377,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
         public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
         {
-            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Please call ConnectCdn() only once.");
+            }
+
+            if ((Credential != null) || (ConnectionStrings?.Any() ?? false))
             {
                 throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
             }
@@ -387,11 +392,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            CdnCacheBustingAccessor = new CdnCacheBustingAccessor();
+            var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
 
+            CdnCacheBustingAccessor = new CdnCacheBustingAccessor();
             ClientOptions.AddPolicy(new CdnCacheBustingPolicy(CdnCacheBustingAccessor), HttpPipelinePosition.PerCall);
 
-            return Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
+            return result;
         }
 
         /// <summary>
@@ -421,7 +427,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
-            if (Credential is EmptyTokenCredential)
+            if (IsCdnEnabled)
             {
                 throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
             }

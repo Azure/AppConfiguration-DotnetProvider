@@ -206,9 +206,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.PushRefreshTag);
             }
 
-            if (requestTracingOptions.IsCdnUsed)
+            if (requestTracingOptions.IsCdnEnabled)
             {
-                correlationContextTags.Add(RequestTracingConstants.CdnUsedTag);
+                correlationContextTags.Add(RequestTracingConstants.CdnTag);
             }
 
             var sb = new StringBuilder();
