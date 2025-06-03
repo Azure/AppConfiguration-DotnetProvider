@@ -315,7 +315,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     if (_configVersion == null && _kvEtags.Count > 0)
                                     {
-                                        _configVersion = AzureAppConfigurationProvider.CalculateHash(_kvEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
+                                        _configVersion = CalculateHash(_kvEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
                                     }
 
                                     _options.CdnCacheBustingAccessor.CurrentToken = _configVersion;
@@ -334,7 +334,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (_configVersion == null && _watchedIndividualKvs.Count > 0)
                                 {
-                                    _configVersion = AzureAppConfigurationProvider.CalculateHash(_watchedIndividualKvs.Select(kvp => kvp.Value.ETag.ToString()));
+                                    _configVersion = CalculateHash(_watchedIndividualKvs.Select(kvp => kvp.Value.ETag.ToString()));
                                 }
 
                                 _options.CdnCacheBustingAccessor.CurrentToken = _configVersion;
@@ -380,7 +380,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (_ffCollectionVersion == null && _ffEtags.Count > 0)
                             {
-                                _ffCollectionVersion = AzureAppConfigurationProvider.CalculateHash(_ffEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
+                                _ffCollectionVersion = CalculateHash(_ffEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
                             }
 
                             _options.CdnCacheBustingAccessor.CurrentToken = _ffCollectionVersion;
