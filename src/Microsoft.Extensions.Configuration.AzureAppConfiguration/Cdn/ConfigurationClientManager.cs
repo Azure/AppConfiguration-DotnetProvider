@@ -10,25 +10,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
-        private readonly IList<ConfigurationClientWrapper> _clients;
+        private readonly ConfigurationClientWrapper _client;
 
         public ConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> clientFactory,
-            IEnumerable<Uri> endpoints)
+            Uri endpoint)
         {
             if (clientFactory == null)
             {
                 throw new ArgumentNullException(nameof(clientFactory));
             }
 
-            _clients = endpoints
-                .Select(endpoint => new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri)))
-                .ToList();
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            _client = new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri));
         }
 
         public IEnumerable<ConfigurationClient> GetClients()
         {
-            return _clients.Select(c => c.Client);
+            return new[] { _client.Client };
         }
 
         public void RefreshClients()
@@ -48,12 +51,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            ConfigurationClientWrapper clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
-
-            if (clientWrapper != null)
+            if (new EndpointComparer().Equals(_client.Endpoint, endpoint))
             {
-                clientWrapper.Client.UpdateSyncToken(syncToken);
-
+                _client.Client.UpdateSyncToken(syncToken);
                 return true;
             }
 
@@ -67,9 +67,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
                 throw new ArgumentNullException(nameof(client));
             }
 
-            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
-
-            return currentClient?.Endpoint;
+            return _client.Client == client ? _client.Endpoint : null;
         }
     }
 }
