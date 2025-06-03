@@ -380,7 +380,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (IsCdnEnabled)
             {
-                throw new InvalidOperationException("Please call ConnectCdn() only once.");
+                throw new InvalidOperationException($"Please call {nameof(AzureAppConfigurationOptions.ConnectCdn)} only once.");
             }
 
             if ((Credential != null) || (ConnectionStrings?.Any() ?? false))
