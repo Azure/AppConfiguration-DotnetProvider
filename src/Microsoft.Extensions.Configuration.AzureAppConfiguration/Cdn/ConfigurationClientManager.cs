@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
     internal class ConfigurationClientManager : IConfigurationClientManager
     {
-        private readonly ConfigurationClientWrapper _client;
+        private readonly ConfigurationClientWrapper _clientWrapper;
 
         public ConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> clientFactory,
@@ -26,12 +26,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            _client = new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri));
+            _clientWrapper = new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri));
         }
 
         public IEnumerable<ConfigurationClient> GetClients()
         {
-            return new[] { _client.Client };
+            return new[] { _clientWrapper.Client };
         }
 
         public void RefreshClients()
@@ -51,9 +51,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            if (new EndpointComparer().Equals(_client.Endpoint, endpoint))
+            if (new EndpointComparer().Equals(_clientWrapper.Endpoint, endpoint))
             {
-                _client.Client.UpdateSyncToken(syncToken);
+                _clientWrapper.Client.UpdateSyncToken(syncToken);
                 return true;
             }
 
@@ -67,7 +67,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
                 throw new ArgumentNullException(nameof(client));
             }
 
-            return _client.Client == client ? _client.Endpoint : null;
+            return _clientWrapper.Client == client ? _clientWrapper.Endpoint : null;
         }
     }
 }
