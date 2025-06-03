@@ -1432,23 +1432,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             StringBuilder inputBuilder = new StringBuilder();
 
+            //
+            // purpose
+            inputBuilder.Append("etags\n");
+
             foreach (string etag in etags)
             {
                 inputBuilder.Append(etag);
                 inputBuilder.Append('\n');
             }
 
-            // Remove the last newline character
-            if (inputBuilder.Length > 0)
-            {
-                inputBuilder.Length--;
-            }
-
-            string input = inputBuilder.ToString();
-
             using SHA256 sha256 = SHA256.Create();
 
-            return sha256.ComputeHash(Encoding.UTF8.GetBytes(input)).ToBase64Url();
+            return sha256.ComputeHash(Encoding.UTF8.GetBytes(inputBuilder.ToString())).ToBase64Url();
         }
 
         private async Task ProcessKeyValueChangesAsync(
