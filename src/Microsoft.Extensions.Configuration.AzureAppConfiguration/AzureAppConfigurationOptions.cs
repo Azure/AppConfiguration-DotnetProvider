@@ -6,6 +6,7 @@ using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -158,14 +159,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Accessor for CDN cache busting context that manages ETag injection into requests.
-        /// When null, CDN cache busting is disabled. When not null, CDN cache busting is enabled.
+        /// When null, CDN cache consistency is disabled. When not null, CDN cache consistency is enabled.
         /// </summary>
-        internal ICdnCacheBustingAccessor CdnCacheBustingAccessor { get; private set; }
+        internal ICacheConsistencyTokenAccessor CacheConsistencyTokenAccessor { get; private set; }
 
         /// <summary>
         /// Gets a value indicating whether CDN is enabled.
         /// </summary>
-        internal bool IsCdnEnabled => CdnCacheBustingAccessor != null;
+        internal bool IsCdnEnabled => CacheConsistencyTokenAccessor != null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -394,8 +395,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
 
-            CdnCacheBustingAccessor = new CdnCacheBustingAccessor();
-            ClientOptions.AddPolicy(new CdnCacheBustingPolicy(CdnCacheBustingAccessor), HttpPipelinePosition.PerCall);
+            CacheConsistencyTokenAccessor = new CacheConsistencyTokenAccessor();
+            ClientOptions.AddPolicy(new CacheConsistencyPolicy(CacheConsistencyTokenAccessor), HttpPipelinePosition.PerCall);
 
             return result;
         }

@@ -6,13 +6,13 @@ using Microsoft.Extensions.Azure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
-    internal class CdnConfigurationClientManager : IConfigurationClientManager
+    internal class ConfigurationClientManager : IConfigurationClientManager
     {
         private readonly IList<ConfigurationClientWrapper> _clients;
 
-        public CdnConfigurationClientManager(
+        public ConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> clientFactory,
             IEnumerable<Uri> endpoints)
         {

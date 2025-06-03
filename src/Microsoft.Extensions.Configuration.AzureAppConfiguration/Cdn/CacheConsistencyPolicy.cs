@@ -7,32 +7,32 @@ using System;
 using System.Diagnostics;
 using System.Web;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
     /// <summary>
-    /// HTTP pipeline policy that injects token into the query string for CDN cache busting.
+    /// HTTP pipeline policy that injects consistency token into the query string for CDN cache consistency.
     /// </summary>
-    internal class CdnCacheBustingPolicy : HttpPipelinePolicy
+    internal class CacheConsistencyPolicy : HttpPipelinePolicy
     {
-        private readonly ICdnCacheBustingAccessor _cacheBustingAccessor;
+        private readonly ICacheConsistencyTokenAccessor _cacheConsistencyAccessor;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CdnCacheBustingPolicy"/> class.
+        /// Initializes a new instance of the <see cref="CacheConsistencyPolicy"/> class.
         /// </summary>
-        /// <param name="cacheBustingAccessor">The CDN cache busting accessor.</param>        
-        public CdnCacheBustingPolicy(ICdnCacheBustingAccessor cacheBustingAccessor)
+        /// <param name="cacheConsistencyAccessor">The CDN cache consistency accessor.</param>        
+        public CacheConsistencyPolicy(ICacheConsistencyTokenAccessor cacheConsistencyAccessor)
         {
-            _cacheBustingAccessor = cacheBustingAccessor ?? throw new ArgumentNullException(nameof(cacheBustingAccessor));
+            _cacheConsistencyAccessor = cacheConsistencyAccessor ?? throw new ArgumentNullException(nameof(cacheConsistencyAccessor));
         }
 
         /// <summary>
-        /// Processes the HTTP message and injects token into query string if CDN cache busting is enabled.
+        /// Processes the HTTP message and injects token into query string if CDN cache consistency is enabled.
         /// </summary>
         /// <param name="message">The HTTP message.</param>
         /// <param name="pipeline">The pipeline.</param>
         public override void Process(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            string token = _cacheBustingAccessor.CurrentToken;
+            string token = _cacheConsistencyAccessor.Current;
             if (!string.IsNullOrEmpty(token))
             {
                 message.Request.Uri.Reset(AddTokenToUri(message.Request.Uri.ToUri(), token));
@@ -42,14 +42,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Processes the HTTP message asynchronously and injects token into query string if CDN cache busting is enabled.
+        /// Processes the HTTP message asynchronously and injects token into query string if CDN cache consistency is enabled.
         /// </summary>
         /// <param name="message">The HTTP message.</param>
         /// <param name="pipeline">The pipeline.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async System.Threading.Tasks.ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            string token = _cacheBustingAccessor.CurrentToken;
+            string token = _cacheConsistencyAccessor.Current;
             if (!string.IsNullOrEmpty(token))
             {
                 message.Request.Uri.Reset(AddTokenToUri(message.Request.Uri.ToUri(), token));

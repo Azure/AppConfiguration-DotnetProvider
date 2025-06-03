@@ -313,12 +313,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (_options.IsCdnEnabled)
                                 {
-                                    if (_configVersion == null && _kvEtags.Count > 0)
-                                    {
-                                        _configVersion = CalculateHash(_kvEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
-                                    }
-
-                                    _options.CdnCacheBustingAccessor.CurrentToken = _configVersion;
+                                    _configVersion ??= CalculateCacheConsistencyToken(_kvEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
+                                    _options.CacheConsistencyTokenAccessor.Current = _configVersion;
                                 }
 
                                 refreshAllChangedEtag = await HaveCollectionsChanged(
@@ -332,12 +328,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (_options.IsCdnEnabled)
                             {
-                                if (_configVersion == null && _watchedIndividualKvs.Count > 0)
-                                {
-                                    _configVersion = CalculateHash(_watchedIndividualKvs.Select(kvp => kvp.Value.ETag.ToString()));
-                                }
-
-                                _options.CdnCacheBustingAccessor.CurrentToken = _configVersion;
+                                _configVersion ??= CalculateCacheConsistencyToken(_watchedIndividualKvs.Select(kvp => kvp.Value.ETag.ToString()));
+                                _options.CacheConsistencyTokenAccessor.Current = _configVersion;
                             }
 
                             refreshAllChangedEtag = await RefreshIndividualKvWatchers(
@@ -361,9 +353,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (_options.IsCdnEnabled)
                             {
                                 //
-                                // Bust cdn cache
-                                _options.CdnCacheBustingAccessor.CurrentToken = refreshAllChangedEtag;
+                                // Break cdn cache
+                                _options.CacheConsistencyTokenAccessor.Current = refreshAllChangedEtag;
 
+                                // 
                                 // Reset versions so that next watch request will not use stale versions.
                                 _configVersion = null;
                                 _ffCollectionVersion = null;
@@ -378,12 +371,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Get feature flag changes
                         if (_options.IsCdnEnabled)
                         {
-                            if (_ffCollectionVersion == null && _ffEtags.Count > 0)
-                            {
-                                _ffCollectionVersion = CalculateHash(_ffEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
-                            }
-
-                            _options.CdnCacheBustingAccessor.CurrentToken = _ffCollectionVersion;
+                            _ffCollectionVersion ??= CalculateCacheConsistencyToken(_ffEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
+                            _options.CacheConsistencyTokenAccessor.Current = _ffCollectionVersion;
                         }
 
                         ffCollectionUpdatedChangedEtag = await HaveCollectionsChanged(
@@ -405,8 +394,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (_options.IsCdnEnabled)
                             {
                                 //
-                                // Bust cdn cache
-                                _options.CdnCacheBustingAccessor.CurrentToken = ffCollectionUpdatedChangedEtag;
+                                // Break cdn cache
+                                _options.CacheConsistencyTokenAccessor.Current = ffCollectionUpdatedChangedEtag;
+
+                                //
                                 // Reset ff collection version so that next ff watch request will not use stale version.
                                 _ffCollectionVersion = null;
                             }
@@ -1065,7 +1056,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (_options.IsCdnEnabled)
                     {
                         //
-                        // even if the change is not refresh all, we still need to reset stale version.
+                        // even if the change is not refresh all, we still need to reset stale config version.
                         _configVersion = null;
                     }
                 }
@@ -1426,15 +1417,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return changedEtag;
         }
 
-        private static string CalculateHash(IEnumerable<string> etags)
+        private static string CalculateCacheConsistencyToken(IEnumerable<string> etags)
         {
-            Debug.Assert(etags != null && etags.Any());
+            Debug.Assert(etags != null);
 
             StringBuilder inputBuilder = new StringBuilder();
 
             //
             // purpose
-            inputBuilder.Append("etags\n");
+            inputBuilder.Append("CacheConsistency\n");
 
             foreach (string etag in etags)
             {

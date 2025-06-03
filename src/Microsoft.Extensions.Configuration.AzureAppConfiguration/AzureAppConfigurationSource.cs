@@ -61,7 +61,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (options.IsCdnEnabled)
                 {
-                    provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new Cdn.ConfigurationClientManager(clientFactory, endpoints), options, _optional);
                 }
                 else
                 {

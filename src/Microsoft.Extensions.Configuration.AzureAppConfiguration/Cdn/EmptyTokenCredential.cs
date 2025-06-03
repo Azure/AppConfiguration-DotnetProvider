@@ -3,7 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
     /// <summary>
     /// A token credential that provides an empty token.
