@@ -10,7 +10,7 @@ using System.Web;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
-    /// HTTP pipeline policy that injects ETags into the query string for CDN cache busting.
+    /// HTTP pipeline policy that injects token into the query string for CDN cache busting.
     /// </summary>
     internal class CdnCacheBustingPolicy : HttpPipelinePolicy
     {
@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var uriBuilder = new UriBuilder(uri);
 
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-            query["cdn-cache-bust"] = token;
+            query["_"] = token;
 
             uriBuilder.Query = query.ToString();
 

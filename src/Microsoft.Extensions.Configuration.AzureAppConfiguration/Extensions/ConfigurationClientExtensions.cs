@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, ICdnCacheBustingAccessor cdnCacheBustingAccessor, CancellationToken cancellationToken)
+        public static async Task<string> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -91,43 +91,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
 
-            bool isCdnEnabled = cdnCacheBustingAccessor != null;
-
-            IAsyncEnumerable<Page<ConfigurationSetting>> pages = isCdnEnabled ? pageable.AsPages() : pageable.AsPages(pageIterator, matchConditions);
-
-            bool canPeek = existingMatchConditionsEnumerator.MoveNext();
-
-            if (isCdnEnabled && canPeek)
-            {
-                cdnCacheBustingAccessor.CurrentToken = existingMatchConditionsEnumerator.Current.IfNoneMatch.ToString();
-            }
+            IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest ? pageable.AsPages(pageIterator, matchConditions) : pageable.AsPages(pageIterator);
 
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
 
-                if ((!canPeek ||
+                // Check if the ETag has changed
+                if ((!existingMatchConditionsEnumerator.MoveNext() ||
                     !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
-                    if (isCdnEnabled)
-                    {
-                        cdnCacheBustingAccessor.CurrentToken = response.Headers.ETag.ToString();
-                    }
-
-                    return true;
-                }
-
-                canPeek = existingMatchConditionsEnumerator.MoveNext();
-
-                if (isCdnEnabled && canPeek)
-                {
-                    cdnCacheBustingAccessor.CurrentToken = existingMatchConditionsEnumerator.Current.IfNoneMatch.ToString();
+                    return response.Headers.ETag.ToString();
                 }
             }
 
             // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            return existingMatchConditionsEnumerator.MoveNext();
+            return existingMatchConditionsEnumerator.MoveNext() ? existingMatchConditionsEnumerator.Current.IfNoneMatch.ToString() : null;
         }
     }
 }

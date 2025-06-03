@@ -15,6 +15,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Security;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +39,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
+
+        #region Cdn
+        private string _configVersion = null;
+        private string _ffCollectionVersion = null;
+        #endregion
 
         private readonly TimeSpan MinRefreshInterval;
 
@@ -280,8 +286,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     List<KeyValueChange> keyValueChanges = null;
                     Dictionary<string, ConfigurationSetting> data = null;
                     Dictionary<string, ConfigurationSetting> ffCollectionData = null;
-                    bool ffCollectionUpdated = false;
-                    bool refreshAll = false;
+                    string ffCollectionUpdatedChangedEtag = null;
+                    string refreshAllChangedEtag = null;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
@@ -294,8 +300,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         keyValueChanges = new List<KeyValueChange>();
                         data = null;
                         ffCollectionData = null;
-                        ffCollectionUpdated = false;
-                        refreshAll = false;
+                        ffCollectionUpdatedChangedEtag = null;
+                        refreshAllChangedEtag = null;
                         logDebugBuilder.Clear();
                         logInfoBuilder.Clear();
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
@@ -305,7 +311,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Get key value collection changes if RegisterAll was called
                             if (isRefreshDue)
                             {
-                                refreshAll = await HaveCollectionsChanged(
+                                if (_options.IsCdnEnabled)
+                                {
+                                    if (_configVersion == null && _kvEtags.Count > 0)
+                                    {
+                                        _configVersion = AzureAppConfigurationProvider.CalculateHash(_kvEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
+                                    }
+
+                                    _options.CdnCacheBustingAccessor.CurrentToken = _configVersion;
+                                }
+
+                                refreshAllChangedEtag = await HaveCollectionsChanged(
                                     _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
                                     _kvEtags,
                                     client,
@@ -314,7 +330,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else
                         {
-                            refreshAll = await RefreshIndividualKvWatchers(
+                            if (_options.IsCdnEnabled)
+                            {
+                                if (_configVersion == null && _watchedIndividualKvs.Count > 0)
+                                {
+                                    _configVersion = AzureAppConfigurationProvider.CalculateHash(_watchedIndividualKvs.Select(kvp => kvp.Value.ETag.ToString()));
+                                }
+
+                                _options.CdnCacheBustingAccessor.CurrentToken = _configVersion;
+                            }
+
+                            refreshAllChangedEtag = await RefreshIndividualKvWatchers(
                                 client,
                                 keyValueChanges,
                                 refreshableIndividualKvWatchers,
@@ -324,13 +350,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 cancellationToken).ConfigureAwait(false);
                         }
 
-                        if (refreshAll)
+                        if (refreshAllChangedEtag != null)
                         {
                             // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true,
                             // or if any key-value collection change was detected.
                             kvEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
                             ffKeys = new HashSet<string>();
+
+                            if (_options.IsCdnEnabled)
+                            {
+                                //
+                                // Bust cdn cache
+                                _options.CdnCacheBustingAccessor.CurrentToken = refreshAllChangedEtag;
+
+                                // Reset versions so that next watch request will not use stale versions.
+                                _configVersion = null;
+                                _ffCollectionVersion = null;
+                            }
 
                             data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
                             watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
@@ -339,7 +376,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        ffCollectionUpdated = await HaveCollectionsChanged(
+                        if (_options.IsCdnEnabled)
+                        {
+                            if (_ffCollectionVersion == null && _ffEtags.Count > 0)
+                            {
+                                _ffCollectionVersion = AzureAppConfigurationProvider.CalculateHash(_ffEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
+                            }
+
+                            _options.CdnCacheBustingAccessor.CurrentToken = _ffCollectionVersion;
+                        }
+
+                        ffCollectionUpdatedChangedEtag = await HaveCollectionsChanged(
                             refreshableFfWatchers.Select(watcher => new KeyValueSelector
                             {
                                 KeyFilter = watcher.Key,
@@ -350,10 +397,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             client,
                             cancellationToken).ConfigureAwait(false);
 
-                        if (ffCollectionUpdated)
+                        if (ffCollectionUpdatedChangedEtag != null)
                         {
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<MatchConditions>>();
                             ffKeys = new HashSet<string>();
+
+                            if (_options.IsCdnEnabled)
+                            {
+                                //
+                                // Bust cdn cache
+                                _options.CdnCacheBustingAccessor.CurrentToken = ffCollectionUpdatedChangedEtag;
+                                // Reset ff collection version so that next ff watch request will not use stale version.
+                                _ffCollectionVersion = null;
+                            }
 
                             ffCollectionData = await LoadSelected(
                                 client,
@@ -372,6 +428,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     },
                     cancellationToken)
                     .ConfigureAwait(false);
+
+                    bool refreshAll = !string.IsNullOrEmpty(refreshAllChangedEtag);
+                    bool ffCollectionUpdated = !string.IsNullOrEmpty(ffCollectionUpdatedChangedEtag);
 
                     if (refreshAll)
                     {
@@ -940,7 +999,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return watchedIndividualKvs;
         }
 
-        private async Task<bool> RefreshIndividualKvWatchers(
+        private async Task<string> RefreshIndividualKvWatchers(
             ConfigurationClient client,
             List<KeyValueChange> keyValueChanges,
             IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers,
@@ -949,8 +1008,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
-            bool isCdnEnabled = _options.CdnCacheBustingAccessor != null;
-
             foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
@@ -964,13 +1021,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // Find if there is a change associated with watcher
                 if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
-                    if (isCdnEnabled)
-                    {
-                        _options.CdnCacheBustingAccessor.CurrentToken = watchedKv.ETag.ToString();
-                    }
-
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !isCdnEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !_options.IsCdnEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 else
                 {
@@ -1007,12 +1059,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
-                        if (isCdnEnabled)
-                        {
-                            _options.CdnCacheBustingAccessor.CurrentToken = change.Current.ETag.ToString();
-                        }
+                        return change.Current.ETag.ToString();
+                    }
 
-                        return true;
+                    if (_options.IsCdnEnabled)
+                    {
+                        //
+                        // even if the change is not refresh all, we still need to reset stale version.
+                        _configVersion = null;
                     }
                 }
                 else
@@ -1021,7 +1075,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            return false;
+            return null;
         }
 
         private void SetData(IDictionary<string, string> data)
@@ -1341,34 +1395,60 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> HaveCollectionsChanged(
+        private async Task<string> HaveCollectionsChanged(
             IEnumerable<KeyValueSelector> selectors,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags,
             ConfigurationClient client,
             CancellationToken cancellationToken)
         {
-            bool haveCollectionsChanged = false;
+            string changedEtag = null;
 
             foreach (KeyValueSelector selector in selectors)
             {
                 if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(
+                        async () => changedEtag = await client.HaveCollectionsChanged(
                             selector,
                             matchConditions,
                             _options.ConfigurationSettingPageIterator,
-                            _options.CdnCacheBustingAccessor,
+                            makeConditionalRequest: !_options.IsCdnEnabled,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
 
-                if (haveCollectionsChanged)
+                if (changedEtag != null)
                 {
-                    return true;
+                    // If we have a changed ETag, we can stop checking further selectors
+                    return changedEtag;
                 }
             }
 
-            return haveCollectionsChanged;
+            return changedEtag;
+        }
+
+        private static string CalculateHash(IEnumerable<string> etags)
+        {
+            Debug.Assert(etags != null && etags.Any());
+
+            StringBuilder inputBuilder = new StringBuilder();
+
+            foreach (string etag in etags)
+            {
+                inputBuilder.Append(etag);
+                inputBuilder.Append('\n');
+            }
+
+            // Remove the last newline character
+            if (inputBuilder.Length > 0)
+            {
+                inputBuilder.Length--;
+            }
+
+            string input = inputBuilder.ToString();
+
+            using SHA256 sha256 = SHA256.Create();
+
+            return sha256.ComputeHash(Encoding.UTF8.GetBytes(input)).ToBase64Url();
         }
 
         private async Task ProcessKeyValueChangesAsync(

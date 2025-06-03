@@ -163,6 +163,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ICdnCacheBustingAccessor CdnCacheBustingAccessor { get; private set; }
 
         /// <summary>
+        /// Gets a value indicating whether CDN is enabled.
+        /// </summary>
+        internal bool IsCdnEnabled => CdnCacheBustingAccessor != null;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()

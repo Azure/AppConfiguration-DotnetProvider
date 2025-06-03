@@ -56,10 +56,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
+                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} or {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.ConnectCdn)} to specify how to connect to Azure App Configuration.");
                 }
 
-                if (options.Credential is EmptyTokenCredential)
+                if (options.IsCdnEnabled)
                 {
                     provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints), options, _optional);
                 }
