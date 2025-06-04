@@ -1427,11 +1427,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // purpose
             inputBuilder.Append("CacheConsistency\n");
 
-            foreach (string etag in etags)
+            foreach (string etag in etags.OrderBy(etag => etag, StringComparer.Ordinal))
             {
                 inputBuilder.Append(etag);
                 inputBuilder.Append('\n');
             }
+
+            inputBuilder.Length--; // Remove the last newline character
 
             using SHA256 sha256 = SHA256.Create();
 
