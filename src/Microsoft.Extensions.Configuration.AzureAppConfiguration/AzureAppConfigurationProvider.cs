@@ -5,6 +5,7 @@ using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -21,8 +22,9 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IDisposable
+    internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IHealthCheck, IDisposable
     {
+        private readonly ActivitySource _activitySource = new ActivitySource(ActivityNames.AzureAppConfigurationActivitySource);
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private bool _isAssemblyInspected;
@@ -51,6 +53,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private int _networkOperationsInProgress = 0;
         private Logger _logger = new Logger();
         private ILoggerFactory _loggerFactory;
+
+        // For health check
+        private DateTimeOffset? _lastSuccessfulAttempt = null;
+        private DateTimeOffset? _lastFailedAttempt = null;
 
         private class ConfigurationClientBackoffStatus
         {
@@ -158,7 +164,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public override void Load()
         {
             var watch = Stopwatch.StartNew();
-
+            using Activity activity = _activitySource.StartActivity(ActivityNames.Load);
             try
             {
                 using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
@@ -255,9 +261,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
 
+                        _lastFailedAttempt = DateTime.UtcNow;
+
                         return;
                     }
 
+                    using Activity activity = _activitySource.StartActivity(ActivityNames.Refresh);
                     // Check if initial configuration load had failed
                     if (_mappedData == null)
                     {
@@ -344,6 +353,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 KeyFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
+                                TagFilters = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
                             _ffEtags,
@@ -566,6 +576,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _logger.LogWarning(LogHelper.BuildPushNotificationUnregisteredEndpointMessage(pushNotification.ResourceUri.ToString()));
             }
+        }
+
+        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        {
+            if (!_lastSuccessfulAttempt.HasValue)
+            {
+                return HealthCheckResult.Unhealthy(HealthCheckConstants.LoadNotCompletedMessage);
+            }
+
+            if (_lastFailedAttempt.HasValue &&
+                _lastSuccessfulAttempt.Value < _lastFailedAttempt.Value)
+            {
+                return HealthCheckResult.Unhealthy(HealthCheckConstants.RefreshFailedMessage);
+            }
+
+            return HealthCheckResult.Healthy();
         }
 
         private void SetDirty(TimeSpan? maxDelay)
@@ -825,6 +851,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         KeyFilter = loadOption.KeyFilter,
                         LabelFilter = loadOption.LabelFilter
                     };
+
+                    if (loadOption.TagFilters != null)
+                    {
+                        foreach (string tagFilter in loadOption.TagFilters)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
+                    }
 
                     var matchConditions = new List<MatchConditions>();
 
@@ -1147,6 +1181,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     success = true;
 
                     _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
+                    _lastSuccessfulAttempt = DateTime.UtcNow;
 
                     return result;
                 }
@@ -1172,6 +1207,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (!success && backoffAllClients)
                     {
+                        _lastFailedAttempt = DateTime.UtcNow;
                         _logger.LogWarning(LogHelper.BuildLastEndpointFailedMessage(previousEndpoint?.ToString()));
 
                         do
@@ -1221,9 +1257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private bool IsFailOverable(AggregateException ex)
         {
-            TaskCanceledException tce = ex.InnerExceptions?.LastOrDefault(e => e is TaskCanceledException) as TaskCanceledException;
-
-            if (tce != null && tce.InnerException is TimeoutException)
+            if (ex.InnerExceptions?.Any(e => e is TaskCanceledException) == true)
             {
                 return true;
             }
@@ -1413,6 +1447,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public void Dispose()
         {
             (_configClientManager as ConfigurationClientManager)?.Dispose();
+            _activitySource.Dispose();
         }
     }
 }
