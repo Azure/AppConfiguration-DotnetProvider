@@ -3,6 +3,7 @@
 //
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -61,7 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (options.IsCdnEnabled)
                 {
-                    provider = new AzureAppConfigurationProvider(new Cdn.ConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
                 }
                 else
                 {

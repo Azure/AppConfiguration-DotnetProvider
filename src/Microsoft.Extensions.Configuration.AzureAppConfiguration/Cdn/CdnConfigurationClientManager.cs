@@ -8,11 +8,11 @@ using System.Collections.Generic;
 using System.Linq;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
-    internal class ConfigurationClientManager : IConfigurationClientManager
+    internal class CdnConfigurationClientManager : IConfigurationClientManager
     {
         private readonly ConfigurationClientWrapper _clientWrapper;
 
-        public ConfigurationClientManager(
+        public CdnConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> clientFactory,
             Uri endpoint)
         {
