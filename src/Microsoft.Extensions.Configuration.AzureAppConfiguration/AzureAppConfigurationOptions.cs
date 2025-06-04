@@ -395,6 +395,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
 
+            //
+            // We do not perform replica discovery and load balancing for CDN.
+            ReplicaDiscoveryEnabled = false;
+            LoadBalancingEnabled = false;
+
             CacheConsistencyTokenAccessor = new CacheConsistencyTokenAccessor();
             ClientOptions.AddPolicy(new CacheConsistencyPolicy(CacheConsistencyTokenAccessor), HttpPipelinePosition.PerCall);
 
