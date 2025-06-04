@@ -313,7 +313,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (_options.IsCdnEnabled)
                                 {
-                                    _configVersion ??= CalculateCacheConsistencyToken(_kvEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
                                     _options.CacheConsistencyTokenAccessor.Current = _configVersion;
                                 }
 
@@ -328,7 +327,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (_options.IsCdnEnabled)
                             {
-                                _configVersion ??= CalculateCacheConsistencyToken(_watchedIndividualKvs.Select(kvp => kvp.Value.ETag.ToString()));
                                 _options.CacheConsistencyTokenAccessor.Current = _configVersion;
                             }
 
@@ -358,8 +356,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                 // 
                                 // Reset versions so that next watch request will not use stale versions.
-                                _configVersion = null;
-                                _ffCollectionVersion = null;
+                                _configVersion = refreshAllChangedEtag;
+                                _ffCollectionVersion = refreshAllChangedEtag;
                             }
 
                             data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
@@ -371,7 +369,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Get feature flag changes
                         if (_options.IsCdnEnabled)
                         {
-                            _ffCollectionVersion ??= CalculateCacheConsistencyToken(_ffEtags.SelectMany(kvp => kvp.Value.Select(mc => mc.IfNoneMatch.ToString())));
                             _options.CacheConsistencyTokenAccessor.Current = _ffCollectionVersion;
                         }
 
@@ -399,7 +396,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                 //
                                 // Reset ff collection version so that next ff watch request will not use stale version.
-                                _ffCollectionVersion = null;
+                                _ffCollectionVersion = ffCollectionUpdatedChangedEtag;
                             }
 
                             ffCollectionData = await LoadSelected(
@@ -1050,14 +1047,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
-                        return change.Current?.ETag.ToString() ?? CalculateCacheConsistencyToken(new[] { change.Previous.ETag.ToString() });// in case of deleted sentinel key
-                    }
+                        string changedEtag = change.Current?.ETag.ToString();
 
-                    if (_options.IsCdnEnabled)
-                    {
                         //
-                        // even if the change is not refresh all, we still need to reset stale config version.
-                        _configVersion = null;
+                        // falback in case of deleted sentinel key-value
+                        if (changedEtag == null)
+                        {
+                            using SHA256 sha256 = SHA256.Create();
+                            changedEtag = sha256.ComputeHash(Encoding.UTF8.GetBytes($"ResourceDeleted\n{change.Previous.ETag}")).ToBase64Url();
+                        }
+
+                        return changedEtag;
                     }
                 }
                 else
@@ -1415,29 +1415,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return changedEtag;
-        }
-
-        private static string CalculateCacheConsistencyToken(IEnumerable<string> etags)
-        {
-            Debug.Assert(etags != null);
-
-            StringBuilder inputBuilder = new StringBuilder();
-
-            //
-            // purpose
-            inputBuilder.Append("CacheConsistency\n");
-
-            foreach (string etag in etags.OrderBy(etag => etag, StringComparer.Ordinal))
-            {
-                inputBuilder.Append(etag);
-                inputBuilder.Append('\n');
-            }
-
-            inputBuilder.Length--; // Remove the last newline character
-
-            using SHA256 sha256 = SHA256.Create();
-
-            return sha256.ComputeHash(Encoding.UTF8.GetBytes(inputBuilder.ToString())).ToBase64Url();
         }
 
         private async Task ProcessKeyValueChangesAsync(
