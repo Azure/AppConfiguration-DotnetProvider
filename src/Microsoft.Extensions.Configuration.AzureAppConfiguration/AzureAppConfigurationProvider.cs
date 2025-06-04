@@ -1050,7 +1050,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
-                        return change.Current.ETag.ToString();
+                        return change.Current?.ETag.ToString() ?? CalculateCacheConsistencyToken(new[] { change.Previous.ETag.ToString() });// in case of deleted sentinel key
                     }
 
                     if (_options.IsCdnEnabled)
