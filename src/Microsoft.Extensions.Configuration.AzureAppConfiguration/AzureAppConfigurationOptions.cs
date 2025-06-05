@@ -392,12 +392,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
+            if (LoadBalancingEnabled)
+            {
+                throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
+            }
 
-            //
-            // We do not perform replica discovery and load balancing for CDN.
-            ReplicaDiscoveryEnabled = false;
-            LoadBalancingEnabled = false;
+            var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
 
             CdnTokenAccessor = new CdnTokenAccessor();
             ClientOptions.AddPolicy(new CdnPolicy(CdnTokenAccessor), HttpPipelinePosition.PerCall);
