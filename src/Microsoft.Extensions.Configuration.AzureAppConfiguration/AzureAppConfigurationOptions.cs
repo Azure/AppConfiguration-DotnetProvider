@@ -158,15 +158,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
-        /// Accessor for CDN cache busting context that manages ETag injection into requests.
-        /// When null, CDN cache consistency is disabled. When not null, CDN cache consistency is enabled.
+        /// An accessor for current token to be used for CDN cache breakage/consistency.
         /// </summary>
-        internal ICacheConsistencyTokenAccessor CacheConsistencyTokenAccessor { get; private set; }
+        internal ICdnTokenAccessor CdnTokenAccessor { get; private set; }
 
         /// <summary>
         /// Gets a value indicating whether CDN is enabled.
         /// </summary>
-        internal bool IsCdnEnabled => CacheConsistencyTokenAccessor != null;
+        internal bool IsCdnEnabled => CdnTokenAccessor != null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -400,8 +399,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ReplicaDiscoveryEnabled = false;
             LoadBalancingEnabled = false;
 
-            CacheConsistencyTokenAccessor = new CacheConsistencyTokenAccessor();
-            ClientOptions.AddPolicy(new CacheConsistencyPolicy(CacheConsistencyTokenAccessor), HttpPipelinePosition.PerCall);
+            CdnTokenAccessor = new CdnTokenAccessor();
+            ClientOptions.AddPolicy(new CdnPolicy(CdnTokenAccessor), HttpPipelinePosition.PerCall);
 
             return result;
         }

@@ -313,7 +313,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (_options.IsCdnEnabled)
                                 {
-                                    _options.CacheConsistencyTokenAccessor.Current = _configVersion;
+                                    _options.CdnTokenAccessor.Current = _configVersion;
                                 }
 
                                 refreshAllChangedEtag = await HaveCollectionsChanged(
@@ -327,7 +327,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (_options.IsCdnEnabled)
                             {
-                                _options.CacheConsistencyTokenAccessor.Current = _configVersion;
+                                _options.CdnTokenAccessor.Current = _configVersion;
                             }
 
                             refreshAllChangedEtag = await RefreshIndividualKvWatchers(
@@ -352,7 +352,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 //
                                 // Break cdn cache
-                                _options.CacheConsistencyTokenAccessor.Current = refreshAllChangedEtag;
+                                _options.CdnTokenAccessor.Current = refreshAllChangedEtag;
 
                                 // 
                                 // Reset versions so that next watch request will not use stale versions.
@@ -369,7 +369,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Get feature flag changes
                         if (_options.IsCdnEnabled)
                         {
-                            _options.CacheConsistencyTokenAccessor.Current = _ffCollectionVersion;
+                            _options.CdnTokenAccessor.Current = _ffCollectionVersion;
                         }
 
                         ffCollectionUpdatedChangedEtag = await HaveCollectionsChanged(
@@ -392,7 +392,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 //
                                 // Break cdn cache
-                                _options.CacheConsistencyTokenAccessor.Current = ffCollectionUpdatedChangedEtag;
+                                _options.CdnTokenAccessor.Current = ffCollectionUpdatedChangedEtag;
 
                                 //
                                 // Reset ff collection version so that next ff watch request will not use stale version.

@@ -4,15 +4,15 @@
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
     /// <summary>
-    /// Implementation of ICacheConsistencyTokenAccessor that manages the current token for cache consistency.
+    /// Implementation of ICdnTokenAccessor that manages the current token for CDN cache breakage/consistency.
     /// </summary>
-    internal class CacheConsistencyTokenAccessor : ICacheConsistencyTokenAccessor
+    internal class CdnTokenAccessor : ICdnTokenAccessor
     {
         private string _currentToken;
 
         /// <summary>
-        /// Gets or sets the current token value to be used for cache consistency.
-        /// When null, cache consistency is disabled. When not null, the token will be injected into requests.
+        /// Gets or sets the current token value to be used for CDN cache breakage/consistency.
+        /// When null, CDN cache breakage/consistency is disabled. When not null, the token will be injected into requests.
         /// </summary>
         public string Current
         {
