@@ -316,7 +316,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     _options.CdnTokenAccessor.Current = _configVersion;
                                 }
 
-                                refreshAllChangedEtag = await GetCollectionChangeEtag(
+                                refreshAllChangedEtag = await GetCollectionsChangeEtag(
                                     _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
                                     _kvEtags,
                                     client,
@@ -372,7 +372,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             _options.CdnTokenAccessor.Current = _ffCollectionVersion;
                         }
 
-                        ffCollectionUpdatedChangedEtag = await GetCollectionChangeEtag(
+                        ffCollectionUpdatedChangedEtag = await GetCollectionsChangeEtag(
                             refreshableFfWatchers.Select(watcher => new KeyValueSelector
                             {
                                 KeyFilter = watcher.Key,
@@ -1386,7 +1386,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<string> GetCollectionChangeEtag(
+        private async Task<string> GetCollectionsChangeEtag(
             IEnumerable<KeyValueSelector> selectors,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags,
             ConfigurationClient client,
