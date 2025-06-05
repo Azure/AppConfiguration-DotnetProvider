@@ -316,7 +316,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     _options.CdnTokenAccessor.Current = _configVersion;
                                 }
 
-                                refreshAllChangedEtag = await HaveCollectionsChanged(
+                                refreshAllChangedEtag = await GetCollectionChangeEtag(
                                     _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
                                     _kvEtags,
                                     client,
@@ -372,7 +372,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             _options.CdnTokenAccessor.Current = _ffCollectionVersion;
                         }
 
-                        ffCollectionUpdatedChangedEtag = await HaveCollectionsChanged(
+                        ffCollectionUpdatedChangedEtag = await GetCollectionChangeEtag(
                             refreshableFfWatchers.Select(watcher => new KeyValueSelector
                             {
                                 KeyFilter = watcher.Key,
@@ -1386,7 +1386,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<string> HaveCollectionsChanged(
+        private async Task<string> GetCollectionChangeEtag(
             IEnumerable<KeyValueSelector> selectors,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags,
             ConfigurationClient client,
@@ -1399,7 +1399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => changedEtag = await client.HaveCollectionsChanged(
+                        async () => changedEtag = await client.GetCollectionChangeEtag(
                             selector,
                             matchConditions,
                             _options.ConfigurationSettingPageIterator,
