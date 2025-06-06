@@ -5,7 +5,6 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
 {
     internal class CdnConfigurationClientManager : IConfigurationClientManager

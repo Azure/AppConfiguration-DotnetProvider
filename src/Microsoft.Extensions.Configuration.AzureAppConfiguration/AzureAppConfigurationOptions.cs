@@ -160,12 +160,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// An accessor for current token to be used for CDN cache breakage/consistency.
         /// </summary>
-        internal ICdnTokenAccessor CdnTokenAccessor { get; private set; }
+        internal ICdnTokenAccessor CdnTokenAccessor { get; set; }
 
         /// <summary>
         /// Gets a value indicating whether CDN is enabled.
         /// </summary>
-        internal bool IsCdnEnabled => CdnTokenAccessor != null;
+        internal bool IsCdnEnabled { get; private set; } = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -377,11 +377,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
         public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
         {
-            if (IsCdnEnabled)
-            {
-                throw new InvalidOperationException($"Please call {nameof(AzureAppConfigurationOptions.ConnectCdn)} only once.");
-            }
-
             if ((Credential != null) || (ConnectionStrings?.Any() ?? false))
             {
                 throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
@@ -394,8 +389,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
 
-            CdnTokenAccessor = new CdnTokenAccessor();
-            ClientOptions.AddPolicy(new CdnPolicy(CdnTokenAccessor), HttpPipelinePosition.PerCall);
+            IsCdnEnabled = true;
 
             return result;
         }

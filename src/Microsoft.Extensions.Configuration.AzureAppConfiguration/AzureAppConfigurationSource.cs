@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn;
@@ -66,6 +67,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
                     }
+
+                    options.CdnTokenAccessor = new CdnTokenAccessor();
+                    options.ClientOptions.AddPolicy(new CdnPolicy(options.CdnTokenAccessor), HttpPipelinePosition.PerCall);
 
                     provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
                 }
