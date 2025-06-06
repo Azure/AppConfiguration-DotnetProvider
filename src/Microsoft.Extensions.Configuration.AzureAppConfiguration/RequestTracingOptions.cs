@@ -125,7 +125,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return IsLoadBalancingEnabled ||
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
-                UsesAIChatCompletionConfiguration;
+                UsesAIChatCompletionConfiguration ||
+                IsCdnEnabled;
         }
 
         /// <summary>
@@ -174,6 +175,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
+            }
+
+            if (IsCdnEnabled)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.CdnTag);
             }
 
             return sb.ToString();
