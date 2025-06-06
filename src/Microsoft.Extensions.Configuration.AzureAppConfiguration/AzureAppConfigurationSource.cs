@@ -62,6 +62,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (options.IsCdnEnabled)
                 {
+                    if (options.LoadBalancingEnabled)
+                    {
+                        throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
+                    }
+
                     provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
                 }
                 else

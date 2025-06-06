@@ -392,11 +392,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            if (LoadBalancingEnabled)
-            {
-                throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
-            }
-
             var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
 
             CdnTokenAccessor = new CdnTokenAccessor();
