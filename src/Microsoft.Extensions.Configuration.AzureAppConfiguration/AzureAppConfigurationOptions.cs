@@ -377,7 +377,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
         public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
         {
-            if ((Credential != null) || (ConnectionStrings?.Any() ?? false))
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
             {
                 throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
             }
