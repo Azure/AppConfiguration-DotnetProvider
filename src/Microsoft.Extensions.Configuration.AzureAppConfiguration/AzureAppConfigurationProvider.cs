@@ -1047,14 +1047,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (kvWatcher.RefreshAll)
                     {
-                        string changedEtag = change.Current?.ETag.ToString();
+                        string changedEtag;
 
-                        //
-                        // falback in case of deleted sentinel key-value
-                        if (changedEtag == null)
+                        if (change.ChangeType == KeyValueChangeType.Deleted)
                         {
                             using SHA256 sha256 = SHA256.Create();
                             changedEtag = sha256.ComputeHash(Encoding.UTF8.GetBytes($"ResourceDeleted\n{change.Previous.ETag}")).ToBase64Url();
+                        }
+                        else
+                        {
+                            changedEtag = change.Current.ETag.ToString();
                         }
 
                         return changedEtag;
