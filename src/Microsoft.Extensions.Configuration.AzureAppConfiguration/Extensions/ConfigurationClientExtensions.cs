@@ -64,7 +64,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<string> GetCollectionChangeEtag(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<Page<ConfigurationSetting>> GetPageChange(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
             if (matchConditions == null)
             {
@@ -102,12 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                     !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
                     response.Status == (int)HttpStatusCode.OK)
                 {
-                    return response.Headers.ETag.ToString();
+                    return page;
                 }
             }
 
-            // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            return existingMatchConditionsEnumerator.MoveNext() ? existingMatchConditionsEnumerator.Current.IfNoneMatch.ToString() : null;
+            return null;
         }
     }
 }
