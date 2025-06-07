@@ -1414,7 +1414,7 @@ namespace Tests.AzureAppConfiguration
 
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to previous page change ETag
+                // Verify that the CDN token accessor has a token set to previous CDN token
                 Assert.Equal(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
             }
         }
