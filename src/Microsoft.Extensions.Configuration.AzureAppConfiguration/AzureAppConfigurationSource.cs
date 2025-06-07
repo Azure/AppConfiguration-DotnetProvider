@@ -1,8 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,6 +36,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
 
+                if (options.IsCdnEnabled)
+                {
+                    if (options.LoadBalancingEnabled)
+                    {
+                        throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
+                    }
+
+                    options.CdnTokenAccessor = new CdnTokenAccessor();
+                    options.ClientOptions.AddPolicy(new CdnPolicy(options.CdnTokenAccessor), HttpPipelinePosition.PerCall);
+                }
+
                 if (options.ClientManager != null)
                 {
                     return new AzureAppConfigurationProvider(options.ClientManager, options, _optional);
@@ -56,10 +69,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
+                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} or {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.ConnectCdn)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                if (options.IsCdnEnabled)
+                {
+                    provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
+                }
+                else
+                {
+                    provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                }
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {

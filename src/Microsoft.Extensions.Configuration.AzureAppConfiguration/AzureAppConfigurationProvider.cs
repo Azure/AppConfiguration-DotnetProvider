@@ -16,6 +16,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Security;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,6 +41,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
+
+        #region Cdn
+        private string _configVersion = null;
+        private string _ffCollectionVersion = null;
+        #endregion
 
         private readonly TimeSpan MinRefreshInterval;
 
@@ -309,28 +315,94 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         logInfoBuilder.Clear();
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
+                        if (_options.IsCdnEnabled)
+                        {
+                            _options.CdnTokenAccessor.Current = _configVersion;
+                        }
+
                         if (_options.RegisterAllEnabled)
                         {
                             // Get key value collection changes if RegisterAll was called
                             if (isRefreshDue)
                             {
-                                refreshAll = await HaveCollectionsChanged(
-                                    _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
-                                    _kvEtags,
-                                    client,
-                                    cancellationToken).ConfigureAwait(false);
+                                foreach (KeyValueSelector selector in _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector))
+                                {
+                                    Page<ConfigurationSetting> changedPage = null;
+
+                                    if (_kvEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
+                                    {
+                                        await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                                            async () => changedPage = await client.GetPageChange(
+                                                selector,
+                                                matchConditions,
+                                                _options.ConfigurationSettingPageIterator,
+                                                makeConditionalRequest: !_options.IsCdnEnabled,
+                                                cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                                    }
+
+                                    if (changedPage != null)
+                                    {
+                                        refreshAll = true;
+
+                                        if (_options.IsCdnEnabled)
+                                        {
+                                            //
+                                            // Break cdn cache
+                                            string token = changedPage.GetCdnToken();
+                                            _options.CdnTokenAccessor.Current = token;
+
+                                            // 
+                                            // Reset versions so that next watch request will not use stale versions.
+                                            _configVersion = token;
+                                            _ffCollectionVersion = token;
+                                        }
+
+                                        break;
+                                    }
+                                }
                             }
                         }
                         else
                         {
-                            refreshAll = await RefreshIndividualKvWatchers(
-                                client,
-                                keyValueChanges,
-                                refreshableIndividualKvWatchers,
-                                endpoint,
-                                logDebugBuilder,
-                                logInfoBuilder,
-                                cancellationToken).ConfigureAwait(false);
+                            foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
+                            {
+                                KeyValueChange change = await CheckForChange(client, kvWatcher, cancellationToken).ConfigureAwait(false);
+
+                                //
+                                // Skip if no change detected
+                                if (change.ChangeType == KeyValueChangeType.None)
+                                {
+                                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+
+                                    continue;
+                                }
+
+                                logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+
+                                logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
+
+                                keyValueChanges.Add(change);
+
+                                if (kvWatcher.RefreshAll)
+                                {
+                                    refreshAll = true;
+
+                                    if (_options.IsCdnEnabled)
+                                    {
+                                        //
+                                        // Break cdn cache
+                                        string token = change.GetCdnToken();
+                                        _options.CdnTokenAccessor.Current = token;
+
+                                        // 
+                                        // Reset versions so that next watch request will not use stale versions.
+                                        _configVersion = token;
+                                        _ffCollectionVersion = token;
+                                    }
+
+                                    break;
+                                }
+                            }
                         }
 
                         if (refreshAll)
@@ -348,17 +420,52 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        ffCollectionUpdated = await HaveCollectionsChanged(
-                            refreshableFfWatchers.Select(watcher => new KeyValueSelector
+                        if (_options.IsCdnEnabled)
+                        {
+                            _options.CdnTokenAccessor.Current = _ffCollectionVersion;
+                        }
+
+                        var ffSelectors = refreshableFfWatchers.Select(watcher => new KeyValueSelector
+                        {
+                            KeyFilter = watcher.Key,
+                            LabelFilter = watcher.Label,
+                            IsFeatureFlagSelector = true
+                        });
+
+                        foreach (KeyValueSelector selector in ffSelectors)
+                        {
+                            Page<ConfigurationSetting> changedPage = null;
+
+                            if (_ffEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                             {
-                                KeyFilter = watcher.Key,
-                                LabelFilter = watcher.Label,
-                                TagFilters = watcher.Tags,
-                                IsFeatureFlagSelector = true
-                            }),
-                            _ffEtags,
-                            client,
-                            cancellationToken).ConfigureAwait(false);
+                                await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                                    async () => changedPage = await client.GetPageChange(
+                                        selector,
+                                        matchConditions,
+                                        _options.ConfigurationSettingPageIterator,
+                                        makeConditionalRequest: !_options.IsCdnEnabled,
+                                        cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                            }
+
+                            if (changedPage != null)
+                            {
+                                ffCollectionUpdated = true;
+
+                                if (_options.IsCdnEnabled)
+                                {
+                                    //
+                                    // Break cdn cache
+                                    string token = changedPage.GetCdnToken();
+                                    _options.CdnTokenAccessor.Current = token;
+
+                                    //
+                                    // Reset ff collection version so that next ff watch request will not use stale version.
+                                    _ffCollectionVersion = token;
+                                }
+
+                                break;
+                            }
+                        }
 
                         if (ffCollectionUpdated)
                         {
@@ -974,76 +1081,47 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return watchedIndividualKvs;
         }
 
-        private async Task<bool> RefreshIndividualKvWatchers(
-            ConfigurationClient client,
-            List<KeyValueChange> keyValueChanges,
-            IEnumerable<KeyValueWatcher> refreshableIndividualKvWatchers,
-            Uri endpoint,
-            StringBuilder logDebugBuilder,
-            StringBuilder logInfoBuilder,
-            CancellationToken cancellationToken)
+        private async Task<KeyValueChange> CheckForChange(ConfigurationClient client, KeyValueWatcher kvWatcher, CancellationToken cancellationToken)
         {
-            foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
+            Debug.Assert(client != null);
+            Debug.Assert(kvWatcher != null);
+
+            KeyValueChange change = default;
+
+            //
+            // Find if there is a change associated with watcher
+            if (_watchedIndividualKvs.TryGetValue(new KeyValueIdentifier(kvWatcher.Key, kvWatcher.Label), out ConfigurationSetting watchedKv))
             {
-                string watchedKey = kvWatcher.Key;
-                string watchedLabel = kvWatcher.Label;
+                await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                    async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !_options.IsCdnEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+            }
+            else
+            {
+                // Load the key-value in case the previous load attempts had failed
 
-                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-
-                KeyValueChange change = default;
-
-                //
-                // Find if there is a change associated with watcher
-                if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                try
                 {
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(watchedKv, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                    await CallWithRequestTracing(
+                        async () => watchedKv = await client.GetConfigurationSettingAsync(kvWatcher.Key, kvWatcher.Label, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
-                else
+                catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
-                    // Load the key-value in case the previous load attempts had failed
-
-                    try
-                    {
-                        await CallWithRequestTracing(
-                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                    }
-                    catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
-                    {
-                        watchedKv = null;
-                    }
-
-                    if (watchedKv != null)
-                    {
-                        change = new KeyValueChange()
-                        {
-                            Key = watchedKv.Key,
-                            Label = watchedKv.Label.NormalizeNull(),
-                            Current = watchedKv,
-                            ChangeType = KeyValueChangeType.Modified
-                        };
-                    }
+                    watchedKv = null;
                 }
 
-                // Check if a change has been detected in the key-value registered for refresh
-                if (change.ChangeType != KeyValueChangeType.None)
+                if (watchedKv != null)
                 {
-                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
-                    logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
-                    keyValueChanges.Add(change);
-
-                    if (kvWatcher.RefreshAll)
+                    change = new KeyValueChange()
                     {
-                        return true;
-                    }
-                }
-                else
-                {
-                    logDebugBuilder.AppendLine(LogHelper.BuildKeyValueReadMessage(change.ChangeType, change.Key, change.Label, endpoint.ToString()));
+                        Key = watchedKv.Key,
+                        Label = watchedKv.Label.NormalizeNull(),
+                        Current = watchedKv,
+                        ChangeType = KeyValueChangeType.Modified
+                    };
                 }
             }
 
-            return false;
+            return change;
         }
 
         private void SetData(IDictionary<string, string> data)
@@ -1099,7 +1177,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
-                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
+                IsCdnEnabled = _options.IsCdnEnabled
             };
         }
 
@@ -1360,35 +1439,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             _configClientBackoffs[endpoint] = clientBackoffStatus;
-        }
-
-        private async Task<bool> HaveCollectionsChanged(
-            IEnumerable<KeyValueSelector> selectors,
-            Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags,
-            ConfigurationClient client,
-            CancellationToken cancellationToken)
-        {
-            bool haveCollectionsChanged = false;
-
-            foreach (KeyValueSelector selector in selectors)
-            {
-                if (pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
-                {
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(
-                            selector,
-                            matchConditions,
-                            _options.ConfigurationSettingPageIterator,
-                            cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                }
-
-                if (haveCollectionsChanged)
-                {
-                    return true;
-                }
-            }
-
-            return haveCollectionsChanged;
         }
 
         private async Task ProcessKeyValueChangesAsync(

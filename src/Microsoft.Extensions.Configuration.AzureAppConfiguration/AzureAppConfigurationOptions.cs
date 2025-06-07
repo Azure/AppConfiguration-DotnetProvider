@@ -5,6 +5,7 @@ using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
@@ -153,6 +154,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Client factory that is responsible for creating instances of ConfigurationClient.
         /// </summary>
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
+
+        /// <summary>
+        /// An accessor for current token to be used for CDN cache breakage/consistency.
+        /// </summary>
+        internal ICdnTokenAccessor CdnTokenAccessor { get; set; }
+
+        /// <summary>
+        /// Gets a value indicating whether CDN is enabled.
+        /// </summary>
+        internal bool IsCdnEnabled { get; private set; } = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -357,6 +368,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -370,6 +386,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Endpoints = null;
             Credential = null;
             ConnectionStrings = connectionStrings;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to CDN endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
+        {
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            Credential ??= new EmptyTokenCredential();
+
+            Endpoints = new List<Uri>() { endpoint };
+            ConnectionStrings = null;
+
+            IsCdnEnabled = true;
+
             return this;
         }
 
@@ -400,6 +442,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
