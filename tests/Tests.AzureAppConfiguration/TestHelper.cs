@@ -166,6 +166,7 @@ namespace Tests.AzureAppConfiguration
     {
         private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
         private int _status;
+        private string _etag;
         private readonly TimeSpan? _delay;
 
         public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null)
@@ -180,6 +181,7 @@ namespace Tests.AzureAppConfiguration
             }
 
             _status = 200;
+            _etag = "\"" + Guid.NewGuid().ToString() + "\"";
             _delay = delay;
         }
 
@@ -208,6 +210,8 @@ namespace Tests.AzureAppConfiguration
 
                     _collection.Add(newSetting);
                 }
+
+                _etag = "\"" + Guid.NewGuid().ToString() + "\"";
             }
         }
 
@@ -218,7 +222,7 @@ namespace Tests.AzureAppConfiguration
                 await Task.Delay(_delay.Value);
             }
 
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
+            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status, _etag));
         }
     }
 
