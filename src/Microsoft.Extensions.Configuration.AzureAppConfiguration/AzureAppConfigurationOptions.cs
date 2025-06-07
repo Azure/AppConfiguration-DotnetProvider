@@ -387,11 +387,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            var result = Connect(new List<Uri>() { endpoint }, new EmptyTokenCredential());
+            Credential ??= new EmptyTokenCredential();
+
+            Endpoints = new List<Uri>() { endpoint };
+            ConnectionStrings = null;
 
             IsCdnEnabled = true;
 
-            return result;
+            return this;
         }
 
         /// <summary>
