@@ -1,7 +1,8 @@
-// write one generic extension method that takes a KeyValueChange object and returns a string representation of the key and value
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
