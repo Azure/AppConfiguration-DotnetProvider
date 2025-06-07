@@ -426,7 +426,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             var featureFlag = new FeatureFlag();
 
-            var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(settingValue));
+            var reader = new Utf8JsonReader(
+                System.Text.Encoding.UTF8.GetBytes(settingValue),
+                new JsonReaderOptions
+                {
+                    AllowTrailingCommas = true
+                });
 
             try
             {
