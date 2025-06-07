@@ -1340,5 +1340,157 @@ namespace Tests.AzureAppConfiguration
 
             return mockClient;
         }
+
+        [Fact]
+        public async Task RefreshTests_CdnWithCollectionMonitoring()
+        {
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    var copy = new List<ConfigurationSetting>();
+                    foreach (var setting in keyValueCollection)
+                    {
+                        copy.Add(TestHelpers.CloneSetting(setting));
+                    }
+
+                    return new MockAsyncPageable(copy);
+                });
+
+            IConfigurationRefresher refresher = null;
+            AzureAppConfigurationOptions capturedOptions = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                        .Select("TestKey*")
+                        .ConfigureRefresh(refreshOptions =>
+                        {
+                            refreshOptions.RegisterAll()
+                                .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                        });
+
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+                    refresher = options.GetRefresher();
+                    capturedOptions = options;
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+
+            // Verify CDN is enabled
+            Assert.True(capturedOptions.IsCdnEnabled);
+
+            // Verify that current CDN token is null at startup
+            Assert.Null(capturedOptions.CdnTokenAccessor.Current);
+
+            // Change the sentinel key to trigger a refresh
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue");
+
+            // Wait for the cache to expire
+            await Task.Delay(1500);
+
+            // Trigger refresh - this should set a token in the CDN token accessor
+            await refresher.RefreshAsync();
+
+            // Verify that the CDN token accessor has a token set to new page change ETag
+            Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
+            Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
+
+            // Verify the configuration was updated
+            Assert.Equal("newValue", config["TestKey1"]);
+        }
+
+        [Fact]
+        public async Task RefreshTests_CdnWithSentinelKeys()
+        {
+            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            Response<ConfigurationSetting> GetSettingFromService(string k, string l, CancellationToken ct)
+            {
+                return Response.FromValue(keyValueCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
+            }
+
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            {
+                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
+                var response = new MockResponse(unchanged ? 304 : 200);
+                return Response.FromValue(newSetting, response);
+            }
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    var copy = new List<ConfigurationSetting>();
+                    foreach (var setting in keyValueCollection)
+                    {
+                        copy.Add(TestHelpers.CloneSetting(setting));
+                    }
+
+                    return new MockAsyncPageable(copy);
+                });
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetSettingFromService);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);
+
+            IConfigurationRefresher refresher = null;
+            AzureAppConfigurationOptions capturedOptions = null;
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                        .Select("TestKey*")
+                        .ConfigureRefresh(refreshOptions =>
+                        {
+                            refreshOptions.Register("TestKey1", "label", refreshAll: true)
+                                .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                        });
+
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+                    refresher = options.GetRefresher();
+                    capturedOptions = options;
+                })
+                .Build();
+
+            Assert.Equal("TestValue1", config["TestKey1"]);
+            Assert.Equal("TestValue2", config["TestKey2"]);
+            Assert.Equal("TestValue3", config["TestKey3"]);
+
+            // Verify CDN is enabled
+            Assert.True(capturedOptions.IsCdnEnabled);
+
+            // Verify that current CDN token is null at startup
+            Assert.Null(capturedOptions.CdnTokenAccessor.Current);
+
+            // Change the sentinel key to trigger a refresh
+            keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "newValue");
+
+            // Wait for the cache to expire
+            await Task.Delay(1500);
+
+            // Trigger refresh - this should set a token in the CDN token accessor
+            await refresher.RefreshAsync();
+
+            // Verify that the CDN token is set to the new sentinel key etag
+            Assert.Equal(keyValueCollection[0].ETag.ToString(), capturedOptions.CdnTokenAccessor.Current);
+
+            // Verify the configuration was updated
+            Assert.Equal("newValue", config["TestKey1"]);
+        }
     }
 }
