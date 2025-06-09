@@ -16,7 +16,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Security;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,8 +42,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _nextCollectionRefreshTime;
 
         #region Cdn
-        private string _configVersion = null;
-        private string _ffCollectionVersion = null;
+        private string _configCdnToken = null;
+        private string _ffCdnToken = null;
         #endregion
 
         private readonly TimeSpan MinRefreshInterval;
@@ -317,7 +316,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (_options.IsCdnEnabled)
                         {
-                            _options.CdnTokenAccessor.Current = _configVersion;
+                            _options.CdnTokenAccessor.Current = _configCdnToken;
                         }
 
                         if (_options.RegisterAllEnabled)
@@ -353,8 +352,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                             // 
                                             // Reset versions so that next watch request will not use stale versions.
-                                            _configVersion = token;
-                                            _ffCollectionVersion = token;
+                                            _configCdnToken = token;
+                                            _ffCdnToken = token;
                                         }
 
                                         break;
@@ -396,8 +395,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                         // 
                                         // Reset versions so that next watch request will not use stale versions.
-                                        _configVersion = token;
-                                        _ffCollectionVersion = token;
+                                        _configCdnToken = token;
+                                        _ffCdnToken = token;
                                     }
 
                                     break;
@@ -422,7 +421,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Get feature flag changes
                         if (_options.IsCdnEnabled)
                         {
-                            _options.CdnTokenAccessor.Current = _ffCollectionVersion;
+                            _options.CdnTokenAccessor.Current = _ffCdnToken;
                         }
 
                         var ffSelectors = refreshableFfWatchers.Select(watcher => new KeyValueSelector
@@ -460,7 +459,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                     //
                                     // Reset ff collection version so that next ff watch request will not use stale version.
-                                    _ffCollectionVersion = token;
+                                    _ffCdnToken = token;
                                 }
 
                                 break;

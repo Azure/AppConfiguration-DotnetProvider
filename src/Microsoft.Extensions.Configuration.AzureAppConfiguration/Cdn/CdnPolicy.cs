@@ -15,6 +15,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
     /// </summary>
     internal class CdnPolicy : HttpPipelinePolicy
     {
+        private const string CdnTokenQueryParameter = "_";
+
         private readonly ICdnTokenAccessor _cdnTokenAccessor;
 
         /// <summary>
@@ -70,7 +72,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
             var uriBuilder = new UriBuilder(uri);
 
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-            query["_"] = token;
+            query[CdnTokenQueryParameter] = token;
 
             uriBuilder.Query = query.ToString();
 

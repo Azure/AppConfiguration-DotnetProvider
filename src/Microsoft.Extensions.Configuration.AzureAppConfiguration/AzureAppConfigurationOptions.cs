@@ -163,7 +163,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Gets a value indicating whether CDN is enabled.
         /// </summary>
-        internal bool IsCdnEnabled { get; private set; } = false;
+        internal bool IsCdnEnabled { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
