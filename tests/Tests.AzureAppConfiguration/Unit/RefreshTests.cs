@@ -1396,7 +1396,7 @@ namespace Tests.AzureAppConfiguration
                 // Trigger refresh - this should set a token in the CDN token accessor
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to new page change ETag
+                // Verify that the CDN token accessor has a token set to new value
                 Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
                 Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
 
@@ -1416,6 +1416,28 @@ namespace Tests.AzureAppConfiguration
 
                 // Verify that the CDN token accessor has a token set to previous CDN token
                 Assert.Equal(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+            }
+
+            //
+            // another change
+            {
+                keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "anotherNewValue");
+
+                mockAsyncPageable.UpdateCollection(keyValueCollection);
+
+                // Wait for the cache to expire
+                await Task.Delay(1500);
+
+                // Trigger refresh - this should set a token in the CDN token accessor
+                await refresher.RefreshAsync();
+
+                // Verify that the CDN token accessor has a token set to new value
+                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
+                Assert.NotEqual(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+
+                // Verify the configuration was updated
+                Assert.Equal("anotherNewValue", config["TestKey1"]);
             }
         }
 
@@ -1499,8 +1521,9 @@ namespace Tests.AzureAppConfiguration
                 // Trigger refresh - this should set a token in the CDN token accessor
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token is set to the new sentinel key etag
-                Assert.Equal(keyValueCollection[0].ETag.ToString(), capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the CDN token is set to the new value
+                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
 
                 // Verify the configuration was updated
                 Assert.Equal("newValue", config["TestKey1"]);
@@ -1517,6 +1540,26 @@ namespace Tests.AzureAppConfiguration
 
                 // Verify that the CDN token accessor has a token set to previous CDN token
                 Assert.Equal(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+            }
+
+            //
+            // another change
+            {
+                keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "anotherNewValue");
+
+                // Wait for the cache to expire
+                await Task.Delay(1500);
+
+                // Trigger refresh - this should set a token in the CDN token accessor
+                await refresher.RefreshAsync();
+
+                // Verify that the CDN token accessor has a token set to new value
+                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
+                Assert.NotEqual(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+
+                // Verify the configuration was updated
+                Assert.Equal("anotherNewValue", config["TestKey1"]);
             }
         }
     }
