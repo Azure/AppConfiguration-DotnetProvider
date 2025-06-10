@@ -36,6 +36,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
 
+                IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
+
                 if (options.IsCdnEnabled)
                 {
                     if (options.LoadBalancingEnabled)
@@ -43,7 +45,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
                     }
 
-                    options.CdnTokenAccessor = new CdnTokenAccessor();
+                    if (clientFactory != null && !options.IsClientOptionsProvided)
+                    {
+                        throw new InvalidOperationException($"Please provide the optional param {nameof(ConfigurationClientOptions)} when calling {nameof(AzureAppConfigurationOptions.SetClientFactory)} with CDN.");
+                    }
+
                     options.ClientOptions.AddPolicy(new CdnPolicy(options.CdnTokenAccessor), HttpPipelinePosition.PerCall);
                 }
 
@@ -53,7 +59,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 IEnumerable<Uri> endpoints;
-                IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
 
                 if (options.ConnectionStrings != null)
                 {
