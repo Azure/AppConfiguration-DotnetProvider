@@ -429,7 +429,7 @@ namespace Tests.AzureAppConfiguration
                 noChangeGate.Release(2);
 
                 // Second change
-                await noChangeSync.WaitAsync(); // Wait for both apps to complete no-change refresh
+                await Task.WhenAll(noChangeSync.WaitAsync(), noChangeSync.WaitAsync()); ; // Wait for both apps to complete no-change refresh
                 updatedCollection = _kvCollection.ToList();
                 updatedCollection[0] = TestHelpers.ChangeValue(updatedCollection[0], "anotherNewValue");
                 mockAsyncPageable.UpdateCollection(updatedCollection);
