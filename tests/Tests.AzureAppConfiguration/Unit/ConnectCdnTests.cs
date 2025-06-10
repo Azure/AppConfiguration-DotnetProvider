@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
