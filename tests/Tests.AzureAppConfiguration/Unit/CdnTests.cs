@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation.
+﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
 using Azure;
@@ -339,6 +339,134 @@ namespace Tests.AzureAppConfiguration
                 // Verify the configuration was updated
                 Assert.Equal("anotherNewValue", config["TestKey1"]);
             }
+        }
+
+        [Fact]
+        public async Task CdnTests_ParallelAppsHaveSameCdnTokenSequence()
+        {
+            var mockAsyncPageable = new MockAsyncPageable(_kvCollection.ToList());
+
+            // async coordination: Both apps are ready => wait for two releases
+            var startupSync = new SemaphoreSlim(0, 2);
+            var noChangeSync = new SemaphoreSlim(0, 2);
+
+            // broadcast gates: coordinator releases twice, each app awaits once
+            var firstChangeGate = new SemaphoreSlim(0, 2);
+            var noChangeGate = new SemaphoreSlim(0, 2);
+            var secondChangeGate = new SemaphoreSlim(0, 2);
+
+            async Task CreateAppTask(List<string> cdnTokenList)
+            {
+                var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+                // Both clients use the same shared pageable for consistency
+                mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                    .Returns(() => mockAsyncPageable);
+
+                IConfigurationRefresher refresher = null;
+                AzureAppConfigurationOptions capturedOptions = null;
+
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                        .Select("TestKey*")
+                        .ConfigureRefresh(refreshOptions =>
+                        {
+                            refreshOptions.RegisterAll()
+                                .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                        });
+
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+
+                        refresher = options.GetRefresher();
+                        capturedOptions = options;
+                    })
+                    .Build();
+
+                // Initial state - CDN token should be null
+                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+
+                // Signal that this app is initialized
+                startupSync.Release();
+
+                // Wait for first change to be applied
+                await firstChangeGate.WaitAsync();
+                await Task.Delay(1500);
+                await refresher.RefreshAsync();
+
+                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+
+                // No change (should keep same token)
+                await noChangeGate.WaitAsync();
+                await Task.Delay(1500);
+                await refresher.RefreshAsync();
+
+                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+
+                // Signal that this app is done with no-change refresh
+                noChangeSync.Release();
+
+                // Wait for second change to be applied
+                await secondChangeGate.WaitAsync();
+                await Task.Delay(1500);
+                await refresher.RefreshAsync();
+
+                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+            }
+
+            var changeTask = Task.Run(async () =>
+            {
+                // First change
+                await Task.WhenAll(startupSync.WaitAsync(), startupSync.WaitAsync()); // Wait for both apps to complete startup
+                var updatedCollection = _kvCollection.ToList();
+                updatedCollection[0] = TestHelpers.ChangeValue(updatedCollection[0], "newValue");
+                mockAsyncPageable.UpdateCollection(updatedCollection);
+
+                firstChangeGate.Release(2);
+
+                // No change
+                noChangeGate.Release(2);
+
+                // Second change
+                await noChangeSync.WaitAsync(); // Wait for both apps to complete no-change refresh
+                updatedCollection = _kvCollection.ToList();
+                updatedCollection[0] = TestHelpers.ChangeValue(updatedCollection[0], "anotherNewValue");
+                mockAsyncPageable.UpdateCollection(updatedCollection);
+
+                secondChangeGate.Release(2);
+            });
+
+            // Run both apps in parallel along with the change coordinator
+            var app1CdnTokens = new List<string>();
+            var app2CdnTokens = new List<string>();
+            var task1 = CreateAppTask(app1CdnTokens);
+            var task2 = CreateAppTask(app2CdnTokens);
+
+            await Task.WhenAll(task1, task2, changeTask);
+
+            // Verify both apps captured the same number of tokens
+            Assert.Equal(4, app1CdnTokens.Count);
+            Assert.Equal(4, app2CdnTokens.Count);
+
+            // Verify the CDN token sequences are identical between the two apps
+            for (int i = 0; i < app1CdnTokens.Count; i++)
+            {
+                Assert.True(app1CdnTokens[i] == app2CdnTokens[i]);
+            }
+
+            // Verify the expected token pattern:
+            // Index 0: null (initial state)
+            // Index 1: non-null (after first change)
+            // Index 2: same as index 1 (no change)
+            // Index 3: non-null and different from index 1 (after second change)
+            Assert.Null(app1CdnTokens[0]);
+            Assert.NotNull(app1CdnTokens[1]);
+            Assert.NotEmpty(app1CdnTokens[1]);
+            Assert.Equal(app1CdnTokens[1], app1CdnTokens[2]);
+            Assert.NotNull(app1CdnTokens[3]);
+            Assert.NotEmpty(app1CdnTokens[3]);
+            Assert.NotEqual(app1CdnTokens[1], app1CdnTokens[3]);
         }
     }
 }
