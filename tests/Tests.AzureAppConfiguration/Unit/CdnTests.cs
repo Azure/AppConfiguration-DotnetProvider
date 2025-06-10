@@ -231,12 +231,16 @@ namespace Tests.AzureAppConfiguration
                 return Response.FromValue(keyValueCollection.FirstOrDefault(s => s.Key == k && s.Label == l), mockResponse.Object);
             }
 
-            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
+            Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool _, CancellationToken cancellationToken)
             {
-                var newSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
-                var unchanged = (newSetting.Key == setting.Key && newSetting.Label == setting.Label && newSetting.Value == setting.Value);
-                var response = new MockResponse(unchanged ? 304 : 200);
-                return Response.FromValue(newSetting, response);
+                var currentSetting = keyValueCollection.FirstOrDefault(s => s.Key == setting.Key && s.Label == setting.Label);
+
+                if (currentSetting == null)
+                {
+                    throw new RequestFailedException(new MockResponse(404));
+                }
+
+                return Response.FromValue(currentSetting, new MockResponse(200));
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -321,9 +325,9 @@ namespace Tests.AzureAppConfiguration
             }
 
             //
-            // another change
+            // another change: sentinel deleted
             {
-                keyValueCollection[0] = TestHelpers.ChangeValue(keyValueCollection[0], "anotherNewValue");
+                keyValueCollection.Remove(keyValueCollection[0]);
 
                 // Wait for the cache to expire
                 await Task.Delay(1500);
@@ -337,7 +341,7 @@ namespace Tests.AzureAppConfiguration
                 Assert.NotEqual(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
 
                 // Verify the configuration was updated
-                Assert.Equal("anotherNewValue", config["TestKey1"]);
+                Assert.Null(config["TestKey1"]);
             }
         }
 
