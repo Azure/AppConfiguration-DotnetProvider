@@ -393,7 +393,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Connect the provider to Azure Front Door endpoint.
         /// </summary>
-        /// <param name="endpoint">The endpoint of the Azure Front Door AFD instance to connect to.</param>
+        /// <param name="endpoint">The endpoint of the Azure Front Door (Afd) instance to connect to.</param>
         public AzureAppConfigurationOptions ConnectAzureFrontDoor(Uri endpoint)
         {
             if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
