@@ -58,51 +58,19 @@ namespace Tests.AzureAppConfiguration
         };
 
         [Fact]
-        public void CdnTests_CdnWithClientFactoryRequiresClientOptions()
+        public void CdnTests_DoesNotSupportCustomClientFactory()
         {
             var mockClientFactory = new Mock<IAzureClientFactory<ConfigurationClient>>();
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.SetClientFactory(mockClientFactory.Object) // No client options provided
-                           .ConnectCdn(TestHelpers.MockCdnEndpoint);
+                    options.SetClientFactory(mockClientFactory.Object)
+                           .ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint);
                 });
 
             Exception exception = Assert.Throws<ArgumentException>(() => configBuilder.Build());
             Assert.IsType<InvalidOperationException>(exception.InnerException);
-        }
-
-        [Fact]
-        public void CdnTests_CdnWithClientFactoryAndClientOptionsSucceeds()
-        {
-            var mockClientFactory = new Mock<IAzureClientFactory<ConfigurationClient>>();
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-            var clientOptions = new ConfigurationClientOptions();
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
-
-            mockClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
-                .Returns(mockClient.Object);
-
-            AzureAppConfigurationOptions capturedOptions = null;
-
-            var configBuilder = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.SetClientFactory(mockClientFactory.Object, clientOptions) // Client options provided
-                           .ConnectCdn(TestHelpers.MockCdnEndpoint);
-                    capturedOptions = options;
-                });
-
-            Assert.NotNull(configBuilder.Build());
-
-            Assert.NotNull(capturedOptions);
-            Assert.True(capturedOptions.IsCdnEnabled);
-            Assert.Equal(clientOptions, capturedOptions.ClientOptions);
-
-            mockClient.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -111,7 +79,7 @@ namespace Tests.AzureAppConfiguration
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                    options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
                            .LoadBalancingEnabled = true;
                 });
 
@@ -136,7 +104,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                    options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
                         .Select("TestKey*")
                         .ConfigureRefresh(refreshOptions =>
                         {
@@ -267,7 +235,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                    options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
                         .Select("TestKey*")
                         .ConfigureRefresh(refreshOptions =>
                         {
@@ -373,7 +341,7 @@ namespace Tests.AzureAppConfiguration
                 var config = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.ConnectCdn(TestHelpers.MockCdnEndpoint)
+                        options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
                         .Select("TestKey*")
                         .ConfigureRefresh(refreshOptions =>
                         {

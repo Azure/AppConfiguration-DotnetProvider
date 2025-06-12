@@ -156,11 +156,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
-        /// Gets a value indicating whether a ConfigurationClientOptions options was provided when setting custom client factory.
-        /// </summary>
-        internal bool IsClientOptionsProvided { get; private set; }
-
-        /// <summary>
         /// An accessor for current token to be used for CDN cache breakage/consistency.
         /// </summary>
         internal ICdnTokenAccessor CdnTokenAccessor { get; set; }
@@ -193,17 +188,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// will not be used to authenticate a <see cref="ConfigurationClient"/>.
         /// </summary>
         /// <param name="factory">The client factory.</param>
-        /// <param name="options">Optional client options that user should provide when CDN is enabled.</param>
         /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
-        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory, ConfigurationClientOptions options = null)
+        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
         {
             ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
-
-            if (options != null)
-            {
-                IsClientOptionsProvided = true;
-                ClientOptions = options;
-            }
 
             return this;
         }
@@ -406,7 +394,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Connect the provider to CDN endpoint.
         /// </summary>
         /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
-        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
+        public AzureAppConfigurationOptions ConnectAzureFrontDoor(Uri endpoint)
         {
             if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
             {

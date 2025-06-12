@@ -45,9 +45,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
                     }
 
-                    if (clientFactory != null && !options.IsClientOptionsProvided)
+                    if (clientFactory != null)
                     {
-                        throw new InvalidOperationException($"Please provide the optional param {nameof(ConfigurationClientOptions)} when calling {nameof(AzureAppConfigurationOptions.SetClientFactory)} with CDN.");
+                        throw new InvalidOperationException($"Custom client factory is not supported when connecting to CDN.");
                     }
 
                     options.ClientOptions.AddPolicy(new CdnPolicy(options.CdnTokenAccessor), HttpPipelinePosition.PerCall);
@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} or {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.ConnectCdn)} to specify how to connect to Azure App Configuration.");
+                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} or {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.ConnectAzureFrontDoor)} to specify how to connect to Azure App Configuration.");
                 }
 
                 if (options.IsCdnEnabled)
