@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class PageExtensions
     {
-        public static string GetCdnToken(this Page<ConfigurationSetting> page)
+        public static string GetAfdToken(this Page<ConfigurationSetting> page)
         {
             using Response response = page.GetRawResponse();
 

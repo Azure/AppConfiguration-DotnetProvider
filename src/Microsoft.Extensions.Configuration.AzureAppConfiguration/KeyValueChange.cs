@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public ConfigurationSetting Previous { get; set; }
 
-        public string GetCdnToken()
+        public string GetAfdToken()
         {
             string token;
 

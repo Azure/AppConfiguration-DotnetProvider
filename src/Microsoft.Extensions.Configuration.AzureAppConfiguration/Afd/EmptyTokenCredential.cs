@@ -6,7 +6,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
     /// <summary>
     /// A token credential that provides an empty token.

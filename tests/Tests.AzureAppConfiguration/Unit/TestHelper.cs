@@ -72,7 +72,7 @@ namespace Tests.AzureAppConfiguration
             return $"Endpoint={endpoint};Id=b1d9b31;Secret={returnValue}";
         }
 
-        static public Uri MockCdnEndpoint => new Uri("https://cdn.azurefd.net");
+        static public Uri MockAfdEndpoint => new Uri("https://afd.azurefd.net");
 
         static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)
         {

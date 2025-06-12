@@ -41,9 +41,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
 
-        #region Cdn
-        private string _configCdnToken = null;
-        private string _ffCdnToken = null;
+        #region Afd
+        private string _configAfdToken = null;
+        private string _ffAfdToken = null;
         #endregion
 
         private readonly TimeSpan MinRefreshInterval;
@@ -314,9 +314,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         logInfoBuilder.Clear();
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
-                        if (_options.IsCdnEnabled)
+                        if (_options.IsAfdEnabled)
                         {
-                            _options.CdnTokenAccessor.Current = _configCdnToken;
+                            _options.AfdTokenAccessor.Current = _configAfdToken;
                         }
 
                         if (_options.RegisterAllEnabled)
@@ -335,7 +335,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                                 selector,
                                                 matchConditions,
                                                 _options.ConfigurationSettingPageIterator,
-                                                makeConditionalRequest: !_options.IsCdnEnabled,
+                                                makeConditionalRequest: !_options.IsAfdEnabled,
                                                 cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                     }
 
@@ -343,17 +343,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     {
                                         refreshAll = true;
 
-                                        if (_options.IsCdnEnabled)
+                                        if (_options.IsAfdEnabled)
                                         {
                                             //
-                                            // Break cdn cache
-                                            string token = changedPage.GetCdnToken();
-                                            _options.CdnTokenAccessor.Current = token;
+                                            // Break afd cache
+                                            string token = changedPage.GetAfdToken();
+                                            _options.AfdTokenAccessor.Current = token;
 
                                             // 
                                             // Reset versions so that next watch request will not use stale versions.
-                                            _configCdnToken = token;
-                                            _ffCdnToken = token;
+                                            _configAfdToken = token;
+                                            _ffAfdToken = token;
                                         }
 
                                         break;
@@ -386,17 +386,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     refreshAll = true;
 
-                                    if (_options.IsCdnEnabled)
+                                    if (_options.IsAfdEnabled)
                                     {
                                         //
-                                        // Break cdn cache
-                                        string token = change.GetCdnToken();
-                                        _options.CdnTokenAccessor.Current = token;
+                                        // Break afd cache
+                                        string token = change.GetAfdToken();
+                                        _options.AfdTokenAccessor.Current = token;
 
                                         // 
                                         // Reset versions so that next watch request will not use stale versions.
-                                        _configCdnToken = token;
-                                        _ffCdnToken = token;
+                                        _configAfdToken = token;
+                                        _ffAfdToken = token;
                                     }
 
                                     break;
@@ -419,9 +419,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        if (_options.IsCdnEnabled)
+                        if (_options.IsAfdEnabled)
                         {
-                            _options.CdnTokenAccessor.Current = _ffCdnToken;
+                            _options.AfdTokenAccessor.Current = _ffAfdToken;
                         }
 
                         var ffSelectors = refreshableFfWatchers.Select(watcher => new KeyValueSelector
@@ -442,7 +442,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         selector,
                                         matchConditions,
                                         _options.ConfigurationSettingPageIterator,
-                                        makeConditionalRequest: !_options.IsCdnEnabled,
+                                        makeConditionalRequest: !_options.IsAfdEnabled,
                                         cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                             }
 
@@ -450,16 +450,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 ffCollectionUpdated = true;
 
-                                if (_options.IsCdnEnabled)
+                                if (_options.IsAfdEnabled)
                                 {
                                     //
-                                    // Break cdn cache
-                                    string token = changedPage.GetCdnToken();
-                                    _options.CdnTokenAccessor.Current = token;
+                                    // Break afd cache
+                                    string token = changedPage.GetAfdToken();
+                                    _options.AfdTokenAccessor.Current = token;
 
                                     //
                                     // Reset ff collection version so that next ff watch request will not use stale version.
-                                    _ffCdnToken = token;
+                                    _ffAfdToken = token;
                                 }
 
                                 break;
@@ -1092,7 +1092,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_watchedIndividualKvs.TryGetValue(new KeyValueIdentifier(kvWatcher.Key, kvWatcher.Label), out ConfigurationSetting watchedKv))
             {
                 await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                    async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !_options.IsCdnEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                    async () => change = await client.GetKeyValueChange(watchedKv, makeConditionalRequest: !_options.IsAfdEnabled, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
             }
             else
             {
@@ -1177,7 +1177,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
                 IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
-                IsCdnEnabled = _options.IsCdnEnabled
+                IsAfdEnabled = _options.IsAfdEnabled
             };
         }
 

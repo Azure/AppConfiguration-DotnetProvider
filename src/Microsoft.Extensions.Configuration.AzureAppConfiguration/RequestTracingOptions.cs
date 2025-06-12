@@ -71,9 +71,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
-        /// Flag to indicate wether the request is sent to a CDN.
+        /// Flag to indicate wether the request is sent to a AFD.
         /// </summary>
-        public bool IsCdnEnabled { get; set; } = false;
+        public bool IsAfdEnabled { get; set; } = false;
 
         /// <summary>
         /// Flag to indicate whether any key-value uses the json content type and contains
@@ -126,7 +126,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
                 UsesAIChatCompletionConfiguration ||
-                IsCdnEnabled;
+                IsAfdEnabled;
         }
 
         /// <summary>
@@ -177,14 +177,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
             }
 
-            if (IsCdnEnabled)
+            if (IsAfdEnabled)
             {
                 if (sb.Length > 0)
                 {
                     sb.Append(RequestTracingConstants.Delimiter);
                 }
 
-                sb.Append(RequestTracingConstants.CdnTag);
+                sb.Append(RequestTracingConstants.AfdTag);
             }
 
             return sb.ToString();

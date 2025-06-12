@@ -7,29 +7,29 @@ using System;
 using System.Diagnostics;
 using System.Web;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
     /// <summary>
-    /// HTTP pipeline policy that injects current token into the query string for CDN cache breakage and consistency.
-    /// The injected token ensures CDN cache invalidation when configuration changes are detected and maintaining eventual consistency across distributed instances.
+    /// HTTP pipeline policy that injects current token into the query string for AFD cache breakage and consistency.
+    /// The injected token ensures AFD cache invalidation when configuration changes are detected and maintaining eventual consistency across distributed instances.
     /// </summary>
-    internal class CdnPolicy : HttpPipelinePolicy
+    internal class AfdPolicy : HttpPipelinePolicy
     {
-        private const string CdnTokenQueryParameter = "_";
+        private const string AfdTokenQueryParameter = "_";
 
-        private readonly ICdnTokenAccessor _cdnTokenAccessor;
+        private readonly IAfdTokenAccessor _afdTokenAccessor;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CdnPolicy"/> class.
+        /// Initializes a new instance of the <see cref="AfdPolicy"/> class.
         /// </summary>
-        /// <param name="cdnTokenAccessor">The token accessor that provides current token to be used for CDN cache breakage/consistency.</param>
-        public CdnPolicy(ICdnTokenAccessor cdnTokenAccessor)
+        /// <param name="afdTokenAccessor">The token accessor that provides current token to be used for AFD cache breakage/consistency.</param>
+        public AfdPolicy(IAfdTokenAccessor afdTokenAccessor)
         {
-            _cdnTokenAccessor = cdnTokenAccessor ?? throw new ArgumentNullException(nameof(cdnTokenAccessor));
+            _afdTokenAccessor = afdTokenAccessor ?? throw new ArgumentNullException(nameof(afdTokenAccessor));
         }
 
         /// <summary>
-        /// Processes the HTTP message and injects token into query string to break CDN cache when changes are detected.
+        /// Processes the HTTP message and injects token into query string to break AFD cache when changes are detected.
         /// This ensures fresh configuration data is retrieved when sentinel keys or collections have been modified.
         /// It also maintains eventual consistency across distributed instances by ensuring that the same token is used for all subsequent watch requests, until a new change is detected.
         /// </summary>
@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
         /// <param name="pipeline">The pipeline.</param>
         public override void Process(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            string token = _cdnTokenAccessor.Current;
+            string token = _afdTokenAccessor.Current;
             if (!string.IsNullOrEmpty(token))
             {
                 message.Request.Uri.Reset(AddTokenToUri(message.Request.Uri.ToUri(), token));
@@ -47,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
         }
 
         /// <summary>
-        /// Processes the HTTP message asynchronously and injects token into query string to break CDN cache when changes are detected.
+        /// Processes the HTTP message asynchronously and injects token into query string to break AFD cache when changes are detected.
         /// This ensures fresh configuration data is retrieved when sentinel keys or collections have been modified.
         /// It also maintains eventual consistency across distributed instances by ensuring that the same token is used for all subsequent watch requests, until a new change is detected.
         /// </summary>
@@ -56,7 +56,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async System.Threading.Tasks.ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            string token = _cdnTokenAccessor.Current;
+            string token = _afdTokenAccessor.Current;
             if (!string.IsNullOrEmpty(token))
             {
                 message.Request.Uri.Reset(AddTokenToUri(message.Request.Uri.ToUri(), token));
@@ -72,7 +72,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
             var uriBuilder = new UriBuilder(uri);
 
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-            query[CdnTokenQueryParameter] = token;
+            query[AfdTokenQueryParameter] = token;
 
             uriBuilder.Query = query.ToString();
 

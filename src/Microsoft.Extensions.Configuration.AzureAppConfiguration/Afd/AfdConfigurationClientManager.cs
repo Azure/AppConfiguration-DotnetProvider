@@ -5,13 +5,13 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using System;
 using System.Collections.Generic;
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
-    internal class CdnConfigurationClientManager : IConfigurationClientManager
+    internal class AfdConfigurationClientManager : IConfigurationClientManager
     {
         private readonly ConfigurationClientWrapper _clientWrapper;
 
-        public CdnConfigurationClientManager(
+        public AfdConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> clientFactory,
             Uri endpoint)
         {

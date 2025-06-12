@@ -4,7 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.Cdn;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,19 +38,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
 
-                if (options.IsCdnEnabled)
+                if (options.IsAfdEnabled)
                 {
                     if (options.LoadBalancingEnabled)
                     {
-                        throw new InvalidOperationException("Load balancing is not supported for CDN endpoint.");
+                        throw new InvalidOperationException("Load balancing is not supported for AFD endpoint.");
                     }
 
                     if (clientFactory != null)
                     {
-                        throw new InvalidOperationException($"Custom client factory is not supported when connecting to CDN.");
+                        throw new InvalidOperationException($"Custom client factory is not supported when connecting to AFD.");
                     }
 
-                    options.ClientOptions.AddPolicy(new CdnPolicy(options.CdnTokenAccessor), HttpPipelinePosition.PerCall);
+                    options.ClientOptions.AddPolicy(new AfdPolicy(options.AfdTokenAccessor), HttpPipelinePosition.PerCall);
                 }
 
                 if (options.ClientManager != null)
@@ -77,9 +77,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} or {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.ConnectAzureFrontDoor)} to specify how to connect to Azure App Configuration.");
                 }
 
-                if (options.IsCdnEnabled)
+                if (options.IsAfdEnabled)
                 {
-                    provider = new AzureAppConfigurationProvider(new CdnConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new AfdConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
                 }
                 else
                 {

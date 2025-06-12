@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    public class CdnTests
+    public class AfdTests
     {
         List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
         {
@@ -58,7 +58,7 @@ namespace Tests.AzureAppConfiguration
         };
 
         [Fact]
-        public void CdnTests_DoesNotSupportCustomClientFactory()
+        public void AfdTests_DoesNotSupportCustomClientFactory()
         {
             var mockClientFactory = new Mock<IAzureClientFactory<ConfigurationClient>>();
 
@@ -66,7 +66,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.SetClientFactory(mockClientFactory.Object)
-                           .ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint);
+                           .ConnectAzureFrontDoor(TestHelpers.MockAfdEndpoint);
                 });
 
             Exception exception = Assert.Throws<ArgumentException>(() => configBuilder.Build());
@@ -74,12 +74,12 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void CdnTests_DoesNotSupportLoadBalancing()
+        public void AfdTests_DoesNotSupportLoadBalancing()
         {
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
+                    options.ConnectAzureFrontDoor(TestHelpers.MockAfdEndpoint)
                            .LoadBalancingEnabled = true;
                 });
 
@@ -88,7 +88,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task CdnTests_RefreshWithRegisterAll()
+        public async Task AfdTests_RefreshWithRegisterAll()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
@@ -104,7 +104,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
+                    options.ConnectAzureFrontDoor(TestHelpers.MockAfdEndpoint)
                         .Select("TestKey*")
                         .ConfigureRefresh(refreshOptions =>
                         {
@@ -123,11 +123,11 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            // Verify CDN is enabled
-            Assert.True(capturedOptions.IsCdnEnabled);
+            // Verify AFD is enabled
+            Assert.True(capturedOptions.IsAfdEnabled);
 
-            // Verify that current CDN token is null at startup
-            Assert.Null(capturedOptions.CdnTokenAccessor.Current);
+            // Verify that current AFD token is null at startup
+            Assert.Null(capturedOptions.AfdTokenAccessor.Current);
 
             //
             // change
@@ -139,18 +139,18 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 await Task.Delay(1500);
 
-                // Trigger refresh - this should set a token in the CDN token accessor
+                // Trigger refresh - this should set a token in the AFD token accessor
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to new value
-                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
-                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the AFD token accessor has a token set to new value
+                Assert.NotNull(capturedOptions.AfdTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.AfdTokenAccessor.Current);
 
                 // Verify the configuration was updated
                 Assert.Equal("newValue", config["TestKey1"]);
             }
 
-            string previousCdnToken = capturedOptions.CdnTokenAccessor.Current;
+            string previousAfdToken = capturedOptions.AfdTokenAccessor.Current;
 
             //
             // no change
@@ -160,8 +160,8 @@ namespace Tests.AzureAppConfiguration
 
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to previous CDN token
-                Assert.Equal(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the AFD token accessor has a token set to previous AFD token
+                Assert.Equal(previousAfdToken, capturedOptions.AfdTokenAccessor.Current);
             }
 
             //
@@ -174,13 +174,13 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 await Task.Delay(1500);
 
-                // Trigger refresh - this should set a token in the CDN token accessor
+                // Trigger refresh - this should set a token in the AFD token accessor
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to new value
-                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
-                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
-                Assert.NotEqual(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the AFD token accessor has a token set to new value
+                Assert.NotNull(capturedOptions.AfdTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.AfdTokenAccessor.Current);
+                Assert.NotEqual(previousAfdToken, capturedOptions.AfdTokenAccessor.Current);
 
                 // Verify the configuration was updated
                 Assert.Equal("anotherNewValue", config["TestKey1"]);
@@ -188,7 +188,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task CdnTests_RefreshWithRegister()
+        public async Task AfdTests_RefreshWithRegister()
         {
             var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
             var mockResponse = new Mock<Response>();
@@ -235,7 +235,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
+                    options.ConnectAzureFrontDoor(TestHelpers.MockAfdEndpoint)
                         .Select("TestKey*")
                         .ConfigureRefresh(refreshOptions =>
                         {
@@ -254,11 +254,11 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("TestValue2", config["TestKey2"]);
             Assert.Equal("TestValue3", config["TestKey3"]);
 
-            // Verify CDN is enabled
-            Assert.True(capturedOptions.IsCdnEnabled);
+            // Verify AFD is enabled
+            Assert.True(capturedOptions.IsAfdEnabled);
 
-            // Verify that current CDN token is null at startup
-            Assert.Null(capturedOptions.CdnTokenAccessor.Current);
+            // Verify that current AFD token is null at startup
+            Assert.Null(capturedOptions.AfdTokenAccessor.Current);
 
             // 
             // change
@@ -268,18 +268,18 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 await Task.Delay(1500);
 
-                // Trigger refresh - this should set a token in the CDN token accessor
+                // Trigger refresh - this should set a token in the AFD token accessor
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token is set to the new value
-                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
-                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the AFD token is set to the new value
+                Assert.NotNull(capturedOptions.AfdTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.AfdTokenAccessor.Current);
 
                 // Verify the configuration was updated
                 Assert.Equal("newValue", config["TestKey1"]);
             }
 
-            string previousCdnToken = capturedOptions.CdnTokenAccessor.Current;
+            string previousAfdToken = capturedOptions.AfdTokenAccessor.Current;
 
             //
             // no change
@@ -288,8 +288,8 @@ namespace Tests.AzureAppConfiguration
 
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to previous CDN token
-                Assert.Equal(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the AFD token accessor has a token set to previous AFD token
+                Assert.Equal(previousAfdToken, capturedOptions.AfdTokenAccessor.Current);
             }
 
             //
@@ -300,13 +300,13 @@ namespace Tests.AzureAppConfiguration
                 // Wait for the cache to expire
                 await Task.Delay(1500);
 
-                // Trigger refresh - this should set a token in the CDN token accessor
+                // Trigger refresh - this should set a token in the AFD token accessor
                 await refresher.RefreshAsync();
 
-                // Verify that the CDN token accessor has a token set to new value
-                Assert.NotNull(capturedOptions.CdnTokenAccessor.Current);
-                Assert.NotEmpty(capturedOptions.CdnTokenAccessor.Current);
-                Assert.NotEqual(previousCdnToken, capturedOptions.CdnTokenAccessor.Current);
+                // Verify that the AFD token accessor has a token set to new value
+                Assert.NotNull(capturedOptions.AfdTokenAccessor.Current);
+                Assert.NotEmpty(capturedOptions.AfdTokenAccessor.Current);
+                Assert.NotEqual(previousAfdToken, capturedOptions.AfdTokenAccessor.Current);
 
                 // Verify the configuration was updated
                 Assert.Null(config["TestKey1"]);
@@ -314,7 +314,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task CdnTests_ParallelAppsHaveSameCdnTokenSequence()
+        public async Task AfdTests_ParallelAppsHaveSameAfdTokenSequence()
         {
             var mockAsyncPageable = new MockAsyncPageable(_kvCollection.ToList());
 
@@ -327,7 +327,7 @@ namespace Tests.AzureAppConfiguration
             var noChangeGate = new SemaphoreSlim(0, 2);
             var secondChangeGate = new SemaphoreSlim(0, 2);
 
-            async Task CreateAppTask(List<string> cdnTokenList)
+            async Task CreateAppTask(List<string> afdTokenList)
             {
                 var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
@@ -341,7 +341,7 @@ namespace Tests.AzureAppConfiguration
                 var config = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.ConnectAzureFrontDoor(TestHelpers.MockCdnEndpoint)
+                        options.ConnectAzureFrontDoor(TestHelpers.MockAfdEndpoint)
                         .Select("TestKey*")
                         .ConfigureRefresh(refreshOptions =>
                         {
@@ -356,8 +356,8 @@ namespace Tests.AzureAppConfiguration
                     })
                     .Build();
 
-                // Initial state - CDN token should be null
-                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+                // Initial state - AFD token should be null
+                afdTokenList.Add(capturedOptions.AfdTokenAccessor.Current);
 
                 // Signal that this app is initialized
                 startupSync.Release();
@@ -367,14 +367,14 @@ namespace Tests.AzureAppConfiguration
                 await Task.Delay(1500);
                 await refresher.RefreshAsync();
 
-                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+                afdTokenList.Add(capturedOptions.AfdTokenAccessor.Current);
 
                 // No change (should keep same token)
                 await noChangeGate.WaitAsync();
                 await Task.Delay(1500);
                 await refresher.RefreshAsync();
 
-                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+                afdTokenList.Add(capturedOptions.AfdTokenAccessor.Current);
 
                 // Signal that this app is done with no-change refresh
                 noChangeSync.Release();
@@ -384,7 +384,7 @@ namespace Tests.AzureAppConfiguration
                 await Task.Delay(1500);
                 await refresher.RefreshAsync();
 
-                cdnTokenList.Add(capturedOptions.CdnTokenAccessor.Current);
+                afdTokenList.Add(capturedOptions.AfdTokenAccessor.Current);
             }
 
             var changeTask = Task.Run(async () =>
@@ -410,21 +410,21 @@ namespace Tests.AzureAppConfiguration
             });
 
             // Run both apps in parallel along with the change coordinator
-            var app1CdnTokens = new List<string>();
-            var app2CdnTokens = new List<string>();
-            var task1 = CreateAppTask(app1CdnTokens);
-            var task2 = CreateAppTask(app2CdnTokens);
+            var app1AfdTokens = new List<string>();
+            var app2AfdTokens = new List<string>();
+            var task1 = CreateAppTask(app1AfdTokens);
+            var task2 = CreateAppTask(app2AfdTokens);
 
             await Task.WhenAll(task1, task2, changeTask);
 
             // Verify both apps captured the same number of tokens
-            Assert.Equal(4, app1CdnTokens.Count);
-            Assert.Equal(4, app2CdnTokens.Count);
+            Assert.Equal(4, app1AfdTokens.Count);
+            Assert.Equal(4, app2AfdTokens.Count);
 
-            // Verify the CDN token sequences are identical between the two apps
-            for (int i = 0; i < app1CdnTokens.Count; i++)
+            // Verify the AFD token sequences are identical between the two apps
+            for (int i = 0; i < app1AfdTokens.Count; i++)
             {
-                Assert.True(app1CdnTokens[i] == app2CdnTokens[i]);
+                Assert.True(app1AfdTokens[i] == app2AfdTokens[i]);
             }
 
             // Verify the expected token pattern:
@@ -432,13 +432,13 @@ namespace Tests.AzureAppConfiguration
             // Index 1: non-null (after first change)
             // Index 2: same as index 1 (no change)
             // Index 3: non-null and different from index 1 (after second change)
-            Assert.Null(app1CdnTokens[0]);
-            Assert.NotNull(app1CdnTokens[1]);
-            Assert.NotEmpty(app1CdnTokens[1]);
-            Assert.Equal(app1CdnTokens[1], app1CdnTokens[2]);
-            Assert.NotNull(app1CdnTokens[3]);
-            Assert.NotEmpty(app1CdnTokens[3]);
-            Assert.NotEqual(app1CdnTokens[1], app1CdnTokens[3]);
+            Assert.Null(app1AfdTokens[0]);
+            Assert.NotNull(app1AfdTokens[1]);
+            Assert.NotEmpty(app1AfdTokens[1]);
+            Assert.Equal(app1AfdTokens[1], app1AfdTokens[2]);
+            Assert.NotNull(app1AfdTokens[3]);
+            Assert.NotEmpty(app1AfdTokens[3]);
+            Assert.NotEqual(app1AfdTokens[1], app1AfdTokens[3]);
         }
     }
 }
