@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (options.LoadBalancingEnabled)
                     {
-                        throw new InvalidOperationException("Load balancing is not supported for AFD endpoint.");
+                        throw new InvalidOperationException("Load balancing is not supported when connecting to AFD.");
                     }
 
                     if (clientFactory != null)
