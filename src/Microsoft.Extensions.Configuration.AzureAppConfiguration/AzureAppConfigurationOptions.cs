@@ -3,7 +3,6 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -11,6 +10,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -23,8 +23,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         private const int MaxRetries = 2;
         private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(1);
-        private static readonly TimeSpan NetworkTimeout = TimeSpan.FromSeconds(10);
-        private static readonly KeyValueSelector DefaultQuery = new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null };
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
@@ -140,7 +138,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
-        /// Indicates all feature flag features used by the application.
+        /// Flag to indicate whether Connection to CDN is enabled.
+        /// </summary>
+        internal bool IsCdnEnabled { get; private set; } = false;
+
+        /// <summary>
+        /// Indicates all types of feature filters used by the application.
         /// </summary>
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
@@ -148,11 +151,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
-
-        /// <summary>
-        /// Client factory that is responsible for creating instances of ConfigurationClient.
-        /// </summary>
-        internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -167,21 +165,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             };
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
-            _selectors = new List<KeyValueSelector> { DefaultQuery };
-        }
-
-        /// <summary>
-        /// Sets the client factory used to create ConfigurationClient instances.
-        /// If a client factory is provided using this method, a call to Connect is
-        /// still required to identify one or more Azure App Configuration stores but
-        /// will not be used to authenticate a <see cref="ConfigurationClient"/>.
-        /// </summary>
-        /// <param name="factory">The client factory.</param>
-        /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
-        public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
-        {
-            ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
-            return this;
+            _selectors = new List<KeyValueSelector> { new KeyValueSelector { KeyFilter = KeyFilter.Any, LabelFilter = LabelFilter.Null } };
         }
 
         /// <summary>
@@ -203,14 +187,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        /// <param name="tagFilters">
-        /// In addition to key and label filters, key-values from Azure App Configuration can be filtered based on their tag names and values.
-        /// Each tag filter must follow the format "tagName=tagValue". Only those key-values will be loaded whose tags match all the tags provided here.
-        /// Built in tag filter values: <see cref="TagValue"/>. For example, $"tagName={<see cref="TagValue.Null"/>}".
-        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
-        /// Up to 5 tag filters can be provided. If no tag filters are provided, key-values will not be filtered based on tags.
-        /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagFilters = null)
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -228,20 +205,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 labelFilter = LabelFilter.Null;
             }
 
-            if (tagFilters != null)
-            {
-                foreach (string tag in tagFilters)
-                {
-                    if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
-                    {
-                        throw new ArgumentException($"Tag filter '{tag}' does not follow the format \"tagName=tagValue\".", nameof(tagFilters));
-                    }
-                }
-            }
-
             if (!_selectCalled)
             {
-                _selectors.Remove(DefaultQuery);
+                _selectors.Clear();
 
                 _selectCalled = true;
             }
@@ -249,8 +215,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter,
-                TagFilters = tagFilters
+                LabelFilter = labelFilter
             });
 
             return this;
@@ -270,7 +235,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Remove(DefaultQuery);
+                _selectors.Clear();
 
                 _selectCalled = true;
             }
@@ -324,7 +289,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = featureFlagSelector.KeyFilter,
                     Label = featureFlagSelector.LabelFilter,
-                    Tags = featureFlagSelector.TagFilters,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
@@ -341,6 +305,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(string connectionString)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString));
@@ -357,6 +326,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -380,6 +354,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credentials to use to connect.</param>
         public AzureAppConfigurationOptions Connect(Uri endpoint, TokenCredential credential)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoint == null)
             {
                 throw new ArgumentNullException(nameof(endpoint));
@@ -400,6 +379,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (IsCdnEnabled)
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
@@ -414,6 +398,34 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Endpoints = endpoints;
             ConnectionStrings = null;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to CDN endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the CDN instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectCdn(Uri endpoint)
+        {
+            if (!IsCdnEnabled && (Credential != null || ConnectionStrings != null))
+            {
+                throw new InvalidOperationException("Cannot connect to both Azure App Configuration and CDN at the same time.");
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            IsCdnEnabled = true;
+
+            //todo: ClientOptions.AddPolicy(new CdnApiVersionPolicy(), HttpPipelinePosition.PerRetry); need it?
+            //todo: add another policy
+
+            Credential = new EmptyTokenCredential();
+            Endpoints = new List<Uri>() { endpoint };
+            ConnectionStrings = null;
+
             return this;
         }
 
@@ -546,11 +558,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_11_01);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
-            clientOptions.Retry.NetworkTimeout = NetworkTimeout;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
