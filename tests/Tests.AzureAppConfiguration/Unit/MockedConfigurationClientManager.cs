@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -16,16 +19,23 @@ namespace Tests.AzureAppConfiguration
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
+        public bool HasAvailableClients => _clients.Any(client => client.BackoffEndTime <= DateTime.UtcNow);
+
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
         {
-            _clients = clients.ToList();
-            _autoFailoverClients = new List<ConfigurationClientWrapper>();
+            this._clients = clients.ToList();
+            this._autoFailoverClients = new List<ConfigurationClientWrapper>();
         }
 
         public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients, IEnumerable<ConfigurationClientWrapper> autoFailoverClients)
         {
-            _autoFailoverClients = autoFailoverClients.ToList();
-            _clients = clients.ToList();
+            this._autoFailoverClients = autoFailoverClients.ToList();
+            this._clients = clients.ToList();
+        }
+
+        public IEnumerable<ConfigurationClient> GetAvailableClients(DateTimeOffset time)
+        {
+            return this._clients.Select(cw => cw.Client);
         }
 
         public void UpdateClientStatus(ConfigurationClient client, bool successful)
@@ -50,34 +60,12 @@ namespace Tests.AzureAppConfiguration
 
             ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
 
-            if (currentClient == null)
-            {
-                currentClient = _autoFailoverClients.FirstOrDefault(c => c.Client == client);
-            }
-
             return currentClient?.Endpoint;
         }
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public Task<IEnumerable<ConfigurationClient>> GetAutoFailoverClients(Logger logger, CancellationToken cancellationToken)
         {
-            var result = new List<ConfigurationClient>();
-
-            foreach (var client in _clients)
-            {
-                result.Add(client.Client);
-            }
-
-            foreach (var client in _autoFailoverClients)
-            {
-                result.Add(client.Client);
-            }
-
-            return result;
-        }
-
-        public void RefreshClients()
-        {
-            return;
+            return Task.FromResult(this._autoFailoverClients.Select(cw => cw.Client));
         }
     }
 }

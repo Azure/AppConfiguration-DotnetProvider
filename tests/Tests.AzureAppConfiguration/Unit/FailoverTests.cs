@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
@@ -23,7 +22,60 @@ namespace Tests.AzureAppConfiguration
                                                                                           contentType: "text");
 
         [Fact]
-        public async Task FailOverTests_ReturnsAllClientsIfAllBackedOff()
+        public void FailOverTests_DoesNotReturnBackedOffClient()
+        {
+            // Arrange
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+
+            var mockClient1 = new Mock<ConfigurationClient>();
+            mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+            mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
+
+            var mockClient2 = new Mock<ConfigurationClient>();
+            mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+            mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
+
+            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+
+            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ConfigurationClientManager(clientList);
+
+            // The client enumerator should return 2 clients for the first time.
+            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = configClientManager;
+                    options.Select("TestKey*");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label")
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
+                    });
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // The client enumerator should return just 1 client since one client is in the backoff state.
+            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
+        }
+
+        [Fact]
+        public void FailOverTests_ReturnsAllClientsIfAllBackedOff()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -53,42 +105,28 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            // The client enumerator should return 2 clients for the first time.
+            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ConfigureStartupOptions(startupOptions =>
-                    {
-                        startupOptions.Timeout = TimeSpan.FromSeconds(15);
-                    });
                     options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
-
-                    options.ReplicaDiscoveryEnabled = false;
-
+                    options.IsAutoFailover = false;
                     refresher = options.GetRefresher();
                 });
 
             // Throws last exception when all clients fail.
-            Exception exception = Assert.Throws<TimeoutException>(() => configBuilder.Build());
+            Assert.Throws<RequestFailedException>(configBuilder.Build);
 
-            // Assert the inner aggregate exception
-            Assert.IsType<AggregateException>(exception.InnerException);
-
-            // Assert the inner request failed exceptions
-            Assert.True((exception.InnerException as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false);
-
-            await refresher.RefreshAsync();
-
-            // The client manager should have called RefreshClients when all clients were backed off
-            Assert.Equal(1, configClientManager.RefreshClientsCalled);
+            // The client manager should return no clients since all clients are in the back-off state.
+            Assert.False(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Any());
         }
 
         [Fact]
@@ -122,8 +160,8 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            // The client enumerator should return 2 clients for the first time.
+            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
 
             var configBuilder = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -133,7 +171,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
@@ -144,7 +182,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task FailOverTests_BackoffStateIsUpdatedOnSuccessfulRequest()
+        public void FailOverTests_BackoffStateIsUpdatedOnSuccessfulRequest()
         {
             // Arrange
             IConfigurationRefresher refresher = null;
@@ -181,40 +219,33 @@ namespace Tests.AzureAppConfiguration
             var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
             var configClientManager = new ConfigurationClientManager(clientList);
 
-            // The client enumerator should return 2 clients
-            Assert.Equal(2, configClientManager.GetClients().Count());
+            // The client enumerator should return 2 clients for the first time.
+            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.MinBackoffDuration = TimeSpan.FromSeconds(2);
                     options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
 
                     refresher = options.GetRefresher();
                 }).Build();
 
-            await refresher.RefreshAsync();
+            // The client enumerator should return just 1 client for the second time.
+            Assert.Single(configClientManager.GetAvailableClients(DateTimeOffset.UtcNow));
 
-            // The first client should not have been called during refresh
-            mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
+            // Sleep for backoff-time to pass.
+            Thread.Sleep(TimeSpan.FromSeconds(31));
 
-            mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(0));
+            refresher.RefreshAsync().Wait();
 
-            mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
-
-            // Wait for client 1 backoff to end
-            Thread.Sleep(2500);
-
-            await refresher.RefreshAsync();
-
-            // The first client should have been called now with refresh after the backoff time ends
-            mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+            // The client enumerator should return 2 clients for the third time.
+            Assert.Equal(2, configClientManager.GetAvailableClients(DateTimeOffset.UtcNow).Count());
         }
 
         [Fact]
@@ -228,9 +259,9 @@ namespace Tests.AzureAppConfiguration
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Throws(new RequestFailedException(403, "Forbidden."));
+                       .Throws(new RequestFailedException(503, "Request failed."));
             mockClient1.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Throws(new RequestFailedException(401, "Unauthorized."));
+                       .Throws(new RequestFailedException(503, "Request failed."));
             mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
 
             var mockClient2 = new Mock<ConfigurationClient>();
@@ -258,162 +289,12 @@ namespace Tests.AzureAppConfiguration
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                            .SetCacheExpiration(TimeSpan.FromSeconds(1));
                     });
+                    options.IsAutoFailover = true;
                     refresher = options.GetRefresher();
                 })
                 .Build();
-        }
-
-        [Fact]
-        public void FailOverTests_ValidateEndpoints()
-        {
-            var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
-
-            var configClientManager = new ConfigurationClientManager(
-                clientFactory,
-                new[] { new Uri("https://foobar.azconfig.io") },
-                true,
-                false);
-
-            Assert.True(configClientManager.IsValidEndpoint("azure.azconfig.io"));
-            Assert.True(configClientManager.IsValidEndpoint("appconfig.azconfig.io"));
-            Assert.True(configClientManager.IsValidEndpoint("azure.privatelink.azconfig.io"));
-            Assert.True(configClientManager.IsValidEndpoint("azure-replica.azconfig.io"));
-            Assert.False(configClientManager.IsValidEndpoint("azure.badazconfig.io"));
-            Assert.False(configClientManager.IsValidEndpoint("azure.azconfigbad.io"));
-            Assert.False(configClientManager.IsValidEndpoint("azure.appconfig.azure.com"));
-            Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
-
-            var configClientManager2 = new ConfigurationClientManager(
-                clientFactory,
-                new[] { new Uri("https://foobar.appconfig.azure.com") },
-                true,
-                false);
-
-            Assert.True(configClientManager2.IsValidEndpoint("azure.appconfig.azure.com"));
-            Assert.True(configClientManager2.IsValidEndpoint("azure.z1.appconfig.azure.com"));
-            Assert.True(configClientManager2.IsValidEndpoint("azure-replia.z1.appconfig.azure.com"));
-            Assert.True(configClientManager2.IsValidEndpoint("azure.privatelink.appconfig.azure.com"));
-            Assert.True(configClientManager2.IsValidEndpoint("azconfig.appconfig.azure.com"));
-            Assert.False(configClientManager2.IsValidEndpoint("azure.azconfig.io"));
-            Assert.False(configClientManager2.IsValidEndpoint("azure.badappconfig.azure.com"));
-            Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
-
-            var configClientManager3 = new ConfigurationClientManager(
-                clientFactory,
-                new[] { new Uri("https://foobar.azconfig-test.io") },
-                true,
-                false);
-
-            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
-            Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
-
-            var configClientManager4 = new ConfigurationClientManager(
-                clientFactory,
-                new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
-                true,
-                false);
-
-            Assert.False(configClientManager4.IsValidEndpoint("foobar.z2.appconfig-test.azure.com"));
-            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig-test.azure.com"));
-            Assert.False(configClientManager4.IsValidEndpoint("foobar.appconfig.azure.com"));
-        }
-
-        [Fact]
-        public void FailOverTests_GetNoDynamicClient()
-        {
-            var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
-
-            var configClientManager = new ConfigurationClientManager(
-                clientFactory,
-                new[] { new Uri("https://azure.azconfig.io") },
-                true,
-                false);
-
-            var clients = configClientManager.GetClients();
-
-            // Only contains the client that passed while constructing the ConfigurationClientManager
-            Assert.Single(clients);
-        }
-
-        [Fact]
-        public void FailOverTests_NetworkTimeout()
-        {
-            // Arrange
-            IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
-
-            var client1 = new ConfigurationClient(TestHelpers.CreateMockEndpointString(),
-                new ConfigurationClientOptions()
-                {
-                    Retry =
-                    {
-                        NetworkTimeout = TimeSpan.FromTicks(1)
-                    }
-                });
-
-            var mockClient2 = new Mock<ConfigurationClient>();
-            mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
-            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
-            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
-            mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
-
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
-
-            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
-            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
-            var configClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
-
-            // Make sure the provider fails over and will load correctly using the second client
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = configClientManager;
-                    options.Select("TestKey*");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-                })
-                .Build();
-
-            // Make sure the provider fails on startup and throws the expected exception due to startup timeout
-            Exception exception = Assert.Throws<TimeoutException>(() =>
-            {
-                config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
-                    {
-                        options.Connect(TestHelpers.CreateMockEndpointString());
-                        options.Select("TestKey*");
-                        options.ConfigureRefresh(refreshOptions =>
-                        {
-                            refreshOptions.Register("TestKey1", "label")
-                                .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                        });
-                        options.ConfigureStartupOptions(startup =>
-                        {
-                            startup.Timeout = TimeSpan.FromSeconds(5);
-                        });
-                        options.ConfigureClientOptions(clientOptions =>
-                        {
-                            clientOptions.Retry.NetworkTimeout = TimeSpan.FromTicks(1);
-                        });
-                    })
-                    .Build();
-            });
-
-            // Make sure the startup exception is due to network timeout
-            // Aggregate exception is nested due to how provider stores all startup exceptions thrown
-            Assert.True(exception.InnerException is AggregateException ae &&
-                ae.InnerException is AggregateException ae2 &&
-                ae2.InnerExceptions.All(ex => ex is TaskCanceledException) &&
-                ae2.InnerException is TaskCanceledException tce);
         }
     }
 }

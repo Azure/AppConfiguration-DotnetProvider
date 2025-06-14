@@ -12,8 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public AzureAppConfigurationSource(Action<AzureAppConfigurationOptions> optionsInitializer, bool optional = false)
         {
-            _optionsProvider = () =>
-            {
+            _optionsProvider = () => {
                 var options = new AzureAppConfigurationOptions();
                 optionsInitializer(options);
                 return options;
@@ -35,26 +34,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     clientManager = options.ClientManager;
                 }
-                else if (options.IsCdnEnabled)
+                else if (options.ConnectionStrings != null || (options.Endpoints != null && options.Credential != null))
                 {
-                    clientManager = new CdnConfigurationClientManager(options.Endpoints, options.ClientOptions);
-                }
-                else if (options.ConnectionStrings != null)
-                {
-                    clientManager = new ConfigurationClientManager(
-                        options.ConnectionStrings,
-                        options.ClientOptions,
-                        options.ReplicaDiscoveryEnabled,
-                        options.LoadBalancingEnabled);
-                }
-                else if (options.Endpoints != null && options.Credential != null)
-                {
-                    clientManager = new ConfigurationClientManager(
-                        options.Endpoints,
-                        options.Credential,
-                        options.ClientOptions,
-                        options.ReplicaDiscoveryEnabled,
-                        options.LoadBalancingEnabled);
+                    clientManager = new ConfigurationClientManager(options);
                 }
                 else
                 {
@@ -65,11 +47,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {
-                throw new ArgumentException(ex.Message, ex);
+                if (!_optional)
+                {
+                    throw new ArgumentException(ex.Message, ex);
+                }
             }
             catch (FormatException fe) // FormatException is thrown when the connection string is not a well formed connection string.
             {
-                throw new ArgumentException(fe.Message, fe);
+                if (!_optional)
+                {
+                    throw new ArgumentException(fe.Message, fe);
+                }
             }
 
             return provider ?? new EmptyConfigurationProvider();

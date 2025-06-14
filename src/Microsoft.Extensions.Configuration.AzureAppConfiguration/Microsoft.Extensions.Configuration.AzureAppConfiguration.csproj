@@ -1,9 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\NugetProperties.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>8.0</LangVersion>
     <Description>Microsoft.Extensions.Configuration.AzureAppConfiguration is a configuration provider for the .NET Core framework that allows developers to use Microsoft Azure App Configuration service as a configuration source in their applications.</Description>
     <SignAssembly>true</SignAssembly>
@@ -15,16 +14,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.6.0" />
+    <PackageReference Include="Azure.Data.AppConfiguration" Version="1.3.0-beta.2" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.7.0" />
-    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.3.0" />
     <PackageReference Include="DnsClient" Version="1.7.0" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="6.0.36" />
-    <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.6" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.18" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.18" />
+    <PackageReference Include="System.Text.Json" Version="4.7.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
+	<PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net7.0'">
+	<PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.18" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -38,7 +42,7 @@
   <!-- Nuget Package Version Settings -->
   
   <PropertyGroup>
-    <OfficialVersion>8.2.0</OfficialVersion>
+    <OfficialVersion>7.0.0-preview</OfficialVersion>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
@@ -51,8 +55,7 @@
 
   <PropertyGroup>
     <CodeAnalysisRuleSet>..\..\AzureAppConfigurationRules.ruleset</CodeAnalysisRuleSet>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
+    <EnableNETAnalyzers>True</EnableNETAnalyzers>
   </PropertyGroup>
-
+  
 </Project>

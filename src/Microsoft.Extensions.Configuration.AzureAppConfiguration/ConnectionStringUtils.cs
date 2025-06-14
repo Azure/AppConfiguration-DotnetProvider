@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(secret));
             }
 
-            return $"{EndpointSection}={endpoint.AbsoluteUri.TrimEnd('/')};{IdSection}={id};{SecretSection}={secret}";
+            return $"{EndpointSection}={endpoint.AbsoluteUri.Trim('/')};{IdSection}={id};{SecretSection}={secret}";
         }
     }
 }

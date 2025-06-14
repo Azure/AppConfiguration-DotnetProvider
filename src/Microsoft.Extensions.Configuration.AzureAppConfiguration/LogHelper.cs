@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         public static string BuildKeyValueReadMessage(KeyValueChangeType changeType, string key, string label, string endpoint)
         {
-            return $"{LoggingConstants.RefreshKeyValueRead} Change:'{changeType}' Key:'{key}' Label:'{label}' Endpoint:'{endpoint?.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshKeyValueRead} Change:'{changeType}' Key:'{key}' Label:'{label}' Endpoint:'{endpoint.TrimEnd('/')}'";
         }
 
         public static string BuildKeyValueSettingUpdatedMessage(string key)
@@ -22,22 +22,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public static string BuildFeatureFlagsUnchangedMessage(string endpoint)
         {
-            return $"{LoggingConstants.RefreshFeatureFlagsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
+            return $"{LoggingConstants.RefreshFeatureFlagsUnchanged} Endpoint:'{endpoint.TrimEnd('/')}'";
         }
 
-        public static string BuildFeatureFlagsUpdatedMessage()
+        public static string BuildFeatureFlagReadMessage(string key, string label, string endpoint)
         {
-            return LoggingConstants.RefreshFeatureFlagsUpdated;
+            return $"{LoggingConstants.RefreshFeatureFlagRead} Key:'{key}' Label:'{label}' Endpoint:'{endpoint.TrimEnd('/')}'";
         }
 
-        public static string BuildSelectedKeyValueCollectionsUnchangedMessage(string endpoint)
+        public static string BuildFeatureFlagUpdatedMessage(string key)
         {
-            return $"{LoggingConstants.RefreshSelectedKeyValueCollectionsUnchanged} Endpoint:'{endpoint?.TrimEnd('/')}'";
-        }
-
-        public static string BuildSelectedKeyValuesAndFeatureFlagsUpdatedMessage()
-        {
-            return LoggingConstants.RefreshSelectedKeyValuesAndFeatureFlagsUpdated;
+            return $"{LoggingConstants.RefreshFeatureFlagUpdated} Key:'{key}'";
         }
 
         public static string BuildKeyVaultSecretReadMessage(string key, string label)
@@ -80,23 +75,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return $"{LoggingConstants.PushNotificationUnregisteredEndpoint} '{resourceUri}'.";
         }
 
-        public static string BuildFailoverMessage(string originalEndpoint, string currentEndpoint)
+        public static string QuerySrvDnsFailedErrorMessage(string exceptionMessage)
         {
-            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{originalEndpoint?.TrimEnd('/')}'. {LoggingConstants.FailingOverToEndpoint} '{currentEndpoint?.TrimEnd('/')}'.";
+            return $"{LoggingConstants.QuerySrvDnsFailedError}\n{exceptionMessage}";
         }
 
-        public static string BuildLastEndpointFailedMessage(string endpoint)
+        public static string FailoverDnsLookupToTcp(string exceptionMessage)
         {
-            return $"{LoggingConstants.RefreshFailedToGetSettingsFromEndpoint} '{endpoint?.TrimEnd('/')}'.";
+            return $"{LoggingConstants.FailoverDnsLookupToTcpMessage}\n{exceptionMessage}";
         }
 
-        public static string BuildFallbackClientLookupFailMessage(string exceptionMessage)
+        public static string AutoFailoverClientCount(int count)
         {
-            return $"{LoggingConstants.FallbackClientLookupError}\n{exceptionMessage}";
-        }
-        public static string BuildRefreshFailedDueToFormattingErrorMessage(string exceptionMessage)
-        {
-            return $"{LoggingConstants.RefreshFailedDueToFormattingError}\n{exceptionMessage}";
+            return $"{LoggingConstants.AutoFailoverClientCount}: {count}";
         }
     }
 }
