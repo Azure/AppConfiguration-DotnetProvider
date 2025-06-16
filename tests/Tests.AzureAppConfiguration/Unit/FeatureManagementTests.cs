@@ -2294,11 +2294,10 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void EnvironmentVariableForcesMicrosoftSchemaForAllFlags()
         {
-            // Arrange - Create a collection with one .NET schema flag and one Microsoft schema flag
             var mixedSchemaFlags = new List<ConfigurationSetting>
             {
-                _kv, // This is a .NET schema flag (no variants/allocation/telemetry)
-                _variantFeatureFlagCollection[0] // This is a Microsoft schema flag (has variants)
+                _kv,
+                _variantFeatureFlagCollection[0]
             };
 
             var mockResponse = new Mock<Response>();
