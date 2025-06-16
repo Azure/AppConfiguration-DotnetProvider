@@ -5,7 +5,7 @@ This document outlines coding guidelines for the Azure App Configuration .NET Pr
 ## General Guidelines
 
 1. **Exception Handling**:
-   * Always catch specific exceptions and avoid catching the base `Exception` class in catch blocks.
+   * When adding error handling, always catch specific exceptions and avoid catching the base `Exception` class in catch blocks.
    * Throw specific exception types (e.g., `ArgumentNullException`, `FormatException`, custom exceptions) rather than generic `System.Exception`.
    * Include the parameter name when throwing `ArgumentNullException` using `nameof()`.
 
