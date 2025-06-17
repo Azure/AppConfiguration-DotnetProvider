@@ -1,3 +1,9 @@
 # If there are abnormal line endings in any file, run "git add --renormalize <file_name>", 
 # review the changes, and commit them to fix the line endings.
 * text=auto
+
+# Third-party library files should not have line endings normalized
+**/wwwroot/lib/** -text
+*.min.css -text
+*.min.js -text
+*.map -text
