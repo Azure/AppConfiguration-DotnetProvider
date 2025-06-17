@@ -1,5 +1,5 @@
 body {
-    padding-top: 50px;
+    padding-top: 56px; /* Adjusted for Bootstrap 5 navbar height */
     padding-bottom: 20px;
 }
 
