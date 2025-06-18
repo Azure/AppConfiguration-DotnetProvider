@@ -2351,10 +2351,9 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            // Assert - First flag should be in .NET schema, second in Microsoft schema
             // First flag (no variants) should be in .NET schema
-            Assert.Equal("Browser", configWithoutEnvVar["FeatureManagement:myFeature:EnabledFor:0:Name"]);
-            Assert.Equal("Firefox", configWithoutEnvVar["FeatureManagement:myFeature:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Browser", configWithoutEnvVar["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", configWithoutEnvVar["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
 
             // Second flag (has variants) should be in Microsoft schema
             Assert.Equal("VariantsFeature1", configWithoutEnvVar["feature_management:feature_flags:0:id"]);
