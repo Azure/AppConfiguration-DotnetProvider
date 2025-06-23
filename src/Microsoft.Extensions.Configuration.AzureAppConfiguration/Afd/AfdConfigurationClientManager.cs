@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 
         public IEnumerable<ConfigurationClient> GetClients()
         {
-            return new[] { _clientWrapper.Client };
+            return new List<ConfigurationClient> { _clientWrapper.Client };
         }
 
         public void RefreshClients()
