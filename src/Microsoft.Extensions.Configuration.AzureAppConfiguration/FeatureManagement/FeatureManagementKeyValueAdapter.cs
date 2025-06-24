@@ -28,7 +28,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
 
-
             string fmSchemaCompatibilityDisabled = null;
 
             try
