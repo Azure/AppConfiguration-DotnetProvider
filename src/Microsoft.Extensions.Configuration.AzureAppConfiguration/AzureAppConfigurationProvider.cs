@@ -1212,7 +1212,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            UpdateClientBackoffStatus(previousEndpoint, success);
+                            Uri endpointToBackoff = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+
+                            UpdateClientBackoffStatus(endpointToBackoff, success);
 
                             clientEnumerator.MoveNext();
 
