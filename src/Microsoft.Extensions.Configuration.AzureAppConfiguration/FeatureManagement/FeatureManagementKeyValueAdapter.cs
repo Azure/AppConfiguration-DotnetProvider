@@ -28,11 +28,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
 
+
+            string fmSchemaCompatibilityDisabled = null;
+
             try
             {
-                _fmSchemaCompatibilityDisabled = bool.TryParse(Environment.GetEnvironmentVariable(DisableFmSchemaCompatibilityEnvironmentVariable), out bool disabled) ? disabled : false;
+                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(DisableFmSchemaCompatibilityEnvironmentVariable);
             }
             catch (SecurityException) { }
+
+            _fmSchemaCompatibilityDisabled = bool.TryParse(fmSchemaCompatibilityDisabled, out bool disabled) ? disabled : false;
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
