@@ -2320,13 +2320,13 @@ namespace Tests.AzureAppConfiguration
                     .Build();
 
                 // Assert - Both flags should be in Microsoft schema format
-                // First flag (originally .NET schema) should now be in Microsoft schema
+                // First flag (would be in .NET schema without environment variable) should now be in Microsoft schema
                 Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
                 Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
                 Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
                 Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
 
-                // Second flag (already Microsoft schema) should still be in Microsoft schema
+                // Second flag (always Microsoft schema) should still be in Microsoft schema
                 Assert.Equal("VariantsFeature1", config["feature_management:feature_flags:1:id"]);
                 Assert.Equal("True", config["feature_management:feature_flags:1:enabled"]);
                 Assert.Equal("Big", config["feature_management:feature_flags:1:variants:0:name"]);
