@@ -1265,6 +1265,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 catch (RequestFailedException rfe)
                 {
+                    var temp = !IsFailOverable(rfe);
                     if (!IsFailOverable(rfe) || !clientEnumerator.MoveNext())
                     {
                         backoffAllClients = true;
@@ -1291,6 +1292,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         do
                         {
                             UpdateClientBackoffStatus(previousEndpoint, success);
+
+                            var temp2 = clientEnumerator.Current;
 
                             clientEnumerator.MoveNext();
 

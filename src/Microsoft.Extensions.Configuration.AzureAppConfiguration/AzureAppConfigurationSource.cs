@@ -2,15 +2,32 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
+using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
+    class RemoveAuthorizationHeaderPolicy : HttpPipelinePolicy
+    {
+        public override void Process(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
+        {
+            message.Request.Headers.Remove("Authorization");
+            ProcessNext(message, pipeline);
+        }
+
+        public override ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
+        {
+            message.Request.Headers.Remove("Authorization");
+            return ProcessNextAsync(message, pipeline);
+        }
+    }
+
     internal class AzureAppConfigurationSource : IConfigurationSource
     {
         private readonly bool _optional;
@@ -51,6 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
 
                     options.ClientOptions.AddPolicy(new AfdPolicy(options.AfdTokenAccessor), HttpPipelinePosition.PerCall);
+                    options.ClientOptions.AddPolicy(new RemoveAuthorizationHeaderPolicy(), HttpPipelinePosition.PerRetry);
                 }
 
                 if (options.ClientManager != null)

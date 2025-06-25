@@ -1,14 +1,17 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Core;
+using Azure.Core.Pipeline;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConsoleApplication
 {
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     class Program
     {
@@ -38,25 +41,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
 
             IConfiguration configuration = builder.Build();
 
-            if (string.IsNullOrEmpty(configuration["connection_string"]))
-            {
-                Console.WriteLine("Connection string not found.");
-                Console.WriteLine("Please set the 'connection_string' environment variable to a valid Azure App Configuration connection string and re-run this example.");
-                return;
-            }
+            //if (string.IsNullOrEmpty(configuration["connection_string"]))
+            //{
+            //    Console.WriteLine("Connection string not found.");
+            //    Console.WriteLine("Please set the 'connection_string' environment variable to a valid Azure App Configuration connection string and re-run this example.");
+            //    return;
+            //}
 
             // Augment the configuration builder with Azure App Configuration
             // Pull the connection string from an environment variable
             builder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(configuration["connection_string"])
-                       .Select("AppName")
-                       .Select("Settings:BackgroundColor")
-                       .ConfigureClientOptions(clientOptions => clientOptions.Retry.MaxRetries = 5)
+                options.ConnectAzureFrontDoor(new Uri("https://staging-test-a5erhjeeacerb6ff.b01.azurefd.net"))
                        .ConfigureRefresh(refresh =>
                        {
-                           refresh.Register("AppName")
-                                  .Register("Language", refreshAll: true)
+                           refresh.RegisterAll()
                                   .SetRefreshInterval(TimeSpan.FromSeconds(10));
                        });
 
@@ -72,30 +71,32 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             string display = string.Empty;
             StringBuilder sb = new StringBuilder();
 
-            while (!token.IsCancellationRequested)
-            {
-                // Trigger an async refresh for registered configuration settings without wait
-                _ = _refresher.TryRefreshAsync();
+            Console.WriteLine($"Test: {Configuration["test"]}");
 
-                sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
-                sb.AppendLine();
+            //while (!token.IsCancellationRequested)
+            //{
+            //    // Trigger an async refresh for registered configuration settings without wait
+            //    _ = _refresher.TryRefreshAsync();
 
-                sb.AppendLine(string.Equals(Configuration["Language"], "spanish", StringComparison.OrdinalIgnoreCase) ? "Buenos Dias." : "Good morning");
-                sb.AppendLine();
+            //    sb.AppendLine($"{Configuration["AppName"]} has been configured to run in {Configuration["Language"]}");
+            //    sb.AppendLine();
 
-                sb.AppendLine("Press any key to exit...");
-                await Task.Delay(1000);
+            //    sb.AppendLine(string.Equals(Configuration["Language"], "spanish", StringComparison.OrdinalIgnoreCase) ? "Buenos Dias." : "Good morning");
+            //    sb.AppendLine();
 
-                if (!sb.ToString().Equals(display))
-                {
-                    display = sb.ToString();
+            //    sb.AppendLine("Press any key to exit...");
+            //    await Task.Delay(1000);
 
-                    Console.Clear();
-                    Console.Write(display);
-                }
+            //    if (!sb.ToString().Equals(display))
+            //    {
+            //        display = sb.ToString();
 
-                sb.Clear();
-            }
+            //        Console.Clear();
+            //        Console.Write(display);
+            //    }
+
+            //    sb.Clear();
+            //}
         }
     }
 }
