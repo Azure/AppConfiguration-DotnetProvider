@@ -71,6 +71,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate wether the request is sent to a AFD.
+        /// </summary>
+        public bool IsAfdEnabled { get; set; } = false;
+
+        /// <summary>
         /// Flag to indicate whether any key-value uses the json content type and contains
         /// a parameter indicating an AI profile.
         /// </summary>
@@ -120,7 +125,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return IsLoadBalancingEnabled ||
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
-                UsesAIChatCompletionConfiguration;
+                UsesAIChatCompletionConfiguration ||
+                IsAfdEnabled;
         }
 
         /// <summary>
@@ -169,6 +175,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
+            }
+
+            if (IsAfdEnabled)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.AfdTag);
             }
 
             return sb.ToString();
