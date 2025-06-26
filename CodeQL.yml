@@ -1,0 +1,10 @@
+path_classifiers:
+  docs:
+    # Documentation
+    - "examples" # Exclude code samples from scan results
+  library:
+    # Library code
+    - ""
+  generated:
+    # Generated code
+    - ""
