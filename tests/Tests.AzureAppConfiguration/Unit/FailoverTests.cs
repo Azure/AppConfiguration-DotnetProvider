@@ -476,10 +476,15 @@ namespace Tests.AzureAppConfiguration
             // This should cause all clients to be backed off
             await Task.Delay(1500);
             await refresher.TryRefreshAsync();
+
             // Verify that client 1 was called during the first refresh
+            mockClient1.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+            mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
 
             // Verify that client 2 was not called during the first refresh
+            mockClient2.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
             mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
 
             // Second refresh - no clients should be called as all are backed off
@@ -487,6 +492,8 @@ namespace Tests.AzureAppConfiguration
             await refresher.TryRefreshAsync();
 
             // Verify that no additional calls were made to any client during the second refresh
+            mockClient1.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+            mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
             mockClient1.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
             mockClient2.Verify(mc => mc.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Never);
             mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
