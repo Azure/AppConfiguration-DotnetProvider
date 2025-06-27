@@ -6,6 +6,9 @@
 # Azure Functions localsettings file
 local.settings.json
 
+# Integration test secrets
+appsettings.Secrets.json
+
 # User-specific files
 *.suo
 *.user
