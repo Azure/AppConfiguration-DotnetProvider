@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class AzureAppConfigurationProvider : ConfigurationProvider, IConfigurationRefresher, IHealthCheck, IDisposable
     {
-        private readonly ActivitySource _activitySource = new ActivitySource(ActivityNames.AzureAppConfigurationActivitySource);
+        private readonly ActivitySource _activitySource;
         private bool _optional;
         private bool _isInitialLoadComplete = false;
         private bool _isAssemblyInspected;
@@ -156,6 +156,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 SetRequestTracingOptions();
             }
+
+            _activitySource = new ActivitySource(options.ActivitySourceName ?? ActivityNames.AzureAppConfigurationActivitySource);
         }
 
         /// <summary>
@@ -164,7 +166,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public override void Load()
         {
             var watch = Stopwatch.StartNew();
-            using Activity activity = _activitySource.StartActivity(ActivityNames.Load);
+            using Activity activity = _activitySource?.StartActivity(ActivityNames.Load);
             try
             {
                 using var startupCancellationTokenSource = new CancellationTokenSource(_options.Startup.Timeout);
@@ -266,7 +268,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    using Activity activity = _activitySource.StartActivity(ActivityNames.Refresh);
+                    using Activity activity = _activitySource?.StartActivity(ActivityNames.Refresh);
                     // Check if initial configuration load had failed
                     if (_mappedData == null)
                     {
@@ -1447,7 +1449,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public void Dispose()
         {
             (_configClientManager as ConfigurationClientManager)?.Dispose();
-            _activitySource.Dispose();
+            _activitySource?.Dispose();
         }
     }
 }
