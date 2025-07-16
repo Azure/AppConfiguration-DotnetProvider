@@ -19,7 +19,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
-        private const string DisableFmSchemaCompatibilityEnvironmentVariable = "AZURE_APP_CONFIGURATION_FM_SCHEMA_COMPATIBILITY_DISABLED";
         private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
         private bool _fmSchemaCompatibilityDisabled = false;
@@ -32,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             try
             {
-                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(DisableFmSchemaCompatibilityEnvironmentVariable);
+                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(AzureAppConfigurationEnvironmentVariables.DisableFmSchemaCompatibility);
             }
             catch (SecurityException) { }
 
