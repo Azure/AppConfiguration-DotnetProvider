@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// <summary>
     /// Environment variables used to configure Azure App Configuration provider behavior.
     /// </summary>
-    public static class AzureAppConfigurationEnvironmentVariables
+    internal static class EnvironmentVariables
     {
         /// <summary>
         /// Environment variable to disable Feature Management schema compatibility.
@@ -15,5 +15,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// and all feature flags will be interpreted using the Microsoft Feature Flags schema.
         /// </summary>
         public const string DisableFmSchemaCompatibility = "AZURE_APP_CONFIGURATION_FM_SCHEMA_COMPATIBILITY_DISABLED";
+
+        /// <summary>
+        /// Environment variable to disable request tracing.
+        /// The value of this variable is a boolean string, e.g. "true" or "false".
+        /// </summary>
+        public const string RequestTracingDisabled = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
     }
 }

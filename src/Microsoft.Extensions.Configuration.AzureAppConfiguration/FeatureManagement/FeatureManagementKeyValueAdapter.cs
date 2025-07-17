@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             try
             {
-                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(AzureAppConfigurationEnvironmentVariables.DisableFmSchemaCompatibility);
+                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(EnvironmentVariables.DisableFmSchemaCompatibility);
             }
             catch (SecurityException) { }
 
