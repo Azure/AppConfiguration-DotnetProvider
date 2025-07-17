@@ -20,6 +20,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Environment variable to disable request tracing.
         /// The value of this variable is a boolean string, e.g. "true" or "false".
         /// </summary>
-        public const string RequestTracingDisabled = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
+        public const string DisableRequestTracing = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
     }
 }
