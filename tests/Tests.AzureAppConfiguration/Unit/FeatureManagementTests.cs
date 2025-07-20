@@ -2291,6 +2291,75 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
+        [Fact]
+        public void EnvironmentVariableForcesMicrosoftSchemaForAllFlags()
+        {
+            var mixedSchemaFlags = new List<ConfigurationSetting>
+            {
+                _kv,
+                _variantFeatureFlagCollection[0]
+            };
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(mixedSchemaFlags));
+
+            try
+            {
+                // Act - Set environment variable to force Microsoft schema
+                Environment.SetEnvironmentVariable(EnvironmentVariables.DisableFmSchemaCompatibility, "true");
+
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                        options.UseFeatureFlags();
+                    })
+                    .Build();
+
+                // Assert - Both flags should be in Microsoft schema format
+                // First flag (would be in .NET schema without environment variable) should now be in Microsoft schema
+                Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+                Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+                Assert.Equal("Browser", config["feature_management:feature_flags:0:conditions:client_filters:0:name"]);
+                Assert.Equal("Firefox", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:AllowedBrowsers:0"]);
+
+                // Second flag (always Microsoft schema) should still be in Microsoft schema
+                Assert.Equal("VariantsFeature1", config["feature_management:feature_flags:1:id"]);
+                Assert.Equal("True", config["feature_management:feature_flags:1:enabled"]);
+                Assert.Equal("Big", config["feature_management:feature_flags:1:variants:0:name"]);
+                Assert.Equal("600px", config["feature_management:feature_flags:1:variants:0:configuration_value"]);
+
+                // Verify .NET schema paths are NOT present
+                Assert.Null(config["FeatureManagement:myFeature:EnabledFor:0:Name"]);
+                Assert.Null(config["FeatureManagement:VariantsFeature1:EnabledFor:0:Name"]);
+            }
+            finally
+            {
+                // Cleanup - Reset environment variable
+                Environment.SetEnvironmentVariable("AZURE_APP_CONFIGURATION_FM_SCHEMA_COMPATIBILITY_DISABLED", null);
+            }
+
+            // Act - Verify normal behavior when environment variable is not set
+            var configWithoutEnvVar = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // First flag (no variants) should be in .NET schema
+            Assert.Equal("Browser", configWithoutEnvVar["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", configWithoutEnvVar["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+
+            // Second flag (has variants) should be in Microsoft schema
+            Assert.Equal("VariantsFeature1", configWithoutEnvVar["feature_management:feature_flags:0:id"]);
+            Assert.Equal("Big", configWithoutEnvVar["feature_management:feature_flags:0:variants:0:name"]);
+        }
+
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
