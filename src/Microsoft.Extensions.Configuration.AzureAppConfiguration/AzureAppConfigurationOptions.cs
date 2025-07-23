@@ -120,6 +120,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
 
         /// <summary>
+        /// For use in tests only. An optional activity source name to specify the activity source used by the configuration provider.
+        /// </summary>
+        internal string ActivitySourceName { get; set; }
+
+        /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
         /// </summary>
         internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
