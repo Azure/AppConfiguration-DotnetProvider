@@ -273,7 +273,7 @@ namespace Tests.AzureAppConfiguration
             var options = new AzureAppConfigurationOptions();
             options.ClientOptions.Transport = mockTransport;
 
-            Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, "True");
+            Environment.SetEnvironmentVariable(EnvironmentVariables.DisableRequestTracing, "True");
 
             var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
@@ -296,7 +296,7 @@ namespace Tests.AzureAppConfiguration
             options.ClientOptions.Transport = mockTransport;
 
             // Delete the request tracing environment variable
-            Environment.SetEnvironmentVariable(RequestTracingConstants.RequestTracingDisabledEnvironmentVariable, null);
+            Environment.SetEnvironmentVariable(EnvironmentVariables.DisableRequestTracing, null);
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
 
             var clientManager1 = TestHelpers.CreateMockedConfigurationClientManager(options);
@@ -352,10 +352,12 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TestActivitySource()
         {
+            string activitySourceName = Guid.NewGuid().ToString();
+
             var _activities = new List<Activity>();
             var _activityListener = new ActivityListener
             {
-                ShouldListenTo = source => source.Name == "Microsoft.Extensions.Configuration.AzureAppConfiguration",
+                ShouldListenTo = source => source.Name == activitySourceName,
                 Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
                 ActivityStarted = activity => _activities.Add(activity),
             };
@@ -371,7 +373,11 @@ namespace Tests.AzureAppConfiguration
                 .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object))
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ActivitySourceName = activitySourceName;
+                })
                 .Build();
 
             Assert.Contains(_activities, a => a.OperationName == "Load");

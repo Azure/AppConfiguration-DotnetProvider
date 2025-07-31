@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Mime;
 using System.Security.Cryptography;
+using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -20,10 +21,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
+        private bool _fmSchemaCompatibilityDisabled = false;
 
         public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
+
+            string fmSchemaCompatibilityDisabled = null;
+
+            try
+            {
+                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(EnvironmentVariables.DisableFmSchemaCompatibility);
+            }
+            catch (SecurityException) { }
+
+            _fmSchemaCompatibilityDisabled = bool.TryParse(fmSchemaCompatibilityDisabled, out bool disabled) ? disabled : false;
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -33,7 +45,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             var keyValues = new List<KeyValuePair<string, string>>();
 
             // Check if we need to process the feature flag using the microsoft schema
-            if ((featureFlag.Variants != null && featureFlag.Variants.Any()) || featureFlag.Allocation != null || featureFlag.Telemetry != null)
+            if (_fmSchemaCompatibilityDisabled ||
+                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
+                featureFlag.Allocation != null ||
+                featureFlag.Telemetry != null)
             {
                 keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
             }
