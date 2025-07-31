@@ -276,6 +276,90 @@ namespace Tests.AzureAppConfiguration
             Assert.False(jsonKeyValueAdapter.CanProcess(setting));
         }
 
+        [Fact]
+        public void JsonContentTypeTests_LoadJsonValuesWithComments()
+        {
+            List<ConfigurationSetting> _kvCollection = new List<ConfigurationSetting>
+            {
+                // Test various comment styles and positions
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "MixedCommentStyles",
+                    value: @"{
+                        // Single line comment at start
+                        ""ApiSettings"": {
+                            ""BaseUrl"": ""https://api.example.com"", // Inline single line
+                            /* Multi-line comment
+                               spanning multiple lines */
+                            ""ApiKey"": ""secret-key"",
+                            ""Endpoints"": [
+                                // Comment before array element
+                                ""/users"",
+                                /* Comment between elements */
+                                ""/orders"",
+                                ""/products"" // Comment after element
+                            ]
+                        },
+                        // Test edge cases
+                        ""StringWithSlashes"": ""This is not a // comment"",
+                        ""StringWithStars"": ""This is not a /* comment */"",
+                        ""UrlValue"": ""https://example.com/path"", // This is a real comment
+                        ""EmptyComment"": ""value"", //
+                        /**/
+                        ""AfterEmptyComment"": ""value2""
+                        /* Final multi-line comment */
+                    }",
+                    contentType: "application/json"),
+                // Test invalid JSON with comments
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "InvalidJsonWithComments",
+                    value: @"// This is a comment
+                        { invalid json structure
+                        // Another comment
+                        missing quotes and braces",
+                    contentType: "application/json"),
+                // Test only comments (should be invalid JSON)
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: "OnlyComments",
+                    value: @"
+                        // Just comments
+                        /* No actual content */
+                    ",
+                    contentType: "application/json")
+            };
+
+            var mockClientManager = GetMockConfigurationClientManager(_kvCollection);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options => options.ClientManager = mockClientManager)
+                .Build();
+
+            // Verify mixed comment styles are properly parsed
+            Assert.Equal("https://api.example.com", config["MixedCommentStyles:ApiSettings:BaseUrl"]);
+            Assert.Equal("secret-key", config["MixedCommentStyles:ApiSettings:ApiKey"]);
+            Assert.Equal("/users", config["MixedCommentStyles:ApiSettings:Endpoints:0"]);
+            Assert.Equal("/orders", config["MixedCommentStyles:ApiSettings:Endpoints:1"]);
+            Assert.Equal("/products", config["MixedCommentStyles:ApiSettings:Endpoints:2"]);
+
+            // Verify edge cases where comment-like text appears in strings
+            Assert.Equal("This is not a // comment", config["MixedCommentStyles:StringWithSlashes"]);
+            Assert.Equal("This is not a /* comment */", config["MixedCommentStyles:StringWithStars"]);
+            Assert.Equal("https://example.com/path", config["MixedCommentStyles:UrlValue"]);
+            Assert.Equal("value", config["MixedCommentStyles:EmptyComment"]);
+            Assert.Equal("value2", config["MixedCommentStyles:AfterEmptyComment"]);
+
+            // Invalid JSON should fall back to string value
+            Assert.Equal(@"// This is a comment
+                        { invalid json structure
+                        // Another comment
+                        missing quotes and braces", config["InvalidJsonWithComments"]);
+
+            // Only comments should be treated as string value (invalid JSON)
+            Assert.Equal(@"
+                        // Just comments
+                        /* No actual content */
+                    ", config["OnlyComments"]);
+        }
+
         private IConfigurationClientManager GetMockConfigurationClientManager(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();

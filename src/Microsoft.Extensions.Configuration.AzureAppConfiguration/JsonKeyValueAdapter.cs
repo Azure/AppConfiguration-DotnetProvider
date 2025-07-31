@@ -15,6 +15,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class JsonKeyValueAdapter : IKeyValueAdapter
     {
+        private JsonDocumentOptions _jsonParseOptions = new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip
+        };
+
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
         {
             if (setting == null)
@@ -28,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                using (JsonDocument document = JsonDocument.Parse(rootJson))
+                using (JsonDocument document = JsonDocument.Parse(rootJson, _jsonParseOptions))
                 {
                     keyValuePairs = new JsonFlattener().FlattenJson(document.RootElement);
                 }
