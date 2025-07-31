@@ -352,10 +352,12 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TestActivitySource()
         {
+            string activitySourceName = Guid.NewGuid().ToString();
+
             var _activities = new List<Activity>();
             var _activityListener = new ActivityListener
             {
-                ShouldListenTo = source => source.Name == "Microsoft.Extensions.Configuration.AzureAppConfiguration",
+                ShouldListenTo = source => source.Name == activitySourceName,
                 Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
                 ActivityStarted = activity => _activities.Add(activity),
             };
@@ -371,7 +373,11 @@ namespace Tests.AzureAppConfiguration
                 .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
 
             var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object))
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ActivitySourceName = activitySourceName;
+                })
                 .Build();
 
             Assert.Contains(_activities, a => a.OperationName == "Load");
