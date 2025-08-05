@@ -1214,7 +1214,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            UpdateClientBackoffStatus(previousEndpoint, success);
+                            UpdateClientBackoffStatus(_configClientManager.GetEndpointForClient(currentClient), success);
 
                             clientEnumerator.MoveNext();
 
