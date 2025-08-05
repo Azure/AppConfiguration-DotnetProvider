@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class JsonKeyValueAdapter : IKeyValueAdapter
     {
-        private JsonDocumentOptions _jsonParseOptions = new JsonDocumentOptions
+        private static readonly JsonDocumentOptions JsonParseOptions = new JsonDocumentOptions
         {
             CommentHandling = JsonCommentHandling.Skip
         };
@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                using (JsonDocument document = JsonDocument.Parse(rootJson, _jsonParseOptions))
+                using (JsonDocument document = JsonDocument.Parse(rootJson, JsonParseOptions))
                 {
                     keyValuePairs = new JsonFlattener().FlattenJson(document.RootElement);
                 }
