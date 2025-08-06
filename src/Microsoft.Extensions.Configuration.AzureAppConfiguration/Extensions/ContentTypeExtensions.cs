@@ -81,5 +81,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         {
             return contentType.MediaType.Equals(KeyVaultConstants.ContentType);
         }
+
+        public static bool IsSnapshotReference(this ContentType contentType)
+        {
+            return contentType.MediaType.Equals(SnapshotReferenceConstants.ContentType);
+        }
     }
 }
