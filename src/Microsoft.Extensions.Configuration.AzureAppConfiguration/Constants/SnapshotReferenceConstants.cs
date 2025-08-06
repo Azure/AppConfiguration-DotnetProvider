@@ -5,7 +5,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class SnapshotReferenceConstants
     {
-        public const string ContentType = "application/json; profile=\"https://azconfig.io/mime-profiles/snapshot-ref+json\"";
+        public const string ContentType = "application/json; profile=\"https://azconfig.io/mime-profiles/snapshot-ref\"; charset=utf-8";
 
         public const string SnapshotReferenceJsonPropertyName = "snapshot_name";
     }
