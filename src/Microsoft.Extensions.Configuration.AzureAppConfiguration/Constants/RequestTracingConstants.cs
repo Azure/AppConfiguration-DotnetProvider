@@ -24,6 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string EnvironmentKey = "Env";
         public const string FeatureManagementVersionKey = "FMVer";
         public const string FeatureManagementAspNetCoreVersionKey = "FMANCVer";
+        public const string AspireComponentVersionKey = "ACVer";
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
@@ -53,6 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
+        public const string AspireComponentAssemblyName = "Aspire.Microsoft.Extensions.Configuration.AzureAppConfiguration";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
 
         public const string Delimiter = "+";
