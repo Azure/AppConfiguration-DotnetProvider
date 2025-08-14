@@ -14,9 +14,11 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Net.Sockets;
 using System.Security;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -834,6 +836,90 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
+        // private async Task<Dictionary<string, ConfigurationSetting>> LoadSelected(
+        //     ConfigurationClient client,
+        //     Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags,
+        //     Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags,
+        //     IEnumerable<KeyValueSelector> selectors,
+        //     HashSet<string> ffKeys,
+        //     CancellationToken cancellationToken)
+        // {
+        //     Dictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>();
+
+        //     foreach (KeyValueSelector loadOption in selectors)
+        //     {
+        //         if (string.IsNullOrEmpty(loadOption.SnapshotName))
+        //         {
+        //             var selector = new SettingSelector()
+        //             {
+        //                 KeyFilter = loadOption.KeyFilter,
+        //                 LabelFilter = loadOption.LabelFilter
+        //             };
+
+        //             if (loadOption.TagFilters != null)
+        //             {
+        //                 foreach (string tagFilter in loadOption.TagFilters)
+        //                 {
+        //                     selector.TagsFilter.Add(tagFilter);
+        //                 }
+        //             }
+
+        //             var matchConditions = new List<MatchConditions>();
+
+        //             await CallWithRequestTracing(async () =>
+        //             {
+        //                 AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+
+        //                 await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
+        //                 {
+        //                     using Response response = page.GetRawResponse();
+
+        //                     foreach (ConfigurationSetting setting in page.Values)
+        //                     {
+        //                         // Snapshot References Implementation here
+        //                         if (setting.ContentType == SnapshotReferenceConstants.ContentType)
+        //                         {
+        //                             SnapshotReference snapshotReference = ParseSnapshotReference(setting);
+        //                             Dictionary<string, ConfigurationSetting> resolvedSettings = Resolve(snapshotReference);
+
+        //                             // Process the snapshot reference and load the snapshot data
+        //                             //await ProcessSnapshotReference(setting, client, data, cancellationToken).ConfigureAwait(false);
+        //                             continue;  // Skip further processing for this setting
+        //                         } 
+
+        //                         data[setting.Key] = setting;
+
+        //                         if (loadOption.IsFeatureFlagSelector)
+        //                         {
+        //                             ffKeys.Add(setting.Key);
+        //                         }
+        //                     }
+
+        //                     // The ETag will never be null here because it's not a conditional request
+        //                     // Each successful response should have 200 status code and an ETag
+        //                     matchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
+        //                 }
+        //             }).ConfigureAwait(false);
+
+        //             if (loadOption.IsFeatureFlagSelector)
+        //             {
+        //                 ffEtags[loadOption] = matchConditions;
+        //             }
+        //             else
+        //             {
+        //                 kvEtags[loadOption] = matchConditions;
+        //             }
+        //         }
+        //         else
+        //         {
+        //             // LOAD SNAPSHOT DATA: Use the reusable method to load the snapshot
+        //             await GetAndLoadSnapshot(client, data, loadOption.SnapshotName, cancellationToken).ConfigureAwait(false);
+        //         }
+        //     }
+
+        //     return data;
+        // }
+
         private async Task<Dictionary<string, ConfigurationSetting>> LoadSelected(
             ConfigurationClient client,
             Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> kvEtags,
@@ -874,6 +960,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             foreach (ConfigurationSetting setting in page.Values)
                             {
+                                // Snapshot References Implementation here
+                                if (setting.ContentType == SnapshotReferenceConstants.ContentType)
+                                {
+                                    SnapshotReference snapshotReference = ParseSnapshotReference(setting, client, cancellationToken);
+                                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference).ConfigureAwait(false);
+
+                                    // Add the resolved settings into the data dictionary
+                                    foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
+                                    {
+                                        data[resolvedSetting.Key] = resolvedSetting.Value;
+                                    }
+
+                                    continue;  // Skip further processing for this setting
+                                }
+
                                 data[setting.Key] = setting;
 
                                 if (loadOption.IsFeatureFlagSelector)
@@ -899,37 +1000,257 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    ConfigurationSnapshot snapshot;
+                    // LOAD SNAPSHOT DATA: Use the reusable method to load the snapshot
+                    SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName, client, cancellationToken);
+                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference).ConfigureAwait(false);
 
-                    try
+                    // Add the resolved settings into the data dictionary
+                    foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                     {
-                        snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
+                        data[resolvedSetting.Key] = resolvedSetting.Value;
                     }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
-                    {
-                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
-                    }
-
-                    if (snapshot.SnapshotComposition != SnapshotComposition.Key)
-                    {
-                        throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
-                    }
-
-                    IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
-                        loadOption.SnapshotName,
-                        cancellationToken);
-
-                    await CallWithRequestTracing(async () =>
-                    {
-                        await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
-                        {
-                            data[setting.Key] = setting;
-                        }
-                    }).ConfigureAwait(false);
                 }
             }
 
             return data;
+        }
+        // New suggested implementation of Snapshot Reference -------------------------------------------------------------------------------------------
+        private SnapshotReference ParseSnapshotReference(ConfigurationSetting setting, ConfigurationClient client, CancellationToken cancellationToken)
+        {
+            if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
+            {
+                return null;
+            }
+
+            // Check if the content type indicates a snapshot reference
+            if (setting.ContentType != SnapshotReferenceConstants.ContentType)
+            {
+                return null;
+            }
+
+            try
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
+
+                // Ensure the JSON begins with an object '{'
+                // Snapshot references must be JSON objects, not arrays or primitives
+                if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new FormatException($"Invalid snapshot reference format. Expected JSON object but found {reader.TokenType}.");
+                }
+
+                // Iterate through all properties in the JSON object
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    // Continue until we find a property name
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    // Check for snapshot name property
+                    if (reader.GetString() == SnapshotReferenceConstants.SnapshotReferenceJsonPropertyName)
+                    {
+                        // READ SNAPSHOT NAME VALUE: The next token should be the string value of the snapshot name
+                        if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                        {
+                            string snapshotName = reader.GetString();
+                            if (!string.IsNullOrEmpty(snapshotName))
+                            {
+                                // Create and return the SnapshotReference object
+                                return new SnapshotReference(snapshotName, client, cancellationToken);
+                            }
+                        }
+                        else
+                        {
+                            // Invalid snapshot name
+                            throw new FormatException($"Invalid snapshot reference format. The 'snapshot_name' property must be a string value, but found {reader.TokenType}.");
+                        }
+                    }
+                    else
+                    {
+                        // Skip unknown properties
+                        reader.Skip();
+                    }
+                }
+
+                return null; // Snapshot name property not found
+            }
+            catch (JsonException jsonEx)
+            {
+                // Handles malformed JSON with appropriate exception
+                throw new FormatException($"Invalid snapshot reference format. The value is not valid JSON.", jsonEx);
+            }
+        }
+
+        private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference)
+        {
+            var resolvedSettings = new Dictionary<string, ConfigurationSetting>();
+
+            if (snapshotReference == null)
+            {
+                return resolvedSettings;
+            }
+
+            ConfigurationSnapshot snapshot;
+
+            try
+            {
+                snapshot = await snapshotReference.Client.GetSnapshotAsync(snapshotReference.SnapshotName).ConfigureAwait(false);
+            }
+            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
+            {
+                throw new InvalidOperationException($"Could not find snapshot with name '{snapshotReference.SnapshotName}'.", rfe);
+            }
+
+            if (snapshot.SnapshotComposition != SnapshotComposition.Key)
+            {
+                throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
+            }
+
+            IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = snapshotReference.Client.GetConfigurationSettingsForSnapshotAsync(
+                snapshotReference.SnapshotName,
+                snapshotReference.CancellationToken);
+
+            await CallWithRequestTracing(async () =>
+            {
+                await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
+                {
+                    resolvedSettings[setting.Key] = setting;
+                }
+            }).ConfigureAwait(false);
+
+            return resolvedSettings;
+        }
+
+        // MY OLD IMPLEMENTATION of Snapshot Reference -------------------------------------------------------------------------------------------
+
+        // This method was replaced by a simple content type check in LoadSelected()
+        // private bool CanProcessSnapshotReference(ConfigurationSetting setting)
+        // {
+        //     // Check if the content type indicates a snapshot reference
+        //     return !string.IsNullOrWhiteSpace(setting.ContentType) &&
+        //            setting.ContentType.TryParseContentType(out ContentType contentType) &&
+        //            contentType.IsSnapshotReference();
+        // }
+
+        // Replaced: by Resolved method
+        // private async Task ProcessSnapshotReference(ConfigurationSetting setting, ConfigurationClient client, Dictionary<string, ConfigurationSetting> data, CancellationToken cancellationToken)
+        // {
+        //     // Parse the snapshot name from the setting's value using synchronous method
+        //     string snapshotName = ParseSnapshotNameFromJson(setting);
+
+        //     if (!string.IsNullOrEmpty(snapshotName))
+        //     {
+        //         // Load the snapshot data and add it to the data dictionary
+        //         await GetAndLoadSnapshot(client, data, snapshotName, cancellationToken).ConfigureAwait(false);
+        //     }
+        // }
+
+        // Replaced: by ParseSnapshotReference method
+        // private string ParseSnapshotNameFromJson(ConfigurationSetting setting)
+        // {
+        //     if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
+        //     {
+        //         return null;
+        //     }
+
+        //     try
+        //     {
+        //         Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
+
+        //         // Ensure the JSON begins with an object '{'
+        //         // Snapshot references must be JSON objects, not arrays or primitives
+        //         if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
+        //         {
+        //             throw new FormatException($"Invalid snapshot reference format. Expected JSON object but found {reader.TokenType}.");
+        //         }
+
+        //         // Iterate through all properties in the JSON object
+        //         while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+        //         {
+        //             // Continue until we find a property name
+        //             if (reader.TokenType != JsonTokenType.PropertyName)
+        //             {
+        //                 continue;
+        //             }
+
+        //             // Check for snapshot name property
+        //             if (reader.GetString() == SnapshotReferenceConstants.SnapshotReferenceJsonPropertyName)
+        //             {
+        //                 // READ SNAPSHOT NAME VALUE: The next token should be the string value of the snapshot name
+        //                 if (reader.Read() && reader.TokenType == JsonTokenType.String)
+        //                 {
+        //                     return reader.GetString();
+        //                 }
+        //                 else
+        //                 {
+        //                     // Invalid snapshot name
+        //                     throw new FormatException($"Invalid snapshot reference format. The 'snapshot_name' property must be a string value, but found {reader.TokenType}.");
+        //                 }
+        //             }
+        //             else
+        //             {
+        //                 // Skip unknown properties
+        //                 reader.Skip();
+        //             }
+        //         }
+
+        //         return null; // Snapshot name property not found
+        //     }
+        //     catch (JsonException jsonEx)
+        //     {
+        //         // Handles malformed JSON with appropriate exception
+        //         throw new FormatException($"Invalid snapshot reference format. The value is not valid JSON.", jsonEx);
+        //     }
+        // }
+
+        private async Task GetAndLoadSnapshot(ConfigurationClient client, Dictionary<string, ConfigurationSetting> data, string snapshotName, CancellationToken cancellationToken)
+        {
+            ConfigurationSnapshot snapshot;
+            // STEP 1: RETRIEVE SNAPSHOT METADATA
+            // First, get the snapshot object itself to validate it exists and get its properties
+            // This calls: GET /snapshots/{snapshotName}
+            try
+            {
+                snapshot = await client.GetSnapshotAsync(snapshotName).ConfigureAwait(false);
+            }
+            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
+            {
+                // HANDLE MISSING SNAPSHOT: Provide clear error message if snapshot doesn't exist
+                throw new InvalidOperationException($"Could not find snapshot with name '{snapshotName}'.", rfe);
+            }
+
+            // STEP 2: VALIDATE SNAPSHOT TYPE
+            // Azure App Configuration supports different snapshot compositions: 
+            // - Key: Snapshot contains key-value pairs (what we expect)
+            // - Key_Label: Snapshot contains key-value pairs with specific labels
+            // We only support "Key" composition for now
+            if (snapshot.SnapshotComposition != SnapshotComposition.Key)
+            {
+                throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
+            }
+
+            // STEP 3: GET SNAPSHOT DATA
+            // Retrieve all configuration settings that were captured in this snapshot
+            // This calls: GET /kv?snapshot={snapshotName}
+            // Note: Snapshots are immutable, so no ETag tracking needed (data never changes)
+            IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(snapshotName,
+                        cancellationToken);
+
+            // EXECUTE SNAPSHOT QUERY: Wrap in request tracing like regular selectors
+            await CallWithRequestTracing(async () =>
+                    {
+                        // STEP 4: PROCESS ALL SNAPSHOT SETTINGS
+                        // Iterate through every configuration setting in the snapshot
+                        // Since snapshots are immutable, this data is guaranteed to be consistent
+                        await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
+                        {
+                            // ADD TO DATA DICTIONARY: Store each setting from the snapshot
+                            // Like regular selectors, if keys conflict, later values win (snapshots processed after regular selectors)
+                            data[setting.Key] = setting;
+                        }
+                    }).ConfigureAwait(false);
         }
 
         private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(
@@ -1034,7 +1355,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
                     keyValueChanges.Add(change);
 
-                    if (kvWatcher.RefreshAll)
+                    // If the watcher is set to refresh all, or the content type matches the snapshot reference content type -> refresh all
+                    if (kvWatcher.RefreshAll || watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
                         return true;
                     }
