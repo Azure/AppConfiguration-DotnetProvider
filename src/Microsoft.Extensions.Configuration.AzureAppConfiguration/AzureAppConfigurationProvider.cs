@@ -1100,7 +1100,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
             catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
             {
-                throw new InvalidOperationException($"Could not find snapshot with name '{snapshotReference.SnapshotName}'.", rfe);
+
+                return resolvedSettings; // Return empty dictionary if snapshot not found
             }
 
             if (snapshot.SnapshotComposition != SnapshotComposition.Key)
