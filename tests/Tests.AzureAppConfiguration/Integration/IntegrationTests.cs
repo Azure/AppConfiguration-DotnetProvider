@@ -336,7 +336,7 @@ namespace Tests.AzureAppConfiguration
 
                 ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
                     context.SnapshotReferenceKey,
-                    context.SnapshotName,
+                    JsonSerializer.Serialize(new { snapshot_name = context.SnapshotName }),
                     contentType: SnapshotReferenceContentType
                 );
                 await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
@@ -448,6 +448,7 @@ namespace Tests.AzureAppConfiguration
             await SetupKeyValues(context);
             await SetupFeatureFlags(context);
             await SetupKeyVaultReferences(context);
+            await SetUpSnapshotReferences(context);
 
             return context;
         }
@@ -1723,7 +1724,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task SnapshotReferences_ResolveCorrectly()
+        public async Task SnapshotReference_ResolveCorrectly()
         {
             TestContext testContext = CreateTestContext("SnapshotReference");
             await SetupKeyValues(testContext);
@@ -1745,6 +1746,79 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
 
             await _configClient.ArchiveSnapshotAsync(testContext.SnapshotName);
+        }
+
+        [Fact]
+        public async Task SnapshotReference_HandleNonExistentSnapshot()
+        {
+            TestContext testContext = CreateTestContext("SnapshotRefNonExistent");
+            await SetupKeyValues(testContext);
+
+            string nonExistentSnapshotName = $"snapshot-does-not-exist-{Guid.NewGuid()}";
+
+            // Create snapshot reference pointing to non-existent snapshot
+            ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
+                testContext.SnapshotReferenceKey,
+                JsonSerializer.Serialize(new { snapshot_name = nonExistentSnapshotName }),
+                contentType: SnapshotReferenceContentType
+            );
+            await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{testContext.KeyPrefix}:*");
+                })
+                .Build();
+
+            // Assert - Empty result for snapshot reference
+            // Live values should still be accessible
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+
+            Assert.Null(config[testContext.SnapshotReferenceKey]);
+        }
+
+        [Fact]
+        public async Task SnapshotReference_WithKeyVaultReference()
+        {
+            TestContext testContext = CreateTestContext("SnapshotRefKeyVault");
+            await SetupKeyValues(testContext);
+            await SetupKeyVaultReferences(testContext);
+
+            await CreateSnapshot(testContext.SnapshotName, new List<ConfigurationSettingsFilter>
+            {
+                new ConfigurationSettingsFilter(testContext.KeyPrefix + "*")
+            });
+
+            ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
+                testContext.SnapshotReferenceKey,
+                JsonSerializer.Serialize(new { snapshot_name = testContext.SnapshotName }),
+                contentType: SnapshotReferenceContentType
+            );
+            await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
+                    options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
+                })
+                .Build();
+
+            try
+            {
+                Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+                Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+                Assert.Equal("SecretValue", config[testContext.KeyVaultReferenceKey]);
+            }
+            finally
+            {
+                await _configClient.ArchiveSnapshotAsync(testContext.SnapshotName);
+            }
         }
 
         [Fact]
