@@ -46,6 +46,7 @@ namespace Tests.AzureAppConfiguration
         // Content type constants
         private const string FeatureFlagContentType = FeatureManagementConstants.ContentType + ";charset=utf-8";
         private const string JsonContentType = "application/json";
+        private const string SnapshotReferenceContentType = SnapshotReferenceConstants.ContentType;
 
         // Fixed resource names - already existing
         private const string AppConfigStoreName = "appconfig-dotnetprovider-integrationtest";
@@ -65,6 +66,8 @@ namespace Tests.AzureAppConfiguration
             public string FeatureFlagKey { get; set; }
             public string KeyVaultReferenceKey { get; set; }
             public string SecretValue { get; set; }
+            public string SnapshotReferenceKey { get; set; }
+            public string SnapshotName { get; set; }
         }
 
         private ConfigurationClient _configClient;
@@ -263,6 +266,8 @@ namespace Tests.AzureAppConfiguration
             string secretName = $"{keyPrefix}-secret";
             string secretValue = "SecretValue";
             string keyVaultReferenceKey = $"{keyPrefix}:KeyVaultRef";
+            string snapshotReferenceKey = $"{keyPrefix}:SnapshotRef";
+            string snapshotName = $"snapshot-{keyPrefix}";
 
             return new TestContext
             {
@@ -270,7 +275,9 @@ namespace Tests.AzureAppConfiguration
                 SentinelKey = sentinelKey,
                 FeatureFlagKey = featureFlagKey,
                 KeyVaultReferenceKey = keyVaultReferenceKey,
-                SecretValue = secretValue
+                SecretValue = secretValue,
+                SnapshotReferenceKey = snapshotReferenceKey,
+                SnapshotName = snapshotName
             };
         }
 
@@ -315,6 +322,24 @@ namespace Tests.AzureAppConfiguration
                     contentType: KeyVaultConstants.ContentType);
 
                 await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+            }
+        }
+
+        private async Task SetUpSnapshotReferences(TestContext context)
+        {
+            if (_configClient != null)
+            {
+                await CreateSnapshot(context.SnapshotName, new List<ConfigurationSettingsFilter>
+                {
+                    new ConfigurationSettingsFilter(context.KeyPrefix + ":*")
+                });
+
+                ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
+                    context.SnapshotReferenceKey,
+                    context.SnapshotName,
+                    contentType: SnapshotReferenceContentType
+                );
+                await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
             }
         }
 
@@ -1215,26 +1240,23 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public async Task LoadSnapshot_ThrowsException_WhenSnapshotDoesNotExist()
+        public void LoadSnapshot_ReturnsEmpty_WhenSnapshotDoesNotExist()
         {
             // Arrange - Setup test-specific keys
             TestContext testContext = CreateTestContext("NonExistentSnapshotTest");
             string nonExistentSnapshotName = $"snapshot-does-not-exist-{Guid.NewGuid()}";
 
-            // Act & Assert - Loading a non-existent snapshot should throw
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            {
-                return Task.FromResult(new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
-                    {
-                        options.Connect(_connectionString);
-                        options.SelectSnapshot(nonExistentSnapshotName);
-                    })
-                    .Build());
-            });
+            // Act - Loading a non-existent snapshot should return empty configuration
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.SelectSnapshot(nonExistentSnapshotName);
+                })
+                .Build();
 
-            // Verify the exception message contains snapshot name
-            Assert.Contains(nonExistentSnapshotName, exception.Message);
+            // Assert - Configuration should be empty (no settings loaded from non-existent snapshot)
+            Assert.Empty(config.AsEnumerable());
         }
 
         [Fact]
@@ -1698,6 +1720,31 @@ namespace Tests.AzureAppConfiguration
             // Assert - Only the first secret should be refreshed due to having a short interval
             Assert.Equal(updatedValue1, config[kvRefKey1]); // Updated - short refresh interval
             Assert.Equal(secretValue2, config[kvRefKey2]);  // Not updated - long refresh interval
+        }
+
+        [Fact]
+        public async Task SnapshotReferences_ResolveCorrectly()
+        {
+            TestContext testContext = CreateTestContext("SnapshotReference");
+            await SetupKeyValues(testContext);
+            await SetUpSnapshotReferences(testContext);
+
+            await _configClient.SetConfigurationSettingAsync(
+                new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_connectionString);
+                    options.Select($"{testContext.KeyPrefix}:*");
+                })
+                .Build();
+
+            // Assert - Should get values from snapshot, not current values
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+
+            await _configClient.ArchiveSnapshotAsync(testContext.SnapshotName);
         }
 
         [Fact]
