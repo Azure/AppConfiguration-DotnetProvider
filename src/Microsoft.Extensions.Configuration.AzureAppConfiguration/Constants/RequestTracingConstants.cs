@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string EnvironmentKey = "Env";
         public const string FeatureManagementVersionKey = "FMVer";
         public const string FeatureManagementAspNetCoreVersionKey = "FMANCVer";
-        public const string AspireComponentVersionKey = "ACVer";
+        public const string AspireComponentVersionKey = "DNACVer";
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
