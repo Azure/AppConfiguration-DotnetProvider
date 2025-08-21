@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -14,11 +15,9 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Mime;
 using System.Net.Sockets;
 using System.Security;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -878,7 +877,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (setting.ContentType == SnapshotReferenceConstants.ContentType)
                                 {
-                                    SnapshotReference snapshotReference = new SnapshotReference(ParseSnapshotReference(setting));
+                                    SnapshotReference snapshotReference = new SnapshotReference(SnapshotReferenceParser.ParseSnapshotName(setting));
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
                                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
@@ -926,61 +925,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return data;
-        }
-        private string ParseSnapshotReference(ConfigurationSetting setting)
-        {
-            if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
-            {
-                return null;
-            }
-
-            try
-            {
-                Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
-
-                // Ensure the JSON begins with an object '{'
-                if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
-                {
-                    throw new FormatException($"Invalid snapshot reference format. Expected JSON object but found {reader.TokenType}.");
-                }
-
-                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                {
-                    if (reader.TokenType != JsonTokenType.PropertyName)
-                    {
-                        continue;
-                    }
-
-                    if (reader.GetString() == SnapshotReferenceConstants.SnapshotReferenceJsonPropertyName)
-                    {
-                        if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                        {
-                            string snapshotName = reader.GetString();
-                            if (!string.IsNullOrEmpty(snapshotName))
-                            {
-                                return snapshotName;
-                            }
-                        }
-                        else
-                        {
-                            // Invalid snapshot name
-                            throw new FormatException($"Invalid snapshot reference format. The 'snapshot_name' property must be a string value, but found {reader.TokenType}.");
-                        }
-                    }
-                    else
-                    {
-                        // Skip unknown properties
-                        reader.Skip();
-                    }
-                }
-
-                return null; // Snapshot name property not found
-            }
-            catch (JsonException jsonEx)
-            {
-                // Handles malformed JSON with appropriate exception
-                throw new FormatException($"Invalid snapshot reference format. The value is not valid JSON.", jsonEx);
-            }
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference,

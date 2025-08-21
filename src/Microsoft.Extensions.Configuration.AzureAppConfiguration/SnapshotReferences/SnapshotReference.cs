@@ -1,11 +1,8 @@
-using Azure.Data.AppConfiguration;
-using System.Threading;
-
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences
 {
-    /// <summary>
-    /// Represents a reference to a configuration snapshot that needs to be resolved.
-    /// </summary>
     internal class SnapshotReference
     {
         public string SnapshotName { get; set; }
