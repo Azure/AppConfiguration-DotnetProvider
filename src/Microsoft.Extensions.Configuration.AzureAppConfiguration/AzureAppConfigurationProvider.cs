@@ -1214,7 +1214,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            UpdateClientBackoffStatus(previousEndpoint, success);
+                            UpdateClientBackoffStatus(_configClientManager.GetEndpointForClient(currentClient), success);
 
                             clientEnumerator.MoveNext();
 
@@ -1330,6 +1330,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _requestTracingOptions.FeatureManagementVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAssemblyName);
 
                     _requestTracingOptions.FeatureManagementAspNetCoreVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.FeatureManagementAspNetCoreAssemblyName);
+
+                    _requestTracingOptions.AspireComponentVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.AspireComponentAssemblyName);
 
                     if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalRAssemblyName) != null)
                     {

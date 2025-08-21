@@ -181,6 +181,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeatureManagementAspNetCoreVersionKey, requestTracingOptions.FeatureManagementAspNetCoreVersion));
             }
 
+            if (requestTracingOptions.AspireComponentVersion != null)
+            {
+                correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.AspireComponentVersionKey, requestTracingOptions.AspireComponentVersion));
+            }
+
             if (requestTracingOptions.UsesAnyTracingFeature())
             {
                 correlationContextKeyValues.Add(new KeyValuePair<string, string>(RequestTracingConstants.FeaturesKey, requestTracingOptions.CreateFeaturesString()));
