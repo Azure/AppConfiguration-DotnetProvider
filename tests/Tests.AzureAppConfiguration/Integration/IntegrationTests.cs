@@ -50,7 +50,6 @@ namespace Tests.AzureAppConfiguration
         // Content type constants
         private const string FeatureFlagContentType = FeatureManagementConstants.ContentType + ";charset=utf-8";
         private const string JsonContentType = "application/json";
-        private const string SnapshotReferenceContentType = SnapshotReferenceConstants.ContentType;
 
         // Fixed resource names - already existing
         private const string AppConfigStoreName = "appconfig-dotnetprovider-integrationtest";
@@ -341,7 +340,7 @@ namespace Tests.AzureAppConfiguration
                 ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
                     context.SnapshotReferenceKey,
                     JsonSerializer.Serialize(new { snapshot_name = context.SnapshotName }),
-                    contentType: SnapshotReferenceContentType
+                    contentType: SnapshotReferenceConstants.ContentType
                 );
                 await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
             }
@@ -1764,7 +1763,7 @@ namespace Tests.AzureAppConfiguration
             ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
                 testContext.SnapshotReferenceKey,
                 JsonSerializer.Serialize(new { snapshot_name = nonExistentSnapshotName }),
-                contentType: SnapshotReferenceContentType
+                contentType: SnapshotReferenceConstants.ContentType
             );
             await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
 
@@ -1799,7 +1798,7 @@ namespace Tests.AzureAppConfiguration
             ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
                 testContext.SnapshotReferenceKey,
                 JsonSerializer.Serialize(new { snapshot_name = testContext.SnapshotName }),
-                contentType: SnapshotReferenceContentType
+                contentType: SnapshotReferenceConstants.ContentType
             );
             await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
 
