@@ -10,18 +10,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
     {
         public string SnapshotName { get; set; }
 
-        public ConfigurationClient Client { get; set; }
-
-        public CancellationToken CancellationToken { get; set; }
-
         /// <param name="snapshotName">The name of the snapshot.</param>
-        /// <param name="client">The configuration client.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        public SnapshotReference(string snapshotName, ConfigurationClient client, CancellationToken cancellationToken)
+        public SnapshotReference(string snapshotName)
         {
             SnapshotName = snapshotName;
-            Client = client;
-            CancellationToken = cancellationToken;
         }
     }
 }

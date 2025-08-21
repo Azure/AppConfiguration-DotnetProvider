@@ -878,8 +878,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (setting.ContentType == SnapshotReferenceConstants.ContentType)
                                 {
-                                    SnapshotReference snapshotReference = new SnapshotReference(ParseSnapshotReference(setting), client, cancellationToken);
-                                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference).ConfigureAwait(false);
+                                    SnapshotReference snapshotReference = new SnapshotReference(ParseSnapshotReference(setting));
+                                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
                                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                                     {
@@ -915,8 +915,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else
                 {
                     // Load snapshot data
-                    SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName, client, cancellationToken);
-                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference).ConfigureAwait(false);
+                    SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName);
+                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                     {
@@ -983,7 +983,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference)
+        private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference,
+                                                                             ConfigurationClient client,
+                                                                             CancellationToken cancellationToken)
         {
             var resolvedSettings = new Dictionary<string, ConfigurationSetting>();
 
@@ -996,7 +998,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                snapshot = await snapshotReference.Client.GetSnapshotAsync(snapshotReference.SnapshotName).ConfigureAwait(false);
+                snapshot = await client.GetSnapshotAsync(snapshotReference.SnapshotName).ConfigureAwait(false);
             }
             catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
             {
@@ -1009,9 +1011,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
             }
 
-            IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = snapshotReference.Client.GetConfigurationSettingsForSnapshotAsync(
+            IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
                 snapshotReference.SnapshotName,
-                snapshotReference.CancellationToken);
+                cancellationToken);
 
             await CallWithRequestTracing(async () =>
             {
