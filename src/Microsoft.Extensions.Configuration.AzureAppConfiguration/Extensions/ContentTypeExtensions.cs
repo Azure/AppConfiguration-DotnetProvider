@@ -6,6 +6,7 @@ using System;
 using System.Net.Mime;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences;
 using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
@@ -80,6 +81,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         public static bool IsKeyVaultReference(this ContentType contentType)
         {
             return contentType.MediaType.Equals(KeyVaultConstants.ContentType);
+        }
+
+        public static bool IsSnapshotReference(this ContentType contentType)
+        {
+            return contentType.MediaType.Equals(SnapshotReferenceConstants.ContentType);
         }
     }
 }
