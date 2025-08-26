@@ -14,13 +14,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
     {
         /// <summary>
         /// Parses a snapshot name from a snapshot reference configuration setting.
-        /// /// </summary>
+        /// </summary>
         /// <param name="setting">The configuration setting containing the snapshot reference JSON.</param>
         /// <returns>The snapshot name if found and valid; otherwise, null.</returns>
         /// <exception cref="FormatException">Thrown when the setting contains invalid JSON or invalid snapshot reference format.</exception>
-        public static string ParseSnapshotName(ConfigurationSetting setting)
+        public static string Parse(ConfigurationSetting setting)
         {
-            if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
+            if (setting == null)
+            {
+                throw new ArgumentNullException(nameof(setting));
+            }
+
+            if (string.IsNullOrWhiteSpace(setting.Value))
             {
                 return null;
             }
@@ -29,10 +34,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
             {
                 Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
 
-                // Ensure the JSON begins with an object '{'
                 if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
-                    throw new FormatException($"Invalid snapshot reference format. Expected JSON object but found {reader.TokenType}.");
+                    throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label, reader.TokenType));
                 }
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -46,16 +50,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
                     {
                         if (reader.Read() && reader.TokenType == JsonTokenType.String)
                         {
-                            string snapshotName = reader.GetString();
-                            if (!string.IsNullOrEmpty(snapshotName))
-                            {
-                                return snapshotName;
-                            }
+                            return reader.GetString();
                         }
                         else
                         {
-                            // Invalid snapshot name
-                            throw new FormatException($"Invalid snapshot reference format. The 'snapshot_name' property must be a string value, but found {reader.TokenType}.");
+                            throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidJsonProperty, setting.Key, setting.Label, reader.TokenType));
                         }
                     }
                     else
@@ -69,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
             }
             catch (JsonException jsonEx)
             {
-                throw new FormatException($"Invalid snapshot reference format. The value is not valid JSON.", jsonEx);
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidJson, setting.Key, setting.Label), jsonEx);
             }
         }
     }

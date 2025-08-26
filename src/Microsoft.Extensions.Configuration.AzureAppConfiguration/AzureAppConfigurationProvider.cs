@@ -877,9 +877,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (setting.ContentType == SnapshotReferenceConstants.ContentType)
                                 {
-                                    // SnapshotReference snapshotReference = new SnapshotReference(SnapshotReferenceParser.ParseSnapshotName(setting));
-
-                                    var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.ParseSnapshotName(setting) };
+                                    var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.Parse(setting) };
 
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
@@ -939,7 +937,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (snapshotReference.SnapshotName == null)
             {
-                throw new InvalidOperationException("Snapshot reference contains a null snapshot name. The snapshot reference configuration setting must contain a valid 'snapshot_name' property.");
+                throw new InvalidOperationException(ErrorMessages.SnapshotReferenceNull);
+            }
+
+            if (snapshotReference.SnapshotName == string.Empty)
+            {
+                return resolvedSettings;
             }
 
             ConfigurationSnapshot snapshot;
@@ -956,7 +959,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (snapshot.SnapshotComposition != SnapshotComposition.Key)
             {
-                throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
+                throw new InvalidOperationException(string.Format(ErrorMessages.SnapshotInvalidComposition, nameof(snapshot.SnapshotComposition), snapshot.Name, snapshot.SnapshotComposition));
             }
 
             IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(

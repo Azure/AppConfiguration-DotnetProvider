@@ -10,5 +10,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureFlagInvalidJsonProperty = "Invalid property '{0}' for feature flag. Key: '{1}'. Found type: '{2}'. Expected type: '{3}'.";
         public const string FeatureFlagInvalidFormat = "Invalid json format for feature flag. Key: '{0}'.";
         public const string InvalidKeyVaultReference = "Invalid Key Vault reference.";
+        public const string SnapshotReferenceInvalidFormat = "Invalid snapshot reference format for key '{0}' (label: '{1}'). Expected JSON object but found {2}.";
+        public const string SnapshotReferenceInvalidJsonProperty = "Invalid snapshot reference format for key '{0}' (label: '{1}'). The 'snapshot_name' property must be a string value, but found {2}.";
+        public const string SnapshotReferenceNull = "Invalid snapshot reference format. The 'snapshot_name' property must not be null.";
+        public const string SnapshotReferenceInvalidJson = "Invalid snapshot reference format for key '{0}' (label: '{1}'). The value is not valid JSON.";
+        public const string SnapshotInvalidComposition = "{0} for the selected snapshot with name '{1}' must be 'key', found '{2}'.";
     }
 }
