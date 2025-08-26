@@ -879,7 +879,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     // SnapshotReference snapshotReference = new SnapshotReference(SnapshotReferenceParser.ParseSnapshotName(setting));
 
-                                    SnapshotReference snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.ParseSnapshotName(setting) };
+                                    var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.ParseSnapshotName(setting) };
 
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
@@ -919,7 +919,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // Load snapshot data
                     // SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName);
 
-                    SnapshotReference snapshotReference = new SnapshotReference { SnapshotName = loadOption.SnapshotName };
+                    var snapshotReference = new SnapshotReference { SnapshotName = loadOption.SnapshotName };
 
                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
@@ -933,15 +933,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return data;
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference,
-                                                                             ConfigurationClient client,
-                                                                             CancellationToken cancellationToken)
+        private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference, ConfigurationClient client, CancellationToken cancellationToken)
         {
             var resolvedSettings = new Dictionary<string, ConfigurationSetting>();
 
             if (snapshotReference.SnapshotName == null)
             {
-                return resolvedSettings;
+                throw new InvalidOperationException("Snapshot reference contains a null snapshot name. The snapshot reference configuration setting must contain a valid 'snapshot_name' property.");
             }
 
             ConfigurationSnapshot snapshot;
