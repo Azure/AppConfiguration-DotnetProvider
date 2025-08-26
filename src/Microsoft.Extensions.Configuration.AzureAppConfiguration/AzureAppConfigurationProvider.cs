@@ -1078,7 +1078,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
                     keyValueChanges.Add(change);
 
-                    // If the watcher is set to refresh all, or the content type matches the snapshot reference content type -> refresh all
+                    // If the watcher is set to refresh all, or the content type matches the snapshot reference content type then refresh all
                     if (kvWatcher.RefreshAll || watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
                         return true;

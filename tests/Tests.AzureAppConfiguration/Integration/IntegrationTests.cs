@@ -270,7 +270,7 @@ namespace Tests.AzureAppConfiguration
             string secretValue = "SecretValue";
             string keyVaultReferenceKey = $"{keyPrefix}:KeyVaultRef";
             string snapshotReferenceKey = $"{keyPrefix}:SnapshotRef";
-            string snapshotName = $"snapshot-{keyPrefix}";
+            string snapshotName = $"{keyPrefix}-snapshot";
 
             return new TestContext
             {
