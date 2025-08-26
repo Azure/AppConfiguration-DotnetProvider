@@ -877,7 +877,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (setting.ContentType == SnapshotReferenceConstants.ContentType)
                                 {
-                                    SnapshotReference snapshotReference = new SnapshotReference(SnapshotReferenceParser.ParseSnapshotName(setting));
+                                    // SnapshotReference snapshotReference = new SnapshotReference(SnapshotReferenceParser.ParseSnapshotName(setting));
+
+                                    SnapshotReference snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.ParseSnapshotName(setting) };
+
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
                                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
@@ -914,7 +917,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 else
                 {
                     // Load snapshot data
-                    SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName);
+                    // SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName);
+
+                    SnapshotReference snapshotReference = new SnapshotReference { SnapshotName = loadOption.SnapshotName };
+
                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
 
                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
@@ -942,7 +948,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                snapshot = await client.GetSnapshotAsync(snapshotReference.SnapshotName).ConfigureAwait(false);
+                snapshot = await client.GetSnapshotAsync(snapshotReference.SnapshotName, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
             {
@@ -961,7 +967,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             await CallWithRequestTracing(async () =>
             {
-                await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
+                await foreach (ConfigurationSetting setting in settingsEnumerable.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     resolvedSettings[setting.Key] = setting;
                 }
