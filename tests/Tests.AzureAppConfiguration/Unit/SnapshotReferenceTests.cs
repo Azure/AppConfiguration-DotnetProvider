@@ -383,6 +383,15 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot1 }));
 
+            // Add mock for snapshot2 since the updated reference points to it
+            var realSnapshot2 = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
+
+            mockClient.Setup(c => c.GetSnapshotAsync("snapshot2", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Response.FromValue(realSnapshot2, mockResponse.Object));
+
+            mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot2", It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot2 }));
+
             mockClient.Setup(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() =>
                 {
@@ -537,6 +546,70 @@ namespace Tests.AzureAppConfiguration
             await refresher.RefreshAsync();
 
             Assert.True(refreshAllTriggered, "RefreshAll should be triggered for snapshot references even without explicit refreshAll parameter");
+        }
+
+        // Scenario D: Register("SnapshotRef1") but not in Select() → Should resolve and load settings during LoadKeyValuesRegisteredForRefresh
+        [Fact]
+        public void SnapshotReferenceRegisteredForRefreshButNotInSelect()
+        {
+            IConfigurationRefresher refresher = null;
+            TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
+
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            // Only return regular key-value in initial load (snapshot reference not selected)
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _regularKeyValue }));
+
+            // Setup mocks for when registered key is loaded during refresh initialization
+            var settingsToInclude = new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter("*") };
+            var realSnapshot = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
+
+            mockClient.Setup(c => c.GetSnapshotAsync("snapshot1", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse.Object));
+
+            mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot1 }));
+
+            // Mock the GetConfigurationSettingAsync call for the registered snapshot reference
+            mockClient.Setup(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse.Object));
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((ConfigurationSetting setting, bool onlyIfChanged, CancellationToken token) =>
+                {
+                    // Simulates no changes
+                    return Response.FromValue(setting, new MockResponse(304));
+                });
+
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        // Register snapshot reference for monitoring but not in Select()
+                        refreshOptions.Register("SnapshotRef1", refreshAll: false)
+                                      .SetRefreshInterval(refreshInterval);
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Verify that snapshot reference was resolved
+            Assert.Equal("ValueFromSnapshot", configuration["TestKey1"]);
+            Assert.Equal("RegularValue", configuration["RegularKey"]);
+
+            // Snapshot reference itself should not be in config
+            Assert.Null(configuration["SnapshotRef1"]);
+
+            // Verify the snapshot was resolved during registration
+            mockClient.Verify(c => c.GetSnapshotAsync("snapshot1", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()), Times.Once);
+            mockClient.Verify(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()), Times.Once);
+
+            // Verify snapshot reference was loaded for monitoring
+            mockClient.Verify(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }
