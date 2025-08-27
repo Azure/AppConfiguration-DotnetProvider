@@ -88,11 +88,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool UsesSnapshotReferences { get; set; } = false;
 
         /// <summary>
-        /// Count of snapshot references that have been resolved during configuration loading.
-        /// </summary>
-        public int SnapshotReferenceCount { get; set; } = 0;
-
-        /// <summary>
         /// Resets the AI configuration tracing flags.
         /// </summary>
         public void ResetAiConfigurationTracing()
