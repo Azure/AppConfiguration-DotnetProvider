@@ -630,6 +630,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_requestTracingEnabled && _requestTracingOptions != null)
             {
                 _requestTracingOptions.ResetAiConfigurationTracing();
+                _requestTracingOptions.ResetSnapshotReferenceTracing();
             }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
@@ -877,6 +878,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 if (setting.ContentType == SnapshotReferenceConstants.ContentType)
                                 {
+                                    // Track snapshot reference usage for telemetry
+                                    if (_requestTracingEnabled && _requestTracingOptions != null)
+                                    {
+                                        _requestTracingOptions.UpdateSnapshotReferenceTracing(setting.ContentType);
+                                    }
+
                                     var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.Parse(setting) };
 
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
@@ -945,11 +952,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return resolvedSettings;
             }
 
-            ConfigurationSnapshot snapshot;
+            ConfigurationSnapshot snapshot = null;
 
             try
             {
-                snapshot = await client.GetSnapshotAsync(snapshotReference.SnapshotName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await CallWithRequestTracing(async () => snapshot = await client.GetSnapshotAsync(snapshotReference.SnapshotName, cancellationToken: cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
             }
             catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
             {
@@ -1013,8 +1020,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
-                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
-                    existingSettings[watchedKey] = watchedKv;
+                    if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
+                    {
+                        // Track snapshot reference usage for telemetry
+                        if (_requestTracingEnabled && _requestTracingOptions != null)
+                        {
+                            _requestTracingOptions.UpdateSnapshotReferenceTracing(watchedKv.ContentType);
+                        }
+
+                        var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.Parse(watchedKv) };
+
+                        Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
+
+                        foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
+                        {
+                            existingSettings[resolvedSetting.Key] = resolvedSetting.Value;
+                        }
+
+                        // Only track the snapshot reference itself for refresh monitoring, since snapshots are immutable
+                        watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
+                    }
+                    else
+                    {
+                        watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
+                        existingSettings[watchedKey] = watchedKv;
+                    }
                 }
             }
 

@@ -83,12 +83,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool UsesAIChatCompletionConfiguration { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether any key-value uses snapshot references.
+        /// </summary>
+        public bool UsesSnapshotReferences { get; set; } = false;
+
+        /// <summary>
+        /// Count of snapshot references that have been resolved during configuration loading.
+        /// </summary>
+        public int SnapshotReferenceCount { get; set; } = 0;
+
+        /// <summary>
         /// Resets the AI configuration tracing flags.
         /// </summary>
         public void ResetAiConfigurationTracing()
         {
             UsesAIConfiguration = false;
             UsesAIChatCompletionConfiguration = false;
+        }
+
+        /// <summary>
+        /// Resets the snapshot reference tracing counters and flags.
+        /// </summary>
+        public void ResetSnapshotReferenceTracing()
+        {
+            UsesSnapshotReferences = false;
+            SnapshotReferenceCount = 0;
         }
 
         /// <summary>
@@ -112,6 +131,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
+        /// Updates snapshot reference tracing when a snapshot reference is encountered.
+        /// </summary>
+        /// <param name="contentTypeString">The content type to analyze.</param>
+        public void UpdateSnapshotReferenceTracing(string contentTypeString)
+        {
+            if (!string.IsNullOrWhiteSpace(contentTypeString) &&
+                contentTypeString.TryParseContentType(out ContentType contentType) &&
+                contentType.IsSnapshotReference())
+            {
+                UsesSnapshotReferences = true;
+                SnapshotReferenceCount++;
+            }
+        }
+
+        /// <summary>
         /// Checks whether any tracing feature is used.
         /// </summary>
         /// <returns>true if any tracing feature is used, otherwise false.</returns>
@@ -120,7 +154,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return IsLoadBalancingEnabled ||
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
-                UsesAIChatCompletionConfiguration;
+                UsesAIChatCompletionConfiguration ||
+                UsesSnapshotReferences;
         }
 
         /// <summary>
@@ -169,6 +204,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
+            }
+
+            if (UsesSnapshotReferences)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.SnapshotReferenceTag);
             }
 
             return sb.ToString();

@@ -27,6 +27,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
+        public const string SnapshotReferenceTag = "UsesSnapshotRef";
+        public const string SnapshotReferenceCountKey = "SnapRefCount";
         public const string ReplicaCountKey = "ReplicaCount";
         public const string FeaturesKey = "Features";
         public const string LoadBalancingEnabledTag = "LB";
