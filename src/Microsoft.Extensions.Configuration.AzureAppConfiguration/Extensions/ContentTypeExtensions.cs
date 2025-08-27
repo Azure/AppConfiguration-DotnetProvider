@@ -83,6 +83,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             return contentType.MediaType.Equals(KeyVaultConstants.ContentType);
         }
 
+        /*
+            Profile and media type are distinct components of the content type.
+            They aren't required to be space-separated, and their order isn't guaranteed.
+            This makes raw string matching hard.
+        */
         public static bool IsSnapshotReference(this ContentType contentType)
         {
             return contentType.MediaType.Equals(SnapshotReferenceConstants.ContentType);

@@ -16,9 +16,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
         /// Parses a snapshot name from a snapshot reference configuration setting.
         /// </summary>
         /// <param name="setting">The configuration setting containing the snapshot reference JSON.</param>
-        /// <returns>The snapshot name if found and valid; otherwise, null.</returns>
+        /// <returns>The snapshot reference if found and valid; otherwise, null.</returns>
         /// <exception cref="FormatException">Thrown when the setting contains invalid JSON or invalid snapshot reference format.</exception>
-        public static string Parse(ConfigurationSetting setting)
+        public static SnapshotReference Parse(ConfigurationSetting setting)
         {
             if (setting == null)
             {
@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
 
             try
             {
-                Utf8JsonReader reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
+                var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
 
                 if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
                     {
                         if (reader.Read() && reader.TokenType == JsonTokenType.String)
                         {
-                            return reader.GetString();
+                            return new SnapshotReference { SnapshotName = reader.GetString() };
                         }
                         else
                         {

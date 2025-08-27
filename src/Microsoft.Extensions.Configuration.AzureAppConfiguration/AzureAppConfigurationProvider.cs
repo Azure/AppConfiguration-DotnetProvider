@@ -884,9 +884,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         _requestTracingOptions.UpdateSnapshotReferenceTracing(setting.ContentType);
                                     }
 
-                                    var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.Parse(setting) };
+                                    var snapshotReference = SnapshotReferenceParser.Parse(setting);
 
-                                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
+                                    Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
                                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                                     {
@@ -926,7 +926,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     var snapshotReference = new SnapshotReference { SnapshotName = loadOption.SnapshotName };
 
-                    Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
+                    Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                     {
@@ -938,16 +938,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return data;
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> Resolve(SnapshotReference snapshotReference, ConfigurationClient client, CancellationToken cancellationToken)
+        private async Task<Dictionary<string, ConfigurationSetting>> LoadSnapshotData(string snapshotName, ConfigurationClient client, CancellationToken cancellationToken)
         {
             var resolvedSettings = new Dictionary<string, ConfigurationSetting>();
 
-            if (snapshotReference.SnapshotName == null)
+            if (snapshotName == null)
             {
                 throw new InvalidOperationException(ErrorMessages.SnapshotReferenceNull);
             }
 
-            if (snapshotReference.SnapshotName == string.Empty)
+            if (snapshotName == string.Empty)
             {
                 return resolvedSettings;
             }
@@ -956,7 +956,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             try
             {
-                await CallWithRequestTracing(async () => snapshot = await client.GetSnapshotAsync(snapshotReference.SnapshotName, cancellationToken: cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                await CallWithRequestTracing(async () => snapshot = await client.GetSnapshotAsync(snapshotName, cancellationToken: cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
             }
             catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
             {
@@ -970,7 +970,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
-                snapshotReference.SnapshotName,
+                snapshotName,
                 cancellationToken);
 
             await CallWithRequestTracing(async () =>
@@ -1028,9 +1028,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             _requestTracingOptions.UpdateSnapshotReferenceTracing(watchedKv.ContentType);
                         }
 
-                        var snapshotReference = new SnapshotReference { SnapshotName = SnapshotReferenceParser.Parse(watchedKv) };
+                        var snapshotReference = SnapshotReferenceParser.Parse(watchedKv);
 
-                        Dictionary<string, ConfigurationSetting> resolvedSettings = await Resolve(snapshotReference, client, cancellationToken).ConfigureAwait(false);
+                        Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
                         foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                         {
