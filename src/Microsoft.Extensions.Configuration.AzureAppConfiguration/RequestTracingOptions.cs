@@ -102,12 +102,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Resets the snapshot reference tracing counters and flags.
+        /// Resets the snapshot reference tracing flag.
         /// </summary>
         public void ResetSnapshotReferenceTracing()
         {
             UsesSnapshotReferences = false;
-            SnapshotReferenceCount = 0;
         }
 
         /// <summary>
@@ -141,7 +140,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 contentType.IsSnapshotReference())
             {
                 UsesSnapshotReferences = true;
-                SnapshotReferenceCount++;
             }
         }
 
