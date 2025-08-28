@@ -1740,7 +1740,8 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
-                    options.Select($"{testContext.KeyPrefix}:*");
+                    options.Select($"{testContext.KeyPrefix}:Setting*");
+                    options.Select(testContext.SnapshotReferenceKey);
                 })
                 .Build();
 
@@ -1757,7 +1758,7 @@ namespace Tests.AzureAppConfiguration
             TestContext testContext = CreateTestContext("SnapshotRefNonExistent");
             await SetupKeyValues(testContext);
 
-            string nonExistentSnapshotName = $"snapshot-does-not-exist-{Guid.NewGuid()}";
+            string nonExistentSnapshotName = $"snapshot-does-not-exist-{testContext.SnapshotName}";
 
             // Create snapshot reference pointing to non-existent snapshot
             ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
@@ -1788,7 +1789,24 @@ namespace Tests.AzureAppConfiguration
         {
             TestContext testContext = CreateTestContext("SnapshotRefKeyVault");
             await SetupKeyValues(testContext);
-            await SetupKeyVaultReferences(testContext);
+
+            // Create a Key Vault reference WITHOUT label
+            string keyVaultReferenceKeyNoLabel = $"{testContext.KeyPrefix}:KeyVaultRefNoLabel";
+
+            if (_secretClient != null)
+            {
+                await _secretClient.SetSecretAsync(testContext.KeyPrefix + "-secret", testContext.SecretValue);
+
+                string keyVaultUri = $"{_keyVaultEndpoint}secrets/{testContext.KeyPrefix}-secret";
+                string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
+
+                ConfigurationSetting keyVaultRefSetting = ConfigurationModelFactory.ConfigurationSetting(
+                    keyVaultReferenceKeyNoLabel,
+                    keyVaultRefValue,
+                    contentType: KeyVaultConstants.ContentType);
+
+                await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+            }
 
             await CreateSnapshot(testContext.SnapshotName, new List<ConfigurationSettingsFilter>
             {
@@ -1806,8 +1824,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
-                    options.Select($"{testContext.KeyPrefix}:*");
-                    options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
+                    options.Select(testContext.SnapshotReferenceKey);
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                 })
                 .Build();
@@ -1816,7 +1833,7 @@ namespace Tests.AzureAppConfiguration
             {
                 Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
                 Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
-                Assert.Equal("SecretValue", config[testContext.KeyVaultReferenceKey]);
+                Assert.Equal("SecretValue", config[keyVaultReferenceKeyNoLabel]);
             }
             finally
             {

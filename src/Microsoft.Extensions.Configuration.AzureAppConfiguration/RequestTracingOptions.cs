@@ -3,6 +3,7 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences;
 using System.Net.Mime;
 using System.Text;
 
@@ -132,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             if (!string.IsNullOrWhiteSpace(contentTypeString) &&
                 contentTypeString.TryParseContentType(out ContentType contentType) &&
-                contentType.IsSnapshotReference())
+                contentTypeString.Equals(SnapshotReferenceConstants.ContentType))
             {
                 UsesSnapshotReferences = true;
             }

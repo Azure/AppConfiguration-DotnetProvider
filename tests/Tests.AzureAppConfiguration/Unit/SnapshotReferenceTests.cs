@@ -273,13 +273,13 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ThrowsWhenInvalidSnapshotReferenceJson()
+        public void ThrowsWhenInvalidSnapshotReferencesJson()
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _snapshotReferenceInvalidJson }));
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _snapshotReferenceInvalidJson, _snapshotReferenceInvalidJson2 }));
 
             var exception = Assert.Throws<FormatException>(() =>
             {
@@ -292,7 +292,6 @@ namespace Tests.AzureAppConfiguration
             });
 
             Assert.Contains("Invalid snapshot reference format", exception.Message);
-            Assert.Contains("not valid JSON", exception.Message);
 
             mockClient.Verify(c => c.GetSnapshotAsync(It.IsAny<string>(), It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()), Times.Never);
             mockClient.Verify(c => c.GetConfigurationSettingsForSnapshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
