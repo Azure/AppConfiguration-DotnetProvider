@@ -921,12 +921,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    // Load snapshot data
-                    // SnapshotReference snapshotReference = new SnapshotReference(loadOption.SnapshotName);
-
-                    var snapshotReference = new SnapshotReference { SnapshotName = loadOption.SnapshotName };
-
-                    Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
+                    Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(loadOption.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                     {
