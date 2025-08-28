@@ -68,7 +68,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
             }
             catch (JsonException jsonEx)
             {
-                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidJson, setting.Key, setting.Label), jsonEx);
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label), jsonEx);
             }
         }
     }
