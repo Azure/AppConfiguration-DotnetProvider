@@ -884,7 +884,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         _requestTracingOptions.UpdateSnapshotReferenceTracing(setting.ContentType);
                                     }
 
-                                    SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(setting);
+                                    SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(setting);
 
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
