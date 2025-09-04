@@ -196,11 +196,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.KeyVaultRefreshConfiguredTag);
             }
 
-            if (requestTracingOptions.UsesSnapshotReferences)
-            {
-                correlationContextTags.Add(RequestTracingConstants.SnapshotReferenceTag);
-            }
-
             if (requestTracingOptions.IsFailoverRequest)
             {
                 correlationContextTags.Add(RequestTracingConstants.FailoverRequestTag);

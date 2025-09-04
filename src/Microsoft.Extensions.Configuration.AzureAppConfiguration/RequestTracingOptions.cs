@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether any key-value uses snapshot references.
         /// </summary>
-        public bool UsesSnapshotReferences { get; set; } = false;
+        public bool UsesSnapshotReference { get; set; } = false;
 
         /// <summary>
         /// Resets the AI configuration tracing flags.
@@ -102,7 +102,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </summary>
         public void ResetSnapshotReferenceTracing()
         {
-            UsesSnapshotReferences = false;
+            UsesSnapshotReference = false;
         }
 
         /// <summary>
@@ -131,11 +131,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="contentTypeString">The content type to analyze.</param>
         public void UpdateSnapshotReferenceTracing(string contentTypeString)
         {
-            if (!string.IsNullOrWhiteSpace(contentTypeString) &&
-                contentTypeString.TryParseContentType(out ContentType contentType) &&
-                contentTypeString.Equals(SnapshotReferenceConstants.ContentType))
+            if (SnapshotReferenceConstants.ContentType == contentTypeString)
             {
-                UsesSnapshotReferences = true;
+                UsesSnapshotReference = true;
             }
         }
 
@@ -149,7 +147,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
                 UsesAIChatCompletionConfiguration ||
-                UsesSnapshotReferences;
+                UsesSnapshotReference;
         }
 
         /// <summary>
@@ -200,7 +198,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
             }
 
-            if (UsesSnapshotReferences)
+            if (UsesSnapshotReference)
             {
                 if (sb.Length > 0)
                 {
