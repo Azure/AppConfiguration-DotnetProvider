@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
 
             if (string.IsNullOrWhiteSpace(setting.Value))
             {
-                return null;
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label));
             }
 
             try
@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
 
                 if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
-                    throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label, reader.TokenType));
+                    throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label));
                 }
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
