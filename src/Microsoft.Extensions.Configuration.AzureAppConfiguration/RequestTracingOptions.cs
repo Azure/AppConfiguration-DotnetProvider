@@ -3,7 +3,7 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using System.Net.Mime;
 using System.Text;
 
@@ -131,10 +131,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="contentTypeString">The content type to analyze.</param>
         public void UpdateSnapshotReferenceTracing(string contentTypeString)
         {
-            if (SnapshotReferenceConstants.ContentType == contentTypeString)
-            {
-                UsesSnapshotReference = true;
-            }
+            UsesSnapshotReference = true;
+
         }
 
         /// <summary>

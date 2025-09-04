@@ -5,7 +5,7 @@ using Azure.Data.AppConfiguration;
 using System;
 using System.Text.Json;
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference
 {
     /// <summary>
     /// Provides parsing functionality for snapshot reference configuration settings.
@@ -46,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
                         continue;
                     }
 
-                    if (reader.GetString() == SnapshotReferenceConstants.SnapshotReferenceJsonPropertyName)
+                    if (reader.GetString() == JsonFields.SnapshotName)
                     {
                         if (reader.Read() && reader.TokenType == JsonTokenType.String)
                         {

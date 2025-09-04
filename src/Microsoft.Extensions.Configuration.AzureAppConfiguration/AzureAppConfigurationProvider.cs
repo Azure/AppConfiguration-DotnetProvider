@@ -3,7 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -884,7 +884,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         _requestTracingOptions.UpdateSnapshotReferenceTracing(setting.ContentType);
                                     }
 
-                                    var snapshotReference = SnapshotReferenceParser.Parse(setting);
+                                    SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(setting);
 
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 //
 
-namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference
 {
     internal class SnapshotReference
     {

@@ -6,7 +6,7 @@ using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReferences;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using Moq;
 using System;
 using System.Collections.Generic;
