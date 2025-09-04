@@ -84,6 +84,7 @@ namespace Microsoft.Extensions.Configuration
             {
                 options.Connect(endpoint, credential);
             }, optional);
+
             return configurationBuilder.Add(source);
         }
 
