@@ -68,6 +68,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         private ConfigurationClient _configClient;
+        private Uri _configEndpoint;
 
         private SecretClient _secretClient;
 
@@ -148,6 +149,8 @@ namespace Tests.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"App Configuration store '{AppConfigStoreName}' not found in resource group '{ResourceGroupName}'. Please create it before running tests.", ex);
             }
+
+            _configEndpoint = new Uri(appConfigStore.Data.Endpoint);
 
             AsyncPageable<AppConfigurationStoreApiKey> accessKeys = appConfigStore.GetKeysAsync();
 
@@ -441,6 +444,23 @@ namespace Tests.AzureAppConfiguration
                     options.Connect(_connectionString);
                     options.Select($"{testContext.KeyPrefix}:*");
                 })
+                .Build();
+
+            // Assert
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+        }
+
+        [Fact]
+        public async Task LoadConfiguration_TokenCredentialHelperOverloadWorks()
+        {
+            // Arrange - Setup test-specific keys
+            TestContext testContext = CreateTestContext("BasicConfig");
+            await SetupKeyValues(testContext);
+
+            // Act
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(_configEndpoint, _defaultAzureCredential)
                 .Build();
 
             // Assert
