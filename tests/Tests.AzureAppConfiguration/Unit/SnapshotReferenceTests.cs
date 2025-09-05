@@ -194,14 +194,15 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _snapshotReferenceEmptyValue }));
 
-            var configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                })
-                .Build();
-
-            Assert.Null(configuration["SnapshotRefEmptyValue"]);
+            var exception = Assert.Throws<FormatException>(() =>
+            {
+                new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    })
+                    .Build();
+            });
 
             mockClient.Verify(c => c.GetSnapshotAsync(It.IsAny<string>(), It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()), Times.Never);
             mockClient.Verify(c => c.GetConfigurationSettingsForSnapshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);

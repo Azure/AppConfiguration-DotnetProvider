@@ -937,15 +937,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var resolvedSettings = new Dictionary<string, ConfigurationSetting>();
 
-            if (snapshotName == null)
-            {
-                throw new InvalidOperationException(ErrorMessages.SnapshotReferenceNull);
-            }
-
-            if (snapshotName == string.Empty)
-            {
-                return resolvedSettings;
-            }
+            Debug.Assert(!string.IsNullOrWhiteSpace(snapshotName));
 
             ConfigurationSnapshot snapshot = null;
 
@@ -1023,7 +1015,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             _requestTracingOptions.UpdateSnapshotReferenceTracing(watchedKv.ContentType);
                         }
 
-                        var snapshotReference = SnapshotReferenceParser.Parse(watchedKv);
+                        SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(watchedKv);
 
                         Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
