@@ -888,6 +888,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                                     Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
+                                    if (_requestTracingEnabled && _requestTracingOptions != null)
+                                    {
+                                        _requestTracingOptions.UsesSnapshotReference = false;
+                                    }
+
                                     foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                                     {
                                         data[resolvedSetting.Key] = resolvedSetting.Value;
@@ -1009,12 +1014,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
-                        // Track snapshot reference usage for telemetry
-                        if (_requestTracingEnabled && _requestTracingOptions != null)
-                        {
-                            _requestTracingOptions.UsesSnapshotReference = true;
-                        }
-
                         SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(watchedKv);
 
                         Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
