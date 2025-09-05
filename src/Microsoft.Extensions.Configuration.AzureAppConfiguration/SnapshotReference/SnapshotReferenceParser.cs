@@ -1,0 +1,78 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Data.AppConfiguration;
+using System;
+using System.Text.Json;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference
+{
+    /// <summary>
+    /// Provides parsing functionality for snapshot reference configuration settings.
+    /// </summary>
+    internal static class SnapshotReferenceParser
+    {
+        /// <summary>
+        /// Parses a snapshot name from a configuration setting containing snapshot reference JSON.
+        /// </summary>
+        /// <param name="setting">The configuration setting containing the snapshot reference JSON.</param>
+        /// <returns>The snapshot reference containing a valid, non-empty snapshot name.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when the setting is null.</exception>
+        /// <exception cref="FormatException">Thrown when the setting contains invalid JSON, invalid snapshot reference format, or empty/whitespace snapshot name.</exception>
+        public static SnapshotReference Parse(ConfigurationSetting setting)
+        {
+            if (setting == null)
+            {
+                throw new ArgumentNullException(nameof(setting));
+            }
+
+            if (string.IsNullOrWhiteSpace(setting.Value))
+            {
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label));
+            }
+
+            try
+            {
+                var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(setting.Value));
+
+                if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label));
+                }
+
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    if (reader.GetString() == JsonFields.SnapshotName)
+                    {
+                        if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                        {
+                            string snapshotName = reader.GetString();
+                            if (string.IsNullOrWhiteSpace(snapshotName))
+                            {
+                                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label));
+                            }
+
+                            return new SnapshotReference { SnapshotName = snapshotName };
+                        }
+
+                        throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidJsonProperty, setting.Key, setting.Label, JsonFields.SnapshotName, reader.TokenType));
+                    }
+
+                    // Skip unknown properties
+                    reader.Skip();
+                }
+
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferencePropertyMissing, setting.Key, setting.Label, JsonFields.SnapshotName));
+            }
+            catch (JsonException jsonEx)
+            {
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label), jsonEx);
+            }
+        }
+    }
+}

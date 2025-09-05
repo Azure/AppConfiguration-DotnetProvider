@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -874,6 +875,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             foreach (ConfigurationSetting setting in page.Values)
                             {
+                                if (setting.ContentType == SnapshotReferenceConstants.ContentType)
+                                {
+                                    // Track snapshot reference usage for telemetry
+                                    if (_requestTracingEnabled && _requestTracingOptions != null)
+                                    {
+                                        _requestTracingOptions.UsesSnapshotReference = true;
+                                    }
+
+                                    SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(setting);
+
+                                    Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
+
+                                    if (_requestTracingEnabled && _requestTracingOptions != null)
+                                    {
+                                        _requestTracingOptions.UsesSnapshotReference = false;
+                                    }
+
+                                    foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
+                                    {
+                                        data[resolvedSetting.Key] = resolvedSetting.Value;
+                                    }
+
+                                    continue;
+                                }
+
                                 data[setting.Key] = setting;
 
                                 if (loadOption.IsFeatureFlagSelector)
@@ -899,37 +925,54 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    ConfigurationSnapshot snapshot;
+                    Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(loadOption.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
-                    try
+                    foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                     {
-                        snapshot = await client.GetSnapshotAsync(loadOption.SnapshotName).ConfigureAwait(false);
+                        data[resolvedSetting.Key] = resolvedSetting.Value;
                     }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
-                    {
-                        throw new InvalidOperationException($"Could not find snapshot with name '{loadOption.SnapshotName}'.", rfe);
-                    }
-
-                    if (snapshot.SnapshotComposition != SnapshotComposition.Key)
-                    {
-                        throw new InvalidOperationException($"{nameof(snapshot.SnapshotComposition)} for the selected snapshot with name '{snapshot.Name}' must be 'key', found '{snapshot.SnapshotComposition}'.");
-                    }
-
-                    IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
-                        loadOption.SnapshotName,
-                        cancellationToken);
-
-                    await CallWithRequestTracing(async () =>
-                    {
-                        await foreach (ConfigurationSetting setting in settingsEnumerable.ConfigureAwait(false))
-                        {
-                            data[setting.Key] = setting;
-                        }
-                    }).ConfigureAwait(false);
                 }
             }
 
             return data;
+        }
+
+        private async Task<Dictionary<string, ConfigurationSetting>> LoadSnapshotData(string snapshotName, ConfigurationClient client, CancellationToken cancellationToken)
+        {
+            var resolvedSettings = new Dictionary<string, ConfigurationSetting>();
+
+            Debug.Assert(!string.IsNullOrWhiteSpace(snapshotName));
+
+            ConfigurationSnapshot snapshot = null;
+
+            try
+            {
+                await CallWithRequestTracing(async () => snapshot = await client.GetSnapshotAsync(snapshotName, cancellationToken: cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+            }
+            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.NotFound)
+            {
+
+                return resolvedSettings; // Return empty dictionary if snapshot not found
+            }
+
+            if (snapshot.SnapshotComposition != SnapshotComposition.Key)
+            {
+                throw new InvalidOperationException(string.Format(ErrorMessages.SnapshotInvalidComposition, nameof(snapshot.SnapshotComposition), snapshot.Name, snapshot.SnapshotComposition));
+            }
+
+            IAsyncEnumerable<ConfigurationSetting> settingsEnumerable = client.GetConfigurationSettingsForSnapshotAsync(
+                snapshotName,
+                cancellationToken);
+
+            await CallWithRequestTracing(async () =>
+            {
+                await foreach (ConfigurationSetting setting in settingsEnumerable.WithCancellation(cancellationToken).ConfigureAwait(false))
+                {
+                    resolvedSettings[setting.Key] = setting;
+                }
+            }).ConfigureAwait(false);
+
+            return resolvedSettings;
         }
 
         private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(
@@ -969,7 +1012,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (watchedKv != null)
                 {
                     watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
-                    existingSettings[watchedKey] = watchedKv;
+
+                    if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
+                    {
+                        // Track snapshot reference usage for telemetry
+                        if (_requestTracingEnabled && _requestTracingOptions != null)
+                        {
+                            _requestTracingOptions.UsesSnapshotReference = true;
+                        }
+
+                        SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(watchedKv);
+
+                        Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
+
+                        if (_requestTracingEnabled && _requestTracingOptions != null)
+                        {
+                            _requestTracingOptions.UsesSnapshotReference = false;
+                        }
+
+                        foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
+                        {
+                            existingSettings[resolvedSetting.Key] = resolvedSetting.Value;
+                        }
+                    }
+                    else
+                    {
+                        existingSettings[watchedKey] = watchedKv;
+                    }
                 }
             }
 
@@ -1034,7 +1103,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     logInfoBuilder.AppendLine(LogHelper.BuildKeyValueSettingUpdatedMessage(change.Key));
                     keyValueChanges.Add(change);
 
-                    if (kvWatcher.RefreshAll)
+                    // If the watcher is set to refresh all, or the content type matches the snapshot reference content type then refresh all
+                    if (kvWatcher.RefreshAll || watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
                         return true;
                     }
