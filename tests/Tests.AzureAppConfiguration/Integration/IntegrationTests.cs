@@ -725,6 +725,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
+                    options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.Select($"{testContext2.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
