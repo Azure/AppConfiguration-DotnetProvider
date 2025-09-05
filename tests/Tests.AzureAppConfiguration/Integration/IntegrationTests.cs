@@ -612,6 +612,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
+                    options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
 
                     // Configure feature flags with the correct ID pattern
                     options.UseFeatureFlags(featureFlagOptions =>
@@ -682,6 +683,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
+                    options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
                         featureFlagOptions.Select(testContext.KeyPrefix + "*");
@@ -710,6 +712,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_connectionString);
+                    options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.Select($"{testContext1.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
