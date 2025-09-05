@@ -13,11 +13,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
     internal static class SnapshotReferenceParser
     {
         /// <summary>
-        /// Parses a snapshot name from a snapshot reference configuration setting.
+        /// Parses a snapshot name from a configuration setting containing snapshot reference JSON.
         /// </summary>
         /// <param name="setting">The configuration setting containing the snapshot reference JSON.</param>
-        /// <returns>The snapshot reference if found and valid; otherwise, null.</returns>
-        /// <exception cref="FormatException">Thrown when the setting contains invalid JSON or invalid snapshot reference format.</exception>
+        /// <returns>The snapshot reference containing a valid, non-empty snapshot name.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when the setting is null.</exception>
+        /// <exception cref="FormatException">Thrown when the setting contains invalid JSON, invalid snapshot reference format, or empty/whitespace snapshot name.</exception>
         public static SnapshotReference Parse(ConfigurationSetting setting)
         {
             if (setting == null)
