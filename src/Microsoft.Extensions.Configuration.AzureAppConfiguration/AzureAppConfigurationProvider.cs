@@ -1014,6 +1014,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
+                        // Track snapshot reference usage for telemetry
+                        if (_requestTracingEnabled && _requestTracingOptions != null)
+                        {
+                            _requestTracingOptions.UsesSnapshotReference = true;
+                        }
+
                         SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(watchedKv);
 
                         Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
