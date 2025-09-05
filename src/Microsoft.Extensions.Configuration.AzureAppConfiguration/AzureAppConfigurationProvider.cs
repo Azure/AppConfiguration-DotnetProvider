@@ -1025,6 +1025,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         Dictionary<string, ConfigurationSetting> resolvedSettings = await LoadSnapshotData(snapshotReference.SnapshotName, client, cancellationToken).ConfigureAwait(false);
 
+                        if (_requestTracingEnabled && _requestTracingOptions != null)
+                        {
+                            _requestTracingOptions.UsesSnapshotReference = false;
+                        }
+
                         foreach (KeyValuePair<string, ConfigurationSetting> resolvedSetting in resolvedSettings)
                         {
                             existingSettings[resolvedSetting.Key] = resolvedSetting.Value;
