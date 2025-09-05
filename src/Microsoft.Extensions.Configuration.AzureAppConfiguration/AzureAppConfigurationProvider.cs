@@ -630,7 +630,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_requestTracingEnabled && _requestTracingOptions != null)
             {
                 _requestTracingOptions.ResetAiConfigurationTracing();
-                _requestTracingOptions.ResetSnapshotReferenceTracing();
+                _requestTracingOptions.UsesSnapshotReference = false;
             }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
@@ -881,7 +881,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                     // Track snapshot reference usage for telemetry
                                     if (_requestTracingEnabled && _requestTracingOptions != null)
                                     {
-                                        _requestTracingOptions.UpdateSnapshotReferenceTracing(setting.ContentType);
+                                        _requestTracingOptions.UsesSnapshotReference = true;
                                     }
 
                                     SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(setting);
@@ -1012,7 +1012,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // Track snapshot reference usage for telemetry
                         if (_requestTracingEnabled && _requestTracingOptions != null)
                         {
-                            _requestTracingOptions.UpdateSnapshotReferenceTracing(watchedKv.ContentType);
+                            _requestTracingOptions.UsesSnapshotReference = true;
                         }
 
                         SnapshotReference.SnapshotReference snapshotReference = SnapshotReferenceParser.Parse(watchedKv);

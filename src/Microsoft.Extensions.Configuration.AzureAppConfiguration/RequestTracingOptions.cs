@@ -98,14 +98,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Resets the snapshot reference tracing flag.
-        /// </summary>
-        public void ResetSnapshotReferenceTracing()
-        {
-            UsesSnapshotReference = false;
-        }
-
-        /// <summary>
         /// Updates AI configuration tracing flags based on the provided content type.
         /// </summary>
         /// <param name="contentTypeString">The content type to analyze.</param>
@@ -123,16 +115,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     UsesAIChatCompletionConfiguration = true;
                 }
             }
-        }
-
-        /// <summary>
-        /// Updates snapshot reference tracing when a snapshot reference is encountered.
-        /// </summary>
-        /// <param name="contentTypeString">The content type to analyze.</param>
-        public void UpdateSnapshotReferenceTracing(string contentTypeString)
-        {
-            UsesSnapshotReference = true;
-
         }
 
         /// <summary>
