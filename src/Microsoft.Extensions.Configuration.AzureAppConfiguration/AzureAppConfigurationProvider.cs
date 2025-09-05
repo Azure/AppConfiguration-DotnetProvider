@@ -1011,6 +1011,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null)
                 {
+                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
+
                     if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
                         // Track snapshot reference usage for telemetry
@@ -1032,8 +1034,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         existingSettings[watchedKey] = watchedKv;
                     }
-
-                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
                 }
             }
 

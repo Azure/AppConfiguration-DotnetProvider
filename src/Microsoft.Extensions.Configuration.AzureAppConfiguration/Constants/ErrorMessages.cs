@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
-
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class ErrorMessages
