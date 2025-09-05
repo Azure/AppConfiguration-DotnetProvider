@@ -51,22 +51,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
                     {
                         if (reader.Read() && reader.TokenType == JsonTokenType.String)
                         {
-                            if (string.IsNullOrWhiteSpace(reader.GetString()))
+                            string snapshotName = reader.GetString();
+                            if (string.IsNullOrWhiteSpace(snapshotName))
                             {
                                 throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidFormat, setting.Key, setting.Label));
                             }
 
-                            return new SnapshotReference { SnapshotName = reader.GetString() };
+                            return new SnapshotReference { SnapshotName = snapshotName };
                         }
 
-                        throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidJsonProperty, setting.Key, setting.Label, reader.TokenType));
+                        throw new FormatException(string.Format(ErrorMessages.SnapshotReferenceInvalidJsonProperty, setting.Key, setting.Label, JsonFields.SnapshotName, reader.TokenType));
                     }
 
                     // Skip unknown properties
                     reader.Skip();
                 }
 
-                throw new FormatException(string.Format(ErrorMessages.SnapshotReferencePropertyMissing, setting.Key, setting.Label));
+                throw new FormatException(string.Format(ErrorMessages.SnapshotReferencePropertyMissing, setting.Key, setting.Label, JsonFields.SnapshotName));
             }
             catch (JsonException jsonEx)
             {

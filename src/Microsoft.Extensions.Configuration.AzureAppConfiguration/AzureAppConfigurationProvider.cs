@@ -630,7 +630,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (_requestTracingEnabled && _requestTracingOptions != null)
             {
                 _requestTracingOptions.ResetAiConfigurationTracing();
-                _requestTracingOptions.UsesSnapshotReference = false;
             }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
@@ -1028,15 +1027,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             existingSettings[resolvedSetting.Key] = resolvedSetting.Value;
                         }
-
-                        // Only track the snapshot reference itself for refresh monitoring, since snapshots are immutable
-                        watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
                     }
                     else
                     {
-                        watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
                         existingSettings[watchedKey] = watchedKv;
                     }
+
+                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
                 }
             }
 
