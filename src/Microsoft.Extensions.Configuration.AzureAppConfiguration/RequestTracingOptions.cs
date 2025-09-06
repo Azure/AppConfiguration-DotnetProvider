@@ -3,6 +3,7 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using System.Net.Mime;
 using System.Text;
 
@@ -88,6 +89,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool UsesAIChatCompletionConfiguration { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether any key-value uses snapshot references.
+        /// </summary>
+        public bool UsesSnapshotReference { get; set; } = false;
+
+        /// <summary>
         /// Resets the AI configuration tracing flags.
         /// </summary>
         public void ResetAiConfigurationTracing()
@@ -125,7 +131,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return IsLoadBalancingEnabled ||
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
-                UsesAIChatCompletionConfiguration;
+                UsesAIChatCompletionConfiguration ||
+                UsesSnapshotReference;
         }
 
         /// <summary>
@@ -174,6 +181,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.AIChatCompletionConfigurationTag);
+            }
+
+            if (UsesSnapshotReference)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.SnapshotReferenceTag);
             }
 
             return sb.ToString();

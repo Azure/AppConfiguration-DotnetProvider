@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string LoadBalancingEnabledTag = "LB";
         public const string AIConfigurationTag = "AI";
         public const string AIChatCompletionConfigurationTag = "AICC";
-
+        public const string SnapshotReferenceTag = "SnapshotRef";
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
         public const string PushRefreshTag = "PushRefresh";
