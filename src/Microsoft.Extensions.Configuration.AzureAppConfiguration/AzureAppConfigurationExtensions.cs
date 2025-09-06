@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Configuration
         }
 
         /// <summary>
-        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder using its connection string.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="connectionString">The connection string used to connect to the configuration store.</param>
@@ -48,7 +48,7 @@ namespace Microsoft.Extensions.Configuration
         }
 
         /// <summary>
-        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// Adds key-value data from a primary Azure App Configuration store and one or more replica stores to a configuration builder using connection strings.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="connectionStrings">The list of connection strings used to connect to the configuration store and its replicas.</param>
@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.Configuration
         }
 
         /// <summary>
-        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder using endpoint with AAD authentication.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="endpoint">The endpoint used to connect to the configuration store.</param>
@@ -84,7 +84,7 @@ namespace Microsoft.Extensions.Configuration
         }
 
         /// <summary>
-        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// Adds key-value data from a primary Azure App Configuration store and one or more replica stores to a configuration builder using endpoints with AAD authentication.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="endpoints">The list of endpoints used to connect to the configuration store and its replicas.</param>
@@ -103,7 +103,8 @@ namespace Microsoft.Extensions.Configuration
         }
 
         /// <summary>
-        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder using a fully configurable <see cref="AzureAppConfigurationOptions"/> callback for advanced scenarios.
+        /// Use this overload when you need to: select keys by prefix, filter by labels, configure dynamic refresh, use feature flags, resolve Key Vault references, etc.
         /// </summary>
         /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
         /// <param name="action">A callback used to configure Azure App Configuration options.</param>
