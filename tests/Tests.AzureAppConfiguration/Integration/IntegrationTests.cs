@@ -1797,7 +1797,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains(RequestTracingConstants.TimeWindowFilter, requestInspector.CorrelationContextHeaders.Last());
             Assert.Contains(RequestTracingConstants.CustomFilter, requestInspector.CorrelationContextHeaders.Last());
             Assert.Contains(RequestTracingConstants.FeatureFlagMaxVariantsKey, requestInspector.CorrelationContextHeaders.Last());
-            Assert.Contains($"{RequestTracingConstants.FeatureManagementVersionKey}=4.0.0", requestInspector.CorrelationContextHeaders.Last());
+            Assert.Contains($"{RequestTracingConstants.FeatureManagementVersionKey}=4.3.0", requestInspector.CorrelationContextHeaders.Last());
         }
 
         [Fact]
