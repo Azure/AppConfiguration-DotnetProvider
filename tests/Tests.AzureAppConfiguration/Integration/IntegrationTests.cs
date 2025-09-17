@@ -186,7 +186,6 @@ namespace Tests.AzureAppConfiguration
             _output.WriteLine($"Checking for stale resources older than {StaleResourceThreshold}...");
 
             var cutoffTime = DateTimeOffset.UtcNow.Subtract(StaleResourceThreshold);
-            var cleanupTasks = new List<Task>();
 
             // Clean up stale configuration settings, snapshots, and Key Vault secrets
             try
@@ -214,23 +213,32 @@ namespace Tests.AzureAppConfiguration
                     }
                 }
 
+                // Delete configuration settings sequentially to avoid 429 errors
                 foreach (ConfigurationSetting setting in configSettingsToCleanup)
                 {
-                    cleanupTasks.Add(_configClient.DeleteConfigurationSettingAsync(setting.Key, setting.Label));
+                    await _configClient.DeleteConfigurationSettingAsync(setting.Key, setting.Label);
                 }
 
                 int staleSnapshotCount = 0;
+                var snapshotsToArchive = new List<string>();
                 AsyncPageable<ConfigurationSnapshot> snapshots = _configClient.GetSnapshotsAsync(new SnapshotSelector());
                 await foreach (ConfigurationSnapshot snapshot in snapshots)
                 {
                     if (snapshot.Name.StartsWith("snapshot-" + TestKeyPrefix) && snapshot.CreatedOn < cutoffTime)
                     {
-                        cleanupTasks.Add(_configClient.ArchiveSnapshotAsync(snapshot.Name));
+                        snapshotsToArchive.Add(snapshot.Name);
                         staleSnapshotCount++;
                     }
                 }
 
+                // Archive snapshots sequentially to avoid 429 errors
+                foreach (string snapshotName in snapshotsToArchive)
+                {
+                    await _configClient.ArchiveSnapshotAsync(snapshotName);
+                }
+
                 int staleSecretCount = 0;
+                var secretsToDelete = new List<string>();
                 if (_secretClient != null)
                 {
                     AsyncPageable<SecretProperties> secrets = _secretClient.GetPropertiesOfSecretsAsync();
@@ -238,14 +246,17 @@ namespace Tests.AzureAppConfiguration
                     {
                         if (secretProperties.Name.StartsWith(TestKeyPrefix) && secretProperties.CreatedOn.HasValue && secretProperties.CreatedOn.Value < cutoffTime)
                         {
-                            cleanupTasks.Add(_secretClient.StartDeleteSecretAsync(secretProperties.Name));
+                            secretsToDelete.Add(secretProperties.Name);
                             staleSecretCount++;
                         }
                     }
-                }
 
-                // Wait for all cleanup tasks to complete
-                await Task.WhenAll(cleanupTasks);
+                    // Delete secrets sequentially to avoid 429 errors
+                    foreach (string secretName in secretsToDelete)
+                    {
+                        await _secretClient.StartDeleteSecretAsync(secretName);
+                    }
+                }
 
                 _output.WriteLine($"Cleaned up {staleConfigCount} stale configuration settings, {staleSnapshotCount} snapshots, and {staleSecretCount} secrets");
             }
