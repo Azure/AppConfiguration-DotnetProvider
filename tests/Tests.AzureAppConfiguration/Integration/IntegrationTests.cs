@@ -344,10 +344,11 @@ namespace Tests.AzureAppConfiguration
         {
             if (_configClient != null)
             {
-                await CreateSnapshot(context.SnapshotName, new List<ConfigurationSettingsFilter>
+                var settingsToInclude = new List<ConfigurationSettingsFilter>
                 {
                     new ConfigurationSettingsFilter(context.KeyPrefix + ":*")
-                });
+                };
+                await CreateSnapshot(context.SnapshotName, settingsToInclude, SnapshotComposition.Key);
 
                 ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
                     context.SnapshotReferenceKey,
@@ -1236,7 +1237,7 @@ namespace Tests.AzureAppConfiguration
             string snapshotName = $"snapshot-{testContext.KeyPrefix}";
 
             // Create a snapshot with the test keys
-            await CreateSnapshot(snapshotName, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext.KeyPrefix + "*") });
+            await CreateSnapshot(snapshotName, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext.KeyPrefix + "*") }, SnapshotComposition.Key);
 
             // Update values after snapshot is taken to verify snapshot has original values
             await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
@@ -1295,8 +1296,8 @@ namespace Tests.AzureAppConfiguration
             string snapshotName2 = $"snapshot-{testContext2.KeyPrefix}";
 
             // Create snapshots
-            await CreateSnapshot(snapshotName1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext1.KeyPrefix + "*") });
-            await CreateSnapshot(snapshotName2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext2.KeyPrefix + "*") });
+            await CreateSnapshot(snapshotName1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext1.KeyPrefix + "*") }, SnapshotComposition.Key);
+            await CreateSnapshot(snapshotName2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext2.KeyPrefix + "*") }, SnapshotComposition.Key);
 
             try
             {
@@ -1480,9 +1481,9 @@ namespace Tests.AzureAppConfiguration
             string snapshot2 = $"snapshot-{secondContext.KeyPrefix}-2";
             string snapshot3 = $"snapshot-{thirdContext.KeyPrefix}-3";
 
-            await CreateSnapshot(snapshot1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(mainContext.KeyPrefix + "*") });
-            await CreateSnapshot(snapshot2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(secondContext.KeyPrefix + "*") });
-            await CreateSnapshot(snapshot3, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(thirdContext.KeyPrefix + "*") });
+            await CreateSnapshot(snapshot1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(mainContext.KeyPrefix + "*") }, SnapshotComposition.Key);
+            await CreateSnapshot(snapshot2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(secondContext.KeyPrefix + "*") }, SnapshotComposition.Key);
+            await CreateSnapshot(snapshot3, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(thirdContext.KeyPrefix + "*") }, SnapshotComposition.Key);
 
             try
             {
@@ -1811,10 +1812,11 @@ namespace Tests.AzureAppConfiguration
                 await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
             }
 
-            await CreateSnapshot(testContext.SnapshotName, new List<ConfigurationSettingsFilter>
+            var settingsToInclude = new List<ConfigurationSettingsFilter>
             {
                 new ConfigurationSettingsFilter(testContext.KeyPrefix + "*")
-            });
+            };
+            await CreateSnapshot(testContext.SnapshotName, settingsToInclude, SnapshotComposition.Key);
 
             ConfigurationSetting snapshotReferenceSetting = ConfigurationModelFactory.ConfigurationSetting(
                 testContext.SnapshotReferenceKey,
