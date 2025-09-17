@@ -119,11 +119,12 @@ namespace Tests.AzureAppConfiguration
             return $"{TestKeyPrefix}-{testName}-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
         }
 
-        private async Task<string> CreateSnapshot(string snapshotName, IEnumerable<ConfigurationSettingsFilter> settingsToInclude, CancellationToken cancellationToken = default)
+        private async Task<string> CreateSnapshot(string snapshotName, IEnumerable<ConfigurationSettingsFilter> settingsToInclude, SnapshotComposition snapshotComposition, CancellationToken cancellationToken = default)
         {
             ConfigurationSnapshot snapshot = new ConfigurationSnapshot(settingsToInclude);
 
-            snapshot.SnapshotComposition = SnapshotComposition.Key;
+            snapshot.SnapshotComposition = snapshotComposition;
+            snapshot.RetentionPeriod = TimeSpan.FromMinutes(5);
 
             CreateSnapshotOperation operation = await _configClient.CreateSnapshotAsync(
                 WaitUntil.Completed,
@@ -224,7 +225,7 @@ namespace Tests.AzureAppConfiguration
                 AsyncPageable<ConfigurationSnapshot> snapshots = _configClient.GetSnapshotsAsync(new SnapshotSelector());
                 await foreach (ConfigurationSnapshot snapshot in snapshots)
                 {
-                    if (snapshot.Name.StartsWith("snapshot-" + TestKeyPrefix) && snapshot.CreatedOn < cutoffTime)
+                    if (snapshot.Name.StartsWith("snapshot-" + TestKeyPrefix) && snapshot.CreatedOn < cutoffTime && snapshot.Status == ConfigurationSnapshotStatus.Ready)
                     {
                         snapshotsToArchive.Add(snapshot.Name);
                         staleSnapshotCount++;
@@ -1337,19 +1338,11 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationSettingsFilter($"{testContext.KeyPrefix}:*")
             };
 
-            ConfigurationSnapshot keyOnlySnapshot = new ConfigurationSnapshot(settingsToInclude);
-
-            keyOnlySnapshot.SnapshotComposition = SnapshotComposition.Key;
+            // Create the snapshot
+            await CreateSnapshot(keyOnlySnapshotName, settingsToInclude, SnapshotComposition.Key);
 
             // Create the snapshot
-            await _configClient.CreateSnapshotAsync(WaitUntil.Completed, keyOnlySnapshotName, keyOnlySnapshot);
-
-            ConfigurationSnapshot invalidSnapshot = new ConfigurationSnapshot(settingsToInclude);
-
-            invalidSnapshot.SnapshotComposition = SnapshotComposition.KeyLabel;
-
-            // Create the snapshot
-            await _configClient.CreateSnapshotAsync(WaitUntil.Completed, invalidCompositionSnapshotName, invalidSnapshot);
+            await CreateSnapshot(invalidCompositionSnapshotName, settingsToInclude, SnapshotComposition.KeyLabel);
 
             try
             {
@@ -1410,12 +1403,8 @@ namespace Tests.AzureAppConfiguration
                 new ConfigurationSettingsFilter($".appconfig.featureflag/{testContext.KeyPrefix}*")
             };
 
-            ConfigurationSnapshot snapshot = new ConfigurationSnapshot(settingsToInclude);
-
-            snapshot.SnapshotComposition = SnapshotComposition.Key;
-
             // Create the snapshot
-            await _configClient.CreateSnapshotAsync(WaitUntil.Completed, snapshotName, snapshot);
+            await CreateSnapshot(snapshotName, settingsToInclude, SnapshotComposition.Key);
 
             // Update feature flag to disabled after creating snapshot
             await _configClient.SetConfigurationSettingAsync(
