@@ -124,7 +124,7 @@ namespace Tests.AzureAppConfiguration
             ConfigurationSnapshot snapshot = new ConfigurationSnapshot(settingsToInclude);
 
             snapshot.SnapshotComposition = snapshotComposition;
-            snapshot.RetentionPeriod = TimeSpan.FromMinutes(5);
+            snapshot.RetentionPeriod = TimeSpan.FromHours(1);
 
             CreateSnapshotOperation operation = await _configClient.CreateSnapshotAsync(
                 WaitUntil.Completed,
