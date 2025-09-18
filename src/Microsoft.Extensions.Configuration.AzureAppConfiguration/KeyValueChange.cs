@@ -2,6 +2,9 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
