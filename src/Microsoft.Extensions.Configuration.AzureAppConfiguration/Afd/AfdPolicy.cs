@@ -4,13 +4,15 @@
 using Azure.Core;
 using Azure.Core.Pipeline;
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
 using System.Web;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
     /// <summary>
-    /// HTTP pipeline policy that removes Authorization headers from requests.
+    /// HTTP pipeline policy that removes Authorization headers from requests and orders query parameters by lowercase.
     /// </summary>
     internal class AfdPolicy : HttpPipelinePolicy
     {
@@ -22,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         }
 
         /// <summary>
-        /// Processes the HTTP message and removes the Authorization header from the request.
+        /// Processes the HTTP message, removes the Authorization header, and orders query parameters by lowercase.
         /// </summary>
         /// <param name="message">The HTTP message.</param>
         /// <param name="pipeline">The pipeline.</param>
@@ -30,11 +32,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         {
             message.Request.Headers.Remove("Authorization");
 
+            message.Request.Uri.Reset(OrderQueryParameters(message.Request.Uri.ToUri()));
+
             ProcessNext(message, pipeline);
         }
 
         /// <summary>
-        /// Processes the HTTP message asynchronously and removes the Authorization header from the request.
+        /// Processes the HTTP message asynchronously, removes the Authorization header, and orders query parameters by lowercase.
         /// </summary>
         /// <param name="message">The HTTP message.</param>
         /// <param name="pipeline">The pipeline.</param>
@@ -43,7 +47,38 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         {
             message.Request.Headers.Remove("Authorization");
 
+            message.Request.Uri.Reset(OrderQueryParameters(message.Request.Uri.ToUri()));
+
             await ProcessNextAsync(message, pipeline).ConfigureAwait(false);
+        }
+
+        private static Uri OrderQueryParameters(Uri uri)
+        {
+            var uriBuilder = new UriBuilder(uri);
+
+            NameValueCollection query = HttpUtility.ParseQueryString(uriBuilder.Query);
+
+            if (query.Count > 0)
+            {
+                IEnumerable<string> orderedParams = query.AllKeys
+                    .Where(key => key != null)
+                    .OrderBy(key => key.ToLowerInvariant())
+                    .Select(key =>
+                    {
+                        string value = query[key];
+
+                        if (value == null)
+                        {
+                            return Uri.EscapeDataString(key);
+                        }
+
+                        return $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}";
+                    });
+
+                uriBuilder.Query = string.Join("&", orderedParams);
+            }
+
+            return uriBuilder.Uri;
         }
     }
 }
