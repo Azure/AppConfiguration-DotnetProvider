@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException($"Custom client factory is not supported when connecting to AFD.");
                     }
 
-                    options.ClientOptions.AddPolicy(new AfdPolicy(options.AfdTokenAccessor), HttpPipelinePosition.PerRetry);
+                    options.ClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);
                 }
 
                 if (options.ClientManager != null)

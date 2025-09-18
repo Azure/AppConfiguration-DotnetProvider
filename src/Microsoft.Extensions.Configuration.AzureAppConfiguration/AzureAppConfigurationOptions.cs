@@ -156,11 +156,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
-        /// An accessor for current token to be used for AFD cache breakage/consistency.
-        /// </summary>
-        internal IAfdTokenAccessor AfdTokenAccessor { get; set; }
-
-        /// <summary>
         /// Gets a value indicating whether AFD is enabled.
         /// </summary>
         internal bool IsAfdEnabled { get; private set; }
@@ -412,7 +407,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             ConnectionStrings = null;
 
             IsAfdEnabled = true;
-            AfdTokenAccessor = new AfdTokenAccessor();
 
             return this;
         }

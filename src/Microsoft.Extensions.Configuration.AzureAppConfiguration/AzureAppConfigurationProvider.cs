@@ -41,11 +41,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
 
-        #region Afd
-        private string _configAfdToken = null;
-        private string _ffAfdToken = null;
-        #endregion
-
         private readonly TimeSpan MinRefreshInterval;
 
         // The most-recent time when the refresh operation attempted to load the initial configuration
@@ -314,11 +309,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         logInfoBuilder.Clear();
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
 
-                        if (_options.IsAfdEnabled)
-                        {
-                            _options.AfdTokenAccessor.Current = _configAfdToken;
-                        }
-
                         if (_options.RegisterAllEnabled)
                         {
                             // Get key value collection changes if RegisterAll was called
@@ -326,12 +316,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             {
                                 foreach (KeyValueSelector selector in _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector))
                                 {
-                                    Page<ConfigurationSetting> changedPage = null;
-
                                     if (_kvEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                                     {
                                         await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                            async () => changedPage = await client.GetPageChange(
+                                            async () => refreshAll = await client.HaveCollectionsChanged(
                                                 selector,
                                                 matchConditions,
                                                 _options.ConfigurationSettingPageIterator,
@@ -339,23 +327,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                                 cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                                     }
 
-                                    if (changedPage != null)
+                                    if (refreshAll)
                                     {
-                                        refreshAll = true;
-
-                                        if (_options.IsAfdEnabled)
-                                        {
-                                            //
-                                            // Break afd cache
-                                            string token = changedPage.GetAfdToken();
-                                            _options.AfdTokenAccessor.Current = token;
-
-                                            // 
-                                            // Reset versions so that next watch request will not use stale versions.
-                                            _configAfdToken = token;
-                                            _ffAfdToken = token;
-                                        }
-
                                         break;
                                     }
                                 }
@@ -386,19 +359,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 {
                                     refreshAll = true;
 
-                                    if (_options.IsAfdEnabled)
-                                    {
-                                        //
-                                        // Break afd cache
-                                        string token = change.GetAfdToken();
-                                        _options.AfdTokenAccessor.Current = token;
-
-                                        // 
-                                        // Reset versions so that next watch request will not use stale versions.
-                                        _configAfdToken = token;
-                                        _ffAfdToken = token;
-                                    }
-
                                     break;
                                 }
                             }
@@ -418,12 +378,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             return;
                         }
 
-                        // Get feature flag changes
-                        if (_options.IsAfdEnabled)
-                        {
-                            _options.AfdTokenAccessor.Current = _ffAfdToken;
-                        }
-
                         var ffSelectors = refreshableFfWatchers.Select(watcher => new KeyValueSelector
                         {
                             KeyFilter = watcher.Key,
@@ -433,12 +387,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         foreach (KeyValueSelector selector in ffSelectors)
                         {
-                            Page<ConfigurationSetting> changedPage = null;
-
                             if (_ffEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
                             {
                                 await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                                    async () => changedPage = await client.GetPageChange(
+                                    async () => ffCollectionUpdated = await client.HaveCollectionsChanged(
                                         selector,
                                         matchConditions,
                                         _options.ConfigurationSettingPageIterator,
@@ -446,22 +398,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                         cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                             }
 
-                            if (changedPage != null)
+                            if (ffCollectionUpdated)
                             {
-                                ffCollectionUpdated = true;
-
-                                if (_options.IsAfdEnabled)
-                                {
-                                    //
-                                    // Break afd cache
-                                    string token = changedPage.GetAfdToken();
-                                    _options.AfdTokenAccessor.Current = token;
-
-                                    //
-                                    // Reset ff collection version so that next ff watch request will not use stale version.
-                                    _ffAfdToken = token;
-                                }
-
                                 break;
                             }
                         }

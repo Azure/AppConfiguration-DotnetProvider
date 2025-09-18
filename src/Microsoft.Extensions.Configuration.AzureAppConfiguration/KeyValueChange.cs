@@ -26,22 +26,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public ConfigurationSetting Current { get; set; }
 
         public ConfigurationSetting Previous { get; set; }
-
-        public string GetAfdToken()
-        {
-            string token;
-
-            if (ChangeType == KeyValueChangeType.Deleted)
-            {
-                using SHA256 sha256 = SHA256.Create();
-                token = sha256.ComputeHash(Encoding.UTF8.GetBytes($"ResourceDeleted\n{Previous.ETag}")).ToBase64Url();
-            }
-            else
-            {
-                token = Current.ETag.ToString();
-            }
-
-            return token;
-        }
     }
 }
