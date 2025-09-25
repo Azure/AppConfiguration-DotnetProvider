@@ -21,5 +21,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The value of this variable is a boolean string, e.g. "true" or "false".
         /// </summary>
         public const string DisableRequestTracing = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
+
+        /// <summary>
+        /// Environment variable to disable Azure App Configuration provider.
+        /// The value of this variable is a boolean string, e.g. "true" or "false".
+        /// </summary>
+        public const string DisableAppConfigurationProvider = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
     }
 }
