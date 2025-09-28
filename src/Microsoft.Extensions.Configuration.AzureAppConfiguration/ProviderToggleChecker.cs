@@ -7,13 +7,13 @@ using System.Security;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal static class Utils
+    internal static class ProviderToggleChecker
     {
         public static bool IsProviderDisabled()
         {
             try
             {
-                return bool.TryParse(Environment.GetEnvironmentVariable(EnvironmentVariables.DisableAppConfigurationProvider), out bool disabled) ? disabled : false;
+                return bool.TryParse(Environment.GetEnvironmentVariable(EnvironmentVariables.DisableAppConfigurationProviderKey), out bool disabled) ? disabled : false;
             }
             catch (SecurityException) { }
 

@@ -14,18 +14,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// When set to "true", schema compatibility checks for feature flags are disabled,
         /// and all feature flags will be interpreted using the Microsoft Feature Flags schema.
         /// </summary>
-        public const string DisableFmSchemaCompatibility = "AZURE_APP_CONFIGURATION_FM_SCHEMA_COMPATIBILITY_DISABLED";
+        public const string DisableFmSchemaCompatibilityKey = "AZURE_APP_CONFIGURATION_FM_SCHEMA_COMPATIBILITY_DISABLED";
 
         /// <summary>
         /// Environment variable to disable request tracing.
         /// The value of this variable is a boolean string, e.g. "true" or "false".
         /// </summary>
-        public const string DisableRequestTracing = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
+        public const string DisableRequestTracingKey = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
 
         /// <summary>
         /// Environment variable to disable Azure App Configuration provider.
         /// The value of this variable is a boolean string, e.g. "true" or "false".
         /// </summary>
-        public const string DisableAppConfigurationProvider = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
+        public const string DisableAppConfigurationProviderKey = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
     }
 }
