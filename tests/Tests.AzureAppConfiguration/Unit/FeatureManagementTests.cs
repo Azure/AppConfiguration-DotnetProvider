@@ -2309,7 +2309,7 @@ namespace Tests.AzureAppConfiguration
             try
             {
                 // Act - Set environment variable to force Microsoft schema
-                Environment.SetEnvironmentVariable(EnvironmentVariables.DisableFmSchemaCompatibilityKey, "true");
+                Environment.SetEnvironmentVariable(EnvironmentVariableNames.FmSchemacompatibilityDisabled, "true");
 
                 var config = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>

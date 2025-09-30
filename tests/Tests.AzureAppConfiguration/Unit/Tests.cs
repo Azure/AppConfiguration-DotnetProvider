@@ -273,7 +273,7 @@ namespace Tests.AzureAppConfiguration
             var options = new AzureAppConfigurationOptions();
             options.ClientOptions.Transport = mockTransport;
 
-            Environment.SetEnvironmentVariable(EnvironmentVariables.DisableRequestTracingKey, "True");
+            Environment.SetEnvironmentVariable(EnvironmentVariableNames.RequestTracingDisabled, "True");
 
             var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
@@ -296,7 +296,7 @@ namespace Tests.AzureAppConfiguration
             options.ClientOptions.Transport = mockTransport;
 
             // Delete the request tracing environment variable
-            Environment.SetEnvironmentVariable(EnvironmentVariables.DisableRequestTracingKey, null);
+            Environment.SetEnvironmentVariable(EnvironmentVariableNames.RequestTracingDisabled, null);
             Environment.SetEnvironmentVariable(RequestTracingConstants.AzureFunctionEnvironmentVariable, "v1.0");
 
             var clientManager1 = TestHelpers.CreateMockedConfigurationClientManager(options);

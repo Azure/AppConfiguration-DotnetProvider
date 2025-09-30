@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             try
             {
-                return bool.TryParse(Environment.GetEnvironmentVariable(EnvironmentVariables.DisableAppConfigurationProviderKey), out bool disabled) ? disabled : false;
+                return bool.TryParse(Environment.GetEnvironmentVariable(EnvironmentVariableNames.AppConfigurationProviderDisabled), out bool disabled) ? disabled : false;
             }
             catch (SecurityException) { }
 

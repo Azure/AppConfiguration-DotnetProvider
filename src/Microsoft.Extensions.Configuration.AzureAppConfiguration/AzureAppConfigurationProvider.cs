@@ -147,7 +147,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             string requestTracingDisabled = null;
             try
             {
-                requestTracingDisabled = Environment.GetEnvironmentVariable(EnvironmentVariables.DisableRequestTracingKey);
+                requestTracingDisabled = Environment.GetEnvironmentVariable(EnvironmentVariableNames.RequestTracingDisabled);
             }
             catch (SecurityException) { }
 
