@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.DependencyInjection
     /// </summary>
     public static class AzureAppConfigurationHealthChecksBuilderExtensions
     {
-        private static readonly bool _isProviderDisabled = ProviderToggleChecker.IsProviderDisabled();
+        private static readonly bool _isProviderDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.AppConfigurationProviderDisabled);
 
         /// <summary>
         /// Add a health check for Azure App Configuration to given <paramref name="builder"/>.

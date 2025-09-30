@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration
     /// </summary>
     public static class AzureAppConfigurationExtensions
     {
-        private static readonly bool _isProviderDisabled = ProviderToggleChecker.IsProviderDisabled();
+        private static readonly bool _isProviderDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.AppConfigurationProviderDisabled);
 
         /// <summary>
         /// Adds key-value data from an Azure App Configuration store to a configuration builder using its connection string.
