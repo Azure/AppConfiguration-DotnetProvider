@@ -16,7 +16,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -143,15 +142,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
             }
 
-            // Enable request tracing if not opt-out
-            string requestTracingDisabled = null;
-            try
-            {
-                requestTracingDisabled = Environment.GetEnvironmentVariable(EnvironmentVariables.DisableRequestTracing);
-            }
-            catch (SecurityException) { }
-
-            _requestTracingEnabled = bool.TryParse(requestTracingDisabled, out bool tracingDisabled) ? !tracingDisabled : true;
+            _requestTracingEnabled = !EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.RequestTracingDisabled);
 
             if (_requestTracingEnabled)
             {
