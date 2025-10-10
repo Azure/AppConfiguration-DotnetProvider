@@ -1,5 +1,5 @@
 body {
-    padding-top: 50px;
+    padding-top: 56px;
     padding-bottom: 20px;
 }
 
@@ -40,7 +40,7 @@ body {
 }
 
 .center {
-    margin-top: 50%;
+    margin-top: 40vh;
     font-size: 50px;
     text-align: center;
 }
