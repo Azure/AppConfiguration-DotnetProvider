@@ -5,7 +5,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class RequestTracingConstants
     {
-        public const string RequestTracingDisabledEnvironmentVariable = "AZURE_APP_CONFIGURATION_TRACING_DISABLED";
         public const string AzureFunctionEnvironmentVariable = "FUNCTIONS_EXTENSION_VERSION";
         public const string AzureWebAppEnvironmentVariable = "WEBSITE_SITE_NAME";
         public const string ContainerAppEnvironmentVariable = "CONTAINER_APP_NAME";
@@ -25,6 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string EnvironmentKey = "Env";
         public const string FeatureManagementVersionKey = "FMVer";
         public const string FeatureManagementAspNetCoreVersionKey = "FMANCVer";
+        public const string AspireComponentVersionKey = "DNACVer";
         public const string DevEnvironmentValue = "Dev";
         public const string KeyVaultConfiguredTag = "UsesKeyVault";
         public const string KeyVaultRefreshConfiguredTag = "RefreshesKeyVault";
@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string LoadBalancingEnabledTag = "LB";
         public const string AIConfigurationTag = "AI";
         public const string AIChatCompletionConfigurationTag = "AICC";
-
+        public const string SnapshotReferenceTag = "SnapshotRef";
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
         public const string PushRefreshTag = "PushRefresh";
@@ -54,6 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public const string FeatureManagementAssemblyName = "Microsoft.FeatureManagement";
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
+        public const string AspireComponentAssemblyName = "Aspire.Microsoft.Extensions.Configuration.AzureAppConfiguration";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
 
         public const string Delimiter = "+";

@@ -11,7 +11,7 @@ using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class AzureAppConfigurationHealthCheck : IHealthCheck
+    internal sealed class AzureAppConfigurationHealthCheck : IHealthCheck
     {
         private static readonly PropertyInfo _propertyInfo = typeof(ChainedConfigurationProvider).GetProperty("Configuration", BindingFlags.Public | BindingFlags.Instance);
         private readonly IEnumerable<IHealthCheck> _healthChecks;
