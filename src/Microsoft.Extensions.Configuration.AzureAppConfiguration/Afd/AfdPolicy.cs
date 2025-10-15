@@ -12,6 +12,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
     /// </summary>
     internal class AfdPolicy : HttpPipelinePolicy
     {
+        private const string AuthorizationHeader = "Authorization";
+        private const string SyncTokenHeader = "Sync-Token";
+
         /// <summary>
         /// Processes the HTTP message and removes Authorization and Sync-Token headers.
         /// </summary>
@@ -19,9 +22,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         /// <param name="pipeline">The pipeline.</param>
         public override void Process(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            message.Request.Headers.Remove(RequestHeaders.Authorization);
+            message.Request.Headers.Remove(AuthorizationHeader);
 
-            message.Request.Headers.Remove(RequestHeaders.SyncToken);
+            message.Request.Headers.Remove(SyncTokenHeader);
 
             ProcessNext(message, pipeline);
         }
@@ -34,9 +37,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         /// <returns>A task representing the asynchronous operation.</returns>
         public override async System.Threading.Tasks.ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline)
         {
-            message.Request.Headers.Remove(RequestHeaders.Authorization);
+            message.Request.Headers.Remove(AuthorizationHeader);
 
-            message.Request.Headers.Remove(RequestHeaders.SyncToken);
+            message.Request.Headers.Remove(SyncTokenHeader);
 
             await ProcessNextAsync(message, pipeline).ConfigureAwait(false);
         }

@@ -3,9 +3,11 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, bool makeConditionalRequest, DateTimeOffset lastChangeDetectedTime, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -29,8 +31,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             try
             {
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: makeConditionalRequest, cancellationToken).ConfigureAwait(false);
-                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK &&
-                    !response.Value.ETag.Equals(setting.ETag))
+                using Response rawResponse = response.GetRawResponse();
+                if (rawResponse.Status == (int)HttpStatusCode.OK &&
+                    !response.Value.ETag.Equals(setting.ETag) &&
+                    rawResponse.GetDate() >= lastChangeDetectedTime)
                 {
                     return new KeyValueChange
                     {
@@ -38,20 +42,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Previous = setting,
                         Current = response.Value,
                         Key = setting.Key,
-                        Label = setting.Label
+                        Label = setting.Label,
+                        DetectedTime = rawResponse.GetDate()
                     };
                 }
             }
             catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
             {
-                return new KeyValueChange
+                using Response rawResponse = e.GetRawResponse();
+                if (rawResponse.GetDate() >= lastChangeDetectedTime)
                 {
-                    ChangeType = KeyValueChangeType.Deleted,
-                    Previous = setting,
-                    Current = null,
-                    Key = setting.Key,
-                    Label = setting.Label
-                };
+                    return new KeyValueChange
+                    {
+                        ChangeType = KeyValueChangeType.Deleted,
+                        Previous = setting,
+                        Current = null,
+                        Key = setting.Key,
+                        Label = setting.Label,
+                        DetectedTime = rawResponse.GetDate()
+                    };
+                }
             }
 
             return new KeyValueChange
@@ -60,15 +70,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Previous = setting,
                 Current = setting,
                 Key = setting.Key,
-                Label = setting.Label
+                Label = setting.Label,
+                DetectedTime = lastChangeDetectedTime
             };
         }
 
-        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<Page<ConfigurationSetting>> GetPageChange(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<PageWatcher> pageWatchers, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
-            if (matchConditions == null)
+            if (pageWatchers == null)
             {
-                throw new ArgumentNullException(nameof(matchConditions));
+                throw new ArgumentNullException(nameof(pageWatchers));
             }
 
             if (keyValueSelector == null)
@@ -89,25 +100,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
-            using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
+            IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest
+                ? pageable.AsPages(pageIterator, pageWatchers.Select(p => p.Etag))
+                : pageable.AsPages(pageIterator);
 
-            IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest ? pageable.AsPages(pageIterator, matchConditions) : pageable.AsPages(pageIterator);
+            List<PageWatcher> existingWatcherList = pageWatchers.ToList();
+
+            int i = 0;
 
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
+                DateTimeOffset timestamp = response.GetDate();
 
-                // Return true if the lists of etags are different
-                if ((!existingMatchConditionsEnumerator.MoveNext() ||
-                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
-                    response.Status == (int)HttpStatusCode.OK)
+                if (i >= existingWatcherList.Count ||
+                    (response.Status == (int)HttpStatusCode.OK &&
+                    timestamp >= existingWatcherList[i].LastUpdateTime &&
+                    !existingWatcherList[i].Etag.IfNoneMatch.Equals(response.Headers.ETag)))
                 {
-                    return true;
+                    return page;
                 }
             }
 
-            // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            return existingMatchConditionsEnumerator.MoveNext();
+            return null;
         }
     }
 }
