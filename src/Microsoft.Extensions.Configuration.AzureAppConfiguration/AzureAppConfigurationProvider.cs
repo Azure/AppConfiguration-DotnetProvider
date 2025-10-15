@@ -232,8 +232,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         !refreshableIndividualKvWatchers.Any() &&
                         !refreshableFfWatchers.Any() &&
                         !isRefreshDue &&
-                        !_options.Adapters.Any(adapter => adapter.NeedsRefresh()) &&
-                        !_isLastRefreshAborted)
+                        !_options.Adapters.Any(adapter => adapter.NeedsRefresh()))
                     {
                         return;
                     }
