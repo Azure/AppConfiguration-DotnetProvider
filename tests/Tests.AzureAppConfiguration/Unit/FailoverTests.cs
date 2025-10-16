@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core;
+using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
@@ -27,7 +29,6 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -96,7 +97,6 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -148,7 +148,7 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -156,11 +156,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
 
             var mockClient2 = new Mock<ConfigurationClient>();
@@ -168,11 +168,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
             ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
@@ -222,7 +222,7 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -237,9 +237,9 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
             ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
@@ -342,7 +342,7 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             var client1 = new ConfigurationClient(TestHelpers.CreateMockEndpointString(),
                 new ConfigurationClientOptions()
@@ -357,9 +357,9 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
             ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
@@ -420,7 +420,7 @@ namespace Tests.AzureAppConfiguration
         public async Task FailOverTests_AllClientsBackedOffAfterNonFailoverableException()
         {
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             // Setup first client - succeeds on startup, fails with 404 (non-failoverable) on first refresh
             var mockClient1 = new Mock<ConfigurationClient>();
@@ -429,7 +429,7 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(412, "Request failed."))
                        .Throws(new RequestFailedException(412, "Request failed."));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
+                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
                         .Throws(new RequestFailedException(412, "Request failed."))
                         .Throws(new RequestFailedException(412, "Request failed."));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -442,9 +442,9 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
             ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);

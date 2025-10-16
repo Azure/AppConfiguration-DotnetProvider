@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     {
         public static DateTimeOffset GetDate(this Response response)
         {
-            return response.Headers.Date.HasValue ? response.Headers.Date.Value : DateTimeOffset.UtcNow;
+            return response.Headers.Date ?? DateTimeOffset.UtcNow;
         }
     }
 }
