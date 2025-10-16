@@ -307,7 +307,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         ffEtags = null;
                         ffKeys = null;
                         watchedIndividualKvs = null;
-                        watchedIndividualKvChanges = null;
+                        watchedIndividualKvChanges = new List<KeyValueChange>();
                         data = null;
                         ffCollectionData = null;
                         refreshFf = false;
@@ -339,6 +339,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else
                         {
+                            watchedIndividualKvChanges = new List<KeyValueChange>();
                             if (_isLastRefreshAborted)
                             {
                                 if (_options.IndividualKvWatchers.Any(w => w.RefreshAll))
@@ -348,7 +349,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
                             else
                             {
-                                watchedIndividualKvChanges = new List<KeyValueChange>();
                                 refreshAll = await RefreshIndividualKvWatchers(
                                     client,
                                     watchedIndividualKvChanges,
@@ -1068,14 +1068,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
 
-                // Skip the loading for the key-value in case it has already been loaded
-                if (existingSettings.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
-                    && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
-                {
-                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
-                    continue;
-                }
-
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label or different casing
                 ConfigurationSetting watchedKv = null;
                 try
@@ -1192,7 +1184,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 KeyValueChange change = default;
 
-                Debug.Assert(_watchedIndividualKvChangeDetectedTime.ContainsKey(watchedKeyLabel));
+                // if fail to get, the default DateTimeOffset.MinValue will be used
                 _watchedIndividualKvChangeDetectedTime.TryGetValue(watchedKeyLabel, out DateTimeOffset lastChangeDetectedTime);
 
                 //
