@@ -5,6 +5,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
 using System;
 using System.Collections.Generic;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
     internal class AfdConfigurationClientManager : IConfigurationClientManager

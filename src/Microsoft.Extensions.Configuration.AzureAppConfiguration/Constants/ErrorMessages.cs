@@ -15,6 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string SnapshotReferencePropertyMissing = "Invalid snapshot reference format for key '{0}' (label: '{1}'). The '{2}' property is required.";
         public const string SnapshotInvalidComposition = "{0} for the selected snapshot with name '{1}' must be 'key', found '{2}'.";
         public const string ConnectionConflict = "Cannot connect to both Azure App Configuration and Azure Front Door at the same time.";
+        public const string AfdConnectionConflict = "Cannot connect to multiple Azure Front Doors.";
         public const string AfdLoadBalancingUnsupported = "Load balancing is not supported when connecting to Azure Front Door.";
         public const string AfdCustomClientFactoryUnsupported = "Custom client factory is not supported when connecting to Azure Front Door.";
     }

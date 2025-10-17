@@ -164,6 +164,8 @@ namespace Tests.AzureAppConfiguration
     {
         private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
         private int _status;
+        private string _etag;
+        private DateTimeOffset _date;
         private readonly TimeSpan? _delay;
 
         public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null)

@@ -32,7 +32,6 @@ namespace Tests.AzureAppConfiguration
                 eTag: new ETag("31c38369-831f-4bf1-b9ad-79db56c8b989"),
                 contentType: "text"),
             ConfigurationModelFactory.ConfigurationSetting("TestKey3", "TestValue3", "label",
-
                 eTag: new ETag("bb203f2b-c113-44fc-995d-b933c2143339"),
                 contentType: "text"),
             ConfigurationModelFactory.ConfigurationSetting("TestKey4", "TestValue4", "label",
@@ -46,14 +45,14 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void AddsConfigurationValues()
         {
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse));
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options => options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object))
@@ -109,7 +108,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void LoadConfigurationStore_OnFailure()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -128,7 +126,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void LoadOptionalConfigurationStore_OnFailure()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -143,14 +140,14 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TrimKeyPrefix_TestCase1()
         {
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse));
 
             // Trim following prefixes from all keys in the configuration.
             var keyPrefix1 = "T";
@@ -175,14 +172,14 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TrimKeyPrefix_TestCase2()
         {
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(_kv, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(_kv, mockResponse));
 
             // Trim following prefixes from all keys in the configuration.
             var keyPrefix1 = "T";
@@ -320,7 +317,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void TestKeepSelectorPrecedenceAfterDedup()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var kvOfDevLabel = new List<ConfigurationSetting>
             {

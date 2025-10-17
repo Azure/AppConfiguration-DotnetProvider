@@ -433,7 +433,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
-
             Endpoints = endpoints;
             ConnectionStrings = null;
             return this;
@@ -450,6 +449,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
             }
 
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.AfdConnectionConflict);
+            }
+
             if (endpoint == null)
             {
                 throw new ArgumentNullException(nameof(endpoint));
@@ -459,9 +463,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Endpoints = new List<Uri>() { endpoint };
             ConnectionStrings = null;
-
             IsAfdUsed = true;
-
             return this;
         }
 

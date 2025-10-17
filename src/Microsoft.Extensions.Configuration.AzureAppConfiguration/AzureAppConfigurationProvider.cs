@@ -893,6 +893,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _kvEtags = kvEtags;
                 _ffEtags = ffEtags;
                 _watchedIndividualKvs = watchedIndividualKvs;
+                _watchedIndividualKvChangeDetectedTime = watchedIndividualKvChangeDetectedTime;
                 _ffKeys = ffKeys;
             }
         }
