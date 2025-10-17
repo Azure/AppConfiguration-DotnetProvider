@@ -370,8 +370,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             watchedIndividualKvChangeDetectedTime = new Dictionary<KeyValueIdentifier, DateTimeOffset>();
 
                             data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, false, cancellationToken).ConfigureAwait(false);
-                            watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, watchedIndividualKvChangeDetectedTime, cancellationToken).ConfigureAwait(false);
-                            if (data != null && watchedIndividualKvs != null && !_isLastRefreshAborted)
+
+                            if (!_isLastRefreshAborted)
+                            {
+                                watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, watchedIndividualKvChangeDetectedTime, cancellationToken).ConfigureAwait(false);
+                            }
+
+                            if (!_isLastRefreshAborted)
                             {
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                             }
@@ -1131,7 +1136,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 // If the key-value was found, store it for updating the settings
-                if (watchedKv != null)
+                if (watchedKv != null && existingSettings != null)
                 {
                     watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
 

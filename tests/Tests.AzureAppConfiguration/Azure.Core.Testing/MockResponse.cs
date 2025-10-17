@@ -20,7 +20,7 @@ namespace Azure.Core.Testing
 
             if (status == 200)
             {
-                AddHeader(new HttpHeader(HttpHeader.Names.ETag, "\"" + etag ?? Guid.NewGuid().ToString() + "\""));
+                AddHeader(new HttpHeader(HttpHeader.Names.ETag, "\"" + (etag ?? Guid.NewGuid().ToString()) + "\""));
             }
 
             AddHeader(new HttpHeader(HttpHeader.Names.XMsDate, date?.ToString() ?? DateTimeOffset.UtcNow.ToString()));
