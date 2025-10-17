@@ -226,6 +226,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.ConnectAzureFrontDoor(afdEndpoint);
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label");
                     options.ConfigureRefresh(refreshOptions =>
@@ -274,7 +275,7 @@ namespace Tests.AzureAppConfiguration
             var responses2 = new List<MockResponse>()
             {
                 new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")),
-                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T00:00:00+08:00")) // stale
+                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")) // stale
             };
             var mockAsyncPageable2 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
 
@@ -323,6 +324,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    options.ConnectAzureFrontDoor(afdEndpoint);
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.Select("TestKey*", "label");
                     options.ConfigureRefresh(refreshOptions =>
@@ -342,7 +344,7 @@ namespace Tests.AzureAppConfiguration
             await refresher.RefreshAsync();
 
             Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because page 2 is out of date
-            //Assert.Equal("new-value", config["Sentinel"]);
+            Assert.Equal("sentinel-value", config["Sentinel"]);
 
             await Task.Delay(1500);
 
@@ -350,6 +352,84 @@ namespace Tests.AzureAppConfiguration
 
             Assert.Equal("new-value", config["TestKey4"]);
             Assert.Equal("new-value", config["Sentinel"]);
+        }
+
+        [Fact]
+        public async Task AfdTests_RegisterAllRefresh()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            var keyValueCollection1 = new List<ConfigurationSetting>(_kvCollection);
+            string page1_etag = Guid.NewGuid().ToString();
+            string page2_etag = Guid.NewGuid().ToString();
+            var responses = new List<MockResponse>()
+            {
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")),
+                new MockResponse(200, page2_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00"))
+            };
+            var mockAsyncPageable1 = new MockAsyncPageable(keyValueCollection1, null, 3, responses);
+
+            var keyValueCollection2 = new List<ConfigurationSetting>(_kvCollection);
+            keyValueCollection2[3].Value = "new-value";
+            string page2_etag2 = Guid.NewGuid().ToString();
+            var responses2 = new List<MockResponse>()
+            {
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")), // stale
+                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:02+08:00"))
+            };
+            var mockAsyncPageable2 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
+
+            var responses3 = new List<MockResponse>()
+            {
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")), // stale
+                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:02+08:00"))
+            };
+            var mockAsyncPageable3 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
+
+            var responses4 = new List<MockResponse>()
+            {
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00")), // up-to-date
+                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00"))
+            };
+            var mockAsyncPageable4 = new MockAsyncPageable(keyValueCollection2, null, 3, responses4);
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(mockAsyncPageable1)
+                .Returns(mockAsyncPageable2)
+                .Returns(mockAsyncPageable3)
+                .Returns(mockAsyncPageable4);
+
+            var afdEndpoint = new Uri("https://test.b01.azurefd.net");
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ConnectAzureFrontDoor(afdEndpoint);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.Select("TestKey*", "label");
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("TestValue4", config["TestKey4"]);
+
+            await Task.Delay(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because page 1 is stale
+
+            await Task.Delay(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("new-value", config["TestKey4"]);
         }
     }
 }

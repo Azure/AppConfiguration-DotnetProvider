@@ -119,6 +119,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 {
                     return page;
                 }
+
+                i++;
             }
 
             return null;
