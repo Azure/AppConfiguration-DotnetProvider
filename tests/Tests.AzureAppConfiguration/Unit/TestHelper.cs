@@ -16,6 +16,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
+using System.Diagnostics;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -162,12 +164,18 @@ namespace Tests.AzureAppConfiguration
 
     class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
     {
-        private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
-        private int _status;
+        private List<List<ConfigurationSetting>> _pages;
+        private List<MockResponse> _responses;
+        private int _status = 200;
+        private readonly int _itemsPerPage;
+        private List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
         private readonly TimeSpan? _delay;
 
-        public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null)
+        public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null, int itemsPerPage = 100, List<MockResponse> responses = null)
         {
+            _itemsPerPage = itemsPerPage;
+            _delay = delay;
+
             foreach (ConfigurationSetting setting in collection)
             {
                 var newSetting = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
@@ -177,18 +185,35 @@ namespace Tests.AzureAppConfiguration
                 _collection.Add(newSetting);
             }
 
-            _status = 200;
-            _delay = delay;
+            if (responses != null)
+            {
+                _responses = responses;
+            }
+
+            SlicePages();
         }
 
-        public void UpdateCollection(List<ConfigurationSetting> newCollection)
+        private void SlicePages()
         {
-            if (_collection.Count() == newCollection.Count() &&
-                _collection.All(setting => newCollection.Any(newSetting =>
-                setting.Key == newSetting.Key &&
-                setting.Value == newSetting.Value &&
-                setting.Label == newSetting.Label &&
-                setting.ETag == newSetting.ETag)))
+            int pageCount = (_collection.Count + _itemsPerPage - 1) / _itemsPerPage;
+
+            _pages = new List<List<ConfigurationSetting>>();
+            for (int i = 0; i < pageCount; i++)
+            {
+                _pages.Add(_collection.Skip(i * _itemsPerPage).Take(_itemsPerPage).ToList());
+            }
+        }
+
+        public void UpdateCollection(List<ConfigurationSetting> newCollection, List<MockResponse> responses = null)
+        {
+            bool isUnchanged = _collection.Count == newCollection.Count &&
+                               _collection.All(setting => newCollection.Any(newSetting =>
+                                   setting.Key == newSetting.Key &&
+                                   setting.Value == newSetting.Value &&
+                                   setting.Label == newSetting.Label &&
+                                   setting.ETag == newSetting.ETag));
+
+            if (isUnchanged)
             {
                 _status = 304;
             }
@@ -206,6 +231,8 @@ namespace Tests.AzureAppConfiguration
 
                     _collection.Add(newSetting);
                 }
+
+                SlicePages();
             }
         }
 
@@ -216,7 +243,26 @@ namespace Tests.AzureAppConfiguration
                 await Task.Delay(_delay.Value);
             }
 
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
+            int pageIndex = 0;
+
+            while (pageIndex < _pages.Count)
+            {
+                List<ConfigurationSetting> pageItems = _pages[pageIndex];
+
+                MockResponse response;
+
+                if (_responses == null)
+                {
+                    response = new MockResponse(_status);
+                }
+                else
+                {
+                    response = _responses[pageIndex];
+                }
+
+                yield return Page<ConfigurationSetting>.FromValues(pageItems, null, response);
+                pageIndex++;
+            }
         }
     }
 
@@ -230,21 +276,6 @@ namespace Tests.AzureAppConfiguration
         public IAsyncEnumerable<Page<ConfigurationSetting>> IteratePages(AsyncPageable<ConfigurationSetting> pageable)
         {
             return pageable.AsPages();
-        }
-    }
-
-    class MockPageable : Pageable<ConfigurationSetting>
-    {
-        private readonly List<ConfigurationSetting> _collection;
-
-        public MockPageable(List<ConfigurationSetting> collection)
-        {
-            _collection = collection;
-        }
-
-        public override IEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
-        {
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(200));
         }
     }
 }

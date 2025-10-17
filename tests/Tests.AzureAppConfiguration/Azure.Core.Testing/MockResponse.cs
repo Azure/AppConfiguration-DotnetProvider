@@ -13,15 +13,17 @@ namespace Azure.Core.Testing
     {
         private readonly Dictionary<string, List<string>> _headers = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
-        public MockResponse(int status, string reasonPhrase = null)
+        public MockResponse(int status, string etag = null, DateTimeOffset? date = null, string reasonPhrase = null)
         {
             Status = status;
             ReasonPhrase = reasonPhrase;
 
             if (status == 200)
             {
-                AddHeader(new HttpHeader(HttpHeader.Names.ETag, "\"" + Guid.NewGuid().ToString() + "\""));
+                AddHeader(new HttpHeader(HttpHeader.Names.ETag, "\"" + (etag ?? Guid.NewGuid().ToString()) + "\""));
             }
+
+            AddHeader(new HttpHeader(HttpHeader.Names.XMsDate, date?.ToString() ?? DateTimeOffset.UtcNow.ToString()));
         }
 
         public override int Status { get; }

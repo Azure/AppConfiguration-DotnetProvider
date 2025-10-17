@@ -2367,7 +2367,7 @@ namespace Tests.AzureAppConfiguration
 
         Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
         {
-            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
+            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new MockResponse(200));
         }
 
         private ConfigurationSetting CreateFeatureFlag(string featureId,
