@@ -1184,7 +1184,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 KeyValueChange change = default;
 
-                // if fail to get, the default DateTimeOffset.MinValue will be used
+                // Unless initial load failed, _watchedIndividualKvChangeDetectedTime should always have an entry for the watched key-label
+                // If fail to get, lastChangeDetectedTime will be DateTimeOffset.MinValue by default
                 _watchedIndividualKvChangeDetectedTime.TryGetValue(watchedKeyLabel, out DateTimeOffset lastChangeDetectedTime);
 
                 //
@@ -1300,7 +1301,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
-                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
+                IsAfdUsed = _options.IsAfdUsed
             };
         }
 
