@@ -270,29 +270,18 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable1 = new MockAsyncPageable(keyValueCollection1, null, 3, responses);
 
             var keyValueCollection2 = new List<ConfigurationSetting>(_kvCollection);
-            keyValueCollection2[3].Value = "old-value";
+            keyValueCollection2[3].Value = "updated-value";
             string page2_etag2 = Guid.NewGuid().ToString();
             var responses2 = new List<MockResponse>()
             {
-                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")),
-                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")) // stale
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00")),
+                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))
             };
             var mockAsyncPageable2 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
 
-            var keyValueCollection3 = new List<ConfigurationSetting>(_kvCollection);
-            keyValueCollection3[3].Value = "new-value";
-            string page2_etag3 = Guid.NewGuid().ToString();
-            var responses3 = new List<MockResponse>()
-            {
-                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00")),
-                new MockResponse(200, page2_etag3, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00")) // up-to-date
-            };
-            var mockAsyncPageable3 = new MockAsyncPageable(keyValueCollection3, null, 3, responses3);
-
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(mockAsyncPageable1)
-                .Returns(mockAsyncPageable2)
-                .Returns(mockAsyncPageable3);
+                .Returns(mockAsyncPageable2);
 
             string etag1 = Guid.NewGuid().ToString();
             var setting = ConfigurationModelFactory.ConfigurationSetting(
@@ -303,21 +292,28 @@ namespace Tests.AzureAppConfiguration
                 contentType: "text");
 
             string etag2 = Guid.NewGuid().ToString();
-            var newSetting = ConfigurationModelFactory.ConfigurationSetting(
+            var oldSetting = ConfigurationModelFactory.ConfigurationSetting(
                 "Sentinel",
-                "new-value",
+                "old-value",
                 "label",
                 eTag: new ETag(etag2),
                 contentType: "text");
 
+            string etag3 = Guid.NewGuid().ToString();
+            var newSetting = ConfigurationModelFactory.ConfigurationSetting(
+                "Sentinel",
+                "new-value",
+                "label",
+                eTag: new ETag(etag3),
+                contentType: "text");
+
             mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Response.FromValue(setting, new MockResponse(200, etag1, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00"))))
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))))
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))));
+                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag3, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))));
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))))
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))));
+                .ReturnsAsync(Response.FromValue(oldSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T08:59:59+08:00")))) // stale, should not refresh
+                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag3, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))));
 
             var afdEndpoint = new Uri("https://test.b01.azurefd.net");
             IConfigurationRefresher refresher = null;
@@ -343,14 +339,14 @@ namespace Tests.AzureAppConfiguration
 
             await refresher.RefreshAsync();
 
-            Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because page 2 is out of date
+            Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because sentinel is stale
             Assert.Equal("sentinel-value", config["Sentinel"]);
 
             await Task.Delay(1500);
 
             await refresher.RefreshAsync();
 
-            Assert.Equal("new-value", config["TestKey4"]);
+            Assert.Equal("updated-value", config["TestKey4"]);
             Assert.Equal("new-value", config["Sentinel"]);
         }
 
@@ -370,28 +366,30 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable1 = new MockAsyncPageable(keyValueCollection1, null, 3, responses);
 
             var keyValueCollection2 = new List<ConfigurationSetting>(_kvCollection);
-            keyValueCollection2[3].Value = "new-value";
+            keyValueCollection2[3].Value = "old-value";
             string page2_etag2 = Guid.NewGuid().ToString();
             var responses2 = new List<MockResponse>()
             {
-                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")), // stale
-                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:02+08:00"))
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")),
+                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T08:59:59+08:00")) // stale, should not refresh
             };
             var mockAsyncPageable2 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
 
+            var keyValueCollection3 = new List<ConfigurationSetting>(_kvCollection);
+            keyValueCollection3[3].Value = "new-value";
             var responses3 = new List<MockResponse>()
             {
-                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")), // stale
+                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")), // up-to-date, should refresh
                 new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:02+08:00"))
             };
-            var mockAsyncPageable3 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
+            var mockAsyncPageable3 = new MockAsyncPageable(keyValueCollection3, null, 3, responses3);
 
             var responses4 = new List<MockResponse>()
             {
                 new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00")), // up-to-date
                 new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00"))
             };
-            var mockAsyncPageable4 = new MockAsyncPageable(keyValueCollection2, null, 3, responses4);
+            var mockAsyncPageable4 = new MockAsyncPageable(keyValueCollection3, null, 3, responses4);
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(mockAsyncPageable1)
@@ -423,7 +421,7 @@ namespace Tests.AzureAppConfiguration
 
             await refresher.RefreshAsync();
 
-            Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because page 1 is stale
+            Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because page 2 is stale
 
             await Task.Delay(1500);
 

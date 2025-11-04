@@ -3,7 +3,6 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using System.Net.Mime;
 using System.Text;
 

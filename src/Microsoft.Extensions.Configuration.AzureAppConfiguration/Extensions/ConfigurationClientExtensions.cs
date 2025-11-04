@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<Page<ConfigurationSetting>> GetPageChange(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<PageWatcher> pageWatchers, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<bool> HavePageChange(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<PageWatcher> pageWatchers, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
             if (pageWatchers == null)
             {
@@ -99,31 +99,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
+            using IEnumerator<PageWatcher> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();
+
             IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest
                 ? pageable.AsPages(pageIterator, pageWatchers.Select(p => p.Etag))
                 : pageable.AsPages(pageIterator);
-
-            List<PageWatcher> existingWatcherList = pageWatchers.ToList();
-
-            int i = 0;
 
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response response = page.GetRawResponse();
                 DateTimeOffset timestamp = response.GetDate();
 
-                if (i >= existingWatcherList.Count ||
+                if (!existingPageWatcherEnumerator.MoveNext() ||
                     (response.Status == (int)HttpStatusCode.OK &&
-                    timestamp >= existingWatcherList[i].LastUpdateTime &&
-                    !existingWatcherList[i].Etag.IfNoneMatch.Equals(response.Headers.ETag)))
+                    // if the server response time is later than last server response time, the change is considered detected
+                    timestamp >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
+                    !existingPageWatcherEnumerator.Current.Etag.IfNoneMatch.Equals(response.Headers.ETag)))
                 {
-                    return page;
+                    return true;
                 }
-
-                i++;
             }
 
-            return null;
+            // Need to check if pages were deleted and no change was found within the new shorter list of page
+            return existingPageWatcherEnumerator.MoveNext();
         }
     }
 }
