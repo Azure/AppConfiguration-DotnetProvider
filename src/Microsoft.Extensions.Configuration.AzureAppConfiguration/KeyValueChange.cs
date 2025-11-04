@@ -25,6 +25,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public ConfigurationSetting Previous { get; set; }
 
-        public DateTimeOffset DetectedTime { get; set; }
+        public DateTimeOffset ServerResponseTime { get; set; }
     }
 }

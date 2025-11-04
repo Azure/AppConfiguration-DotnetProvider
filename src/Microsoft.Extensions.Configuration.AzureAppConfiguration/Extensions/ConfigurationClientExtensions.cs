@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = response.Value,
                         Key = setting.Key,
                         Label = setting.Label,
-                        DetectedTime = rawResponse.GetDate()
+                        ServerResponseTime = rawResponse.GetDate()
                     };
                 }
             }
@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Current = null,
                         Key = setting.Key,
                         Label = setting.Label,
-                        DetectedTime = rawResponse.GetDate()
+                        ServerResponseTime = rawResponse.GetDate()
                     };
                 }
             }
@@ -70,7 +70,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Current = setting,
                 Key = setting.Key,
                 Label = setting.Label,
-                DetectedTime = lastChangeDetectedTime
+                ServerResponseTime = lastChangeDetectedTime
             };
         }
 

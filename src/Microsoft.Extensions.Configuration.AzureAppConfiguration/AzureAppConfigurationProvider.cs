@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
-        private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+        private Dictionary<KeyValueIdentifier, WatchedSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, WatchedSetting>();
         private HashSet<string> _ffKeys = new HashSet<string>();
         private Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> _kvEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
         private Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> _ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
@@ -42,7 +42,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset _nextCollectionRefreshTime;
 
         #region Afd
-        private Dictionary<KeyValueIdentifier, DateTimeOffset> _watchedIndividualKvChangeDetectedTime = new Dictionary<KeyValueIdentifier, DateTimeOffset>();
         private DateTimeOffset _lastChangeDetectedTime = default;
         private bool _isLastRefreshAborted = false;
         #endregion
@@ -63,6 +62,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // For health check
         private DateTimeOffset? _lastSuccessfulAttempt = null;
         private DateTimeOffset? _lastFailedAttempt = null;
+
+        private class WatchedSetting
+        {
+            public ConfigurationSetting setting { get; set; }
+            public DateTimeOffset lastServerResponseTime { get; set; }
+        }
 
         private class CollectionChange
         {
@@ -152,6 +157,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
+            }
+
+            if (options.IndividualKvWatchers.Any())
+            {
+                foreach (KeyValueWatcher kvWatcher in options.IndividualKvWatchers)
+                {
+                    _watchedIndividualKvs.Add(
+                        new KeyValueIdentifier
+                        {
+                            Key = kvWatcher.Key,
+                            Label = kvWatcher.Label
+                        },
+                        new WatchedSetting
+                        {
+                            setting = null,
+                            lastServerResponseTime = DateTimeOffset.MinValue
+                        });
+                }
             }
 
             _requestTracingEnabled = !EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.RequestTracingDisabled);
@@ -291,8 +314,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags = null;
                     Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags = null;
                     HashSet<string> ffKeys = null;
-                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
-                    Dictionary<KeyValueIdentifier, DateTimeOffset> watchedIndividualKvChangeDetectedTime = null;
+                    Dictionary<KeyValueIdentifier, WatchedSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> watchedIndividualKvChanges = null;
                     Dictionary<string, ConfigurationSetting> data = null;
                     Dictionary<string, ConfigurationSetting> ffCollectionData = null;
@@ -367,13 +389,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             kvEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
                             ffKeys = new HashSet<string>();
-                            watchedIndividualKvChangeDetectedTime = new Dictionary<KeyValueIdentifier, DateTimeOffset>();
 
                             data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, false, cancellationToken).ConfigureAwait(false);
 
                             if (!_isLastRefreshAborted)
                             {
-                                watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, watchedIndividualKvChangeDetectedTime, cancellationToken).ConfigureAwait(false);
+                                watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, cancellationToken).ConfigureAwait(false);
                             }
 
                             if (!_isLastRefreshAborted)
@@ -457,14 +478,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                         else
                         {
-                            watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedIndividualKvs);
-                            watchedIndividualKvChangeDetectedTime = new Dictionary<KeyValueIdentifier, DateTimeOffset>(_watchedIndividualKvChangeDetectedTime);
+                            watchedIndividualKvs = new Dictionary<KeyValueIdentifier, WatchedSetting>(_watchedIndividualKvs);
 
                             await ProcessKeyValueChangesAsync(
                                 watchedIndividualKvChanges,
                                 _mappedData,
-                                watchedIndividualKvs,
-                                watchedIndividualKvChangeDetectedTime).ConfigureAwait(false);
+                                watchedIndividualKvs).ConfigureAwait(false);
 
                             if (refreshFf)
                             {
@@ -500,8 +519,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || watchedIndividualKvChanges.Any() || refreshAll || refreshFf))
                     {
                         _watchedIndividualKvs = watchedIndividualKvs ?? _watchedIndividualKvs;
-
-                        _watchedIndividualKvChangeDetectedTime = watchedIndividualKvChangeDetectedTime ?? _watchedIndividualKvChangeDetectedTime;
 
                         _ffEtags = ffEtags ?? _ffEtags;
 
@@ -841,8 +858,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Dictionary<string, ConfigurationSetting> data = null;
             Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
             Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
-            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
-            Dictionary<KeyValueIdentifier, DateTimeOffset> watchedIndividualKvChangeDetectedTime = new Dictionary<KeyValueIdentifier, DateTimeOffset>();
+            Dictionary<KeyValueIdentifier, WatchedSetting> watchedIndividualKvs = null;
             HashSet<string> ffKeys = new HashSet<string>();
 
             await ExecuteWithFailOverPolicyAsync(
@@ -862,7 +878,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(
                         client,
                         data,
-                        watchedIndividualKvChangeDetectedTime,
                         cancellationToken)
                         .ConfigureAwait(false);
                 },
@@ -898,7 +913,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _kvEtags = kvEtags;
                 _ffEtags = ffEtags;
                 _watchedIndividualKvs = watchedIndividualKvs;
-                _watchedIndividualKvChangeDetectedTime = watchedIndividualKvChangeDetectedTime;
                 _ffKeys = ffKeys;
             }
         }
@@ -1059,20 +1073,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return resolvedSettings;
         }
 
-        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadKeyValuesRegisteredForRefresh(
+        private async Task<Dictionary<KeyValueIdentifier, WatchedSetting>> LoadKeyValuesRegisteredForRefresh(
             ConfigurationClient client,
             IDictionary<string, ConfigurationSetting> existingSettings,
-            Dictionary<KeyValueIdentifier, DateTimeOffset> watchedIndividualKvChangeDetectedTime,
             CancellationToken cancellationToken)
         {
-            var watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
+            var watchedIndividualKvs = new Dictionary<KeyValueIdentifier, WatchedSetting>(_watchedIndividualKvs);
 
             foreach (KeyValueWatcher kvWatcher in _options.IndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
                 string watchedLabel = kvWatcher.Label;
 
-                KeyValueIdentifier watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+                var watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
+                Debug.Assert(_watchedIndividualKvs.ContainsKey(watchedKeyLabel));
+                DateTimeOffset lastServerResponseTime = _watchedIndividualKvs[watchedKeyLabel].lastServerResponseTime;
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label or different casing
                 ConfigurationSetting watchedKv = null;
@@ -1086,60 +1101,42 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     using Response rawResponse = response.GetRawResponse();
                     DateTimeOffset responseDate = rawResponse.GetDate();
-                    if (_watchedIndividualKvChangeDetectedTime.TryGetValue(watchedKeyLabel, out DateTimeOffset lastChangeDetectedTime))
+
+                    if (responseDate >= lastServerResponseTime)
                     {
-                        if (responseDate >= lastChangeDetectedTime)
-                        {
-                            watchedKv = response.Value;
-                            watchedIndividualKvChangeDetectedTime[watchedKeyLabel] = responseDate;
-                            _isLastRefreshAborted = false;
-                        }
-                        else
-                        {
-                            _isLastRefreshAborted = true;
-                            return null;
-                        }
+                        watchedKv = response.Value;
+                        watchedIndividualKvs[watchedKeyLabel].setting = watchedKv;
+                        watchedIndividualKvs[watchedKeyLabel].lastServerResponseTime = responseDate;
+                        _isLastRefreshAborted = false;
                     }
                     else
                     {
-                        // initial load
-                        watchedKv = response.Value;
-                        watchedIndividualKvChangeDetectedTime[watchedKeyLabel] = responseDate;
-                        _isLastRefreshAborted = false;
+                        _isLastRefreshAborted = true;
+                        return null;
                     }
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
                     using Response rawResponse = e.GetRawResponse();
                     DateTimeOffset responseDate = rawResponse.GetDate();
-                    if (_watchedIndividualKvChangeDetectedTime.TryGetValue(watchedKeyLabel, out DateTimeOffset lastChangeDetectedTime))
+
+                    if (responseDate >= lastServerResponseTime)
                     {
-                        if (responseDate >= lastChangeDetectedTime)
-                        {
-                            watchedKv = null;
-                            watchedIndividualKvChangeDetectedTime[watchedKeyLabel] = responseDate;
-                            _isLastRefreshAborted = false;
-                        }
-                        else
-                        {
-                            _isLastRefreshAborted = true;
-                            return null;
-                        }
+                        watchedKv = null;
+                        watchedIndividualKvs[watchedKeyLabel].setting = watchedKv;
+                        watchedIndividualKvs[watchedKeyLabel].lastServerResponseTime = responseDate;
+                        _isLastRefreshAborted = false;
                     }
                     else
                     {
-                        // initial load
-                        watchedKey = null;
-                        watchedIndividualKvChangeDetectedTime[watchedKeyLabel] = responseDate;
-                        _isLastRefreshAborted = false;
+                        _isLastRefreshAborted = true;
+                        return null;
                     }
                 }
 
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null && existingSettings != null)
                 {
-                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
-
                     if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
                         // Track snapshot reference usage for telemetry
@@ -1190,29 +1187,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 KeyValueChange change = default;
 
-                // Unless initial load failed, _watchedIndividualKvChangeDetectedTime should always have an entry for the watched key-label
-                // If fail to get, lastChangeDetectedTime will be DateTimeOffset.MinValue by default
-                _watchedIndividualKvChangeDetectedTime.TryGetValue(watchedKeyLabel, out DateTimeOffset lastChangeDetectedTime);
+                Debug.Assert(_watchedIndividualKvs.ContainsKey(watchedKeyLabel));
+                ConfigurationSetting watchedKv = _watchedIndividualKvs[watchedKeyLabel].setting;
+                DateTimeOffset lastServerResponseTime = _watchedIndividualKvs[watchedKeyLabel].lastServerResponseTime;
 
                 //
                 // Find if there is a change associated with watcher
-                if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
+                if (watchedKv != null)
                 {
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => change = await client.GetKeyValueChange(
+                    await CallWithRequestTracing(async () => change = await client.GetKeyValueChange(
                             watchedKv,
                             makeConditionalRequest: !_options.IsAfdUsed,
-                            lastChangeDetectedTime,
+                            lastServerResponseTime,
                             cancellationToken).ConfigureAwait(false)
                     ).ConfigureAwait(false);
                 }
                 else
                 {
+                    DateTimeOffset responseDate = lastServerResponseTime;
                     // Load the key-value in case the previous load attempts had failed
                     try
                     {
-                        await CallWithRequestTracing(
-                            async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                        await CallWithRequestTracing(async () =>
+                        {
+                            Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false);
+                            using Response rawResponse = response.GetRawResponse();
+                            responseDate = rawResponse.GetDate();
+                            if (responseDate >= lastServerResponseTime)
+                            {
+                                watchedKv = response.Value;
+                            }
+                        }).ConfigureAwait(false);
                     }
                     catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                     {
@@ -1226,7 +1231,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             Key = watchedKv.Key,
                             Label = watchedKv.Label.NormalizeNull(),
                             Current = watchedKv,
-                            ChangeType = KeyValueChangeType.Modified
+                            ChangeType = KeyValueChangeType.Modified,
+                            ServerResponseTime = responseDate
+                        };
+                    }
+                    else
+                    {
+                        change = new KeyValueChange()
+                        {
+                            Key = watchedKey,
+                            Label = watchedLabel.NormalizeNull(),
+                            ChangeType = KeyValueChangeType.None,
+                            ServerResponseTime = responseDate
                         };
                     }
                 }
@@ -1241,7 +1257,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     // If the watcher is set to refresh all, or the content type matches the snapshot reference content type then refresh all
                     if (kvWatcher.RefreshAll || watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
-                        _lastChangeDetectedTime = change.DetectedTime;
+                        _lastChangeDetectedTime = change.ServerResponseTime;
                         return true;
                     }
                 }
@@ -1615,20 +1631,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task ProcessKeyValueChangesAsync(
             IEnumerable<KeyValueChange> keyValueChanges,
             Dictionary<string, ConfigurationSetting> mappedData,
-            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs,
-            Dictionary<KeyValueIdentifier, DateTimeOffset> watchedIndividualKvChangeDetectedTime)
+            Dictionary<KeyValueIdentifier, WatchedSetting> watchedIndividualKvs)
         {
             foreach (KeyValueChange change in keyValueChanges)
             {
                 KeyValueIdentifier changeIdentifier = new KeyValueIdentifier(change.Key, change.Label);
-
-                watchedIndividualKvChangeDetectedTime[changeIdentifier] = change.DetectedTime;
+                Debug.Assert(watchedIndividualKvs.ContainsKey(changeIdentifier));
 
                 if (change.ChangeType == KeyValueChangeType.Modified)
                 {
                     ConfigurationSetting setting = change.Current;
 
-                    watchedIndividualKvs[changeIdentifier] = setting;
+                    watchedIndividualKvs[changeIdentifier].setting = setting;
+                    watchedIndividualKvs[changeIdentifier].lastServerResponseTime = change.ServerResponseTime;
 
                     foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                     {
