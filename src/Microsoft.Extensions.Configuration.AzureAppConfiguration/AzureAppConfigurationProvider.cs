@@ -370,8 +370,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             watchedIndividualKvChangeDetectedTime = new Dictionary<KeyValueIdentifier, DateTimeOffset>();
 
                             data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, false, cancellationToken).ConfigureAwait(false);
-                            watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, watchedIndividualKvChangeDetectedTime, cancellationToken).ConfigureAwait(false);
-                            if (data != null && watchedIndividualKvs != null && !_isLastRefreshAborted)
+
+                            if (!_isLastRefreshAborted)
+                            {
+                                watchedIndividualKvs = await LoadKeyValuesRegisteredForRefresh(client, data, watchedIndividualKvChangeDetectedTime, cancellationToken).ConfigureAwait(false);
+                            }
+
+                            if (!_isLastRefreshAborted)
                             {
                                 logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
                             }
@@ -893,6 +898,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _kvEtags = kvEtags;
                 _ffEtags = ffEtags;
                 _watchedIndividualKvs = watchedIndividualKvs;
+                _watchedIndividualKvChangeDetectedTime = watchedIndividualKvChangeDetectedTime;
                 _ffKeys = ffKeys;
             }
         }
@@ -1130,7 +1136,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 // If the key-value was found, store it for updating the settings
-                if (watchedKv != null)
+                if (watchedKv != null && existingSettings != null)
                 {
                     watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
 
@@ -1184,7 +1190,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 KeyValueChange change = default;
 
-                // if fail to get, the default DateTimeOffset.MinValue will be used
+                // Unless initial load failed, _watchedIndividualKvChangeDetectedTime should always have an entry for the watched key-label
+                // If fail to get, lastChangeDetectedTime will be DateTimeOffset.MinValue by default
                 _watchedIndividualKvChangeDetectedTime.TryGetValue(watchedKeyLabel, out DateTimeOffset lastChangeDetectedTime);
 
                 //
@@ -1300,7 +1307,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsKeyVaultConfigured = _options.IsKeyVaultConfigured,
                 IsKeyVaultRefreshConfigured = _options.IsKeyVaultRefreshConfigured,
                 FeatureFlagTracing = _options.FeatureFlagTracing,
-                IsLoadBalancingEnabled = _options.LoadBalancingEnabled
+                IsLoadBalancingEnabled = _options.LoadBalancingEnabled,
+                IsAfdUsed = _options.IsAfdUsed
             };
         }
 

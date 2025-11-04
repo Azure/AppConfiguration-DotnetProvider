@@ -47,7 +47,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (clientFactory != null)
                     {
-                        throw new InvalidOperationException(ErrorMessages.AfdCustomClientOptionsUnsupported);
+                        throw new InvalidOperationException(ErrorMessages.AfdCustomClientFactoryUnsupported);
                     }
 
                     options.ClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);

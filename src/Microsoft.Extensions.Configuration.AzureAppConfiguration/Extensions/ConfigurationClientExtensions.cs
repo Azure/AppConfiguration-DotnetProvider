@@ -3,7 +3,6 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
@@ -120,6 +119,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 {
                     return page;
                 }
+
+                i++;
             }
 
             return null;
