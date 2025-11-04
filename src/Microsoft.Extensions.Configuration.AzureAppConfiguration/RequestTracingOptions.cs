@@ -199,16 +199,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 sb.Append(RequestTracingConstants.SnapshotReferenceTag);
             }
 
-            if (IsAfdUsed)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(RequestTracingConstants.Delimiter);
-                }
-
-                sb.Append(RequestTracingConstants.AfdTag);
-            }
-
             return sb.ToString();
         }
     }

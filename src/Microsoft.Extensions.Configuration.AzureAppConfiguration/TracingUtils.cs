@@ -211,6 +211,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.PushRefreshTag);
             }
 
+            if (requestTracingOptions.IsAfdUsed)
+            {
+                correlationContextTags.Add(RequestTracingConstants.AfdTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)
