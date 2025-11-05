@@ -50,6 +50,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException(ErrorMessages.AfdCustomClientFactoryUnsupported);
                     }
 
+                    if (options.IndividualKvWatchers.Any())
+                    {
+                        throw new InvalidOperationException($"{ErrorMessages.AfdWatchedSettingUnsupported} Please call {nameof(AzureAppConfigurationRefreshOptions)}.{nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} for configuration refresh.");
+                    }
+
                     options.ClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);
                 }
 

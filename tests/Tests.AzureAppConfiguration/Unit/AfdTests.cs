@@ -4,16 +4,13 @@
 using Azure;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
-using Azure.Data.AppConfiguration.Tests;
 using Azure.Identity;
-using Azure.ResourceManager.Resources.Models;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -140,6 +137,29 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void AfdTests_WatchedSettingIsUnsupportedWhenConnectAzureFrontDoor()
+        {
+            var afdEndpoint = new Uri("https://test.b01.azurefd.net");
+            var builder = new ConfigurationBuilder();
+            var exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(options =>
+                {
+                    options.ConnectAzureFrontDoor(afdEndpoint);
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("TestKey1", "label", true);
+                    });
+                });
+                builder.Build();
+            });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentException>(exception);
+            Assert.IsType<InvalidOperationException>(exception.InnerException);
+            Assert.Contains(ErrorMessages.AfdWatchedSettingUnsupported, exception.InnerException.Message);
+        }
+
+        [Fact]
         public void AfdTests_LoadbalancingIsUnsupportedWhenConnectAzureFrontDoor()
         {
             var afdEndpoint = new Uri("https://test.b01.azurefd.net");
@@ -177,177 +197,6 @@ namespace Tests.AzureAppConfiguration
             Assert.IsType<ArgumentException>(exception);
             Assert.IsType<InvalidOperationException>(exception.InnerException);
             Assert.Equal(ErrorMessages.AfdCustomClientFactoryUnsupported, exception.InnerException.Message);
-        }
-
-        [Fact]
-        public async Task AfdTests_RefreshSingleWatchedSetting()
-        {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            var keyValueCollection = new List<ConfigurationSetting>(_kvCollection);
-            var mockAsyncPageable = new MockAsyncPageable(keyValueCollection);
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(mockAsyncPageable);
-
-            string etag1 = Guid.NewGuid().ToString();
-            var setting = ConfigurationModelFactory.ConfigurationSetting(
-                "Sentinel",
-                "sentinel-value",
-                "label",
-                eTag: new ETag(etag1),
-                contentType: "text");
-
-            string etag2 = Guid.NewGuid().ToString();
-            var oldSetting = ConfigurationModelFactory.ConfigurationSetting(
-                "Sentinel",
-                "old-value",
-                "label",
-                eTag: new ETag(etag2),
-                contentType: "text");
-
-            string etag3 = Guid.NewGuid().ToString();
-            var newSetting = ConfigurationModelFactory.ConfigurationSetting(
-                "Sentinel",
-                "new-value",
-                "label",
-                eTag: new ETag(etag3),
-                contentType: "text");
-
-            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(setting, new MockResponse(200, etag1, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00"))));
-
-            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(oldSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T08:59:59+08:00")))) // stale
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag3, DateTimeOffset.Parse("2025-10-17T09:00:03+08:00")))); // up-to-date
-
-            var afdEndpoint = new Uri("https://test.b01.azurefd.net");
-            IConfigurationRefresher refresher = null;
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ConnectAzureFrontDoor(afdEndpoint);
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*", "label");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("Sentinel", "label", false)
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            Assert.Equal("sentinel-value", config["Sentinel"]);
-
-            await Task.Delay(1500);
-
-            await refresher.RefreshAsync();
-
-            Assert.Equal("sentinel-value", config["Sentinel"]); // should not refresh, because the response is out of date
-
-            await Task.Delay(1500);
-
-            await refresher.RefreshAsync();
-
-            Assert.Equal("new-value", config["Sentinel"]);
-        }
-
-        [Fact]
-        public async Task AfdTests_WatchedSettingRefreshAll()
-        {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            var keyValueCollection1 = new List<ConfigurationSetting>(_kvCollection);
-            string page1_etag = Guid.NewGuid().ToString();
-            string page2_etag = Guid.NewGuid().ToString();
-            var responses = new List<MockResponse>()
-            {
-                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00")),
-                new MockResponse(200, page2_etag, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00"))
-            };
-            var mockAsyncPageable1 = new MockAsyncPageable(keyValueCollection1, null, 3, responses);
-
-            var keyValueCollection2 = new List<ConfigurationSetting>(_kvCollection);
-            keyValueCollection2[3].Value = "updated-value";
-            string page2_etag2 = Guid.NewGuid().ToString();
-            var responses2 = new List<MockResponse>()
-            {
-                new MockResponse(200, page1_etag, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00")),
-                new MockResponse(200, page2_etag2, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))
-            };
-            var mockAsyncPageable2 = new MockAsyncPageable(keyValueCollection2, null, 3, responses2);
-
-            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(mockAsyncPageable1)
-                .Returns(mockAsyncPageable2);
-
-            string etag1 = Guid.NewGuid().ToString();
-            var setting = ConfigurationModelFactory.ConfigurationSetting(
-                "Sentinel",
-                "sentinel-value",
-                "label",
-                eTag: new ETag(etag1),
-                contentType: "text");
-
-            string etag2 = Guid.NewGuid().ToString();
-            var oldSetting = ConfigurationModelFactory.ConfigurationSetting(
-                "Sentinel",
-                "old-value",
-                "label",
-                eTag: new ETag(etag2),
-                contentType: "text");
-
-            string etag3 = Guid.NewGuid().ToString();
-            var newSetting = ConfigurationModelFactory.ConfigurationSetting(
-                "Sentinel",
-                "new-value",
-                "label",
-                eTag: new ETag(etag3),
-                contentType: "text");
-
-            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(setting, new MockResponse(200, etag1, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00"))))
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag3, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))));
-
-            mockClient.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(oldSetting, new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T08:59:59+08:00")))) // stale, should not refresh
-                .ReturnsAsync(Response.FromValue(newSetting, new MockResponse(200, etag3, DateTimeOffset.Parse("2025-10-17T09:00:01+08:00"))));
-
-            var afdEndpoint = new Uri("https://test.b01.azurefd.net");
-            IConfigurationRefresher refresher = null;
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ConnectAzureFrontDoor(afdEndpoint);
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.Select("TestKey*", "label");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("Sentinel", "label", true)
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            Assert.Equal("sentinel-value", config["Sentinel"]);
-
-            await Task.Delay(1500);
-
-            await refresher.RefreshAsync();
-
-            Assert.Equal("TestValue4", config["TestKey4"]); // should not refresh, because sentinel is stale
-            Assert.Equal("sentinel-value", config["Sentinel"]);
-
-            await Task.Delay(1500);
-
-            await refresher.RefreshAsync();
-
-            Assert.Equal("updated-value", config["TestKey4"]);
-            Assert.Equal("new-value", config["Sentinel"]);
         }
 
         [Fact]

@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 //
 using Azure.Data.AppConfiguration;
-using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
@@ -24,7 +23,5 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public ConfigurationSetting Current { get; set; }
 
         public ConfigurationSetting Previous { get; set; }
-
-        public DateTimeOffset ServerResponseTime { get; set; }
     }
 }

@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, bool makeConditionalRequest, DateTimeOffset lastChangeDetectedTime, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, bool makeConditionalRequest, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -32,8 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: makeConditionalRequest, cancellationToken).ConfigureAwait(false);
                 using Response rawResponse = response.GetRawResponse();
                 if (rawResponse.Status == (int)HttpStatusCode.OK &&
-                    !response.Value.ETag.Equals(setting.ETag) &&
-                    rawResponse.GetDate() >= lastChangeDetectedTime)
+                    !response.Value.ETag.Equals(setting.ETag))
                 {
                     return new KeyValueChange
                     {
@@ -41,26 +40,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                         Previous = setting,
                         Current = response.Value,
                         Key = setting.Key,
-                        Label = setting.Label,
-                        ServerResponseTime = rawResponse.GetDate()
+                        Label = setting.Label
                     };
                 }
             }
             catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound && setting.ETag != default)
             {
-                using Response rawResponse = e.GetRawResponse();
-                if (rawResponse.GetDate() >= lastChangeDetectedTime)
+                return new KeyValueChange
                 {
-                    return new KeyValueChange
-                    {
-                        ChangeType = KeyValueChangeType.Deleted,
-                        Previous = setting,
-                        Current = null,
-                        Key = setting.Key,
-                        Label = setting.Label,
-                        ServerResponseTime = rawResponse.GetDate()
-                    };
-                }
+                    ChangeType = KeyValueChangeType.Deleted,
+                    Previous = setting,
+                    Current = null,
+                    Key = setting.Key,
+                    Label = setting.Label
+                };
             }
 
             return new KeyValueChange
@@ -69,8 +62,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 Previous = setting,
                 Current = setting,
                 Key = setting.Key,
-                Label = setting.Label,
-                ServerResponseTime = lastChangeDetectedTime
+                Label = setting.Label
             };
         }
 

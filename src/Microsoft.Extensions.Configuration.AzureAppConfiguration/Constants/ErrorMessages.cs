@@ -18,5 +18,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string AfdConnectionConflict = "Cannot connect to multiple Azure Front Doors.";
         public const string AfdLoadBalancingUnsupported = "Load balancing is not supported when connecting to Azure Front Door.";
         public const string AfdCustomClientFactoryUnsupported = "Custom client factory is not supported when connecting to Azure Front Door.";
+        public const string AfdWatchedSettingUnsupported = "Registering individual watched setting is not supported when connecting to Azure Front Door.";
     }
 }

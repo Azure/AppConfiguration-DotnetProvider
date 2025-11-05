@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
-        private Dictionary<KeyValueIdentifier, WatchedSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, WatchedSetting>();
+        private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private HashSet<string> _ffKeys = new HashSet<string>();
         private Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> _kvPageWatchers = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
         private Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> _ffPageWatchers = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
@@ -140,14 +140,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             else
             {
                 MinRefreshInterval = RefreshConstants.DefaultRefreshInterval;
-            }
-
-            if (options.IndividualKvWatchers.Any())
-            {
-                foreach (KeyValueWatcher kvWatcher in options.IndividualKvWatchers)
-                {
-                    _watchedIndividualKvs.Add(new KeyValueIdentifier(kvWatcher.Key, kvWatcher.Label), new WatchedSetting());
-                }
             }
 
             _requestTracingEnabled = !EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.RequestTracingDisabled);
@@ -287,7 +279,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags = null;
                     Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags = null;
                     HashSet<string> ffKeys = null;
-                    Dictionary<KeyValueIdentifier, WatchedSetting> watchedIndividualKvs = null;
+                    Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> watchedIndividualKvChanges = null;
                     Dictionary<string, ConfigurationSetting> data = null;
                     Dictionary<string, ConfigurationSetting> ffCollectionData = null;
@@ -405,7 +397,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                     else
                     {
-                        watchedIndividualKvs = new Dictionary<KeyValueIdentifier, WatchedSetting>(_watchedIndividualKvs);
+                        watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedIndividualKvs);
 
                         await ProcessKeyValueChangesAsync(watchedIndividualKvChanges, _mappedData, watchedIndividualKvs).ConfigureAwait(false);
 
@@ -780,7 +772,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Dictionary<string, ConfigurationSetting> data = null;
             Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
             Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
-            Dictionary<KeyValueIdentifier, WatchedSetting> watchedIndividualKvs = null;
+            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
             HashSet<string> ffKeys = new HashSet<string>();
 
             await ExecuteWithFailOverPolicyAsync(
@@ -838,8 +830,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<Dictionary<string, ConfigurationSetting>> LoadSelected(
             ConfigurationClient client,
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags,
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags,
+            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvPageWatchers,
+            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffPageWatchers,
             IEnumerable<KeyValueSelector> selectors,
             HashSet<string> ffKeys,
             CancellationToken cancellationToken)
@@ -922,11 +914,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (loadOption.IsFeatureFlagSelector)
                     {
-                        ffEtags[loadOption] = pageWatchers;
+                        ffPageWatchers[loadOption] = pageWatchers;
                     }
                     else
                     {
-                        kvEtags[loadOption] = pageWatchers;
+                        kvPageWatchers[loadOption] = pageWatchers;
                     }
                 }
                 else
@@ -981,12 +973,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return resolvedSettings;
         }
 
-        private async Task<Dictionary<KeyValueIdentifier, WatchedSetting>> LoadIndividualWatchedSettings(
+        private async Task<Dictionary<KeyValueIdentifier, ConfigurationSetting>> LoadIndividualWatchedSettings(
             ConfigurationClient client,
             IDictionary<string, ConfigurationSetting> existingSettings,
             CancellationToken cancellationToken)
         {
-            var watchedIndividualKvs = new Dictionary<KeyValueIdentifier, WatchedSetting>(_watchedIndividualKvs);
+            var watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>(_watchedIndividualKvs);
+
+            Debug.Assert(!_options.IsAfdUsed || !_options.IndividualKvWatchers.Any());
 
             foreach (KeyValueWatcher kvWatcher in _options.IndividualKvWatchers)
             {
@@ -994,39 +988,33 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 string watchedLabel = kvWatcher.Label;
 
                 var watchedKeyLabel = new KeyValueIdentifier(watchedKey, watchedLabel);
-                Debug.Assert(_watchedIndividualKvs.ContainsKey(watchedKeyLabel));
-                DateTimeOffset lastServerResponseTime = _watchedIndividualKvs[watchedKeyLabel].LastServerResponseTime;
+
+                // Skip the loading for the key-value in case it has already been loaded
+                if (existingSettings.TryGetValue(watchedKey, out ConfigurationSetting loadedKv)
+                    && watchedKeyLabel.Equals(new KeyValueIdentifier(loadedKv.Key, loadedKv.Label)))
+                {
+                    // create a new instance to avoid that reference could be modified when mapping data
+                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(loadedKv.Key, loadedKv.Value, loadedKv.Label, loadedKv.ETag);
+                    continue;
+                }
 
                 // Send a request to retrieve key-value since it may be either not loaded or loaded with a different label or different casing
                 ConfigurationSetting watchedKv = null;
                 try
                 {
-                    Response<ConfigurationSetting> response = null;
-                    await CallWithRequestTracing(async () =>
-                    {
-                        response = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false);
-                    }).ConfigureAwait(false);
-
-                    using Response rawResponse = response.GetRawResponse();
-                    DateTimeOffset responseDate = rawResponse.GetDate();
-
-                    watchedKv = response.Value;
-                    watchedIndividualKvs[watchedKeyLabel].Setting = watchedKv;
-                    watchedIndividualKvs[watchedKeyLabel].LastServerResponseTime = responseDate;
+                    await CallWithRequestTracing(async () => watchedKv = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                 {
-                    using Response rawResponse = e.GetRawResponse();
-                    DateTimeOffset responseDate = rawResponse.GetDate();
-
                     watchedKv = null;
-                    watchedIndividualKvs[watchedKeyLabel].Setting = watchedKv;
-                    watchedIndividualKvs[watchedKeyLabel].LastServerResponseTime = responseDate;
                 }
 
                 // If the key-value was found, store it for updating the settings
                 if (watchedKv != null && existingSettings != null)
                 {
+                    // create a new instance to avoid that reference could be modified when mapping data
+                    watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
+
                     if (watchedKv.ContentType == SnapshotReferenceConstants.ContentType)
                     {
                         // Track snapshot reference usage for telemetry
@@ -1068,6 +1056,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             StringBuilder logInfoBuilder,
             CancellationToken cancellationToken)
         {
+            Debug.Assert(!_options.IsAfdUsed || !_options.IndividualKvWatchers.Any());
+
             foreach (KeyValueWatcher kvWatcher in refreshableIndividualKvWatchers)
             {
                 string watchedKey = kvWatcher.Key;
@@ -1077,52 +1067,44 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 KeyValueChange change = default;
 
-                Debug.Assert(_watchedIndividualKvs.ContainsKey(watchedKeyLabel));
-                ConfigurationSetting watchedKv = _watchedIndividualKvs[watchedKeyLabel].Setting;
-                DateTimeOffset lastServerResponseTime = _watchedIndividualKvs[watchedKeyLabel].LastServerResponseTime;
-
                 //
                 // Find if there is a change associated with watcher
-                if (watchedKv != null)
+                if (_watchedIndividualKvs.TryGetValue(watchedKeyLabel, out ConfigurationSetting watchedKv))
                 {
-                    await CallWithRequestTracing(async () => change = await client.GetKeyValueChange(
+                    await CallWithRequestTracing(async () =>
+                        change = await client.GetKeyValueChange(
                             watchedKv,
                             makeConditionalRequest: !_options.IsAfdUsed,
-                            lastServerResponseTime,
                             cancellationToken).ConfigureAwait(false)
                     ).ConfigureAwait(false);
                 }
                 else
                 {
-                    DateTimeOffset responseDate = lastServerResponseTime;
                     // Load the key-value in case the previous load attempts had failed
                     try
                     {
                         await CallWithRequestTracing(async () =>
-                        {
-                            Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(watchedKey, watchedLabel, cancellationToken).ConfigureAwait(false);
-                            using Response rawResponse = response.GetRawResponse();
-                            responseDate = rawResponse.GetDate();
-                            if (responseDate >= lastServerResponseTime)
-                            {
-                                watchedKv = response.Value;
-                            }
-                        }).ConfigureAwait(false);
+                            watchedKv = await client.GetConfigurationSettingAsync(
+                                watchedKey,
+                                watchedLabel,
+                                cancellationToken).ConfigureAwait(false)
+                        ).ConfigureAwait(false);
                     }
                     catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.NotFound)
                     {
-                        using Response rawResponse = e.GetRawResponse();
-                        responseDate = rawResponse.GetDate();
                         watchedKv = null;
                     }
 
-                    change = new KeyValueChange()
+                    if (watchedKv != null)
                     {
-                        Key = watchedKey,
-                        Label = watchedLabel.NormalizeNull(),
-                        ChangeType = watchedKv != null ? KeyValueChangeType.Modified : KeyValueChangeType.None,
-                        ServerResponseTime = responseDate
-                    };
+                        change = new KeyValueChange()
+                        {
+                            Key = watchedKv.Key,
+                            Label = watchedKv.Label.NormalizeNull(),
+                            Current = watchedKv,
+                            ChangeType = KeyValueChangeType.Modified
+                        };
+                    }
                 }
 
                 // Check if a change has been detected in the key-value registered for refresh
@@ -1501,7 +1483,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task ProcessKeyValueChangesAsync(
             IEnumerable<KeyValueChange> keyValueChanges,
             Dictionary<string, ConfigurationSetting> mappedData,
-            Dictionary<KeyValueIdentifier, WatchedSetting> watchedIndividualKvs)
+            Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs)
         {
             foreach (KeyValueChange change in keyValueChanges)
             {
@@ -1511,9 +1493,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (change.ChangeType == KeyValueChangeType.Modified)
                 {
                     ConfigurationSetting setting = change.Current;
+                    ConfigurationSetting settingCopy = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
 
-                    watchedIndividualKvs[changeIdentifier].Setting = setting;
-                    watchedIndividualKvs[changeIdentifier].LastServerResponseTime = change.ServerResponseTime;
+                    watchedIndividualKvs[changeIdentifier] = settingCopy;
 
                     foreach (Func<ConfigurationSetting, ValueTask<ConfigurationSetting>> func in _options.Mappers)
                     {
