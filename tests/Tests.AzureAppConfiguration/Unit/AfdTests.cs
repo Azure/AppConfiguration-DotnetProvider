@@ -8,6 +8,7 @@ using Azure.Identity;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement; // Added for feature flag constants
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -277,6 +278,145 @@ namespace Tests.AzureAppConfiguration
             await refresher.RefreshAsync();
 
             Assert.Equal("new-value", config["TestKey4"]);
+        }
+
+        [Fact]
+        public async Task AfdTests_FeatureFlagsRefresh()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            var featureFlag = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "BetaFlag",
+                    value: @"
+                    {
+                      ""id"": ""BetaFlag"",
+                      ""enabled"": true,
+                      ""conditions"": {
+                        ""client_filters"": [
+                          {
+                            ""name"": ""Browser"",
+                            ""parameters"": {
+                              ""AllowedBrowsers"": [ ""Firefox"", ""Safari"" ]
+                            }
+                          }
+                        ]
+                      }
+                    }",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag(Guid.NewGuid().ToString()))
+            };
+
+            var staleFeatureFlag = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "BetaFlag",
+                    value: @"
+                    {
+                      ""id"": ""BetaFlag"",
+                      ""enabled"": true,
+                      ""conditions"": {
+                        ""client_filters"": [
+                          {
+                            ""name"": ""Browser"",
+                            ""parameters"": {
+                              ""AllowedBrowsers"": [ ""360"" ]
+                            }
+                          }
+                        ]
+                      }
+                    }",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag(Guid.NewGuid().ToString()))
+            };
+
+            var newFeatureFlag = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting(
+                    key: FeatureManagementConstants.FeatureFlagMarker + "BetaFlag",
+                    value: @"
+                    {
+                      ""id"": ""BetaFlag"",
+                      ""enabled"": true,
+                      ""conditions"": {
+                        ""client_filters"": [
+                          {
+                            ""name"": ""Browser"",
+                            ""parameters"": {
+                              ""AllowedBrowsers"": [ ""Chrome"", ""Edge"" ]
+                            }
+                          }
+                        ]
+                      }
+                    }",
+                    label: default,
+                    contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                    eTag: new ETag(Guid.NewGuid().ToString()))
+            };
+
+            string etag1 = Guid.NewGuid().ToString();
+            var responses = new List<MockResponse>()
+            {
+                new MockResponse(200, etag1, DateTimeOffset.Parse("2025-10-17T09:00:00+08:00"))
+            };
+            var mockAsyncPageable1 = new MockAsyncPageable(featureFlag, null, 10, responses);
+
+            string etag2 = Guid.NewGuid().ToString();
+            var responses2 = new List<MockResponse>()
+            {
+                new MockResponse(200, etag2, DateTimeOffset.Parse("2025-10-17T08:59:59+08:00"))
+            };
+            var mockAsyncPageable2 = new MockAsyncPageable(staleFeatureFlag, null, 10, responses);
+
+            string etag3 = Guid.NewGuid().ToString();
+            var responses3 = new List<MockResponse>()
+            {
+                new MockResponse(200, etag3, DateTimeOffset.Parse("2025-10-17T09:00:02+08:00"))
+            };
+            var mockAsyncPageable3 = new MockAsyncPageable(newFeatureFlag, null, 10, responses3);
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(mockAsyncPageable1)  // default load configuration settings 
+                .Returns(mockAsyncPageable1)  // load feature flag
+                .Returns(mockAsyncPageable2)  // watch request, should not trigger refresh
+                .Returns(mockAsyncPageable3)  // watch request, should trigger refresh
+                .Returns(mockAsyncPageable3)  // default load configuration settings
+                .Returns(mockAsyncPageable3); // load feature flag
+
+            var afdEndpoint = new Uri("https://test.b01.azurefd.net");
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ConnectAzureFrontDoor(afdEndpoint);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.UseFeatureFlags(o => o.SetRefreshInterval(TimeSpan.FromSeconds(1)));
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("Browser", config["FeatureManagement:BetaFlag:EnabledFor:0:Name"]);
+            Assert.Equal("Firefox", config["FeatureManagement:BetaFlag:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:BetaFlag:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+
+            await Task.Delay(1500);
+
+            await refresher.RefreshAsync();
+
+            // Still old values because page timestamp was stale
+            Assert.Equal("Firefox", config["FeatureManagement:BetaFlag:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Safari", config["FeatureManagement:BetaFlag:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
+
+            await Task.Delay(1500);
+
+            await refresher.RefreshAsync();
+
+            Assert.Equal("Chrome", config["FeatureManagement:BetaFlag:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
+            Assert.Equal("Edge", config["FeatureManagement:BetaFlag:EnabledFor:0:Parameters:AllowedBrowsers:1"]);
         }
     }
 }

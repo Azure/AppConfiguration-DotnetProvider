@@ -340,8 +340,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void FailOverTests_NetworkTimeout()
         {
-            // Arrange
-            IConfigurationRefresher refresher = null;
             var mockResponse = new MockResponse(200);
 
             var client1 = new ConfigurationClient(TestHelpers.CreateMockEndpointString(),
