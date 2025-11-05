@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             try
             {
-                Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: makeConditionalRequest, cancellationToken).ConfigureAwait(false);
+                Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
                 using Response rawResponse = response.GetRawResponse();
                 if (rawResponse.Status == (int)HttpStatusCode.OK &&
                     !response.Value.ETag.Equals(setting.ETag))
@@ -99,14 +99,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
-                using Response response = page.GetRawResponse();
-                DateTimeOffset timestamp = response.GetDate();
+                using Response rawResponse = page.GetRawResponse();
+                DateTimeOffset timestamp = rawResponse.GetDate();
 
                 if (!existingPageWatcherEnumerator.MoveNext() ||
-                    (response.Status == (int)HttpStatusCode.OK &&
+                    (rawResponse.Status == (int)HttpStatusCode.OK &&
                     // if the server response time is later than last server response time, the change is considered detected
                     timestamp >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
-                    !existingPageWatcherEnumerator.Current.Etag.IfNoneMatch.Equals(response.Headers.ETag)))
+                    !existingPageWatcherEnumerator.Current.Etag.IfNoneMatch.Equals(rawResponse.Headers.ETag)))
                 {
                     return true;
                 }

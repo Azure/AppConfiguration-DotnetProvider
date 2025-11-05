@@ -283,7 +283,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     List<KeyValueChange> watchedIndividualKvChanges = null;
                     Dictionary<string, ConfigurationSetting> data = null;
                     Dictionary<string, ConfigurationSetting> ffCollectionData = null;
-                    bool refreshFf = false;
+                    bool refreshFeatureFlag = false;
                     bool refreshAll = false;
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
@@ -297,7 +297,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         watchedIndividualKvChanges = new List<KeyValueChange>();
                         data = null;
                         ffCollectionData = null;
-                        refreshFf = false;
+                        refreshFeatureFlag = false;
                         refreshAll = false;
                         logDebugBuilder.Clear();
                         logInfoBuilder.Clear();
@@ -344,7 +344,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        refreshFf = await HavePageChange(
+                        refreshFeatureFlag = await HavePageChange(
                             refreshableFfWatchers.Select(watcher => new KeyValueSelector
                             {
                                 KeyFilter = watcher.Key,
@@ -356,7 +356,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             client,
                             cancellationToken).ConfigureAwait(false);
 
-                        if (refreshFf)
+                        if (refreshFeatureFlag)
                         {
                             ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
                             ffKeys = new HashSet<string>();
@@ -401,7 +401,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         await ProcessKeyValueChangesAsync(watchedIndividualKvChanges, _mappedData, watchedIndividualKvs).ConfigureAwait(false);
 
-                        if (refreshFf)
+                        if (refreshFeatureFlag)
                         {
                             // Remove all feature flag keys that are not present in the latest loading of feature flags, but were loaded previously
                             foreach (string key in _ffKeys.Except(ffKeys))
@@ -430,7 +430,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
                     }
 
-                    if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || watchedIndividualKvChanges.Any() || refreshAll || refreshFf)
+                    if (_options.Adapters.Any(adapter => adapter.NeedsRefresh()) || watchedIndividualKvChanges.Any() || refreshAll || refreshFeatureFlag)
                     {
                         _watchedIndividualKvs = watchedIndividualKvs ?? _watchedIndividualKvs;
 
@@ -864,8 +864,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
                         {
-                            using Response response = page.GetRawResponse();
-                            DateTimeOffset responseDate = response.GetDate();
+                            using Response rawResponse = page.GetRawResponse();
+                            DateTimeOffset responseDate = rawResponse.GetDate();
 
                             foreach (ConfigurationSetting setting in page.Values)
                             {
@@ -906,7 +906,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Each successful response should have 200 status code and an ETag
                             pageWatchers.Add(new PageWatcher()
                             {
-                                Etag = new MatchConditions { IfNoneMatch = response.Headers.ETag },
+                                Etag = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
                                 LastServerResponseTime = responseDate
                             });
                         }
@@ -1074,7 +1074,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     await CallWithRequestTracing(async () =>
                         change = await client.GetKeyValueChange(
                             watchedKv,
-                            makeConditionalRequest: !_options.IsAfdUsed,
                             cancellationToken).ConfigureAwait(false)
                     ).ConfigureAwait(false);
                 }
