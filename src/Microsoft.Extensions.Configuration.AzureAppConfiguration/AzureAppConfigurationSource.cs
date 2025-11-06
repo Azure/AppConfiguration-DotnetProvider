@@ -52,7 +52,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (options.IndividualKvWatchers.Any())
                     {
-                        throw new InvalidOperationException($"{ErrorMessages.AfdWatchedSettingUnsupported} Please call {nameof(AzureAppConfigurationRefreshOptions)}.{nameof(AzureAppConfigurationRefreshOptions.RegisterAll)} for configuration refresh.");
+                        throw new InvalidOperationException($"Registering individual keys for refresh via `{nameof(AzureAppConfigurationRefreshOptions)}.{nameof(AzureAppConfigurationRefreshOptions.Register)}` is not supported when connecting to Azure Front Door. Instead, to enable configuration refresh, use `{nameof(AzureAppConfigurationRefreshOptions)}.{nameof(AzureAppConfigurationRefreshOptions.RegisterAll)}`.");
                     }
 
                     options.ClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);

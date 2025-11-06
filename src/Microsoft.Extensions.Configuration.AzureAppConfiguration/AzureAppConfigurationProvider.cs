@@ -35,8 +35,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private HashSet<string> _ffKeys = new HashSet<string>();
-        private Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> _kvPageWatchers = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
-        private Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> _ffPageWatchers = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
+        private Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> _watchedKvPages = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+        private Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> _watchedFfPages = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
@@ -276,8 +276,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Avoid instance state modification
-                    Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags = null;
-                    Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags = null;
+                    Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvEtags = null;
+                    Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> ffEtags = null;
                     HashSet<string> ffKeys = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> watchedIndividualKvChanges = null;
@@ -307,9 +307,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             if (isRefreshDue)
                             {
-                                refreshAll = await HavePageChange(
+                                refreshAll = await HaveCollectionsChanged(
                                     _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector),
-                                    _kvPageWatchers,
+                                    _watchedKvPages,
                                     client,
                                     cancellationToken).ConfigureAwait(false);
                             }
@@ -330,8 +330,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true,
                             // or if any key-value collection change was detected.
-                            kvEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
+                            kvEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
                             ffKeys = new HashSet<string>();
 
                             data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
@@ -344,7 +344,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        refreshFeatureFlag = await HavePageChange(
+                        refreshFeatureFlag = await HaveCollectionsChanged(
                             refreshableFfWatchers.Select(watcher => new KeyValueSelector
                             {
                                 KeyFilter = watcher.Key,
@@ -352,18 +352,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 TagFilters = watcher.Tags,
                                 IsFeatureFlagSelector = true
                             }),
-                            _ffPageWatchers,
+                            _watchedFfPages,
                             client,
                             cancellationToken).ConfigureAwait(false);
 
                         if (refreshFeatureFlag)
                         {
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
+                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
                             ffKeys = new HashSet<string>();
 
                             ffCollectionData = await LoadSelected(
                                 client,
-                                new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>(),
+                                new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>(),
                                 ffEtags,
                                 _options.Selectors.Where(selector => selector.IsFeatureFlagSelector),
                                 ffKeys,
@@ -434,9 +434,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     {
                         _watchedIndividualKvs = watchedIndividualKvs ?? _watchedIndividualKvs;
 
-                        _ffPageWatchers = ffEtags ?? _ffPageWatchers;
+                        _watchedFfPages = ffEtags ?? _watchedFfPages;
 
-                        _kvPageWatchers = kvEtags ?? _kvPageWatchers;
+                        _watchedKvPages = kvEtags ?? _watchedKvPages;
 
                         _ffKeys = ffKeys ?? _ffKeys;
 
@@ -770,8 +770,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffEtags = new Dictionary<KeyValueSelector, IEnumerable<PageWatcher>>();
+            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> ffEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
             HashSet<string> ffKeys = new HashSet<string>();
 
@@ -821,8 +821,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 SetData(await PrepareData(mappedData, cancellationToken).ConfigureAwait(false));
 
                 _mappedData = mappedData;
-                _kvPageWatchers = kvEtags;
-                _ffPageWatchers = ffEtags;
+                _watchedKvPages = kvEtags;
+                _watchedFfPages = ffEtags;
                 _watchedIndividualKvs = watchedIndividualKvs;
                 _ffKeys = ffKeys;
             }
@@ -830,8 +830,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task<Dictionary<string, ConfigurationSetting>> LoadSelected(
             ConfigurationClient client,
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> kvPageWatchers,
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> ffPageWatchers,
+            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvPageWatchers,
+            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> ffPageWatchers,
             IEnumerable<KeyValueSelector> selectors,
             HashSet<string> ffKeys,
             CancellationToken cancellationToken)
@@ -856,7 +856,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }
 
-                    var pageWatchers = new List<PageWatcher>();
+                    var pageWatchers = new List<WatchedPage>();
 
                     await CallWithRequestTracing(async () =>
                     {
@@ -904,9 +904,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             // The ETag will never be null here because it's not a conditional request
                             // Each successful response should have 200 status code and an ETag
-                            pageWatchers.Add(new PageWatcher()
+                            pageWatchers.Add(new WatchedPage()
                             {
-                                Etag = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
+                                MatchConditions = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
                                 LastServerResponseTime = responseDate
                             });
                         }
@@ -1010,7 +1010,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 // If the key-value was found, store it for updating the settings
-                if (watchedKv != null && existingSettings != null)
+                if (watchedKv != null)
                 {
                     // create a new instance to avoid that reference could be modified when mapping data
                     watchedIndividualKvs[watchedKeyLabel] = new ConfigurationSetting(watchedKv.Key, watchedKv.Value, watchedKv.Label, watchedKv.ETag);
@@ -1447,36 +1447,34 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _configClientBackoffs[endpoint] = clientBackoffStatus;
         }
 
-        private async Task<bool> HavePageChange(
+        private async Task<bool> HaveCollectionsChanged(
             IEnumerable<KeyValueSelector> selectors,
-            Dictionary<KeyValueSelector, IEnumerable<PageWatcher>> pageWatchers,
+            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> pageWatchers,
             ConfigurationClient client,
             CancellationToken cancellationToken)
         {
-            bool havePageChanged = false;
+            bool haveCollectionsChanged = false;
 
             foreach (KeyValueSelector selector in selectors)
             {
-                Debug.Assert(pageWatchers.ContainsKey(selector));
-
-                if (pageWatchers.TryGetValue(selector, out IEnumerable<PageWatcher> watchers))
+                if (pageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> watchers))
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => havePageChanged = await client.HavePageChange(
+                        async () => haveCollectionsChanged = await client.HaveCollectionsChanged(
                             selector,
                             watchers,
                             _options.ConfigurationSettingPageIterator,
                             makeConditionalRequest: !_options.IsAfdUsed,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 
-                    if (havePageChanged)
+                    if (haveCollectionsChanged)
                     {
                         return true;
                     }
                 }
             }
 
-            return havePageChanged;
+            return haveCollectionsChanged;
         }
 
         private async Task ProcessKeyValueChangesAsync(

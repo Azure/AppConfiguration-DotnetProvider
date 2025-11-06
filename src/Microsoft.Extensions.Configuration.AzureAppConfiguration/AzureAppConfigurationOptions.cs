@@ -358,7 +358,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            return Connect(new List<string> { connectionString });
+            return Connect(new string[] { connectionString });
         }
 
         /// <summary>
@@ -407,7 +407,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            return Connect(new List<Uri>() { endpoint }, credential);
+            return Connect(new Uri[] { endpoint }, credential);
         }
 
         /// <summary>
@@ -461,7 +461,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Credential ??= new EmptyTokenCredential();
 
-            Endpoints = new List<Uri>() { endpoint };
+            Endpoints = new Uri[] { endpoint };
             ConnectionStrings = null;
             IsAfdUsed = true;
             return this;

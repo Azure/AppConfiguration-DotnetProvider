@@ -6,9 +6,9 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class PageWatcher
+    internal class WatchedPage
     {
-        public MatchConditions Etag { get; set; }
+        public MatchConditions MatchConditions { get; set; }
         public DateTimeOffset LastServerResponseTime { get; set; }
     }
 }

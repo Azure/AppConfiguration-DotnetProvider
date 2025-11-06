@@ -157,7 +157,7 @@ namespace Tests.AzureAppConfiguration
             Assert.NotNull(exception);
             Assert.IsType<ArgumentException>(exception);
             Assert.IsType<InvalidOperationException>(exception.InnerException);
-            Assert.Contains(ErrorMessages.AfdWatchedSettingUnsupported, exception.InnerException.Message);
+            Assert.Contains("Registering individual keys for refresh via `AzureAppConfigurationRefreshOptions.Register` is not supported when connecting to Azure Front Door.", exception.InnerException.Message);
         }
 
         [Fact]
