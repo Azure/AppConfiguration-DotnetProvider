@@ -66,7 +66,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<WatchedPage> pageWatchers, IConfigurationSettingPageIterator pageIterator, bool makeConditionalRequest, CancellationToken cancellationToken)
+        public static async Task<bool> HaveCollectionsChanged(
+            this ConfigurationClient client,
+            KeyValueSelector keyValueSelector,
+            IEnumerable<WatchedPage> pageWatchers,
+            IConfigurationSettingPageIterator pageIterator,
+            bool makeConditionalRequest,
+            CancellationToken cancellationToken)
         {
             if (pageWatchers == null)
             {
@@ -100,12 +106,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
                 using Response rawResponse = page.GetRawResponse();
-                DateTimeOffset timestamp = rawResponse.GetDate();
+                DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
 
                 if (!existingPageWatcherEnumerator.MoveNext() ||
                     (rawResponse.Status == (int)HttpStatusCode.OK &&
                     // if the server response time is later than last server response time, the change is considered detected
-                    timestamp >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
+                    serverResponseTime >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
                     !existingPageWatcherEnumerator.Current.MatchConditions.IfNoneMatch.Equals(rawResponse.Headers.ETag)))
                 {
                     return true;

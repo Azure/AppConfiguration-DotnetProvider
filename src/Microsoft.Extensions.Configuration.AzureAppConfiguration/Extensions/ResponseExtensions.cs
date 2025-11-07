@@ -1,13 +1,22 @@
 ﻿using Azure;
+using Azure.Core;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ResponseExtensions
     {
-        public static DateTimeOffset GetDate(this Response response)
+        public static DateTimeOffset GetMsDate(this Response response)
         {
-            return response.Headers.Date ?? DateTimeOffset.UtcNow;
+            if (response.Headers.TryGetValue(HttpHeader.Names.XMsDate, out string value))
+            {
+                if (DateTimeOffset.TryParse(value, out DateTimeOffset date))
+                {
+                    return date;
+                }
+            }
+
+            return DateTimeOffset.UtcNow;
         }
     }
 }

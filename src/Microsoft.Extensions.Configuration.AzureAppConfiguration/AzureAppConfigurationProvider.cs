@@ -865,7 +865,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
                         {
                             using Response rawResponse = page.GetRawResponse();
-                            DateTimeOffset responseDate = rawResponse.GetDate();
+                            DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
 
                             foreach (ConfigurationSetting setting in page.Values)
                             {
@@ -907,7 +907,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             pageWatchers.Add(new WatchedPage()
                             {
                                 MatchConditions = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
-                                LastServerResponseTime = responseDate
+                                LastServerResponseTime = serverResponseTime
                             });
                         }
                     }).ConfigureAwait(false);
