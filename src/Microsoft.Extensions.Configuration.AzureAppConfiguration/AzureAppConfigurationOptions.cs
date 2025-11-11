@@ -4,6 +4,7 @@
 using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -132,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
+        internal ConfigurationClientOptions ClientOptions { get; private set; } = GetDefaultClientOptions();
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -153,6 +154,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
+
+        /// <summary>
+        /// Gets a value indicating whether Azure Front Door is used.
+        /// </summary>
+        internal bool IsAfdUsed { get; private set; }
 
         /// <summary>
         /// Client factory that is responsible for creating instances of ConfigurationClient.
@@ -186,11 +192,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
         {
             ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+
             return this;
         }
 
         /// <summary>
-        /// Specify what key-values to include in the configuration provider.
+        /// Specifies what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
         /// <param name="keyFilter">
@@ -262,7 +269,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Specify a snapshot and include its contained key-values in the configuration provider.
+        /// Specifies a snapshot and include its contained key-values in the configuration provider.
         /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
         /// </summary>
         /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
@@ -351,7 +358,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            return Connect(new List<string> { connectionString });
+            return Connect(new string[] { connectionString });
         }
 
         /// <summary>
@@ -362,6 +369,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -395,7 +407,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            return Connect(new List<Uri>() { endpoint }, credential);
+            return Connect(new Uri[] { endpoint }, credential);
         }
 
         /// <summary>
@@ -405,6 +417,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
@@ -416,9 +433,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
-
             Endpoints = endpoints;
             ConnectionStrings = null;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to Azure Front Door endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the Azure Front Door instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectAzureFrontDoor(Uri endpoint)
+        {
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
+            {
+                throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
+            }
+
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.AfdConnectionConflict);
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            Credential ??= new EmptyTokenCredential();
+
+            Endpoints = new Uri[] { endpoint };
+            ConnectionStrings = null;
+            IsAfdUsed = true;
             return this;
         }
 

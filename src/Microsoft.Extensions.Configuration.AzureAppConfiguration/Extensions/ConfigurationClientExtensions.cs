@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             try
             {
                 Response<ConfigurationSetting> response = await client.GetConfigurationSettingAsync(setting, onlyIfChanged: true, cancellationToken).ConfigureAwait(false);
-                if (response.GetRawResponse().Status == (int)HttpStatusCode.OK &&
+                using Response rawResponse = response.GetRawResponse();
+                if (rawResponse.Status == (int)HttpStatusCode.OK &&
                     !response.Value.ETag.Equals(setting.ETag))
                 {
                     return new KeyValueChange
@@ -64,11 +66,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             };
         }
 
-        public static async Task<bool> HaveCollectionsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, IConfigurationSettingPageIterator pageIterator, CancellationToken cancellationToken)
+        public static async Task<bool> HaveCollectionsChanged(
+            this ConfigurationClient client,
+            KeyValueSelector keyValueSelector,
+            IEnumerable<WatchedPage> pageWatchers,
+            IConfigurationSettingPageIterator pageIterator,
+            bool makeConditionalRequest,
+            CancellationToken cancellationToken)
         {
-            if (matchConditions == null)
+            if (pageWatchers == null)
             {
-                throw new ArgumentNullException(nameof(matchConditions));
+                throw new ArgumentNullException(nameof(pageWatchers));
             }
 
             if (keyValueSelector == null)
@@ -89,23 +97,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 
             AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
 
-            using IEnumerator<MatchConditions> existingMatchConditionsEnumerator = matchConditions.GetEnumerator();
+            using IEnumerator<WatchedPage> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();
 
-            await foreach (Page<ConfigurationSetting> page in pageable.AsPages(pageIterator, matchConditions).ConfigureAwait(false))
+            IAsyncEnumerable<Page<ConfigurationSetting>> pages = makeConditionalRequest
+                ? pageable.AsPages(pageIterator, pageWatchers.Select(p => p.MatchConditions))
+                : pageable.AsPages(pageIterator);
+
+            await foreach (Page<ConfigurationSetting> page in pages.ConfigureAwait(false))
             {
-                using Response response = page.GetRawResponse();
+                using Response rawResponse = page.GetRawResponse();
+                DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
 
-                // Return true if the lists of etags are different
-                if ((!existingMatchConditionsEnumerator.MoveNext() ||
-                    !existingMatchConditionsEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag)) &&
-                    response.Status == (int)HttpStatusCode.OK)
+                if (!existingPageWatcherEnumerator.MoveNext() ||
+                    (rawResponse.Status == (int)HttpStatusCode.OK &&
+                    // if the server response time is later than last server response time, the change is considered detected
+                    serverResponseTime >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
+                    !existingPageWatcherEnumerator.Current.MatchConditions.IfNoneMatch.Equals(rawResponse.Headers.ETag)))
                 {
                     return true;
                 }
             }
 
-            // Need to check if pages were deleted and no change was found within the new shorter list of match conditions
-            return existingMatchConditionsEnumerator.MoveNext();
+            // Need to check if pages were deleted and no change was found within the new shorter list of page
+            return existingPageWatcherEnumerator.MoveNext();
         }
     }
 }

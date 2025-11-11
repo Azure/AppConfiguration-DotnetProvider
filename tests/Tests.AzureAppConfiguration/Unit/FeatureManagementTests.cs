@@ -1072,7 +1072,7 @@ namespace Tests.AzureAppConfiguration
                 options.UseFeatureFlags();
             }).Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -1100,7 +1100,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -2367,7 +2367,7 @@ namespace Tests.AzureAppConfiguration
 
         Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
         {
-            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new Mock<Response>().Object);
+            return Response.FromValue(TestHelpers.CloneSetting(FirstKeyValue), new MockResponse(200));
         }
 
         private ConfigurationSetting CreateFeatureFlag(string featureId,
