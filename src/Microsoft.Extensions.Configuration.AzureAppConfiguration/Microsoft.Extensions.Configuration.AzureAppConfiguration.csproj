@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="..\..\build\NugetProperties.props" />
 
@@ -38,7 +38,7 @@
   <!-- Nuget Package Version Settings -->
   
   <PropertyGroup>
-    <OfficialVersion>8.4.0</OfficialVersion>
+    <OfficialVersion>8.5.0-preview</OfficialVersion>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(CDP_PATCH_NUMBER)'!='' AND '$(CDP_BUILD_TYPE)'=='Official'">
