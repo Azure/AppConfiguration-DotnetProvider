@@ -1,6 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     /// <summary>
@@ -25,6 +29,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public string SnapshotName { get; set; }
 
         /// <summary>
+        /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
+        /// </summary>
+        public IEnumerable<string> TagFilters { get; set; }
+
+        /// <summary>
         /// A boolean that signifies whether this selector is intended to select feature flags.
         /// </summary>
         public bool IsFeatureFlagSelector { get; set; }
@@ -40,7 +49,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
             {
                 return KeyFilter == selector.KeyFilter
                     && LabelFilter == selector.LabelFilter
-                    && SnapshotName == selector.SnapshotName;
+                    && SnapshotName == selector.SnapshotName
+                    && (TagFilters == null
+                            ? selector.TagFilters == null
+                            : selector.TagFilters != null && new HashSet<string>(TagFilters).SetEquals(selector.TagFilters))
+                    && IsFeatureFlagSelector == selector.IsFeatureFlagSelector;
             }
 
             return false;
@@ -52,9 +65,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
-            return (KeyFilter?.GetHashCode() ?? 0) ^
-                   (LabelFilter?.GetHashCode() ?? 1) ^
-                   (SnapshotName?.GetHashCode() ?? 2);
+            string tagFiltersString = string.Empty;
+
+            if (TagFilters != null && TagFilters.Any())
+            {
+                var sortedTags = new SortedSet<string>(TagFilters);
+
+                // Concatenate tags into a single string with a delimiter
+                tagFiltersString = string.Join("\n", sortedTags);
+            }
+
+            return HashCode.Combine(
+                KeyFilter,
+                LabelFilter,
+                SnapshotName,
+                tagFiltersString,
+                IsFeatureFlagSelector);
         }
     }
 }

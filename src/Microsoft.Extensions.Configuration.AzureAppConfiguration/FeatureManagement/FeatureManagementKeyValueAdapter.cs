@@ -7,7 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.Cryptography;
+using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -19,10 +21,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
+        private bool _fmSchemaCompatibilityDisabled = false;
 
         public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
+
+            _fmSchemaCompatibilityDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.FmSchemacompatibilityDisabled);
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
@@ -32,7 +37,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             var keyValues = new List<KeyValuePair<string, string>>();
 
             // Check if we need to process the feature flag using the microsoft schema
-            if ((featureFlag.Variants != null && featureFlag.Variants.Any()) || featureFlag.Allocation != null || featureFlag.Telemetry != null)
+            if (_fmSchemaCompatibilityDisabled ||
+                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
+                featureFlag.Allocation != null ||
+                featureFlag.Telemetry != null)
             {
                 keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
             }
@@ -46,10 +54,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            string contentType = setting?.ContentType?.Split(';')[0].Trim();
+            if (setting == null ||
+                string.IsNullOrWhiteSpace(setting.Value) ||
+                string.IsNullOrWhiteSpace(setting.ContentType))
+            {
+                return false;
+            }
 
-            return string.Equals(contentType, FeatureManagementConstants.ContentType) ||
-                                 setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker);
+            if (setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
+            {
+                return true;
+            }
+
+            return setting.ContentType.TryParseContentType(out ContentType contentType) &&
+                contentType.IsFeatureFlag();
         }
 
         public bool NeedsRefresh()
@@ -299,10 +317,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                         }
                     }
 
-                    string featureFlagId = CalculateFeatureFlagId(setting.Key, setting.Label);
-
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagId}", featureFlagId));
-
                     if (endpoint != null)
                     {
                         string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(!string.IsNullOrWhiteSpace(setting.Label) ? $"?label={setting.Label}" : "")}";
@@ -419,7 +433,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             var featureFlag = new FeatureFlag();
 
-            var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(settingValue));
+            var reader = new Utf8JsonReader(
+                System.Text.Encoding.UTF8.GetBytes(settingValue),
+                new JsonReaderOptions
+                {
+                    AllowTrailingCommas = true
+                });
 
             try
             {
@@ -1361,20 +1380,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
 
             return featureTelemetry;
-        }
-
-        private static string CalculateFeatureFlagId(string key, string label)
-        {
-            byte[] featureFlagIdHash;
-
-            // Convert the value consisting of key, newline character, and label to a byte array using UTF8 encoding to hash it using SHA 256
-            using (HashAlgorithm hashAlgorithm = SHA256.Create())
-            {
-                featureFlagIdHash = hashAlgorithm.ComputeHash(Encoding.UTF8.GetBytes($"{key}\n{(string.IsNullOrWhiteSpace(label) ? null : label)}"));
-            }
-
-            // Convert the hashed byte array to Base64Url
-            return featureFlagIdHash.ToBase64Url();
         }
     }
 }

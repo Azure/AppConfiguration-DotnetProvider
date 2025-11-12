@@ -1,0 +1,57 @@
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+//
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
+using System;
+using System.Collections.Generic;
+
+namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
+{
+    internal class AfdConfigurationClientManager : IConfigurationClientManager
+    {
+        private readonly ConfigurationClientWrapper _clientWrapper;
+
+        public AfdConfigurationClientManager(
+            IAzureClientFactory<ConfigurationClient> clientFactory,
+            Uri endpoint)
+        {
+            if (clientFactory == null)
+            {
+                throw new ArgumentNullException(nameof(clientFactory));
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            _clientWrapper = new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri));
+        }
+
+        public IEnumerable<ConfigurationClient> GetClients()
+        {
+            return new List<ConfigurationClient> { _clientWrapper.Client };
+        }
+
+        public void RefreshClients()
+        {
+            return;
+        }
+
+        public bool UpdateSyncToken(Uri endpoint, string syncToken)
+        {
+            return false;
+        }
+
+        public Uri GetEndpointForClient(ConfigurationClient client)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            return _clientWrapper.Client == client ? _clientWrapper.Endpoint : null;
+        }
+    }
+}

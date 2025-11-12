@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
-using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
@@ -12,7 +12,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -122,6 +121,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
 
         /// <summary>
+        /// For use in tests only. An optional activity source name to specify the activity source used by the configuration provider.
+        /// </summary>
+        internal string ActivitySourceName { get; set; }
+
+        /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
         /// </summary>
         internal TimeSpan MinBackoffDuration { get; set; } = FailOverConstants.MinBackoffDuration;
@@ -129,7 +133,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
-        internal ConfigurationClientOptions ClientOptions { get; } = GetDefaultClientOptions();
+        internal ConfigurationClientOptions ClientOptions { get; private set; } = GetDefaultClientOptions();
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -142,7 +146,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
-        /// Indicates all types of feature filters used by the application.
+        /// Indicates all feature flag features used by the application.
         /// </summary>
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
@@ -150,6 +154,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
+
+        /// <summary>
+        /// Gets a value indicating whether Azure Front Door is used.
+        /// </summary>
+        internal bool IsAfdUsed { get; private set; }
 
         /// <summary>
         /// Client factory that is responsible for creating instances of ConfigurationClient.
@@ -174,17 +183,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Sets the client factory used to create ConfigurationClient instances.
+        /// If a client factory is provided using this method, a call to Connect is
+        /// still required to identify one or more Azure App Configuration stores but
+        /// will not be used to authenticate a <see cref="ConfigurationClient"/>.
         /// </summary>
         /// <param name="factory">The client factory.</param>
         /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
         public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
         {
             ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+
             return this;
         }
 
         /// <summary>
-        /// Specify what key-values to include in the configuration provider.
+        /// Specifies what key-values to include in the configuration provider.
         /// <see cref="Select"/> can be called multiple times to include multiple sets of key-values.
         /// </summary>
         /// <param name="keyFilter">
@@ -202,7 +215,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The label filter to apply when querying Azure App Configuration for key-values. By default the null label will be used. Built-in label filter options: <see cref="LabelFilter"/>
         /// The characters asterisk (*) and comma (,) are not supported. Backslash (\) character is reserved and must be escaped using another backslash (\).
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null)
+        /// <param name="tagFilters">
+        /// In addition to key and label filters, key-values from Azure App Configuration can be filtered based on their tag names and values.
+        /// Each tag filter must follow the format "tagName=tagValue". Only those key-values will be loaded whose tags match all the tags provided here.
+        /// Built in tag filter values: <see cref="TagValue"/>. For example, $"tagName={<see cref="TagValue.Null"/>}".
+        /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
+        /// Up to 5 tag filters can be provided. If no tag filters are provided, key-values will not be filtered based on tags.
+        /// </param>
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagFilters = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {
@@ -220,6 +240,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 labelFilter = LabelFilter.Null;
             }
 
+            if (tagFilters != null)
+            {
+                foreach (string tag in tagFilters)
+                {
+                    if (string.IsNullOrEmpty(tag) || !tag.Contains('=') || tag.IndexOf('=') == 0)
+                    {
+                        throw new ArgumentException($"Tag filter '{tag}' does not follow the format \"tagName=tagValue\".", nameof(tagFilters));
+                    }
+                }
+            }
+
             if (!_selectCalled)
             {
                 _selectors.Remove(DefaultQuery);
@@ -230,14 +261,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _selectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
-                LabelFilter = labelFilter
+                LabelFilter = labelFilter,
+                TagFilters = tagFilters
             });
 
             return this;
         }
 
         /// <summary>
-        /// Specify a snapshot and include its contained key-values in the configuration provider.
+        /// Specifies a snapshot and include its contained key-values in the configuration provider.
         /// <see cref="SelectSnapshot"/> can be called multiple times to include key-values from multiple snapshots.
         /// </summary>
         /// <param name="name">The name of the snapshot in Azure App Configuration.</param>
@@ -304,6 +336,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     Key = featureFlagSelector.KeyFilter,
                     Label = featureFlagSelector.LabelFilter,
+                    Tags = featureFlagSelector.TagFilters,
                     // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
@@ -325,7 +358,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(connectionString));
             }
 
-            return Connect(new List<string> { connectionString });
+            return Connect(new string[] { connectionString });
         }
 
         /// <summary>
@@ -336,6 +369,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// </param>
         public AzureAppConfigurationOptions Connect(IEnumerable<string> connectionStrings)
         {
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
+            }
+
             if (connectionStrings == null || !connectionStrings.Any())
             {
                 throw new ArgumentNullException(nameof(connectionStrings));
@@ -369,7 +407,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            return Connect(new List<Uri>() { endpoint }, credential);
+            return Connect(new Uri[] { endpoint }, credential);
         }
 
         /// <summary>
@@ -379,6 +417,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <param name="credential">Token credential to use to connect.</param>
         public AzureAppConfigurationOptions Connect(IEnumerable<Uri> endpoints, TokenCredential credential)
         {
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
+            }
+
             if (endpoints == null || !endpoints.Any())
             {
                 throw new ArgumentNullException(nameof(endpoints));
@@ -390,9 +433,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             Credential = credential ?? throw new ArgumentNullException(nameof(credential));
-
             Endpoints = endpoints;
             ConnectionStrings = null;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to Azure Front Door endpoint.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the Azure Front Door instance to connect to.</param>
+        public AzureAppConfigurationOptions ConnectAzureFrontDoor(Uri endpoint)
+        {
+            if ((Credential != null && !(Credential is EmptyTokenCredential)) || (ConnectionStrings?.Any() ?? false))
+            {
+                throw new InvalidOperationException(ErrorMessages.ConnectionConflict);
+            }
+
+            if (IsAfdUsed)
+            {
+                throw new InvalidOperationException(ErrorMessages.AfdConnectionConflict);
+            }
+
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            Credential ??= new EmptyTokenCredential();
+
+            Endpoints = new Uri[] { endpoint };
+            ConnectionStrings = null;
+            IsAfdUsed = true;
             return this;
         }
 
@@ -525,15 +596,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_10_01);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_11_01);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
+            clientOptions.Retry.NetworkTimeout = NetworkTimeout;
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
-            clientOptions.Transport = new HttpClientTransport(new HttpClient()
-            {
-                Timeout = NetworkTimeout
-            });
 
             return clientOptions;
         }
