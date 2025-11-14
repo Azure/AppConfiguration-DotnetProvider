@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiAppConfigDemo.MainPage">
+
+    <RefreshView x:Name="RefreshView"
+                 Refreshing="OnRefreshing">
+        <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            
+            <!-- App Header -->
+            <Label x:Name="WelcomeLabel"
+                   Text="Welcome to Travel Booking!"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,20,0,10"/>
+
+            <!-- Promotional Banner -->
+            <Border x:Name="PromotionalBanner"
+                    IsVisible="False"
+                    BackgroundColor="#E3F2FD"
+                    Stroke="#1E88E5"
+                    StrokeThickness="2"
+                    Padding="15">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+                <Label x:Name="PromotionText"
+                       Text="Special Offer!"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="#1565C0"
+                       HorizontalTextAlignment="Center"/>
+            </Border>
+
+            <!-- Hotel Booking -->
+            <Border x:Name="HotelBookingCard"
+                    IsVisible="False"
+                    BackgroundColor="White"
+                    Stroke="#DDDDDD"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10"/>
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnHotelBookingTapped"/>
+                </Border.GestureRecognizers>
+                <HorizontalStackLayout Spacing="15">
+                    <Label Text="🏨"
+                           FontSize="40"
+                           VerticalOptions="Center"/>
+                    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Fill">
+                        <Label Text="Hotel Booking"
+                               FontSize="18"
+                               FontAttributes="Bold"/>
+                        <Label Text="Find the perfect stay for your trip"
+                               FontSize="14"
+                               TextColor="#666666"/>
+                    </VerticalStackLayout>
+                    <Label Text="›"
+                           FontSize="30"
+                           TextColor="#1E88E5"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+            </Border>
+
+            <!-- App Info -->
+            <Label x:Name="AppInfoLabel"
+                   Text=""
+                   FontSize="12"
+                   TextColor="#999999"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,10,0,20"/>
+
+        </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+
+</ContentPage>

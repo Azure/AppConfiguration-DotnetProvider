@@ -9,11 +9,17 @@ local.settings.json
 # Integration test secrets
 appsettings.Secrets.json
 
+.nuspec/
+.buildtasks/
+templatesTest/
+
 # User-specific files
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
+/src/Controls/tests/TestCases.HostApp/MauiProgram.user.cs
+SandboxAppium/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -294,3 +300,42 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+
+# VS Code files for those working on multiple tools
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# Windows Installer files from build outputs
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Android Studio
+.gradle/
+.idea/
+local.properties
+
+# Directory Build overrides for local setups
+Directory.Build.Override.props
+
+# Only the "snapshots" directory should be added to Git, not the "snapshots-diff" directory
+snapshots-diff/
+
+#install of dotnet version
+/.dotnet
+.dotnet
+temp
+.packages
+/src/Templates/.tempTemplateOutput

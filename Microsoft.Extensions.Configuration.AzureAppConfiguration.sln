@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.3.32503.460
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11205.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Extensions.Configuration.AzureAppConfiguration", "src\Microsoft.Extensions.Configuration.AzureAppConfiguration\Microsoft.Extensions.Configuration.AzureAppConfiguration.csproj", "{7B793D44-EC46-4C12-B71F-3A5005290C75}"
 EndProject
@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Properties", "Properties", 
 	ProjectSection(SolutionItems) = preProject
 		AzureAppConfigurationRules.ruleset = AzureAppConfigurationRules.ruleset
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MauiAppConfigDemo", "examples\MauiAppConfigDemo\MauiAppConfigDemo.csproj", "{A9301C34-C40D-ECFA-7F7A-DF6D5CD72FDB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -68,6 +70,10 @@ Global
 		{A6C611F1-D687-4262-8904-828C239CF2E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6C611F1-D687-4262-8904-828C239CF2E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6C611F1-D687-4262-8904-828C239CF2E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9301C34-C40D-ECFA-7F7A-DF6D5CD72FDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9301C34-C40D-ECFA-7F7A-DF6D5CD72FDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9301C34-C40D-ECFA-7F7A-DF6D5CD72FDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9301C34-C40D-ECFA-7F7A-DF6D5CD72FDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
