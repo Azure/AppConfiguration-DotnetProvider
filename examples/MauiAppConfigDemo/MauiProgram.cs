@@ -18,7 +18,7 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        var afdEndpoint = new Uri("https://travelapp-aqg7cwewa6fcdyhs.b01.azurefd.net");
+        var afdEndpoint = new Uri("https://YOUR-AFD-ENDPOINT.azurefd.net");
 
         builder.Configuration.AddAzureAppConfiguration(options =>
         {

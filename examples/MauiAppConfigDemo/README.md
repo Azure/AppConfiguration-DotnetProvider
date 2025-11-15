@@ -7,7 +7,6 @@ This project demonstrates how to integrate Azure App Configuration with a .NET M
 A simple travel booking app that demonstrates:
 - **Hybrid Configuration**: Snapshot (stable settings) + dynamic key-values
 - **Feature Flags**: Server-controlled feature toggles
-- **Configuration Refresh**: Automatic background refresh every 1 minute
 - **Cross-Platform**: Runs on Android, iOS, macOS Catalyst, and Windows
 
 ## Prerequisites
@@ -15,7 +14,7 @@ A simple travel booking app that demonstrates:
 - .NET 9.0 SDK
 - Visual Studio 2022 or Visual Studio Code with .NET MAUI workload
 - Azure subscription with App Configuration resource
-- Azure Front Door instance configured for your App Configuration
+- Azure Front Door instance configured for your App Configuration. Follow instructions at `https://aka.ms/appconfig/afdsetup`
 
 ---
 
@@ -407,6 +406,24 @@ Add the following feature flags:
 1. Configure your App Configuration store to expose the required key-values through Azure Front Door. Follow instructions at `https://aka.ms/appconfig/afdsetup`.
 2. Update `MauiProgram.cs` with your AFD endpoint (e.g., `https://xxxxx.azurefd.net`)
 
+---
+
+## Sample runs from Android emulator
+
+Landing page when AppConfig feature flag `TravelApp.HotelBooking` is enabled
+
+![Landing Page with Hotel Booking Enabled](./Screenshots/HotelBookingEnabled.png)
+
+Clicking on Hotel Booking card
+
+![Hotel Booking Feature](./Screenshots/HotelBookingFeature.png)
+
+Refreshing app after disabling `TravelApp.HotelBooking` feature flag in App Configuration portal
+
+![Refresh Page after Hotel Booking Disabled](./Screenshots/HotelBookingDisabled.png)
+
+---
+
 ## Troubleshooting
 
 ### Configuration doesn't load
@@ -415,7 +432,7 @@ Add the following feature flags:
 - Make sure the correct scoping filters are set when configuring the AFD endpoint. These filters (for key-values, snapshots, and feature flags) define the regex rules that block requests that don't match specified filters. If your app can’t access its configuration, review AFD rules to find any blocking regex patterns. Update the rule with the right filter or create a new AFD endpoint from the App Configuration portal.
 
 ### Configuration doesn't refresh
-- Azure Front Door manages caching behavior, so updates from App Configuration aren’t immediately available to the app. Even if your app checks for changes every minute, AFD may serve cached data until its own cache expires. For example, if AFD caches for 10 minutes, your app won’t see updates for at least 10 minutes, even though it keeps requesting every minute. This design ensures eventual consistency, not real-time updates, which is expected for any CDN-based solutions. Learn more about (caching with Azure Front Door)[https://learn.microsoft.com/en-us/azure/frontdoor/front-door-caching].
+- Azure Front Door manages caching behavior, so updates from App Configuration aren’t immediately available to the app. Even if your app checks for changes every minute, AFD may serve cached data until its own cache expires. For example, if AFD caches for 10 minutes, your app won’t see updates for at least 10 minutes, even though it keeps requesting every minute. This design ensures eventual consistency, not real-time updates, which is expected for any CDN-based solutions. Learn more about [caching with Azure Front Door](https://learn.microsoft.com/en-us/azure/frontdoor/front-door-caching).
 
 ---
 
