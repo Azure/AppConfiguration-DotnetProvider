@@ -136,5 +136,54 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains(HealthCheckConstants.HealthCheckRegistrationName, result.Entries.Keys);
             Assert.Equal(HealthStatus.Healthy, result.Entries[HealthCheckConstants.HealthCheckRegistrationName].Status);
         }
+
+        [Fact]
+        public async Task HealthCheckTests_ShouldRespectHealthCheckRegistration()
+        {
+            IConfigurationRefresher refresher = null;
+            var mockResponse = new Mock<Response>();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                       .Returns(new MockAsyncPageable(kvCollection))
+                       .Throws(new RequestFailedException(503, "Request failed."));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.MinBackoffDuration = TimeSpan.FromSeconds(2);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.RegisterAll()
+                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                    });
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            var services = new ServiceCollection();
+            services.AddSingleton<IConfiguration>(config);
+            services.AddLogging(); // add logging for health check service
+            services.AddHealthChecks()
+                .AddAzureAppConfiguration(
+                    name: "TestName",
+                    failureStatus: HealthStatus.Degraded);
+            var provider = services.BuildServiceProvider();
+            var healthCheckService = provider.GetRequiredService<HealthCheckService>();
+
+            var result = await healthCheckService.CheckHealthAsync();
+            Assert.Equal(HealthStatus.Healthy, result.Status);
+
+            // Wait for the refresh interval to expire
+            Thread.Sleep(2000);
+
+            await refresher.TryRefreshAsync();
+            result = await healthCheckService.CheckHealthAsync();
+            Assert.Equal(HealthStatus.Unhealthy, result.Status);
+            Assert.Contains("TestName", result.Entries.Keys);
+            Assert.Equal(HealthStatus.Degraded, result.Entries["TestName"].Status);
+        }
     }
 }
