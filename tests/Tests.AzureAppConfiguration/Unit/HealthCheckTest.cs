@@ -181,7 +181,7 @@ namespace Tests.AzureAppConfiguration
 
             await refresher.TryRefreshAsync();
             result = await healthCheckService.CheckHealthAsync();
-            Assert.Equal(HealthStatus.Unhealthy, result.Status);
+            Assert.Equal(HealthStatus.Degraded, result.Status);
             Assert.Contains("TestName", result.Entries.Keys);
             Assert.Equal(HealthStatus.Degraded, result.Entries["TestName"].Status);
         }
