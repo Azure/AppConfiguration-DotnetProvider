@@ -57,9 +57,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public string AspireComponentVersion { get; set; }
 
         /// <summary>
-        /// Flag to indicate whether Azure AI SDK is present in the application.
+        /// Flag to indicate whether any Azure AI SDK assembly is present in the application.
         /// </summary>
-        public bool IsAzureAIProjects { get; set; } = false;
+        public bool UsesAzureAI { get; set; } = false;
 
         /// <summary>
         /// Flag to indicate whether Microsoft.AspNetCore.SignalR assembly is present in the application.

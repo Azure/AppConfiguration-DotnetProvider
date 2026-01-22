@@ -1399,7 +1399,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     if (RequestTracingConstants.AzureAIAssemblyNames
                         .Any(assemblyName => TracingUtils.GetAssemblyVersion(assemblyName) != null))
                     {
-                        _requestTracingOptions.IsAzureAIProjects = true;
+                        _requestTracingOptions.UsesAzureAI = true;
                     }
 
                     if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalRAssemblyName) != null)
