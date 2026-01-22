@@ -58,13 +58,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string AspireComponentAssemblyName = "Aspire.Microsoft.Extensions.Configuration.AzureAppConfiguration";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
 
-        public static readonly string[] AzureAIAssemblyNames = new string[]
-        {
+        public static readonly string[] AzureAIAssemblyNames =
+        [
             "Azure.AI.Projects",
             "Azure.AI.Inference",
             "Azure.AI.OpenAI",
             "Azure.AI.Projects.OpenAI"
-        };
+        ];
 
         public const string Delimiter = "+";
 
