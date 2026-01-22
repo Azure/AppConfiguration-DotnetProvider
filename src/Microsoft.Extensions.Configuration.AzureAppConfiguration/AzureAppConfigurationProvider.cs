@@ -1396,6 +1396,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     _requestTracingOptions.AspireComponentVersion = TracingUtils.GetAssemblyVersion(RequestTracingConstants.AspireComponentAssemblyName);
 
+                    foreach (string assemblyName in RequestTracingConstants.AzureAIAssemblyNames)
+                    {
+                        if (TracingUtils.GetAssemblyVersion(assemblyName) != null)
+                        {
+                            _requestTracingOptions.IsAzureAIProjects = true;
+                            break;
+                        }
+                    }
+
                     if (TracingUtils.GetAssemblyVersion(RequestTracingConstants.SignalRAssemblyName) != null)
                     {
                         _requestTracingOptions.IsSignalRUsed = true;

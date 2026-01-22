@@ -33,6 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string LoadBalancingEnabledTag = "LB";
         public const string AIConfigurationTag = "AI";
         public const string AIChatCompletionConfigurationTag = "AICC";
+        public const string AIProjectsTag = "AzureAIProjects";
         public const string SnapshotReferenceTag = "SnapshotRef";
         public const string SignalRUsedTag = "SignalR";
         public const string FailoverRequestTag = "Failover";
@@ -56,6 +57,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FeatureManagementAspNetCoreAssemblyName = "Microsoft.FeatureManagement.AspNetCore";
         public const string AspireComponentAssemblyName = "Aspire.Microsoft.Extensions.Configuration.AzureAppConfiguration";
         public const string SignalRAssemblyName = "Microsoft.AspNetCore.SignalR";
+
+        public static readonly string[] AzureAIAssemblyNames = new string[]
+        {
+            "Azure.AI.Projects",
+            "Azure.AI.Inference",
+            "Azure.AI.OpenAI",
+            "Azure.AI.Projects.OpenAI"
+        };
 
         public const string Delimiter = "+";
 

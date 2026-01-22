@@ -211,6 +211,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.PushRefreshTag);
             }
 
+            if (requestTracingOptions.IsAzureAIProjects)
+            {
+                correlationContextTags.Add(RequestTracingConstants.AIProjectsTag);
+            }
+
             var sb = new StringBuilder();
 
             foreach (KeyValuePair<string, string> kvp in correlationContextKeyValues)
