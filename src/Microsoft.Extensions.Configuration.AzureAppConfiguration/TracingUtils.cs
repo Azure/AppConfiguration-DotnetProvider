@@ -211,9 +211,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 correlationContextTags.Add(RequestTracingConstants.PushRefreshTag);
             }
 
-            if (requestTracingOptions.UsesAzureAI)
+            if (requestTracingOptions.UsesAISdk)
             {
-                correlationContextTags.Add(RequestTracingConstants.AzureAISDKTag);
+                correlationContextTags.Add(RequestTracingConstants.UsesAISdkTag);
             }
 
             var sb = new StringBuilder();
