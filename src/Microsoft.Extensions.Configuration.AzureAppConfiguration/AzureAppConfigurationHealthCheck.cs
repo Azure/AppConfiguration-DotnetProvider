@@ -37,17 +37,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return HealthCheckResult.Unhealthy(HealthCheckConstants.NoProviderFoundMessage);
             }
 
+            HealthCheckResult worstResult = HealthCheckResult.Healthy();
+
             foreach (IHealthCheck healthCheck in _healthChecks)
             {
                 var result = await healthCheck.CheckHealthAsync(context, cancellationToken).ConfigureAwait(false);
 
+                // Keep track of the worst health status found
+                // HealthStatus enum is ordered: Unhealthy(0) < Degraded(1) < Healthy(2)
+                if (result.Status < worstResult.Status)
+                {
+                    worstResult = result;
+                }
+
+                // If an Unhealthy status is found, short-circuit since that's the worst possible
                 if (result.Status == HealthStatus.Unhealthy)
                 {
                     return result;
                 }
             }
 
-            return HealthCheckResult.Healthy();
+            return worstResult;
         }
 
         private void FindHealthChecks(IConfigurationRoot configurationRoot, List<IHealthCheck> healthChecks)
