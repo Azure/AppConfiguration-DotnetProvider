@@ -63,10 +63,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 foreach (IConfigurationProvider provider in configurationRoot.Providers)
                 {
-                    if (provider is AzureAppConfigurationProvider appConfigurationProvider)
+                    if (provider is IConfigurationRefresher configurationRefresher)
                     {
-                        appConfigurationProvider.LoggerFactory = loggerFactory;
-                        refreshers.Add(appConfigurationProvider);
+                        refreshers.Add(configurationRefresher);
+
+                        if (configurationRefresher is AzureAppConfigurationProvider azureAppConfigurationProvider)
+                        {
+                            azureAppConfigurationProvider.LoggerFactory = loggerFactory;
+                        }
                     }
                     else if (provider is ChainedConfigurationProvider chainedProvider)
                     {

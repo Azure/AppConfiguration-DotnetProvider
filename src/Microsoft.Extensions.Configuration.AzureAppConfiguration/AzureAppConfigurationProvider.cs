@@ -576,15 +576,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
+            HealthStatus failureStatus = context.Registration?.FailureStatus ?? HealthStatus.Unhealthy;
+
             if (!_lastSuccessfulAttempt.HasValue)
             {
-                return HealthCheckResult.Unhealthy(HealthCheckConstants.LoadNotCompletedMessage);
+                return new HealthCheckResult(status: failureStatus, description: HealthCheckConstants.LoadNotCompletedMessage);
             }
 
             if (_lastFailedAttempt.HasValue &&
                 _lastSuccessfulAttempt.Value < _lastFailedAttempt.Value)
             {
-                return HealthCheckResult.Unhealthy(HealthCheckConstants.RefreshFailedMessage);
+                return new HealthCheckResult(status: failureStatus, description: HealthCheckConstants.RefreshFailedMessage);
             }
 
             return HealthCheckResult.Healthy();
