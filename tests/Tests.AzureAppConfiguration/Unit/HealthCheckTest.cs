@@ -68,6 +68,10 @@ namespace Tests.AzureAppConfiguration
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(kvCollection))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
+                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
+
+            mockClient.SetupSequence(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Throws(new RequestFailedException(503, "Request failed."))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
