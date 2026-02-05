@@ -532,6 +532,11 @@ namespace Tests.AzureAppConfiguration
                     kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")))
                 .Returns(mockAsyncPageable);
 
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection.FindAll(kv =>
+                    kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")))
+                .Returns(mockAsyncPageable);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
