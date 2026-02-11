@@ -27,15 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
 
-            string fmSchemaCompatibilityDisabled = null;
-
-            try
-            {
-                fmSchemaCompatibilityDisabled = Environment.GetEnvironmentVariable(EnvironmentVariables.DisableFmSchemaCompatibility);
-            }
-            catch (SecurityException) { }
-
-            _fmSchemaCompatibilityDisabled = bool.TryParse(fmSchemaCompatibilityDisabled, out bool disabled) ? disabled : false;
+            _fmSchemaCompatibilityDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.FmSchemacompatibilityDisabled);
         }
 
         public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)

@@ -14,6 +14,8 @@ namespace Microsoft.Extensions.DependencyInjection
     /// </summary>
     public static class AzureAppConfigurationHealthChecksBuilderExtensions
     {
+        private static readonly bool _isProviderDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.AppConfigurationProviderDisabled);
+
         /// <summary>
         /// Add a health check for Azure App Configuration to given <paramref name="builder"/>.
         /// </summary>
@@ -32,10 +34,20 @@ namespace Microsoft.Extensions.DependencyInjection
             IEnumerable<string> tags = default,
             TimeSpan? timeout = default)
         {
+            IHealthCheck CreateHealthCheck(IServiceProvider sp)
+            {
+                if (_isProviderDisabled)
+                {
+                    return new AlwaysHealthyHealthCheck();
+                }
+
+                return new AzureAppConfigurationHealthCheck(
+                    factory?.Invoke(sp) ?? sp.GetRequiredService<IConfiguration>());
+            }
+
             return builder.Add(new HealthCheckRegistration(
                 name ?? HealthCheckConstants.HealthCheckRegistrationName,
-                sp => new AzureAppConfigurationHealthCheck(
-                    factory?.Invoke(sp) ?? sp.GetRequiredService<IConfiguration>()),
+                CreateHealthCheck,
                 failureStatus,
                 tags,
                 timeout));

@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
-using System.Security;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -16,19 +15,7 @@ namespace Microsoft.Extensions.Configuration
     /// </summary>
     public static class AzureAppConfigurationExtensions
     {
-        private const string DisableProviderEnvironmentVariable = "AZURE_APP_CONFIGURATION_PROVIDER_DISABLED";
-        private static readonly bool _isProviderDisabled = IsProviderDisabled();
-
-        private static bool IsProviderDisabled()
-        {
-            try
-            {
-                return bool.TryParse(Environment.GetEnvironmentVariable(DisableProviderEnvironmentVariable), out bool disabled) ? disabled : false;
-            }
-            catch (SecurityException) { }
-
-            return false;
-        }
+        private static readonly bool _isProviderDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.AppConfigurationProviderDisabled);
 
         /// <summary>
         /// Adds key-value data from an Azure App Configuration store to a configuration builder using its connection string.
