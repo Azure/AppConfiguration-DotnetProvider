@@ -1128,6 +1128,10 @@ namespace Tests.AzureAppConfiguration
                 .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
                 .Returns(mockAsyncPageable);
 
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
+                .Returns(mockAsyncPageable);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -1218,6 +1222,9 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
 
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -1300,6 +1307,10 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(_kvCollection);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
+                .Returns(mockAsyncPageable);
+
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection))
                 .Returns(mockAsyncPageable);
 
@@ -1417,6 +1428,12 @@ namespace Tests.AzureAppConfiguration
                     return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
                 });
 
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    return new MockAsyncPageable(_kvCollection.Select(setting => TestHelpers.CloneSetting(setting)).ToList());
+                });
+
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
 
@@ -1454,6 +1471,9 @@ namespace Tests.AzureAppConfiguration
             }
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
+
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
