@@ -242,10 +242,12 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable4 = new MockAsyncPageable(keyValueCollection3, null, 3, responses4);
 
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(mockAsyncPageable1)
-                .Returns(mockAsyncPageable2)
-                .Returns(mockAsyncPageable3)
-                .Returns(mockAsyncPageable4);
+                .Returns(mockAsyncPageable1)  // initial load
+                .Returns(mockAsyncPageable3); // reload after change detected
+
+            mockClient.SetupSequence(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(mockAsyncPageable2)  // first check - stale, should not refresh
+                .Returns(mockAsyncPageable3); // second check - should trigger refresh
 
             var afdEndpoint = new Uri("https://test.b01.azurefd.net");
             IConfigurationRefresher refresher = null;
@@ -381,10 +383,12 @@ namespace Tests.AzureAppConfiguration
             mockClient.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(mockAsyncPageable1)  // default load configuration settings 
                 .Returns(mockAsyncPageable1)  // load feature flag
+                .Returns(mockAsyncPageable3)  // reload after change detected
+                .Returns(mockAsyncPageable3); // reload feature flags
+
+            mockClient.SetupSequence(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(mockAsyncPageable2)  // watch request, should not trigger refresh
-                .Returns(mockAsyncPageable3)  // watch request, should trigger refresh
-                .Returns(mockAsyncPageable3)  // default load configuration settings
-                .Returns(mockAsyncPageable3); // load feature flag
+                .Returns(mockAsyncPageable3); // watch request, should trigger refresh
 
             var afdEndpoint = new Uri("https://test.b01.azurefd.net");
             IConfigurationRefresher refresher = null;
