@@ -29,8 +29,6 @@ using Xunit;
 
 namespace Tests.AzureAppConfiguration
 {
-    using Xunit.Abstractions;
-
     /// <summary>
     /// Integration tests for Azure App Configuration that connect to a real service.
     /// Uses an existing App Configuration store and Key Vault for testing.
@@ -135,7 +133,7 @@ namespace Tests.AzureAppConfiguration
             return operation.Value.Name;
         }
 
-        public async Task InitializeAsync()
+        public async ValueTask InitializeAsync()
         {
             DefaultAzureCredential credential = _defaultAzureCredential;
             string subscriptionId = GetCurrentSubscriptionId();
@@ -268,7 +266,7 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
-        public async Task DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             await CleanupStaleResources();
         }
