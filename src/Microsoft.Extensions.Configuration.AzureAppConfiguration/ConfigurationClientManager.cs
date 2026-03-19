@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+#nullable disable
 
 using Azure.Data.AppConfiguration;
 using DnsClient;

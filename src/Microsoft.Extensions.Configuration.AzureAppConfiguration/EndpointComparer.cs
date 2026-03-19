@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class EndpointComparer : IEqualityComparer<Uri>
     {
-        public bool Equals(Uri endpoint1, Uri endpoint2)
+        public bool Equals(Uri? endpoint1, Uri? endpoint2)
         {
             return Uri.Compare(endpoint1,
                                endpoint2,

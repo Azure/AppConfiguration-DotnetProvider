@@ -51,19 +51,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The list of connection strings used to connect to an Azure App Configuration store and its replicas.
         /// </summary>
-        internal IEnumerable<string> ConnectionStrings { get; private set; }
+        internal IEnumerable<string>? ConnectionStrings { get; private set; }
 
         /// <summary>
         /// The list of endpoints of an Azure App Configuration store.
         /// If this property is set, the <see cref="Credential"/> property also needs to be set.
         /// </summary>
-        internal IEnumerable<Uri> Endpoints { get; private set; }
+        internal IEnumerable<Uri>? Endpoints { get; private set; }
 
         /// <summary>
         /// The credential used to connect to the Azure App Configuration.
         /// If this property is set, the <see cref="Endpoints"/> property also needs to be set.
         /// </summary>
-        internal TokenCredential Credential { get; private set; }
+        internal TokenCredential? Credential { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/> specified by user.
@@ -96,7 +96,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<IKeyValueAdapter> Adapters
         {
             get => _adapters;
-            set => _adapters = value?.ToList();
+            set => _adapters = value?.ToList() ?? new List<IKeyValueAdapter>();
         }
 
         /// <summary>
@@ -112,17 +112,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// For use in tests only. An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal IConfigurationClientManager ClientManager { get; set; }
+        internal IConfigurationClientManager? ClientManager { get; set; }
 
         /// <summary>
         /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.
         /// </summary>
-        internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
+        internal IConfigurationSettingPageIterator? ConfigurationSettingPageIterator { get; set; }
 
         /// <summary>
         /// For use in tests only. An optional activity source name to specify the activity source used by the configuration provider.
         /// </summary>
-        internal string ActivitySourceName { get; set; }
+        internal string? ActivitySourceName { get; set; }
 
         /// <summary>
         /// An optional timespan value to set the minimum backoff duration to a value other than the default.
@@ -157,7 +157,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Client factory that is responsible for creating instances of ConfigurationClient.
         /// </summary>
-        internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
+        internal IAzureClientFactory<ConfigurationClient>? ClientFactory { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
@@ -215,7 +215,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
         /// Up to 5 tag filters can be provided. If no tag filters are provided, key-values will not be filtered based on tags.
         /// </param>
-        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagFilters = null)
+        public AzureAppConfigurationOptions Select(string keyFilter, string labelFilter = LabelFilter.Null, IEnumerable<string>? tagFilters = null)
         {
             if (string.IsNullOrEmpty(keyFilter))
             {

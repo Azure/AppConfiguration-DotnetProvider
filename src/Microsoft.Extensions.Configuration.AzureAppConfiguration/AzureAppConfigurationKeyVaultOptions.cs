@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // This allows the provider to throw a KeyVaultReferenceException with all relevant information and halt startup instead of timing out.
         private const int KeyVaultMaxRetries = 6;
 
-        internal TokenCredential Credential;
+        internal TokenCredential? Credential;
         internal SecretClientOptions ClientOptions = new SecretClientOptions
         {
             Retry = {
@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         };
         internal List<SecretClient> SecretClients = new List<SecretClient>();
-        internal Func<Uri, ValueTask<string>> SecretResolver;
+        internal Func<Uri, ValueTask<string>>? SecretResolver;
         internal Dictionary<string, TimeSpan> SecretRefreshIntervals = new Dictionary<string, TimeSpan>();
         internal TimeSpan? DefaultSecretRefreshInterval = null;
         internal bool IsKeyVaultRefreshConfigured = false;

@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeaturePercentileAllocation
     {
-        public string Variant { get; set; }
+        public string? Variant { get; set; }
 
         public double From { get; set; }
 

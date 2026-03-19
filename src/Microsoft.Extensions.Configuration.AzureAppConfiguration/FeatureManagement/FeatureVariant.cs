@@ -7,10 +7,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureVariant
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         public JsonElement ConfigurationValue { get; set; }
 
-        public string StatusOverride { get; set; }
+        public string? StatusOverride { get; set; }
     }
 }

@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         bool CanProcess(ConfigurationSetting setting);
 
-        void OnChangeDetected(ConfigurationSetting setting = null);
+        void OnChangeDetected(ConfigurationSetting? setting = null);
 
         void OnConfigUpdated();
 

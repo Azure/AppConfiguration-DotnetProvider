@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class StringExtensions
     {
-        public static bool TryParseContentType(this string contentTypeString, out ContentType contentType)
+        public static bool TryParseContentType(this string contentTypeString, out ContentType? contentType)
         {
             contentType = null;
 
@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
         }
 
-        public static string NormalizeNull(this string s)
+        public static string? NormalizeNull(this string? s)
         {
             return s == LabelFilter.Null ? null : s;
         }

@@ -7,8 +7,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureGroupAllocation
     {
-        public string Variant { get; set; }
+        public string? Variant { get; set; }
 
-        public IEnumerable<string> Groups { get; set; }
+        public IEnumerable<string>? Groups { get; set; }
     }
 }

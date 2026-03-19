@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// <summary>
         /// The label that feature flags will be selected from.
         /// </summary>
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
@@ -81,7 +81,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// The characters asterisk (*), comma (,) and backslash (\) are reserved and must be escaped using a backslash (\).
         /// Up to 5 tag filters can be provided. If no tag filters are provided, feature flags will not be filtered based on tags.
         /// </param>
-        public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null, IEnumerable<string> tagFilters = null)
+        public FeatureFlagOptions Select(string featureFlagFilter, string labelFilter = LabelFilter.Null, IEnumerable<string>? tagFilters = null)
         {
             if (string.IsNullOrEmpty(featureFlagFilter))
             {

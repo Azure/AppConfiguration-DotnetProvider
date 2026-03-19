@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         private readonly List<KeyValuePair<string, string>> _data = new List<KeyValuePair<string, string>>();
         private readonly Stack<string> _context = new Stack<string>();
-        private string _currentPath;
+        private string _currentPath = string.Empty;
 
         public List<KeyValuePair<string, string>> FlattenJson(JsonElement rootElement)
         {

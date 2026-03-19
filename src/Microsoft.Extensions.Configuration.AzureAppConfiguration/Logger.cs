@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal class Logger
     {
-        ILogger _logger;
+        ILogger? _logger;
 
         public Logger() { }
 

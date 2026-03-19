@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class ClientFilter
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         public JsonElement Parameters { get; set; }
     }

@@ -34,26 +34,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// The key of the Key Vault reference that caused the exception.
         /// </summary>
-        public string Key { get; set; }
+        public string? Key { get; set; }
 
         /// <summary>
         /// The label of the Key Vault reference that caused the exception.
         /// </summary>
-        public string Label { get; set; }
+        public string? Label { get; set; }
 
         /// <summary>
         /// The etag of the Key Vault reference that caused the exception.
         /// </summary>
-        public string Etag { get; set; }
+        public string? Etag { get; set; }
 
         /// <summary>
         /// The secret identifier used by the Azure Key Vault reference that caused the exception.
         /// </summary>
-        public string SecretIdentifier { get; set; }
+        public string? SecretIdentifier { get; set; }
 
         /// <summary>
         /// The error code, if available, describing the cause of the exception. 
         /// </summary>
-        public string ErrorCode { get; set; }
+        public string? ErrorCode { get; set; }
     }
 }

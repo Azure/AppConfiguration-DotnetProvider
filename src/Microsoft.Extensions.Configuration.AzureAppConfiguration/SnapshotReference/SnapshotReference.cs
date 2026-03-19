@@ -6,6 +6,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotRefer
 {
     internal class SnapshotReference
     {
-        public string SnapshotName { get; set; }
+        public string SnapshotName { get; set; } = string.Empty;
     }
 }

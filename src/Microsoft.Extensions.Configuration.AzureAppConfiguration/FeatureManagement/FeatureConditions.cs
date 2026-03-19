@@ -9,6 +9,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         public List<ClientFilter> ClientFilters { get; set; } = new List<ClientFilter>();
 
-        public string RequirementType { get; set; }
+        public string? RequirementType { get; set; }
     }
 }

@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Hosting
         public static IFunctionsWorkerApplicationBuilder UseAzureAppConfiguration(this IFunctionsWorkerApplicationBuilder builder)
         {
             IServiceProvider serviceProvider = builder.Services.BuildServiceProvider();
-            IConfigurationRefresherProvider refresherProvider = serviceProvider.GetService<IConfigurationRefresherProvider>();
+            IConfigurationRefresherProvider? refresherProvider = serviceProvider.GetService<IConfigurationRefresherProvider>();
 
             // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
             // We use the IConfigurationRefresherProvider to make sure if the required services were added.

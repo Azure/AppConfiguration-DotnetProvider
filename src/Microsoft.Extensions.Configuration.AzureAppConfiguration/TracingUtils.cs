@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

@@ -7,8 +7,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 {
     internal class FeatureUserAllocation
     {
-        public string Variant { get; set; }
+        public string? Variant { get; set; }
 
-        public IEnumerable<string> Users { get; set; }
+        public IEnumerable<string>? Users { get; set; }
     }
 }

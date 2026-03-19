@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Builder
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            IConfigurationRefresherProvider refresherProvider = (IConfigurationRefresherProvider)builder.ApplicationServices.GetService(typeof(IConfigurationRefresherProvider));
+            IConfigurationRefresherProvider? refresherProvider = (IConfigurationRefresherProvider?)builder.ApplicationServices.GetService(typeof(IConfigurationRefresherProvider));
 
             // Verify if AddAzureAppConfiguration was done before calling UseAzureAppConfiguration.
             // We use the IConfigurationRefresherProvider to make sure if the required services were added.
