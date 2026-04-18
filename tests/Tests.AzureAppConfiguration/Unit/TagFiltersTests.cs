@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -162,19 +163,19 @@ namespace Tests.AzureAppConfiguration
         public void KeyValueWatcher_EqualityAndHash_IncludesTags()
         {
             var tags = new List<string> { "v1", "v2" };
-        
+            
             var watcher1 = new KeyValueWatcher { Key = "TestKey", Tags = tags };
             var watcher2 = new KeyValueWatcher { Key = "TestKey", Tags = new List<string> { "v2", "v1" } }; // Different order
-        
+
             // Test Equality (should be true if you updated Equals to use SetEquals)
             Assert.Equal(watcher1, watcher2);
-        
+
             // Test HashCode
             Assert.Equal(watcher1.GetHashCode(), watcher2.GetHashCode());
         
             var watcher3 = new KeyValueWatcher { Key = "TestKey", Tags = tags };
             var watcher4 = new KeyValueWatcher { Key = "TestKey", Tags = new List<string> { "v2", "v1", "v3" } }; // Different tags
-        
+            
             // Test Equality (should be true if you updated Equals to use SetEquals)
             Assert.NotEqual(watcher3, watcher4);
         
