@@ -43,7 +43,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         {
             if (obj is KeyValueWatcher kvWatcher)
             {
-                return Key == kvWatcher.Key && Label.NormalizeNull() == kvWatcher.Label.NormalizeNull();
+                 return Key == kvWatcher.Key && 
+                     Label.NormalizeNull() == kvWatcher.Label.NormalizeNull() &&
+                     (Tags == null ? kvWatcher.Tags == null : kvWatcher.Tags != null && new HashSet<string>(Tags).SetEquals(kvWatcher.Tags));
             }
 
             return false;
@@ -51,7 +53,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 
         public override int GetHashCode()
         {
-            return Label != null ? Key.GetHashCode() ^ Label.GetHashCode() : Key.GetHashCode();
+            string tagFiltersString = string.Empty;
+
+            // Consistency with KeyValueSelector: Normalize tags into a sorted string
+            if (Tags != null && Tags.Any())
+            {
+                var sortedTags = new SortedSet<string>(Tags);
+                tagFiltersString = string.Join("\n", sortedTags);
+            }
+            
+            return HashCode.Combine(
+                Key,
+                Label.NormalizeNull(),
+                tagFiltersString);
         }
     }
 }
