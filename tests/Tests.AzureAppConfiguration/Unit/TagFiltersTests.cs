@@ -163,7 +163,7 @@ namespace Tests.AzureAppConfiguration
         public void KeyValueWatcher_EqualityAndHash_IncludesTags()
         {
             var tags = new List<string> { "v1", "v2" };
-            
+
             var watcher1 = new KeyValueWatcher { Key = "TestKey", Tags = tags };
             var watcher2 = new KeyValueWatcher { Key = "TestKey", Tags = new List<string> { "v2", "v1" } }; // Different order
 
@@ -172,13 +172,13 @@ namespace Tests.AzureAppConfiguration
 
             // Test HashCode
             Assert.Equal(watcher1.GetHashCode(), watcher2.GetHashCode());
-        
+
             var watcher3 = new KeyValueWatcher { Key = "TestKey", Tags = tags };
             var watcher4 = new KeyValueWatcher { Key = "TestKey", Tags = new List<string> { "v2", "v1", "v3" } }; // Different tags
-            
+
             // Test Equality (should be true if you updated Equals to use SetEquals)
             Assert.NotEqual(watcher3, watcher4);
-        
+
             // Test HashCode
             Assert.NotEqual(watcher3.GetHashCode(), watcher4.GetHashCode());
         }
