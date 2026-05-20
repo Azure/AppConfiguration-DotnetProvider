@@ -16,6 +16,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         private readonly AzureAppConfigurationKeyVaultOptions _keyVaultOptions;
         private readonly IDictionary<string, SecretClient> _secretClients;
         private readonly Dictionary<Uri, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
+        private readonly object _cacheLock = new object();
         private Uri _nextRefreshSourceId;
         private DateTimeOffset? _nextRefreshTime;
 
@@ -38,20 +39,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, string key, string label, Logger logger, CancellationToken cancellationToken)
         {
             string secretValue = null;
+            SecretClient client;
 
-            if (_cachedKeyVaultSecrets.TryGetValue(secretIdentifier.SourceId, out CachedKeyVaultSecret cachedSecret) &&
-                    (!cachedSecret.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedSecret.RefreshAt.Value))
+            lock (_cacheLock)
             {
-                return cachedSecret.SecretValue;
-            }
+                if (_cachedKeyVaultSecrets.TryGetValue(secretIdentifier.SourceId, out CachedKeyVaultSecret cachedHit) &&
+                        (!cachedHit.RefreshAt.HasValue || DateTimeOffset.UtcNow < cachedHit.RefreshAt.Value))
+                {
+                    return cachedHit.SecretValue;
+                }
 
-            SecretClient client = GetSecretClient(secretIdentifier.SourceId);
+                client = GetSecretClient(secretIdentifier.SourceId);
+            }
 
             if (client == null && _keyVaultOptions.SecretResolver == null)
             {
                 throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
             }
 
+            CachedKeyVaultSecret cachedSecret = null;
             bool success = false;
 
             try
@@ -73,7 +79,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             finally
             {
-                SetSecretInCache(secretIdentifier.SourceId, key, cachedSecret, success);
+                lock (_cacheLock)
+                {
+                    SetSecretInCache(secretIdentifier.SourceId, key, cachedSecret, success);
+                }
             }
 
             return secretValue;
@@ -81,41 +90,50 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public bool ShouldRefreshKeyVaultSecrets()
         {
-            return _nextRefreshTime.HasValue && _nextRefreshTime.Value < DateTimeOffset.UtcNow;
+            lock (_cacheLock)
+            {
+                return _nextRefreshTime.HasValue && _nextRefreshTime.Value < DateTimeOffset.UtcNow;
+            }
         }
 
         public void ClearCache()
         {
-            var sourceIdsToRemove = new List<Uri>();
-
-            var utcNow = DateTimeOffset.UtcNow;
-
-            foreach (KeyValuePair<Uri, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
+            lock (_cacheLock)
             {
-                if (secret.Value.LastRefreshTime + RefreshConstants.MinimumSecretRefreshInterval < utcNow)
+                var sourceIdsToRemove = new List<Uri>();
+
+                var utcNow = DateTimeOffset.UtcNow;
+
+                foreach (KeyValuePair<Uri, CachedKeyVaultSecret> secret in _cachedKeyVaultSecrets)
                 {
-                    sourceIdsToRemove.Add(secret.Key);
+                    if (secret.Value.LastRefreshTime + RefreshConstants.MinimumSecretRefreshInterval < utcNow)
+                    {
+                        sourceIdsToRemove.Add(secret.Key);
+                    }
                 }
-            }
 
-            foreach (Uri sourceId in sourceIdsToRemove)
-            {
-                _cachedKeyVaultSecrets.Remove(sourceId);
-            }
+                foreach (Uri sourceId in sourceIdsToRemove)
+                {
+                    _cachedKeyVaultSecrets.Remove(sourceId);
+                }
 
-            if (_cachedKeyVaultSecrets.Any())
-            {
-                UpdateNextRefreshableSecretFromCache();
+                if (_cachedKeyVaultSecrets.Any())
+                {
+                    UpdateNextRefreshableSecretFromCache();
+                }
             }
         }
 
         public void RemoveSecretFromCache(Uri sourceId)
         {
-            _cachedKeyVaultSecrets.Remove(sourceId);
-
-            if (sourceId == _nextRefreshSourceId)
+            lock (_cacheLock)
             {
-                UpdateNextRefreshableSecretFromCache();
+                _cachedKeyVaultSecrets.Remove(sourceId);
+
+                if (sourceId == _nextRefreshSourceId)
+                {
+                    UpdateNextRefreshableSecretFromCache();
+                }
             }
         }
 
