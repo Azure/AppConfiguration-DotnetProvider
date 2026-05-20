@@ -145,6 +145,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether Key Vault references should be resolved in parallel.
+        /// </summary>
+        internal bool IsParallelSecretResolutionEnabled { get; private set; } = false;
+
+        /// <summary>
         /// Indicates all feature flag features used by the application.
         /// </summary>
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
@@ -520,6 +525,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters.Add(new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider(keyVaultOptions)));
 
             IsKeyVaultRefreshConfigured = keyVaultOptions.IsKeyVaultRefreshConfigured;
+            IsParallelSecretResolutionEnabled = keyVaultOptions.ParallelSecretResolutionEnabled;
             IsKeyVaultConfigured = true;
             return this;
         }

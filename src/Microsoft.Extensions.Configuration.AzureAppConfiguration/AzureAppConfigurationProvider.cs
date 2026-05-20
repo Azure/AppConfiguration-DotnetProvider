@@ -625,35 +625,70 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _requestTracingOptions.ResetAiConfigurationTracing();
             }
 
-            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+            bool parallelSecretResolution = _options.IsParallelSecretResolutionEnabled;
+
+            if (parallelSecretResolution)
             {
-                IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+                // Dispatch adapter processing for all settings concurrently. Only Key Vault references
+                // perform network I/O during adapter processing; other adapters complete synchronously.
+                // Insertion order in 'data' is preserved when merging results so prefix-stripping and
+                // last-write-wins behavior remain unchanged.
+                var pendingTasks = new List<Task<IEnumerable<KeyValuePair<string, string>>>>(data.Count);
 
-                if (_requestTracingEnabled && _requestTracingOptions != null)
+                foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
                 {
-                    _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
-                }
-
-                keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
-
-                foreach (KeyValuePair<string, string> kv in keyValuePairs)
-                {
-                    string key = kv.Key;
-
-                    foreach (string prefix in _options.KeyPrefixes)
+                    if (_requestTracingEnabled && _requestTracingOptions != null)
                     {
-                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        {
-                            key = key.Substring(prefix.Length);
-                            break;
-                        }
+                        _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
                     }
 
-                    applicationData[key] = kv.Value;
+                    pendingTasks.Add(ProcessAdapters(kvp.Value, cancellationToken));
+                }
+
+                IEnumerable<KeyValuePair<string, string>>[] results = await Task.WhenAll(pendingTasks).ConfigureAwait(false);
+
+                for (int i = 0; i < results.Length; i++)
+                {
+                    MergeIntoApplicationData(applicationData, results[i]);
+                }
+            }
+            else
+            {
+                foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+                {
+                    IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
+
+                    if (_requestTracingEnabled && _requestTracingOptions != null)
+                    {
+                        _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
+                    }
+
+                    keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
+
+                    MergeIntoApplicationData(applicationData, keyValuePairs);
                 }
             }
 
             return applicationData;
+        }
+
+        private void MergeIntoApplicationData(Dictionary<string, string> applicationData, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
+        {
+            foreach (KeyValuePair<string, string> kv in keyValuePairs)
+            {
+                string key = kv.Key;
+
+                foreach (string prefix in _options.KeyPrefixes)
+                {
+                    if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        key = key.Substring(prefix.Length);
+                        break;
+                    }
+                }
+
+                applicationData[key] = kv.Value;
+            }
         }
 
         private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
