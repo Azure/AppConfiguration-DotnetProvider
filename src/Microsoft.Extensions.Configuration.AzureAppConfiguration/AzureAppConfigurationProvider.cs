@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -629,11 +630,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (parallelSecretResolution)
             {
-                // Dispatch adapter processing for all settings concurrently. Only Key Vault references
-                // perform network I/O during adapter processing; other adapters complete synchronously.
-                // Insertion order in 'data' is preserved when merging results so prefix-stripping and
-                // last-write-wins behavior remain unchanged.
-                var pendingTasks = new List<Task<IEnumerable<KeyValuePair<string, string>>>>(data.Count);
+                // Only Key Vault references perform network I/O during adapter processing; other
+                // adapters complete synchronously. To avoid the overhead of wrapping non-I/O work
+                // in tasks, only Key Vault references are dispatched concurrently. Non-Key Vault
+                // settings are processed inline in their original order; their results, along with
+                // those of the in-flight Key Vault tasks, are merged in insertion order to preserve
+                // prefix-stripping and last-write-wins behavior.
+                var results = new IEnumerable<KeyValuePair<string, string>>[data.Count];
+                var pendingKeyVaultTasks = new List<(int Index, Task<IEnumerable<KeyValuePair<string, string>>> Task)>();
+
+                int index = 0;
 
                 foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
                 {
@@ -642,14 +648,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
                     }
 
-                    pendingTasks.Add(ProcessAdapters(kvp.Value, cancellationToken));
+                    if (IsKeyVaultReference(kvp.Value))
+                    {
+                        pendingKeyVaultTasks.Add((index, ProcessAdapters(kvp.Value, cancellationToken)));
+                    }
+                    else
+                    {
+                        results[index] = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    index++;
                 }
 
-                IEnumerable<KeyValuePair<string, string>>[] results = await Task.WhenAll(pendingTasks).ConfigureAwait(false);
-
-                for (int i = 0; i < results.Length; i++)
+                if (pendingKeyVaultTasks.Count > 0)
                 {
-                    MergeIntoApplicationData(applicationData, results[i]);
+                    await Task.WhenAll(pendingKeyVaultTasks.Select(p => p.Task)).ConfigureAwait(false);
+
+                    foreach ((int Index, Task<IEnumerable<KeyValuePair<string, string>>> Task) entry in pendingKeyVaultTasks)
+                    {
+                        results[entry.Index] = entry.Task.Result;
+                    }
+                }
+
+                foreach (IEnumerable<KeyValuePair<string, string>> keyValuePairs in results)
+                {
+                    MergeIntoApplicationData(applicationData, keyValuePairs);
                 }
             }
             else
@@ -670,6 +693,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             return applicationData;
+        }
+
+        private static bool IsKeyVaultReference(ConfigurationSetting setting)
+        {
+            return setting.ContentType.TryParseContentType(out ContentType contentType)
+                && contentType.IsKeyVaultReference();
         }
 
         private void MergeIntoApplicationData(Dictionary<string, string> applicationData, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
