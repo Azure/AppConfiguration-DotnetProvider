@@ -20,12 +20,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private FeatureFlagTracing _featureFlagTracing;
+        private readonly AzureAppConfigurationOptions _options;
         private int _featureFlagIndex = 0;
+        private bool _warnedAboutIndexStrideOverflow = false;
         private bool _fmSchemaCompatibilityDisabled = false;
 
-        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
+        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing, AzureAppConfigurationOptions options)
         {
             _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
 
             _fmSchemaCompatibilityDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.FmSchemacompatibilityDisabled);
         }
@@ -42,7 +45,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 featureFlag.Allocation != null ||
                 featureFlag.Telemetry != null)
             {
-                keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
+                keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint, logger);
             }
             else
             {
@@ -83,6 +86,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public void OnConfigUpdated()
         {
             _featureFlagIndex = 0;
+            _warnedAboutIndexStrideOverflow = false;
 
             return;
         }
@@ -140,7 +144,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint)
+        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint, Logger logger)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -149,9 +153,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
+            int absoluteIndex = _options.FeatureFlagIndexOffset + _featureFlagIndex;
+
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{absoluteIndex}";
 
             _featureFlagIndex++;
+
+            // Warn once when this provider has emitted more flags than the offset stride can
+            // accommodate; further flags will collide with the next provider's offset slot.
+            if (!_warnedAboutIndexStrideOverflow && _featureFlagIndex >= FeatureManagementConstants.FeatureFlagIndexStride)
+            {
+                logger?.LogWarning(
+                    $"Azure App Configuration provider emitted {_featureFlagIndex} feature flags, which meets or exceeds " +
+                    $"the per-provider stride of {FeatureManagementConstants.FeatureFlagIndexStride}. Feature flags from " +
+                    $"different Azure App Configuration providers may collide in the configuration system. " +
+                    $"Consider reducing the number of feature flags loaded per provider.");
+
+                _warnedAboutIndexStrideOverflow = true;
+            }
 
             keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Id}", featureFlag.Id));
 

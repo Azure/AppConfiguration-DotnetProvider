@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -96,7 +97,12 @@ namespace Microsoft.Extensions.Configuration
         {
             if (!_isProviderDisabled)
             {
-                configurationBuilder.Add(new AzureAppConfigurationSource(action, optional));
+                // Count Azure App Configuration sources already registered on this builder so that
+                // the new source can pick a feature flag index offset that avoids colliding with
+                // flags emitted by those earlier sources.
+                int priorAppConfigSourceCount = configurationBuilder.Sources.OfType<AzureAppConfigurationSource>().Count();
+
+                configurationBuilder.Add(new AzureAppConfigurationSource(action, optional, priorAppConfigSourceCount));
             }
 
             return configurationBuilder;

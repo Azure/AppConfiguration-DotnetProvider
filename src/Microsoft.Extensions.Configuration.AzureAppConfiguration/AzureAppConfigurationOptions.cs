@@ -150,6 +150,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal FeatureFlagTracing FeatureFlagTracing { get; set; } = new FeatureFlagTracing();
 
         /// <summary>
+        /// The starting index used when emitting feature flags into the configuration system under
+        /// the Microsoft schema (feature_management:feature_flags:&lt;index&gt;).
+        ///
+        /// During migration from classic to new Azure App Configuration feature flags, multiple
+        /// providers may write to the same configuration section. .NET's configuration system
+        /// merges arrays by index position, causing flags from different providers to overwrite
+        /// each other. To prevent this, the provider automatically assigns an offset based on the
+        /// number of other Azure App Configuration providers already registered on the
+        /// configuration builder: the first provider uses offset 0, the second uses
+        /// <see cref="FeatureManagement.FeatureManagementConstants.FeatureFlagIndexStride"/>, the
+        /// third uses 2 * <see cref="FeatureManagement.FeatureManagementConstants.FeatureFlagIndexStride"/>,
+        /// and so on.
+        /// </summary>
+        internal int FeatureFlagIndexOffset { get; set; } = 0;
+
+        /// <summary>
         /// Options used to configure provider startup.
         /// </summary>
         internal StartupOptions Startup { get; set; } = new StartupOptions();
@@ -168,7 +184,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
                 new JsonKeyValueAdapter(),
-                new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
+                new FeatureManagementKeyValueAdapter(FeatureFlagTracing, this)
             };
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
@@ -419,6 +435,118 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             Endpoints = endpoints;
             ConnectionStrings = null;
+            return this;
+        }
+
+        /// <summary>
+        /// Connect the provider to the Azure App Configuration service via a connection string. This
+        /// is the entry point for the new feature flag experience; see <see cref="ConfigureFeatureFlags"/>.
+        /// Equivalent in connection behavior to <see cref="Connect(string)"/>.
+        /// </summary>
+        /// <param name="connectionString">Used to authenticate with Azure App Configuration.</param>
+        public AzureAppConfigurationOptions ConfigureConnection(string connectionString)
+            => Connect(connectionString);
+
+        /// <summary>
+        /// Connect the provider to an Azure App Configuration store and its replicas via a list of
+        /// connection strings. This is the entry point for the new feature flag experience; see
+        /// <see cref="ConfigureFeatureFlags"/>. Equivalent in connection behavior to
+        /// <see cref="Connect(IEnumerable{string})"/>.
+        /// </summary>
+        /// <param name="connectionStrings">Used to authenticate with Azure App Configuration.</param>
+        public AzureAppConfigurationOptions ConfigureConnection(IEnumerable<string> connectionStrings)
+            => Connect(connectionStrings);
+
+        /// <summary>
+        /// Connect the provider to Azure App Configuration using endpoint and token credentials. This
+        /// is the entry point for the new feature flag experience; see <see cref="ConfigureFeatureFlags"/>.
+        /// Equivalent in connection behavior to <see cref="Connect(Uri, TokenCredential)"/>.
+        /// </summary>
+        /// <param name="endpoint">The endpoint of the Azure App Configuration to connect to.</param>
+        /// <param name="credential">Token credentials to use to connect.</param>
+        public AzureAppConfigurationOptions ConfigureConnection(Uri endpoint, TokenCredential credential)
+            => Connect(endpoint, credential);
+
+        /// <summary>
+        /// Connect the provider to an Azure App Configuration store and its replicas using a list of
+        /// endpoints and a token credential. This is the entry point for the new feature flag
+        /// experience; see <see cref="ConfigureFeatureFlags"/>. Equivalent in connection behavior to
+        /// <see cref="Connect(IEnumerable{Uri}, TokenCredential)"/>.
+        /// </summary>
+        /// <param name="endpoints">The list of endpoints to connect to.</param>
+        /// <param name="credential">Token credential to use to connect.</param>
+        public AzureAppConfigurationOptions ConfigureConnection(IEnumerable<Uri> endpoints, TokenCredential credential)
+            => Connect(endpoints, credential);
+
+        /// <summary>
+        /// Configures the new Azure App Configuration feature flag experience. Unlike
+        /// <see cref="UseFeatureFlags"/>, callers must opt in explicitly by setting
+        /// <see cref="FeatureFlagOptions2.Enabled"/> to <c>true</c>, and refresh must be enabled
+        /// separately via <see cref="FeatureFlagOptions2.ConfigureRefresh"/>.
+        /// </summary>
+        /// <param name="configure">A callback used to configure feature flag options.</param>
+        public AzureAppConfigurationOptions ConfigureFeatureFlags(Action<FeatureFlagOptions2> configure)
+        {
+            if (configure == null)
+            {
+                throw new ArgumentNullException(nameof(configure));
+            }
+
+            var options = new FeatureFlagOptions2();
+            configure(options);
+
+            // Opt-in: if the caller did not explicitly enable feature flags this call is a no-op.
+            if (!options.Enabled)
+            {
+                return this;
+            }
+
+            if (options.FeatureFlagSelectors.Count != 0 && options.Label != null)
+            {
+                throw new InvalidOperationException(
+                    $"Please select feature flags by either the {nameof(FeatureFlagOptions2.Select)} method or by setting the {nameof(FeatureFlagOptions2.Label)} property, not both.");
+            }
+
+            // Default selector when none is supplied: load all flags under the configured label.
+            if (options.FeatureFlagSelectors.Count == 0)
+            {
+                options.FeatureFlagSelectors.Add(new KeyValueSelector
+                {
+                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
+                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label,
+                    IsFeatureFlagSelector = true
+                });
+            }
+
+            // Refresh is opt-in on the new API. If refresh was not configured, or was configured
+            // with Enabled = false, no watcher is registered.
+            FeatureFlagRefreshOptions2 refresh = options.Refresh;
+            bool refreshEnabled = refresh != null && refresh.Enabled;
+
+            if (refreshEnabled && refresh.RefreshInterval < RefreshConstants.MinimumFeatureFlagRefreshInterval)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(FeatureFlagRefreshOptions2.RefreshInterval),
+                    refresh.RefreshInterval.TotalMilliseconds,
+                    string.Format(ErrorMessages.RefreshIntervalTooShort, RefreshConstants.MinimumFeatureFlagRefreshInterval.TotalMilliseconds));
+            }
+
+            foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
+            {
+                _selectors.AppendUnique(featureFlagSelector);
+
+                if (refreshEnabled)
+                {
+                    _ffWatchers.AppendUnique(new KeyValueWatcher
+                    {
+                        Key = featureFlagSelector.KeyFilter,
+                        Label = featureFlagSelector.LabelFilter,
+                        Tags = featureFlagSelector.TagFilters,
+                        RefreshInterval = refresh.RefreshInterval
+                    });
+                }
+            }
+
             return this;
         }
 

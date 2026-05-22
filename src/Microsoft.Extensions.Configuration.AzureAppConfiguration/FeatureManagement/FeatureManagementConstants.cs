@@ -13,6 +13,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public const string FeatureManagementSectionName = "feature_management";
         public const string FeatureFlagsSectionName = "feature_flags";
 
+        // Stride used when offsetting feature flag indices to avoid collisions between
+        // multiple Azure App Configuration providers writing to the same configuration
+        // section. The Nth provider on a configuration builder uses an offset of
+        // N * FeatureFlagIndexStride when emitting flags under the Microsoft schema.
+        public const int FeatureFlagIndexStride = 10000;
+
         // Feature flag properties
         public const string Id = "id";
         public const string Enabled = "enabled";

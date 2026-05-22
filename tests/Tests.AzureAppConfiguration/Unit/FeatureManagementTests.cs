@@ -2360,6 +2360,359 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Big", configWithoutEnvVar["feature_management:feature_flags:0:variants:0:name"]);
         }
 
+        [Fact]
+        public void FeatureFlagIndexOffset_SingleProvider_UsesNoOffset()
+        {
+            // Regression check: a single Azure App Configuration provider should still emit
+            // feature flags starting at index 0 under the Microsoft schema.
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { CreateMicrosoftSchemaFlag("FlagA") }));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            Assert.Equal("FlagA", config["feature_management:feature_flags:0:id"]);
+            Assert.Null(config[$"feature_management:feature_flags:{FeatureManagementConstants.FeatureFlagIndexStride}:id"]);
+        }
+
+        [Fact]
+        public void FeatureFlagIndexOffset_TwoProviders_SecondUsesStrideOffset()
+        {
+            // When two Azure App Configuration providers are registered on the same builder, the
+            // second one should offset its feature flag indices by FeatureFlagIndexStride so its
+            // flags do not collide with the first provider's flags during array merging.
+            var classicMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            classicMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("ClassicFlagA"),
+                    CreateMicrosoftSchemaFlag("ClassicFlagB")
+                }));
+
+            var newMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            newMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("NewFlagA"),
+                    CreateMicrosoftSchemaFlag("NewFlagB")
+                }));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(classicMock.Object);
+                    options.UseFeatureFlags();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(newMock.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Classic provider keeps indices 0, 1
+            Assert.Equal("ClassicFlagA", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("ClassicFlagB", config["feature_management:feature_flags:1:id"]);
+
+            // New provider shifted to indices 10000, 10001
+            int stride = FeatureManagementConstants.FeatureFlagIndexStride;
+            Assert.Equal("NewFlagA", config[$"feature_management:feature_flags:{stride}:id"]);
+            Assert.Equal("NewFlagB", config[$"feature_management:feature_flags:{stride + 1}:id"]);
+        }
+
+        [Fact]
+        public void FeatureFlagIndexOffset_ThreeProviders_IncrementingOffsets()
+        {
+            // Verify the offset scales linearly with provider registration position so that an
+            // arbitrary number of Azure App Configuration providers can coexist without index
+            // collisions, up to the per-provider stride.
+            ConfigurationClient MakeClient(string flagId)
+            {
+                var mock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+                mock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                    .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { CreateMicrosoftSchemaFlag(flagId) }));
+                return mock.Object;
+            }
+
+            ConfigurationClient client0 = MakeClient("Flag0");
+            ConfigurationClient client1 = MakeClient("Flag1");
+            ConfigurationClient client2 = MakeClient("Flag2");
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(client0);
+                    options.UseFeatureFlags();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(client1);
+                    options.UseFeatureFlags();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(client2);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            int stride = FeatureManagementConstants.FeatureFlagIndexStride;
+            Assert.Equal("Flag0", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("Flag1", config[$"feature_management:feature_flags:{stride}:id"]);
+            Assert.Equal("Flag2", config[$"feature_management:feature_flags:{2 * stride}:id"]);
+        }
+
+        [Fact]
+        public void FeatureFlagIndexOffset_DuplicateFlagIds_LaterProviderWins()
+        {
+            // Document and lock in the "new flag wins on duplicate" behavior that customers rely
+            // on during migration. Because the second provider's indices come after the first's,
+            // the Feature Management library's LastOrDefault resolution picks the second.
+            var classicMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            classicMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("Beta", enabled: false)
+                }));
+
+            var newMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            newMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("Beta", enabled: true)
+                }));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(classicMock.Object);
+                    options.UseFeatureFlags();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(newMock.Object);
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            int stride = FeatureManagementConstants.FeatureFlagIndexStride;
+
+            // Both providers emit the flag at distinct indices.
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("Beta", config[$"feature_management:feature_flags:{stride}:id"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:{stride}:enabled"]);
+        }
+
+        [Fact]
+        public void ConfigureFeatureFlags_NotEnabled_NoFlagsLoaded()
+        {
+            // The new API is fully opt-in: omitting fo.Enabled = true must not register any
+            // feature flag selectors or watchers, even if Select() was called.
+            var options = new AzureAppConfigurationOptions();
+            int baseSelectorCount = options.Selectors.Count();
+
+            options.ConfigureFeatureFlags(fo =>
+            {
+                // Enabled is intentionally left false.
+                fo.Select();
+                fo.ConfigureRefresh(ro =>
+                {
+                    ro.Enabled = true;
+                    ro.RefreshInterval = TimeSpan.FromMinutes(1);
+                });
+            });
+
+            Assert.Equal(baseSelectorCount, options.Selectors.Count());
+            Assert.Empty(options.FeatureFlagWatchers);
+        }
+
+        [Fact]
+        public void ConfigureFeatureFlags_Enabled_LoadsFlagsUnderMicrosoftSchema()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("NewFlagA"),
+                    CreateMicrosoftSchemaFlag("NewFlagB")
+                }));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureFeatureFlags(fo =>
+                    {
+                        fo.Enabled = true;
+                        fo.Select();
+                    });
+                })
+                .Build();
+
+            Assert.Equal("NewFlagA", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("NewFlagB", config["feature_management:feature_flags:1:id"]);
+        }
+
+        [Fact]
+        public void ConfigureFeatureFlags_ClassicProviderFirst_NewProviderApplyOffset()
+        {
+            // classic provider registered first via
+            // UseFeatureFlags, new provider registered second via ConfigureFeatureFlags. The
+            // new provider must pick up the FeatureFlagIndexStride offset automatically so its
+            // flags do not collide with the classic provider's.
+            var classicMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            classicMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("ClassicFlagA"),
+                    CreateMicrosoftSchemaFlag("ClassicFlagB")
+                }));
+
+            var newMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            newMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("NewFlagA"),
+                    CreateMicrosoftSchemaFlag("NewFlagB")
+                }));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(classicMock.Object);
+                    options.UseFeatureFlags();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(newMock.Object);
+                    options.ConfigureFeatureFlags(fo =>
+                    {
+                        fo.Enabled = true;
+                        fo.Select();
+                    });
+                })
+                .Build();
+
+            // Classic provider keeps the low indices.
+            Assert.Equal("ClassicFlagA", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("ClassicFlagB", config["feature_management:feature_flags:1:id"]);
+
+            // New provider shifted past the stride.
+            int stride = FeatureManagementConstants.FeatureFlagIndexStride;
+            Assert.Equal("NewFlagA", config[$"feature_management:feature_flags:{stride}:id"]);
+            Assert.Equal("NewFlagB", config[$"feature_management:feature_flags:{stride + 1}:id"]);
+        }
+
+        [Fact]
+        public void ConfigureFeatureFlags_DuplicateFlagId_NewProviderWins()
+        {
+            // The "register new provider after classic" guidance hinges on the new flag
+            // overriding the classic flag when ids collide. This locks in that behavior.
+            var classicMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            classicMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("Beta", enabled: false)
+                }));
+
+            var newMock = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            newMock.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateMicrosoftSchemaFlag("Beta", enabled: true)
+                }));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(classicMock.Object);
+                    options.UseFeatureFlags();
+                })
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ConfigureConnection("Endpoint=https://example.azconfig.io;Id=Foo;Secret=Zm9v");
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(newMock.Object);
+                    options.ConfigureFeatureFlags(fo =>
+                    {
+                        fo.Enabled = true;
+                        fo.Select();
+                    });
+                })
+                .Build();
+
+            int stride = FeatureManagementConstants.FeatureFlagIndexStride;
+
+            // Both occurrences are emitted at distinct indices so the Feature Management library's
+            // LastOrDefault deduplication picks the newer flag.
+            Assert.Equal("Beta", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Equal("Beta", config[$"feature_management:feature_flags:{stride}:id"]);
+            Assert.Equal("True", config[$"feature_management:feature_flags:{stride}:enabled"]);
+        }
+
+        [Fact]
+        public void ConfigureFeatureFlags_LabelAndSelectMutuallyExclusive_Throws()
+        {
+            // Mirror the existing UseFeatureFlags validation: callers cannot mix Label with Select.
+            var options = new AzureAppConfigurationOptions();
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                options.ConfigureFeatureFlags(fo =>
+                {
+                    fo.Enabled = true;
+                    fo.Label = "prod";
+                    fo.Select("MyApp*");
+                }));
+
+            Assert.Contains(nameof(FeatureFlagOptions2.Select), ex.Message);
+            Assert.Contains(nameof(FeatureFlagOptions2.Label), ex.Message);
+        }
+
+        [Fact]
+        public void ConfigureFeatureFlags_RefreshIntervalTooShort_Throws()
+        {
+            // Refresh validation parity with UseFeatureFlags: a sub-minimum interval must throw.
+            var options = new AzureAppConfigurationOptions();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                options.ConfigureFeatureFlags(fo =>
+                {
+                    fo.Enabled = true;
+                    fo.ConfigureRefresh(ro =>
+                    {
+                        ro.Enabled = true;
+                        ro.RefreshInterval = TimeSpan.FromMilliseconds(1);
+                    });
+                }));
+        }
+
+        private static ConfigurationSetting CreateMicrosoftSchemaFlag(string id, bool enabled = true)
+        {
+            // A non-null telemetry block forces the adapter to emit under the Microsoft schema,
+            // which is the schema affected by the index offset strategy.
+            return ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + id,
+                value: $@"
+                        {{
+                            ""id"": ""{id}"",
+                            ""enabled"": {enabled.ToString().ToLowerInvariant()},
+                            ""telemetry"": {{
+                                ""enabled"": true
+                            }}
+                        }}
+                        ",
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag("c3c231fd-39a0-4cb6-3237-4614474b92c1"));
+        }
+
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
         {
             return Response.FromValue(FirstKeyValue, new MockResponse(200));
