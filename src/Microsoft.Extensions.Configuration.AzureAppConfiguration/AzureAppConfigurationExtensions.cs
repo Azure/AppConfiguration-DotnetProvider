@@ -2,11 +2,14 @@
 // Licensed under the MIT license.
 //
 using Azure.Core;
+using Azure.Data.AppConfiguration;
+using Azure.Identity;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Extensions.Configuration
 {
@@ -100,6 +103,80 @@ namespace Microsoft.Extensions.Configuration
             }
 
             return configurationBuilder;
+        }
+
+        /// <summary>
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// The <see cref="ConfigurationClient"/> is created from the specified configuration section using
+        /// <see cref="ConfigurationClientSettings"/>.
+        /// </summary>
+        /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
+        /// <param name="sectionName">The name of the configuration section that contains the <see cref="ConfigurationClientSettings"/>.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.
+        /// <exception cref="ArgumentException"/> will always be thrown when the caller gives an invalid input configuration (connection strings, endpoints, key/label filters...etc).
+        /// </param>
+        /// <returns>The provided configuration builder.</returns>
+        /// <remarks>
+        /// For more information on configuring Azure clients from configuration, see
+        /// <see href="https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/core/Azure.Core/src/docs/ConfigurationAndDependencyInjection.md">Configuration and Dependency Injection</see>.
+        /// </remarks>
+        [Experimental("SCME0002")]
+        public static IConfigurationBuilder AddAppConfigurations(
+            this IConfigurationBuilder configurationBuilder,
+            string sectionName,
+            bool optional = false)
+        {
+            return AddAppConfigurations(configurationBuilder, sectionName, null, optional);
+        }
+
+        /// <summary>
+        /// Adds key-value data from an Azure App Configuration store to a configuration builder.
+        /// The <see cref="ConfigurationClient"/> is created from the specified configuration section using
+        /// <see cref="ConfigurationClientSettings"/>. The <paramref name="action"/> callback can be used
+        /// to further configure the provider (e.g., selecting keys, configuring refresh, using feature flags).
+        /// </summary>
+        /// <param name="configurationBuilder">The configuration builder to add key-values to.</param>
+        /// <param name="sectionName">The name of the configuration section that contains the <see cref="ConfigurationClientSettings"/>.</param>
+        /// <param name="action">An optional callback used to configure Azure App Configuration options.</param>
+        /// <param name="optional">Determines the behavior of the App Configuration provider when an exception occurs while loading data from server. If false, the exception is thrown. If true, the exception is suppressed and no settings are populated from Azure App Configuration.
+        /// <exception cref="ArgumentException"/> will always be thrown when the caller gives an invalid input configuration (connection strings, endpoints, key/label filters...etc).
+        /// </param>
+        /// <returns>The provided configuration builder.</returns>
+        /// <remarks>
+        /// For more information on configuring Azure clients from configuration, see
+        /// <see href="https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/core/Azure.Core/src/docs/ConfigurationAndDependencyInjection.md">Configuration and Dependency Injection</see>.
+        /// </remarks>
+        [Experimental("SCME0002")]
+        public static IConfigurationBuilder AddAppConfigurations(
+            this IConfigurationBuilder configurationBuilder,
+            string sectionName,
+            Action<AzureAppConfigurationOptions> action,
+            bool optional = false)
+        {
+            if (configurationBuilder == null)
+            {
+                throw new ArgumentNullException(nameof(configurationBuilder));
+            }
+
+            if (string.IsNullOrEmpty(sectionName))
+            {
+                throw new ArgumentException("Value cannot be null or empty.", nameof(sectionName));
+            }
+
+            if (_isProviderDisabled)
+            {
+                return configurationBuilder;
+            }
+
+            IConfiguration configuration = configurationBuilder.Build();
+            ConfigurationClientSettings settings = configuration.GetAzureClientSettings<ConfigurationClientSettings>(sectionName);
+            TokenCredential credential = (TokenCredential)settings.CredentialProvider;
+
+            return configurationBuilder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(settings.Endpoint, credential);
+                action?.Invoke(options);
+            }, optional);
         }
 
         /// <summary>
