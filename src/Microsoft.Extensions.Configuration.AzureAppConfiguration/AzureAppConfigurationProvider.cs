@@ -628,67 +628,56 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             bool parallelSecretResolution = _options.IsParallelSecretResolutionEnabled;
 
-            if (parallelSecretResolution)
+            // Only Key Vault references perform network I/O during adapter processing; other
+            // adapters complete synchronously. When parallel resolution is enabled, Key Vault
+            // references are dispatched concurrently while non-Key Vault settings are processed
+            // inline. Results are merged once at the end.
+            var results = new List<IEnumerable<KeyValuePair<string, string>>>(data.Count);
+            List<Task<IEnumerable<KeyValuePair<string, string>>>> pendingKeyVaultTasks = parallelSecretResolution
+                ? new List<Task<IEnumerable<KeyValuePair<string, string>>>>()
+                : null;
+
+            foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
-                // Only Key Vault references perform network I/O during adapter processing; other
-                // adapters complete synchronously. To avoid the overhead of wrapping non-I/O work
-                // in tasks, only Key Vault references are dispatched concurrently. Non-Key Vault
-                // settings are processed inline in their original order; their results, along with
-                // those of the in-flight Key Vault tasks, are merged in insertion order to preserve
-                // prefix-stripping and last-write-wins behavior.
-                var results = new IEnumerable<KeyValuePair<string, string>>[data.Count];
-                var pendingKeyVaultTasks = new List<(int Index, Task<IEnumerable<KeyValuePair<string, string>>> Task)>();
-
-                int index = 0;
-
-                foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
+                if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
-                    if (_requestTracingEnabled && _requestTracingOptions != null)
-                    {
-                        _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
-                    }
-
-                    if (IsKeyVaultReference(kvp.Value))
-                    {
-                        pendingKeyVaultTasks.Add((index, ProcessAdapters(kvp.Value, cancellationToken)));
-                    }
-                    else
-                    {
-                        results[index] = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
-                    }
-
-                    index++;
+                    _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
                 }
 
-                if (pendingKeyVaultTasks.Count > 0)
+                if (parallelSecretResolution && IsKeyVaultReference(kvp.Value))
                 {
-                    await Task.WhenAll(pendingKeyVaultTasks.Select(p => p.Task)).ConfigureAwait(false);
-
-                    foreach ((int Index, Task<IEnumerable<KeyValuePair<string, string>>> Task) entry in pendingKeyVaultTasks)
-                    {
-                        results[entry.Index] = entry.Task.Result;
-                    }
+                    pendingKeyVaultTasks.Add(ProcessAdapters(kvp.Value, cancellationToken));
                 }
-
-                foreach (IEnumerable<KeyValuePair<string, string>> keyValuePairs in results)
+                else
                 {
-                    MergeIntoApplicationData(applicationData, keyValuePairs);
+                    results.Add(await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false));
                 }
             }
-            else
-            {
-                foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
-                {
-                    IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
 
-                    if (_requestTracingEnabled && _requestTracingOptions != null)
+            if (pendingKeyVaultTasks?.Count > 0)
+            {
+                IEnumerable<KeyValuePair<string, string>>[] keyVaultResults =
+                    await Task.WhenAll(pendingKeyVaultTasks).ConfigureAwait(false);
+
+                results.AddRange(keyVaultResults);
+            }
+
+            foreach (IEnumerable<KeyValuePair<string, string>> keyValuePairs in results)
+            {
+                foreach (KeyValuePair<string, string> kv in keyValuePairs)
+                {
+                    string key = kv.Key;
+
+                    foreach (string prefix in _options.KeyPrefixes)
                     {
-                        _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
+                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            key = key.Substring(prefix.Length);
+                            break;
+                        }
                     }
 
-                    keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
-
-                    MergeIntoApplicationData(applicationData, keyValuePairs);
+                    applicationData[key] = kv.Value;
                 }
             }
 
@@ -699,25 +688,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return setting.ContentType.TryParseContentType(out ContentType contentType)
                 && contentType.IsKeyVaultReference();
-        }
-
-        private void MergeIntoApplicationData(Dictionary<string, string> applicationData, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
-        {
-            foreach (KeyValuePair<string, string> kv in keyValuePairs)
-            {
-                string key = kv.Key;
-
-                foreach (string prefix in _options.KeyPrefixes)
-                {
-                    if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        key = key.Substring(prefix.Length);
-                        break;
-                    }
-                }
-
-                applicationData[key] = kv.Value;
-            }
         }
 
         private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
