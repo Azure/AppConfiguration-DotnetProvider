@@ -625,19 +625,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _requestTracingOptions.ResetAiConfigurationTracing();
             }
 
-            bool parallelSecretResolution = _options.IsParallelSecretResolutionEnabled;
-
-            // Only Key Vault references perform network I/O during adapter processing; other
-            // adapters complete synchronously. When parallel resolution is enabled, Key Vault
-            // references are dispatched concurrently while non-Key Vault settings are processed
-            // inline. Results are slotted by index so that the original ordering of settings
-            // (and the selector precedence it encodes) is preserved.
-            var results = new IEnumerable<KeyValuePair<string, string>>[data.Count];
-            List<(int Index, Task<IEnumerable<KeyValuePair<string, string>>> Task)> pendingKeyVaultTasks = parallelSecretResolution
-                ? new List<(int, Task<IEnumerable<KeyValuePair<string, string>>>)>()
-                : null;
-
-            int index = 0;
+            // When parallel secret resolution is enabled, let each adapter pre-warm its caches
+            // (Key Vault references are dispatched concurrently here) so the sequential loop below
+            // can process settings in the original order without losing precedence on key collisions.
+            if (_options.IsParallelSecretResolutionEnabled)
+            {
+                await Task.WhenAll(
+                    _options.Adapters.Select(adapter =>
+                        adapter.PreloadAsync(data.Values, _logger, cancellationToken)))
+                    .ConfigureAwait(false);
+            }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
@@ -646,30 +643,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
                 }
 
-                if (parallelSecretResolution && kvp.Value.IsKeyVaultReference())
-                {
-                    pendingKeyVaultTasks.Add((index, ProcessAdapters(kvp.Value, cancellationToken)));
-                }
-                else
-                {
-                    results[index] = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
-                }
+                IEnumerable<KeyValuePair<string, string>> keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
 
-                index++;
-            }
-
-            if (pendingKeyVaultTasks?.Count > 0)
-            {
-                await Task.WhenAll(pendingKeyVaultTasks.Select(p => p.Task)).ConfigureAwait(false);
-
-                foreach ((int Index, Task<IEnumerable<KeyValuePair<string, string>>> Task) entry in pendingKeyVaultTasks)
-                {
-                    results[entry.Index] = entry.Task.Result;
-                }
-            }
-
-            foreach (IEnumerable<KeyValuePair<string, string>> keyValuePairs in results)
-            {
                 foreach (KeyValuePair<string, string> kv in keyValuePairs)
                 {
                     string key = kv.Key;

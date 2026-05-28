@@ -112,6 +112,79 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             return _secretProvider.ShouldRefreshKeyVaultSecrets();
         }
 
+        public async Task PreloadAsync(IEnumerable<ConfigurationSetting> settings, Logger logger, CancellationToken cancellationToken)
+        {
+            if (settings == null)
+            {
+                return;
+            }
+
+            HashSet<Uri> seen = null;
+            List<(KeyVaultSecretIdentifier Identifier, string Key, string Label)> toFetch = null;
+
+            foreach (ConfigurationSetting setting in settings)
+            {
+                if (!CanProcess(setting))
+                {
+                    continue;
+                }
+
+                string secretRefUri = ParseSecretReferenceUri(setting);
+
+                if (string.IsNullOrEmpty(secretRefUri) ||
+                    !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) ||
+                    !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
+                {
+                    // Invalid references are surfaced from ProcessKeyValue with full exception context.
+                    continue;
+                }
+
+                seen = seen ?? new HashSet<Uri>();
+
+                if (!seen.Add(secretIdentifier.SourceId))
+                {
+                    continue;
+                }
+
+                toFetch = toFetch ?? new List<(KeyVaultSecretIdentifier, string, string)>();
+                toFetch.Add((secretIdentifier, setting.Key, setting.Label));
+            }
+
+            if (toFetch == null)
+            {
+                return;
+            }
+
+            var tasks = new Task[toFetch.Count];
+
+            for (int i = 0; i < toFetch.Count; i++)
+            {
+                (KeyVaultSecretIdentifier identifier, string key, string label) = toFetch[i];
+                tasks[i] = PreloadSecretAsync(identifier, key, label, logger, cancellationToken);
+            }
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+
+        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, string key, string label, Logger logger, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _secretProvider.GetSecretValue(identifier, key, label, logger, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Per-secret failures are deferred so ProcessKeyValue can throw a properly populated
+                // KeyVaultReferenceException. Evict the negative cache entry written by GetSecretValue
+                // so the retry actually re-fetches instead of returning a cached null within the backoff.
+                _secretProvider.RemoveSecretFromCache(identifier.SourceId);
+            }
+        }
+
         private string ParseSecretReferenceUri(ConfigurationSetting setting)
         {
             string secretRefUri = null;

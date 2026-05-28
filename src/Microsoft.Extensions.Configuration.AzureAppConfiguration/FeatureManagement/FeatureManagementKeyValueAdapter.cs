@@ -87,6 +87,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return;
         }
 
+        public Task PreloadAsync(IEnumerable<ConfigurationSetting> settings, Logger logger, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
         private List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
