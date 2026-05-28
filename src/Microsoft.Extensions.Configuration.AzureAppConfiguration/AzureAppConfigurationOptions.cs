@@ -137,17 +137,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
         /// </summary>
-        internal bool IsKeyVaultConfigured { get; private set; } = false;
+        internal bool IsKeyVaultConfigured { get; private set; }
 
         /// <summary>
         /// Flag to indicate whether Key Vault secret values will be refreshed automatically.
         /// </summary>
-        internal bool IsKeyVaultRefreshConfigured { get; private set; } = false;
+        internal bool IsKeyVaultRefreshConfigured { get; private set; }
 
         /// <summary>
         /// Flag to indicate whether Key Vault references should be resolved in parallel.
         /// </summary>
-        internal bool IsParallelSecretResolutionEnabled { get; private set; } = false;
+        internal bool IsParallelSecretResolutionEnabled { get; private set; }
 
         /// <summary>
         /// Indicates all feature flag features used by the application.

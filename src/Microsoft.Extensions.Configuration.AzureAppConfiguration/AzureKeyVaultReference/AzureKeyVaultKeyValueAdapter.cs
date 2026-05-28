@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Mime;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,15 +74,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            if (setting == null ||
-                string.IsNullOrWhiteSpace(setting.Value) ||
-                string.IsNullOrWhiteSpace(setting.ContentType))
+            if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
             {
                 return false;
             }
 
-            return setting.ContentType.TryParseContentType(out ContentType contentType)
-                && contentType.IsKeyVaultReference();
+            return setting.IsKeyVaultReference();
         }
 
         public void OnChangeDetected(ConfigurationSetting setting = null)
