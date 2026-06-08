@@ -625,15 +625,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _requestTracingOptions.ResetAiConfigurationTracing();
             }
 
-            // When parallel secret resolution is enabled, let each adapter pre-warm its caches
-            // (Key Vault references are dispatched concurrently here) so the sequential loop below
-            // can process settings in the original order without losing precedence on key collisions.
-            if (_options.IsParallelSecretResolutionEnabled)
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                await Task.WhenAll(
-                    _options.Adapters.Select(adapter =>
-                        adapter.PreloadAsync(data.Values, _logger, cancellationToken)))
-                    .ConfigureAwait(false);
+                await adapter.PreloadAsync(data.Values, _logger, cancellationToken).ConfigureAwait(false);
             }
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)

@@ -17,6 +17,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         private readonly ConcurrentDictionary<string, SecretClient> _secretClients;
         private readonly ConcurrentDictionary<Uri, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
 
+        public bool IsParallelSecretResolutionEnabled => _keyVaultOptions.ParallelSecretResolutionEnabled;
+
         public AzureKeyVaultSecretProvider(AzureAppConfigurationKeyVaultOptions keyVaultOptions = null)
         {
             _keyVaultOptions = keyVaultOptions ?? new AzureAppConfigurationKeyVaultOptions();

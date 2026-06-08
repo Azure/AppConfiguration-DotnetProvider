@@ -32,9 +32,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured = false;
 
         /// <summary>
-        /// Specifies whether Key Vault references should be resolved in parallel.
-        /// Default value is false. Enabling this can reduce the time required to resolve Key Vault references
-        /// when many references are loaded from Azure App Configuration.
+        /// Flag to indicate whether Key Vault references should be resolved in parallel. Disabled by default.
         /// </summary>
         public bool ParallelSecretResolutionEnabled { get; set; }
 

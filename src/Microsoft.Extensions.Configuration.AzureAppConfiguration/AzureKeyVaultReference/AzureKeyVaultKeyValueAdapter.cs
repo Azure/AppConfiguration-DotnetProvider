@@ -114,7 +114,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public async Task PreloadAsync(IEnumerable<ConfigurationSetting> settings, Logger logger, CancellationToken cancellationToken)
         {
-            if (settings == null)
+            if (settings == null || !_secretProvider.IsParallelSecretResolutionEnabled)
             {
                 return;
             }
