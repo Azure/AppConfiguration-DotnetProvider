@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mime;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,7 +80,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return false;
             }
 
-            return setting.IsKeyVaultReference();
+            return setting.ContentType.TryParseContentType(out ContentType contentType)
+                && contentType.IsKeyVaultReference();
         }
 
         public void OnChangeDetected(ConfigurationSetting setting = null)
@@ -114,7 +116,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public async Task PreloadAsync(IEnumerable<ConfigurationSetting> settings, Logger logger, CancellationToken cancellationToken)
         {
-            if (settings == null || !_secretProvider.IsParallelSecretResolutionEnabled)
+            if (settings == null)
             {
                 return;
             }
@@ -155,19 +157,37 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return;
             }
 
-            var tasks = new Task[toFetch.Count];
-
-            for (int i = 0; i < toFetch.Count; i++)
+            if (_secretProvider.IsParallelSecretResolutionEnabled)
             {
-                (KeyVaultSecretIdentifier identifier, string key, string label) = toFetch[i];
-                tasks[i] = PreloadSecretAsync(identifier, key, label, logger, cancellationToken);
-            }
+                using (var throttle = new SemaphoreSlim(KeyVaultConstants.MaxParallelSecretResolution))
+                {
+                    var tasks = new Task[toFetch.Count];
 
-            await Task.WhenAll(tasks).ConfigureAwait(false);
+                    for (int i = 0; i < toFetch.Count; i++)
+                    {
+                        (KeyVaultSecretIdentifier identifier, string key, string label) = toFetch[i];
+                        tasks[i] = PreloadSecretAsync(identifier, key, label, throttle, logger, cancellationToken);
+                    }
+
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                foreach ((KeyVaultSecretIdentifier identifier, string key, string label) in toFetch)
+                {
+                    await PreloadSecretAsync(identifier, key, label, throttle: null, logger, cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
 
-        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, string key, string label, Logger logger, CancellationToken cancellationToken)
+        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, string key, string label, SemaphoreSlim throttle, Logger logger, CancellationToken cancellationToken)
         {
+            if (throttle != null)
+            {
+                await throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             try
             {
                 await _secretProvider.GetSecretValue(identifier, key, label, logger, cancellationToken).ConfigureAwait(false);
@@ -182,6 +202,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 // KeyVaultReferenceException. Evict the negative cache entry written by GetSecretValue
                 // so the retry actually re-fetches instead of returning a cached null within the backoff.
                 _secretProvider.RemoveSecretFromCache(identifier.SourceId);
+            }
+            finally
+            {
+                throttle?.Release();
             }
         }
 
