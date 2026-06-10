@@ -75,7 +75,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
         public bool CanProcess(ConfigurationSetting setting)
         {
-            if (setting == null || string.IsNullOrWhiteSpace(setting.Value))
+            if (setting == null ||
+                string.IsNullOrWhiteSpace(setting.Value) ||
+                string.IsNullOrWhiteSpace(setting.ContentType))
             {
                 return false;
             }
@@ -122,7 +124,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             HashSet<Uri> seen = null;
-            List<(KeyVaultSecretIdentifier Identifier, string Key, string Label)> toFetch = null;
+            List<(KeyVaultSecretIdentifier Identifier, ConfigurationSetting Setting, string SecretRefUri)> toFetch = null;
 
             foreach (ConfigurationSetting setting in settings)
             {
@@ -137,8 +139,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) ||
                     !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
                 {
-                    // Invalid references are surfaced from ProcessKeyValue with full exception context.
-                    continue;
+                    throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
                 }
 
                 seen = seen ?? new HashSet<Uri>();
@@ -148,8 +149,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     continue;
                 }
 
-                toFetch = toFetch ?? new List<(KeyVaultSecretIdentifier, string, string)>();
-                toFetch.Add((secretIdentifier, setting.Key, setting.Label));
+                toFetch = toFetch ?? new List<(KeyVaultSecretIdentifier, ConfigurationSetting, string)>();
+                toFetch.Add((secretIdentifier, setting, secretRefUri));
             }
 
             if (toFetch == null)
@@ -165,8 +166,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
                     for (int i = 0; i < toFetch.Count; i++)
                     {
-                        (KeyVaultSecretIdentifier identifier, string key, string label) = toFetch[i];
-                        tasks[i] = PreloadSecretAsync(identifier, key, label, throttle, logger, cancellationToken);
+                        (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[i];
+                        tasks[i] = PreloadSecretAsync(identifier, setting, secretRefUri, throttle, logger, cancellationToken);
                     }
 
                     await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -174,14 +175,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             else
             {
-                foreach ((KeyVaultSecretIdentifier identifier, string key, string label) in toFetch)
+                foreach ((KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) in toFetch)
                 {
-                    await PreloadSecretAsync(identifier, key, label, throttle: null, logger, cancellationToken).ConfigureAwait(false);
+                    await PreloadSecretAsync(identifier, setting, secretRefUri, throttle: null, logger, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
 
-        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, string key, string label, SemaphoreSlim throttle, Logger logger, CancellationToken cancellationToken)
+        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri, SemaphoreSlim throttle, Logger logger, CancellationToken cancellationToken)
         {
             if (throttle != null)
             {
@@ -190,18 +191,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             try
             {
-                await _secretProvider.GetSecretValue(identifier, key, label, logger, cancellationToken).ConfigureAwait(false);
+                await _secretProvider.GetSecretValue(identifier, setting.Key, setting.Label, logger, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 throw;
             }
-            catch
+            catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
-                // Per-secret failures are deferred so ProcessKeyValue can throw a properly populated
-                // KeyVaultReferenceException. Evict the negative cache entry written by GetSecretValue
-                // so the retry actually re-fetches instead of returning a cached null within the backoff.
-                _secretProvider.RemoveSecretFromCache(identifier.SourceId);
+                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRefUri);
+            }
+            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+            {
+                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRefUri);
             }
             finally
             {
