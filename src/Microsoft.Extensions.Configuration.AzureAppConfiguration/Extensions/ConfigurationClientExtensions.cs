@@ -121,5 +121,54 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             // Need to check if pages were deleted and no change was found within the new shorter list of page
             return existingPageWatcherEnumerator.MoveNext();
         }
+
+        public static async Task<bool> HaveFeatureFlagsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        {
+            if (matchConditions == null)
+            {
+                throw new ArgumentNullException(nameof(matchConditions));
+            }
+
+            if (keyValueSelector == null)
+            {
+                throw new ArgumentNullException(nameof(keyValueSelector));
+            }
+
+            // The selector-based GetFeatureFlagsAsync overload does not expose per-page conditional
+            // request headers, so change detection here is "fetch and compare ETags" rather than the
+            // 304-based fast path used by HaveCollectionsChanged. If the SDK adds conditional support
+            // for the new endpoint, this should be reworked to issue If-None-Match per page.
+            var selector = new FeatureFlagSelector
+            {
+                NameFilter = keyValueSelector.KeyFilter,
+                LabelFilter = keyValueSelector.LabelFilter
+            };
+
+            if (keyValueSelector.TagFilters != null)
+            {
+                foreach (string tag in keyValueSelector.TagFilters)
+                {
+                    selector.TagsFilter.Add(tag);
+                }
+            }
+
+            using IEnumerator<MatchConditions> existingEnumerator = matchConditions.GetEnumerator();
+
+            AsyncPageable<FeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
+
+            await foreach (Page<FeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
+            {
+                using Response response = page.GetRawResponse();
+
+                if (!existingEnumerator.MoveNext() ||
+                    !existingEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag))
+                {
+                    return true;
+                }
+            }
+
+            // More pages were previously known than the server returned now (collection shrank).
+            return existingEnumerator.MoveNext();
+        }
     }
 }
