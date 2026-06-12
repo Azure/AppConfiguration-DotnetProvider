@@ -39,6 +39,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public bool IsFeatureFlagSelector { get; set; }
 
         /// <summary>
+        /// A boolean that signifies whether this selector targets the new feature-flag endpoint
+        /// (<c>ConfigurationClient.GetFeatureFlagsAsync</c>) rather than the classic
+        /// ".appconfig.featureflag/" key-value namespace.
+        /// </summary>
+        public bool IsNewFeatureFlagSelector { get; set; }
+
+        /// <summary>
         /// Determines whether the specified object is equal to the current object.
         /// </summary>
         /// <param name="obj">The object to compare with the current object.</param>
@@ -53,7 +60,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                     && (TagFilters == null
                             ? selector.TagFilters == null
                             : selector.TagFilters != null && new HashSet<string>(TagFilters).SetEquals(selector.TagFilters))
-                    && IsFeatureFlagSelector == selector.IsFeatureFlagSelector;
+                    && IsFeatureFlagSelector == selector.IsFeatureFlagSelector
+                    && IsNewFeatureFlagSelector == selector.IsNewFeatureFlagSelector;
             }
 
             return false;
@@ -80,7 +88,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 LabelFilter,
                 SnapshotName,
                 tagFiltersString,
-                IsFeatureFlagSelector);
+                IsFeatureFlagSelector,
+                IsNewFeatureFlagSelector);
         }
     }
 }

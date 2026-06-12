@@ -36,6 +36,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         public string Label { get; set; }
 
         /// <summary>
+        /// When set to true, classic feature flags (key-values whose key is prefixed with
+        /// ".appconfig.featureflag/") are not loaded from the configuration store. Only feature flags
+        /// returned by the new feature-flag endpoint will be loaded.
+        /// Defaults to false; classic flags are loaded alongside new flags for backward compatibility.
+        /// </summary>
+        public bool ExcludeClassicFeatureFlags { get; set; } = false;
+
+        /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.
         /// </summary>
         [Obsolete("The " + nameof(CacheExpirationInterval) + " property is deprecated and will be removed in a future release. " +

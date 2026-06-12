@@ -330,14 +330,52 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
             {
-                _selectors.AppendUnique(featureFlagSelector);
+                // Classic feature flags: register the selector and a watcher only when classic flags are not excluded.
+                if (!options.ExcludeClassicFeatureFlags)
+                {
+                    _selectors.AppendUnique(featureFlagSelector);
+
+                    _ffWatchers.AppendUnique(new KeyValueWatcher
+                    {
+                        Key = featureFlagSelector.KeyFilter,
+                        Label = featureFlagSelector.LabelFilter,
+                        Tags = featureFlagSelector.TagFilters,
+                        // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
+                        RefreshInterval = options.RefreshInterval
+                    });
+                }
+
+                // New feature flags: always register. Strip the ".appconfig.featureflag/" prefix that
+                // FeatureFlagOptions.Select() adds, because the new feature-flag endpoint takes a raw name filter.
+                string nameFilter = featureFlagSelector.KeyFilter;
+
+                if (!string.IsNullOrEmpty(nameFilter) && nameFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker, StringComparison.Ordinal))
+                {
+                    nameFilter = nameFilter.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
+                }
+
+                // The new endpoint uses null to mean "any name". A bare "*" is equivalent.
+                if (string.IsNullOrEmpty(nameFilter) || nameFilter == "*")
+                {
+                    nameFilter = null;
+                }
+
+                var newFfSelector = new KeyValueSelector
+                {
+                    KeyFilter = nameFilter,
+                    LabelFilter = featureFlagSelector.LabelFilter,
+                    TagFilters = featureFlagSelector.TagFilters,
+                    IsNewFeatureFlagSelector = true
+                };
+
+                _selectors.AppendUnique(newFfSelector);
 
                 _ffWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    Key = featureFlagSelector.KeyFilter,
+                    Key = nameFilter,
                     Label = featureFlagSelector.LabelFilter,
                     Tags = featureFlagSelector.TagFilters,
-                    // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
+                    IsNewFeatureFlagWatcher = true,
                     RefreshInterval = options.RefreshInterval
                 });
             }
@@ -596,7 +634,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_11_01);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2026_05_01_Preview);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
