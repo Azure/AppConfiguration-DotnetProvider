@@ -24,15 +24,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             string json = SerializeFeatureManagementJson(featureFlag);
             ETag etag = string.IsNullOrEmpty(featureFlag.Etag) ? default : new ETag(featureFlag.Etag);
 
-            // Disambiguates between the two `ConfigurationModelFactory.ConfigurationSetting` overloads
-            // by passing `tags` (only present on the 9-arg generated overload).
-            return ConfigurationModelFactory.ConfigurationSetting(
+            ConfigurationSetting setting = ConfigurationModelFactory.ConfigurationSetting(
                 key: key,
                 value: json,
                 label: featureFlag.Label,
                 contentType: FeatureManagementConstants.ContentType,
-                eTag: etag,
-                tags: featureFlag.Tags);
+                eTag: etag);
+
+            if (featureFlag.Tags != null)
+            {
+                foreach (KeyValuePair<string, string> tag in featureFlag.Tags)
+                {
+                    setting.Tags[tag.Key] = tag.Value;
+                }
+            }
+
+            return setting;
         }
 
         private static string SerializeFeatureManagementJson(SdkFeatureFlag ff)
