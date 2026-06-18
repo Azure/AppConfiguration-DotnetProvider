@@ -354,12 +354,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     nameFilter = nameFilter.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
                 }
 
-                // The new endpoint uses null to mean "any name". A bare "*" is equivalent.
-                if (string.IsNullOrEmpty(nameFilter) || nameFilter == "*")
-                {
-                    nameFilter = null;
-                }
-
                 var newFfSelector = new KeyValueSelector
                 {
                     KeyFilter = nameFilter,
