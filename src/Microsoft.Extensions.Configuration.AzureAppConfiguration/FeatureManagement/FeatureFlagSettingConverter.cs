@@ -119,10 +119,53 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             if (filter.Parameters != null && filter.Parameters.Count > 0)
             {
                 writer.WritePropertyName(FeatureManagementConstants.Parameters);
-                JsonSerializer.Serialize(writer, filter.Parameters);
+                writer.WriteStartObject();
+
+                foreach (KeyValuePair<string, object> kvp in filter.Parameters)
+                {
+                    writer.WritePropertyName(kvp.Key);
+                    WriteFilterParameterValue(writer, kvp.Value);
+                }
+
+                writer.WriteEndObject();
             }
 
             writer.WriteEndObject();
+        }
+
+        // Parameter values are JSON-encoded strings rather than nested structures, embed the parsed JSON so downstream flattening produces the per-leaf keys
+        // (e.g. Audience:Users:0) that feature-management filters expect to bind against.
+        private static void WriteFilterParameterValue(Utf8JsonWriter writer, object value)
+        {
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+
+            if (value is string s)
+            {
+                string trimmed = s.TrimStart();
+
+                if (trimmed.Length > 0 && (trimmed[0] == '{' || trimmed[0] == '['))
+                {
+                    try
+                    {
+                        using JsonDocument doc = JsonDocument.Parse(s);
+                        doc.RootElement.WriteTo(writer);
+                        return;
+                    }
+                    catch (JsonException)
+                    {
+                        // Fall through and write the original literal string.
+                    }
+                }
+
+                writer.WriteStringValue(s);
+                return;
+            }
+
+            JsonSerializer.Serialize(writer, value);
         }
 
         private static void WriteVariant(Utf8JsonWriter writer, FeatureFlagVariantDefinition variant)
