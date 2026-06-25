@@ -30,12 +30,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         public bool RefreshAll { get; set; }
 
         /// <summary>
-        /// True when this watcher targets the new feature-flag endpoint instead of the classic
-        /// ".appconfig.featureflag/" key-value namespace.
-        /// </summary>
-        public bool IsNewFeatureFlagWatcher { get; set; }
-
-        /// <summary>
         /// The minimum time that must elapse before the key-value is refreshed.
         /// </summary>
         public TimeSpan RefreshInterval { get; set; }

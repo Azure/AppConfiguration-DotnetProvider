@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using FeatureFlagSelector = Microsoft.Extensions.Configuration.AzureAppConfiguration.Models.FeatureFlagSelector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,6 +30,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
+        private List<FeatureFlagSelector> _ffSelectors = new List<FeatureFlagSelector>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
         private List<KeyValueSelector> _selectors;
@@ -90,6 +92,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// A collection of <see cref="KeyValueWatcher"/>.
         /// </summary>
         internal IEnumerable<KeyValueWatcher> FeatureFlagWatchers => _ffWatchers;
+
+        /// <summary>
+        /// A collection of <see cref="FeatureFlagSelector"/> used to select feature flags.
+        /// </summary>
+        internal IEnumerable<FeatureFlagSelector> FeatureFlagSelectors => _ffSelectors;
+
+        /// <summary>
+        /// When set to true, classic feature flags (key-values prefixed with ".appconfig.featureflag/")
+        /// are not loaded from the configuration store. Only feature flags returned by the standalone
+        /// feature-flag endpoint will be loaded.
+        /// </summary>
+        internal bool ExcludeClassicFeatureFlags { get; private set; }
 
         /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
@@ -317,59 +331,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
 
+            ExcludeClassicFeatureFlags = options.ExcludeClassicFeatureFlags;
+
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
-                options.FeatureFlagSelectors.Add(new KeyValueSelector
+                options.FeatureFlagSelectors.Add(new FeatureFlagSelector
                 {
-                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label,
-                    IsFeatureFlagSelector = true
+                    NameFilter = KeyFilter.Any,
+                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label
                 });
             }
 
-            foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
+            foreach (FeatureFlagSelector featureFlagSelector in options.FeatureFlagSelectors)
             {
-                // Classic feature flags: register the selector and a watcher only when classic flags are not excluded.
-                if (!options.ExcludeClassicFeatureFlags)
-                {
-                    _selectors.AppendUnique(featureFlagSelector);
-
-                    _ffWatchers.AppendUnique(new KeyValueWatcher
-                    {
-                        Key = featureFlagSelector.KeyFilter,
-                        Label = featureFlagSelector.LabelFilter,
-                        Tags = featureFlagSelector.TagFilters,
-                        // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
-                        RefreshInterval = options.RefreshInterval
-                    });
-                }
-
-                // New feature flags: always register. Strip the ".appconfig.featureflag/" prefix that
-                // FeatureFlagOptions.Select() adds, because the new feature-flag endpoint takes a raw name filter.
-                string nameFilter = featureFlagSelector.KeyFilter;
-
-                if (!string.IsNullOrEmpty(nameFilter) && nameFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker, StringComparison.Ordinal))
-                {
-                    nameFilter = nameFilter.Substring(FeatureManagementConstants.FeatureFlagMarker.Length);
-                }
-
-                var newFfSelector = new KeyValueSelector
-                {
-                    KeyFilter = nameFilter,
-                    LabelFilter = featureFlagSelector.LabelFilter,
-                    TagFilters = featureFlagSelector.TagFilters,
-                    IsNewFeatureFlagSelector = true
-                };
-
-                _selectors.AppendUnique(newFfSelector);
+                _ffSelectors.AppendUnique(featureFlagSelector);
 
                 _ffWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    Key = nameFilter,
+                    Key = featureFlagSelector.NameFilter,
                     Label = featureFlagSelector.LabelFilter,
                     Tags = featureFlagSelector.TagFilters,
-                    IsNewFeatureFlagWatcher = true,
+                    // If UseFeatureFlags is called multiple times for the same name and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
             }

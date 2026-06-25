@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
 using System;
@@ -8,35 +8,27 @@ using System.Linq;
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     /// <summary>
-    /// A selector used to control what key-values are retrieved from Azure App Configuration.
+    /// A selector used to control what feature flags are retrieved from Azure App Configuration.
+    /// A single feature flag selector is used to query both classic feature flags (key-values prefixed
+    /// with ".appconfig.featureflag/") and feature flags returned by the standalone feature-flag endpoint.
     /// </summary>
-    public class KeyValueSelector
+    internal class FeatureFlagSelector
     {
         /// <summary>
-        /// A filter that determines the set of keys that are included in the configuration provider.
+        /// A filter that determines the set of feature flag names that are included in the configuration provider.
+        /// The name filter does not include the ".appconfig.featureflag/" prefix.
         /// </summary>
-        /// <remarks>See the documentation for this provider for details on the format of filter expressions</remarks>
-        public string KeyFilter { get; set; }
+        public string NameFilter { get; set; }
 
         /// <summary>
-        /// A filter that determines what label to use when selecting key-values for the the configuration provider.
+        /// A filter that determines what label to use when selecting feature flags for the configuration provider.
         /// </summary>
         public string LabelFilter { get; set; }
 
         /// <summary>
-        /// The name of the Azure App Configuration snapshot to use when selecting key-values for the configuration provider.
-        /// </summary>
-        public string SnapshotName { get; set; }
-
-        /// <summary>
-        /// A filter that determines what tags to require when selecting key-values for the the configuration provider.
+        /// A filter that determines what tags to require when selecting feature flags for the configuration provider.
         /// </summary>
         public IEnumerable<string> TagFilters { get; set; }
-
-        /// <summary>
-        /// A boolean that signifies whether this selector is intended to select feature flags.
-        /// </summary>
-        public bool IsFeatureFlagSelector { get; set; }
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.
@@ -45,15 +37,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         /// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
         public override bool Equals(object obj)
         {
-            if (obj is KeyValueSelector selector)
+            if (obj is FeatureFlagSelector selector)
             {
-                return KeyFilter == selector.KeyFilter
+                return NameFilter == selector.NameFilter
                     && LabelFilter == selector.LabelFilter
-                    && SnapshotName == selector.SnapshotName
                     && (TagFilters == null
                             ? selector.TagFilters == null
-                            : selector.TagFilters != null && new HashSet<string>(TagFilters).SetEquals(selector.TagFilters))
-                    && IsFeatureFlagSelector == selector.IsFeatureFlagSelector;
+                            : selector.TagFilters != null && new HashSet<string>(TagFilters).SetEquals(selector.TagFilters));
             }
 
             return false;
@@ -76,11 +66,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
             }
 
             return HashCode.Combine(
-                KeyFilter,
+                NameFilter,
                 LabelFilter,
-                SnapshotName,
-                tagFiltersString,
-                IsFeatureFlagSelector);
+                tagFiltersString);
         }
     }
 }
