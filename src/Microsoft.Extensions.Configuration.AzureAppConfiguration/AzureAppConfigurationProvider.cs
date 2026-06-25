@@ -7,7 +7,9 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using FeatureFlagSelector = Microsoft.Extensions.Configuration.AzureAppConfiguration.Models.FeatureFlagSelector;
 using SdkFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
+using SdkFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System;
@@ -38,7 +40,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private HashSet<string> _ffKeys = new HashSet<string>();
         private Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> _watchedKvPages = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
-        private Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> _watchedFfPages = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+        private Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> _watchedFfPages = new Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages>();
         private RequestTracingOptions _requestTracingOptions;
         private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
@@ -279,7 +281,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     //
                     // Avoid instance state modification
                     Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvEtags = null;
-                    Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> ffEtags = null;
+                    Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> ffEtags = null;
                     HashSet<string> ffKeys = null;
                     Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
                     List<KeyValueChange> watchedIndividualKvChanges = null;
@@ -310,8 +312,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (isRefreshDue)
                             {
                                 refreshAll = await HaveCollectionsChanged(
-                                    _options.Selectors.Where(selector => !selector.IsFeatureFlagSelector && !selector.IsNewFeatureFlagSelector),
-                                    _kvEtags,
+                                    _options.Selectors,
+                                    _watchedKvPages,
                                     client,
                                     cancellationToken).ConfigureAwait(false);
                             }
@@ -333,10 +335,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             // Trigger a single load-all operation if a change was detected in one or more key-values with refreshAll: true,
                             // or if any key-value collection change was detected.
                             kvEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+                            ffEtags = new Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages>();
                             ffKeys = new HashSet<string>();
 
-                            data = await LoadSelected(client, kvEtags, ffEtags, _options.Selectors, ffKeys, cancellationToken).ConfigureAwait(false);
+                            data = await LoadSelected(client, kvEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
+
+                            await LoadFeatureFlags(client, _options.FeatureFlagSelectors, data, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
 
                             watchedIndividualKvs = await LoadIndividualWatchedSettings(client, data, cancellationToken).ConfigureAwait(false);
 
@@ -346,14 +350,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        ffCollectionUpdated = await HaveFeatureFlagCollectionsChanged(
-                            refreshableFfWatchers.Select(watcher => new KeyValueSelector
+                        refreshFeatureFlag = await HaveFeatureFlagCollectionsChanged(
+                            refreshableFfWatchers.Select(watcher => new FeatureFlagSelector
                             {
-                                KeyFilter = watcher.Key,
+                                NameFilter = watcher.Key,
                                 LabelFilter = watcher.Label,
-                                TagFilters = watcher.Tags,
-                                IsFeatureFlagSelector = !watcher.IsNewFeatureFlagWatcher,
-                                IsNewFeatureFlagSelector = watcher.IsNewFeatureFlagWatcher
+                                TagFilters = watcher.Tags
                             }),
                             _watchedFfPages,
                             client,
@@ -361,14 +363,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         if (refreshFeatureFlag)
                         {
-                            ffEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+                            ffEtags = new Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages>();
                             ffKeys = new HashSet<string>();
+                            ffCollectionData = new Dictionary<string, ConfigurationSetting>();
 
-                            ffCollectionData = await LoadSelected(
+                            await LoadFeatureFlags(
                                 client,
-                                new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>(),
+                                _options.FeatureFlagSelectors,
+                                ffCollectionData,
                                 ffEtags,
-                                _options.Selectors.Where(selector => selector.IsFeatureFlagSelector || selector.IsNewFeatureFlagSelector),
                                 ffKeys,
                                 cancellationToken).ConfigureAwait(false);
 
@@ -776,7 +779,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             Dictionary<string, ConfigurationSetting> data = null;
             Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
-            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> ffEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
+            Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> ffEtags = new Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages>();
             Dictionary<KeyValueIdentifier, ConfigurationSetting> watchedIndividualKvs = null;
             HashSet<string> ffKeys = new HashSet<string>();
 
@@ -787,8 +790,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     data = await LoadSelected(
                         client,
                         kvEtags,
-                        ffEtags,
                         _options.Selectors,
+                        cancellationToken)
+                        .ConfigureAwait(false);
+
+                    await LoadFeatureFlags(
+                        client,
+                        _options.FeatureFlagSelectors,
+                        data,
+                        ffEtags,
                         ffKeys,
                         cancellationToken)
                         .ConfigureAwait(false);
@@ -836,28 +846,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<Dictionary<string, ConfigurationSetting>> LoadSelected(
             ConfigurationClient client,
             Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvPageWatchers,
-            Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> ffPageWatchers,
             IEnumerable<KeyValueSelector> selectors,
-            HashSet<string> ffKeys,
             CancellationToken cancellationToken)
         {
             Dictionary<string, ConfigurationSetting> data = new Dictionary<string, ConfigurationSetting>();
 
-            // Process classic selectors before new-FF selectors so that new feature flags win on key
-            // conflict (later writes to `data` overwrite earlier ones). Within each group the original
-            // user-supplied order is preserved.
-            IEnumerable<KeyValueSelector> orderedSelectors = selectors
-                .Where(s => !s.IsNewFeatureFlagSelector)
-                .Concat(selectors.Where(s => s.IsNewFeatureFlagSelector));
-
-            foreach (KeyValueSelector loadOption in orderedSelectors)
+            foreach (KeyValueSelector loadOption in selectors)
             {
-                if (loadOption.IsNewFeatureFlagSelector)
-                {
-                    await LoadNewFeatureFlags(client, loadOption, data, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
                 if (string.IsNullOrEmpty(loadOption.SnapshotName))
                 {
                     var selector = new SettingSelector()
@@ -913,11 +908,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 }
 
                                 data[setting.Key] = setting;
-
-                                if (loadOption.IsFeatureFlagSelector)
-                                {
-                                    ffKeys.Add(setting.Key);
-                                }
                             }
 
                             // The ETag will never be null here because it's not a conditional request
@@ -930,14 +920,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
                     }).ConfigureAwait(false);
 
-                    if (loadOption.IsFeatureFlagSelector)
-                    {
-                        ffPageWatchers[loadOption] = pageWatchers;
-                    }
-                    else
-                    {
-                        kvPageWatchers[loadOption] = pageWatchers;
-                    }
+                    kvPageWatchers[loadOption] = pageWatchers;
                 }
                 else
                 {
@@ -953,52 +936,122 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return data;
         }
 
-        private async Task LoadNewFeatureFlags(
+        private async Task LoadFeatureFlags(
             ConfigurationClient client,
-            KeyValueSelector loadOption,
+            IEnumerable<FeatureFlagSelector> featureFlagSelectors,
             Dictionary<string, ConfigurationSetting> data,
-            Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> ffEtags,
+            Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> ffPageWatchers,
             HashSet<string> ffKeys,
             CancellationToken cancellationToken)
         {
-            var matchConditions = new List<MatchConditions>();
-            FeatureFlagSelector selector = BuildFeatureFlagSelector(loadOption);
+            // Process all classic feature flag selectors before any new feature flag selectors so that
+            // feature flags returned by the standalone feature-flag endpoint win on key conflict
+            // (later writes to `data` overwrite earlier ones).
+            var classicPagesBySelector = new Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>>();
 
-            await CallWithRequestTracing(async () =>
+            if (!_options.ExcludeClassicFeatureFlags)
             {
-                AsyncPageable<SdkFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
-
-                await foreach (Page<SdkFeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
+                foreach (FeatureFlagSelector ffSelector in featureFlagSelectors)
                 {
-                    using Response response = page.GetRawResponse();
-
-                    foreach (SdkFeatureFlag ff in page.Values)
+                    var selector = new SettingSelector()
                     {
-                        ConfigurationSetting synthesized = FeatureFlagSettingConverter.ToConfigurationSetting(ff);
+                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + (ffSelector.NameFilter ?? "*"),
+                        LabelFilter = ffSelector.LabelFilter
+                    };
 
-                        // New feature flags overwrite classic flags loaded earlier in this same pass.
-                        data[synthesized.Key] = synthesized;
-                        ffKeys.Add(synthesized.Key);
+                    if (ffSelector.TagFilters != null)
+                    {
+                        foreach (string tagFilter in ffSelector.TagFilters)
+                        {
+                            selector.TagsFilter.Add(tagFilter);
+                        }
                     }
 
-                    matchConditions.Add(new MatchConditions { IfNoneMatch = response.Headers.ETag });
-                }
-            }).ConfigureAwait(false);
+                    var pageWatchers = new List<WatchedPage>();
 
-            ffEtags[loadOption] = matchConditions;
+                    await CallWithRequestTracing(async () =>
+                    {
+                        AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+
+                        await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
+                        {
+                            using Response rawResponse = page.GetRawResponse();
+                            DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
+
+                            foreach (ConfigurationSetting setting in page.Values)
+                            {
+                                data[setting.Key] = setting;
+                                ffKeys.Add(setting.Key);
+                            }
+
+                            // The ETag will never be null here because it's not a conditional request
+                            // Each successful response should have 200 status code and an ETag
+                            pageWatchers.Add(new WatchedPage()
+                            {
+                                MatchConditions = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
+                                LastServerResponseTime = serverResponseTime
+                            });
+                        }
+                    }).ConfigureAwait(false);
+
+                    classicPagesBySelector[ffSelector] = pageWatchers;
+                }
+            }
+
+            foreach (FeatureFlagSelector ffSelector in featureFlagSelectors)
+            {
+                SdkFeatureFlagSelector selector = BuildSdkFeatureFlagSelector(ffSelector);
+
+                var pageWatchers = new List<WatchedPage>();
+
+                await CallWithRequestTracing(async () =>
+                {
+                    AsyncPageable<SdkFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
+
+                    await foreach (Page<SdkFeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
+                    {
+                        using Response rawResponse = page.GetRawResponse();
+                        DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
+
+                        foreach (SdkFeatureFlag ff in page.Values)
+                        {
+                            ConfigurationSetting synthesized = FeatureFlagSettingConverter.ToConfigurationSetting(ff);
+
+                            // New feature flags overwrite classic flags loaded earlier in this same pass.
+                            data[synthesized.Key] = synthesized;
+                            ffKeys.Add(synthesized.Key);
+                        }
+
+                        pageWatchers.Add(new WatchedPage()
+                        {
+                            MatchConditions = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
+                            LastServerResponseTime = serverResponseTime
+                        });
+                    }
+                }).ConfigureAwait(false);
+
+                classicPagesBySelector.TryGetValue(ffSelector, out IEnumerable<WatchedPage> classicPages);
+
+                ffPageWatchers[ffSelector] = new FeatureFlagWatchedPages
+                {
+                    ClassicPages = classicPages,
+                    NewPages = pageWatchers
+                };
+            }
         }
 
-        private static FeatureFlagSelector BuildFeatureFlagSelector(KeyValueSelector loadOption)
+        private static SdkFeatureFlagSelector BuildSdkFeatureFlagSelector(FeatureFlagSelector ffSelector)
         {
-            var selector = new FeatureFlagSelector
+            var selector = new SdkFeatureFlagSelector
             {
-                NameFilter = loadOption.KeyFilter,
-                LabelFilter = loadOption.LabelFilter
+                // The standalone feature-flag endpoint uses a null name filter to mean "any name".
+                NameFilter = ffSelector.NameFilter == "*" ? null : ffSelector.NameFilter,
+                LabelFilter = ffSelector.LabelFilter
             };
 
-            if (loadOption.TagFilters != null)
+            if (ffSelector.TagFilters != null)
             {
-                foreach (string tag in loadOption.TagFilters)
+                foreach (string tag in ffSelector.TagFilters)
                 {
                     selector.TagsFilter.Add(tag);
                 }
@@ -1550,43 +1603,58 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         private async Task<bool> HaveFeatureFlagCollectionsChanged(
-            IEnumerable<KeyValueSelector> selectors,
-            Dictionary<KeyValueSelector, IEnumerable<MatchConditions>> pageEtags,
+            IEnumerable<FeatureFlagSelector> selectors,
+            Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> pageWatchers,
             ConfigurationClient client,
             CancellationToken cancellationToken)
         {
-            // Mixed-mode helper: a single set of feature-flag selectors may contain both classic and
-            // new-FF entries. Dispatch to the appropriate change-detection path based on the selector type.
-            foreach (KeyValueSelector selector in selectors)
+            // For each feature flag selector, check both the classic feature flags (unless excluded) and
+            // the feature flags served by the standalone feature-flag endpoint for changes.
+            foreach (FeatureFlagSelector selector in selectors)
             {
-                if (!pageEtags.TryGetValue(selector, out IEnumerable<MatchConditions> matchConditions))
+                if (!pageWatchers.TryGetValue(selector, out FeatureFlagWatchedPages watchedPages))
                 {
                     continue;
                 }
 
                 bool changed = false;
 
-                if (selector.IsNewFeatureFlagSelector)
+                if (!_options.ExcludeClassicFeatureFlags && watchedPages.ClassicPages != null)
+                {
+                    var classicSelector = new KeyValueSelector
+                    {
+                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + (selector.NameFilter ?? "*"),
+                        LabelFilter = selector.LabelFilter,
+                        TagFilters = selector.TagFilters,
+                        IsFeatureFlagSelector = true
+                    };
+
+                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                        async () => changed = await client.HaveCollectionsChanged(
+                            classicSelector,
+                            watchedPages.ClassicPages,
+                            _options.ConfigurationSettingPageIterator,
+                            makeConditionalRequest: !_options.IsAfdUsed,
+                            cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+
+                    if (changed)
+                    {
+                        return true;
+                    }
+                }
+
+                if (watchedPages.NewPages != null)
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
                         async () => changed = await client.HaveFeatureFlagsChanged(
                             selector,
-                            matchConditions,
+                            watchedPages.NewPages,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                }
-                else
-                {
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => changed = await client.HaveCollectionsChanged(
-                            selector,
-                            matchConditions,
-                            _options.ConfigurationSettingPageIterator,
-                            cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-                }
 
-                if (changed)
-                {
-                    return true;
+                    if (changed)
+                    {
+                        return true;
+                    }
                 }
             }
 

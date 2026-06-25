@@ -4,6 +4,8 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using SdkFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
+using SdkFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -122,53 +124,60 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             return existingPageWatcherEnumerator.MoveNext();
         }
 
-        public static async Task<bool> HaveFeatureFlagsChanged(this ConfigurationClient client, KeyValueSelector keyValueSelector, IEnumerable<MatchConditions> matchConditions, CancellationToken cancellationToken)
+        public static async Task<bool> HaveFeatureFlagsChanged(
+            this ConfigurationClient client,
+            Models.FeatureFlagSelector featureFlagSelector,
+            IEnumerable<WatchedPage> pageWatchers,
+            CancellationToken cancellationToken)
         {
-            if (matchConditions == null)
+            if (pageWatchers == null)
             {
-                throw new ArgumentNullException(nameof(matchConditions));
+                throw new ArgumentNullException(nameof(pageWatchers));
             }
 
-            if (keyValueSelector == null)
+            if (featureFlagSelector == null)
             {
-                throw new ArgumentNullException(nameof(keyValueSelector));
+                throw new ArgumentNullException(nameof(featureFlagSelector));
             }
 
             // The selector-based GetFeatureFlagsAsync overload does not expose per-page conditional
             // request headers, so change detection here is "fetch and compare ETags" rather than the
             // 304-based fast path used by HaveCollectionsChanged. If the SDK adds conditional support
             // for the new endpoint, this should be reworked to issue If-None-Match per page.
-            var selector = new FeatureFlagSelector
+            var selector = new SdkFeatureFlagSelector
             {
-                NameFilter = keyValueSelector.KeyFilter,
-                LabelFilter = keyValueSelector.LabelFilter
+                NameFilter = featureFlagSelector.NameFilter == "*" ? null : featureFlagSelector.NameFilter,
+                LabelFilter = featureFlagSelector.LabelFilter
             };
 
-            if (keyValueSelector.TagFilters != null)
+            if (featureFlagSelector.TagFilters != null)
             {
-                foreach (string tag in keyValueSelector.TagFilters)
+                foreach (string tag in featureFlagSelector.TagFilters)
                 {
                     selector.TagsFilter.Add(tag);
                 }
             }
 
-            using IEnumerator<MatchConditions> existingEnumerator = matchConditions.GetEnumerator();
+            using IEnumerator<WatchedPage> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();
 
-            AsyncPageable<FeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
+            AsyncPageable<SdkFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
 
-            await foreach (Page<FeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
+            await foreach (Page<SdkFeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
             {
-                using Response response = page.GetRawResponse();
+                using Response rawResponse = page.GetRawResponse();
+                DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
 
-                if (!existingEnumerator.MoveNext() ||
-                    !existingEnumerator.Current.IfNoneMatch.Equals(response.Headers.ETag))
+                if (!existingPageWatcherEnumerator.MoveNext() ||
+                    // if the server response time is later than last server response time, the change is considered detected
+                    (serverResponseTime >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
+                    !existingPageWatcherEnumerator.Current.MatchConditions.IfNoneMatch.Equals(rawResponse.Headers.ETag)))
                 {
                     return true;
                 }
             }
 
             // More pages were previously known than the server returned now (collection shrank).
-            return existingEnumerator.MoveNext();
+            return existingPageWatcherEnumerator.MoveNext();
         }
     }
 }
