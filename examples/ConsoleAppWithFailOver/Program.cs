@@ -31,10 +31,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Cons
             IConfiguration configuration = builder.Build();
 
             IConfigurationSection endpointsSection = configuration.GetSection("AppConfig:Endpoints");
-            IEnumerable<Uri> endpoints = endpointsSection.GetChildren()
-                .Select(endpoint => endpoint.Value)
-                .Where(value => !string.IsNullOrEmpty(value))
-                .Select(value => new Uri(value));
+            IEnumerable<Uri> endpoints = endpointsSection.GetChildren().Select(endpoint => new Uri(endpoint.Value));
 
             if (endpoints == null || !endpoints.Any())
             {
