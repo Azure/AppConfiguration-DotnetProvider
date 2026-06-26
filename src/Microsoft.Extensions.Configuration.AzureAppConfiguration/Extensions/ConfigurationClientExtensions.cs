@@ -146,7 +146,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             // for the new endpoint, this should be reworked to issue If-None-Match per page.
             var selector = new SdkFeatureFlagSelector
             {
-                NameFilter = featureFlagSelector.NameFilter == "*" ? null : featureFlagSelector.NameFilter,
+                NameFilter = featureFlagSelector.NameFilter,
                 LabelFilter = featureFlagSelector.LabelFilter
             };
 

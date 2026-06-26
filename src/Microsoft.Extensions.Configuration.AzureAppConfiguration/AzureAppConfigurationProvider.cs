@@ -342,7 +342,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             ffKeys = new HashSet<string>();
                             sdkFFs = new Dictionary<string, SdkFeatureFlag>();
 
-                            data = await LoadSelected(client, kvEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
+                            data = await LoadKeyValues(client, kvEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
 
                             await LoadFeatureFlags(client, _options.FeatureFlagSelectors, data, sdkFFs, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
 
@@ -839,7 +839,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clients,
                 async (client) =>
                 {
-                    data = await LoadSelected(
+                    data = await LoadKeyValues(
                         client,
                         kvEtags,
                         _options.Selectors,
@@ -897,7 +897,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        private async Task<Dictionary<string, ConfigurationSetting>> LoadSelected(
+        private async Task<Dictionary<string, ConfigurationSetting>> LoadKeyValues(
             ConfigurationClient client,
             Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvPageWatchers,
             IEnumerable<KeyValueSelector> selectors,
@@ -1009,7 +1009,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     var selector = new SettingSelector()
                     {
-                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + (ffSelector.NameFilter ?? "*"),
+                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + ffSelector.NameFilter,
                         LabelFilter = ffSelector.LabelFilter
                     };
 
@@ -1106,8 +1106,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var selector = new SdkFeatureFlagSelector
             {
-                // The standalone feature-flag endpoint uses a null name filter to mean "any name".
-                NameFilter = ffSelector.NameFilter == "*" ? null : ffSelector.NameFilter,
+                NameFilter = ffSelector.NameFilter,
                 LabelFilter = ffSelector.LabelFilter
             };
 
@@ -1685,7 +1684,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     var classicSelector = new KeyValueSelector
                     {
-                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + (selector.NameFilter ?? "*"),
+                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + selector.NameFilter,
                         LabelFilter = selector.LabelFilter,
                         TagFilters = selector.TagFilters,
                         IsFeatureFlagSelector = true
