@@ -1225,6 +1225,8 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns((Func<SettingSelector, CancellationToken, MockAsyncPageable>)GetTestKeys);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {

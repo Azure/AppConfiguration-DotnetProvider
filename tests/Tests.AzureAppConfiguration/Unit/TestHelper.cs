@@ -74,6 +74,21 @@ namespace Tests.AzureAppConfiguration
             return $"Endpoint={endpoint};Id=b1d9b31;Secret={returnValue}";
         }
 
+        /// <summary>
+        /// Sets up the standalone feature-flag endpoint on a strict mock <see cref="ConfigurationClient"/>
+        /// to return the supplied feature flags (empty by default). Returns the shared pageable so that
+        /// change detection across reloads is stable.
+        /// </summary>
+        static public MockFeatureFlagAsyncPageable SetupMockFeatureFlagEndpoint(Mock<ConfigurationClient> mockClient, List<FeatureFlag> flags = null)
+        {
+            var pageable = new MockFeatureFlagAsyncPageable(flags);
+
+            mockClient.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(pageable);
+
+            return pageable;
+        }
+
         static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)
         {
             json.WriteStartObject();
@@ -263,6 +278,52 @@ namespace Tests.AzureAppConfiguration
                 yield return Page<ConfigurationSetting>.FromValues(pageItems, null, response);
                 pageIndex++;
             }
+        }
+    }
+
+    /// <summary>
+    /// A mock <see cref="AsyncPageable{T}"/> for the standalone feature-flag endpoint
+    /// (<see cref="ConfigurationClient.GetFeatureFlagsAsync(FeatureFlagSelector, CancellationToken)"/>).
+    /// Yields a single page containing the supplied feature flags (empty by default). The page uses a
+    /// stable ETag so that change detection across reloads reports "no change" unless the collection is
+    /// explicitly updated via <see cref="UpdateCollection"/>.
+    /// </summary>
+    class MockFeatureFlagAsyncPageable : AsyncPageable<FeatureFlag>
+    {
+        private List<FeatureFlag> _collection;
+        private string _etag;
+        private readonly TimeSpan? _delay;
+
+        public MockFeatureFlagAsyncPageable(List<FeatureFlag> collection = null, TimeSpan? delay = null)
+        {
+            _collection = collection ?? new List<FeatureFlag>();
+            _delay = delay;
+            _etag = ComputeETag(_collection);
+        }
+
+        public void UpdateCollection(List<FeatureFlag> newCollection)
+        {
+            _collection = newCollection ?? new List<FeatureFlag>();
+            _etag = ComputeETag(_collection);
+        }
+
+        private static string ComputeETag(List<FeatureFlag> collection)
+        {
+            // Derive a deterministic ETag from the flag names + enabled state so that an unchanged
+            // collection keeps the same ETag and a changed collection produces a different one.
+            string content = string.Join("|", collection.Select(f => $"{f.Name}:{f.Enabled}"));
+
+            return "ff-" + content.GetHashCode().ToString("x8");
+        }
+
+        public override async IAsyncEnumerable<Page<FeatureFlag>> AsPages(string continuationToken = null, int? pageSizeHint = null)
+        {
+            if (_delay.HasValue)
+            {
+                await Task.Delay(_delay.Value);
+            }
+
+            yield return Page<FeatureFlag>.FromValues(_collection, null, new MockResponse(200, _etag));
         }
     }
 

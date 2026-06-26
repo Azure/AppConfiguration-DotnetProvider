@@ -34,22 +34,27 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         {
             FeatureFlag featureFlag = ParseFeatureFlag(setting.Key, setting.Value);
 
-            var keyValues = new List<KeyValuePair<string, string>>();
+            var metadata = new FeatureFlagMetadata(setting.Key, setting.Label, setting.ETag);
 
+            IEnumerable<KeyValuePair<string, string>> keyValues = ProcessFeatureFlag(featureFlag, metadata, endpoint);
+
+            return Task.FromResult(keyValues);
+        }
+
+        // Emits feature-management configuration key-values for a feature flag. Shared by classic feature
+        // flags (parsed from a ConfigurationSetting) and new feature flags (mapped from the SDK model).
+        public IEnumerable<KeyValuePair<string, string>> ProcessFeatureFlag(FeatureFlag featureFlag, FeatureFlagMetadata metadata, Uri endpoint)
+        {
             // Check if we need to process the feature flag using the microsoft schema
             if (_fmSchemaCompatibilityDisabled ||
                 (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
                 featureFlag.Allocation != null ||
                 featureFlag.Telemetry != null)
             {
-                keyValues = ProcessMicrosoftSchemaFeatureFlag(featureFlag, setting, endpoint);
-            }
-            else
-            {
-                keyValues = ProcessDotnetSchemaFeatureFlag(featureFlag, setting, endpoint);
+                return ProcessMicrosoftSchemaFeatureFlag(featureFlag, metadata, endpoint);
             }
 
-            return Task.FromResult<IEnumerable<KeyValuePair<string, string>>>(keyValues);
+            return ProcessDotnetSchemaFeatureFlag(featureFlag);
         }
 
         public bool CanProcess(ConfigurationSetting setting)
@@ -87,7 +92,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return;
         }
 
-        private List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint)
+        private List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -140,7 +145,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(FeatureFlag featureFlag, ConfigurationSetting setting, Uri endpoint)
+        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(FeatureFlag featureFlag, FeatureFlagMetadata metadata, Uri endpoint)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -319,12 +324,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (endpoint != null)
                     {
-                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{setting.Key}{(!string.IsNullOrWhiteSpace(setting.Label) ? $"?label={setting.Label}" : "")}";
+                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{metadata.Key}{(!string.IsNullOrWhiteSpace(metadata.Label) ? $"?label={metadata.Label}" : "")}";
 
                         keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
                     }
 
-                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", setting.ETag.ToString()));
+                    keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.ETag}", metadata.ETag.ToString()));
 
                     keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Enabled}", telemetry.Enabled.ToString()));
 

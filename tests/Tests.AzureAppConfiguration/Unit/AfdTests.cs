@@ -390,6 +390,8 @@ namespace Tests.AzureAppConfiguration
                 .Returns(mockAsyncPageable2)  // watch request, should not trigger refresh
                 .Returns(mockAsyncPageable3); // watch request, should trigger refresh
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var afdEndpoint = new Uri("https://test.b01.azurefd.net");
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()

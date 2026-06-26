@@ -735,6 +735,8 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -772,6 +774,8 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
@@ -849,6 +853,8 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
                 .Returns(mockAsyncPageable);
@@ -925,6 +931,8 @@ namespace Tests.AzureAppConfiguration
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -999,6 +1007,8 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
@@ -1088,7 +1098,7 @@ namespace Tests.AzureAppConfiguration
                 options.UseFeatureFlags();
             }).Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?api-version=2023-11-01&key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?api-version=2026-05-01-preview&key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -1116,7 +1126,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?api-version=2023-11-01&key=%2A&label=%00"));
+            bool performedDefaultQuery = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains("/kv?api-version=2026-05-01-preview&key=%2A&label=%00"));
             bool queriedFeatureFlags = mockTransport.Requests.Any(r => r.Uri.PathAndQuery.Contains(Uri.EscapeDataString(FeatureManagementConstants.FeatureFlagMarker)));
 
             Assert.True(performedDefaultQuery);
@@ -1129,6 +1139,8 @@ namespace Tests.AzureAppConfiguration
             var mockAsyncPageable = new MockAsyncPageable(new List<ConfigurationSetting> { _kv });
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Callback(() => mockAsyncPageable.UpdateCollection(new List<ConfigurationSetting> { _kv }))
@@ -1163,6 +1175,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var featureFlagPrefix = "App1";
             var labelFilter = "App1_Label";
 
@@ -1200,6 +1214,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             List<ConfigurationSetting> kvCollection = new List<ConfigurationSetting>
             {
@@ -1257,6 +1273,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var refreshInterval = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -1291,6 +1309,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var refreshInterval = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -1332,6 +1352,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var refreshInterval = TimeSpan.FromSeconds(1);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -1375,6 +1397,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -1416,6 +1440,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var prefix = "Feature1";
             var label1 = "App1_Label";
             var label2 = "App2_Label";
@@ -1485,6 +1511,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -1529,6 +1557,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var prefix1 = "App1";
             var label1 = "App1_Label";
             var label2 = "App2_Label";
@@ -1573,6 +1603,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var prefix1 = "App1";
             var prefix2 = "App2";
             var label1 = "App1_Label";
@@ -1680,6 +1712,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var refreshInterval1 = TimeSpan.FromSeconds(1);
             var refreshInterval2 = TimeSpan.FromSeconds(60);
             IConfigurationRefresher refresher = null;
@@ -1755,6 +1789,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
             var prefix1 = "Feature1";
             var label1 = "App1_Label";
             IConfigurationRefresher refresher = null;
@@ -1827,6 +1863,8 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv2 };
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
@@ -1916,6 +1954,8 @@ namespace Tests.AzureAppConfiguration
 
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -1999,6 +2039,8 @@ namespace Tests.AzureAppConfiguration
             var featureFlags = new List<ConfigurationSetting> { _kv };
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Callback(() => mockAsyncPageable.UpdateCollection(featureFlags))
@@ -2094,6 +2136,8 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_variantFeatureFlagCollection));
 
@@ -2175,6 +2219,8 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_telemetryFeatureFlagCollection));
 
@@ -2205,6 +2251,8 @@ namespace Tests.AzureAppConfiguration
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_allocationIdFeatureFlagCollection));
@@ -2272,6 +2320,8 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(featureFlags));
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -2315,6 +2365,8 @@ namespace Tests.AzureAppConfiguration
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             foreach (ConfigurationSetting setting in settings)
             {
                 var featureFlags = new List<ConfigurationSetting> { setting };
@@ -2349,6 +2401,8 @@ namespace Tests.AzureAppConfiguration
 
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(mixedSchemaFlags));
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             try
             {
