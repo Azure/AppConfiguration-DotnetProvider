@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private List<FeatureFlagSelector> _ffSelectors = new List<FeatureFlagSelector>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
-        private List<KeyValueSelector> _selectors;
+        private List<KeyValueSelector> _kvSelectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
         private bool _selectCalled = false;
 
@@ -71,7 +71,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/> specified by user.
         /// </summary>
-        internal IEnumerable<KeyValueSelector> Selectors => _selectors;
+        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
         /// Indicates if <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> was called.
@@ -197,7 +197,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             };
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
-            _selectors = new List<KeyValueSelector> { DefaultQuery };
+            _kvSelectors = new List<KeyValueSelector> { DefaultQuery };
         }
 
         /// <summary>
@@ -272,12 +272,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Remove(DefaultQuery);
+                _kvSelectors.Remove(DefaultQuery);
 
                 _selectCalled = true;
             }
 
-            _selectors.AppendUnique(new KeyValueSelector
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter,
@@ -301,12 +301,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Remove(DefaultQuery);
+                _kvSelectors.Remove(DefaultQuery);
 
                 _selectCalled = true;
             }
 
-            _selectors.AppendUnique(new KeyValueSelector
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
                 SnapshotName = name
             });

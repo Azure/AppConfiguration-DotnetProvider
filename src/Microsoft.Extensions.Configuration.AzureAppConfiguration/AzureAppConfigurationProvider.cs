@@ -316,7 +316,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             if (isRefreshDue)
                             {
                                 refreshAll = await HaveCollectionsChanged(
-                                    _options.Selectors,
+                                    _options.KeyValueSelectors,
                                     _watchedKvPages,
                                     client,
                                     cancellationToken).ConfigureAwait(false);
@@ -343,7 +343,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             ffKeys = new HashSet<string>();
                             sdkFFs = new Dictionary<string, SdkFeatureFlag>();
 
-                            data = await LoadKeyValues(client, kvEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
+                            data = await LoadKeyValues(client, kvEtags, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
 
                             await LoadFeatureFlags(client, featureFlagClient, _options.FeatureFlagSelectors, data, sdkFFs, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
 
@@ -845,7 +845,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     data = await LoadKeyValues(
                         client,
                         kvEtags,
-                        _options.Selectors,
+                        _options.KeyValueSelectors,
                         cancellationToken)
                         .ConfigureAwait(false);
 
@@ -995,7 +995,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         private async Task LoadFeatureFlags(
-            ConfigurationClient client,
+            ConfigurationClient configurationClient,
             FeatureFlagClient featureFlagClient,
             IEnumerable<FeatureFlagSelector> featureFlagSelectors,
             Dictionary<string, ConfigurationSetting> data,
@@ -1030,7 +1030,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await CallWithRequestTracing(async () =>
                     {
-                        AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+                        AsyncPageable<ConfigurationSetting> pageableSettings = configurationClient.GetConfigurationSettingsAsync(selector, cancellationToken);
 
                         await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
                         {
