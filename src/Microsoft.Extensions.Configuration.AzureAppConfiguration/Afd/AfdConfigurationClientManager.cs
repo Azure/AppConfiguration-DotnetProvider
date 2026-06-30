@@ -13,12 +13,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         private readonly ConfigurationClientWrapper _clientWrapper;
 
         public AfdConfigurationClientManager(
-            IAzureClientFactory<ConfigurationClient> clientFactory,
+            IAzureClientFactory<ConfigurationClient> configurationClientFactory,
+            IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory,
             Uri endpoint)
         {
-            if (clientFactory == null)
+            if (configurationClientFactory == null)
             {
-                throw new ArgumentNullException(nameof(clientFactory));
+                throw new ArgumentNullException(nameof(configurationClientFactory));
+            }
+
+            if (featureFlagClientFactory == null)
+            {
+                throw new ArgumentNullException(nameof(featureFlagClientFactory));
             }
 
             if (endpoint == null)
@@ -26,7 +32,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            _clientWrapper = new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri));
+            _clientWrapper = new ConfigurationClientWrapper(
+                endpoint,
+                configurationClientFactory.CreateClient(endpoint.AbsoluteUri),
+                featureFlagClientFactory.CreateClient(endpoint.AbsoluteUri));
         }
 
         public IEnumerable<ConfigurationClient> GetClients()
@@ -52,6 +61,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
             }
 
             return _clientWrapper.Client == client ? _clientWrapper.Endpoint : null;
+        }
+
+        public FeatureFlagClient GetFeatureFlagClient(ConfigurationClient client)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            return _clientWrapper.Client == client ? _clientWrapper.FeatureFlagClient : null;
         }
     }
 }

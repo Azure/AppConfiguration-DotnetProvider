@@ -4,8 +4,6 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-using SdkFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
-using SdkFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -121,62 +119,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
             }
 
             // Need to check if pages were deleted and no change was found within the new shorter list of page
-            return existingPageWatcherEnumerator.MoveNext();
-        }
-
-        public static async Task<bool> HaveFeatureFlagsChanged(
-            this ConfigurationClient client,
-            Models.FeatureFlagSelector featureFlagSelector,
-            IEnumerable<WatchedPage> pageWatchers,
-            CancellationToken cancellationToken)
-        {
-            if (pageWatchers == null)
-            {
-                throw new ArgumentNullException(nameof(pageWatchers));
-            }
-
-            if (featureFlagSelector == null)
-            {
-                throw new ArgumentNullException(nameof(featureFlagSelector));
-            }
-
-            // The selector-based GetFeatureFlagsAsync overload does not expose per-page conditional
-            // request headers, so change detection here is "fetch and compare ETags" rather than the
-            // 304-based fast path used by HaveCollectionsChanged. If the SDK adds conditional support
-            // for the new endpoint, this should be reworked to issue If-None-Match per page.
-            var selector = new SdkFeatureFlagSelector
-            {
-                NameFilter = featureFlagSelector.NameFilter,
-                LabelFilter = featureFlagSelector.LabelFilter
-            };
-
-            if (featureFlagSelector.TagFilters != null)
-            {
-                foreach (string tag in featureFlagSelector.TagFilters)
-                {
-                    selector.TagsFilter.Add(tag);
-                }
-            }
-
-            using IEnumerator<WatchedPage> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();
-
-            AsyncPageable<SdkFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
-
-            await foreach (Page<SdkFeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
-            {
-                using Response rawResponse = page.GetRawResponse();
-                DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
-
-                if (!existingPageWatcherEnumerator.MoveNext() ||
-                    // if the server response time is later than last server response time, the change is considered detected
-                    (serverResponseTime >= existingPageWatcherEnumerator.Current.LastServerResponseTime &&
-                    !existingPageWatcherEnumerator.Current.MatchConditions.IfNoneMatch.Equals(rawResponse.Headers.ETag)))
-                {
-                    return true;
-                }
-            }
-
-            // More pages were previously known than the server returned now (collection shrank).
             return existingPageWatcherEnumerator.MoveNext();
         }
     }

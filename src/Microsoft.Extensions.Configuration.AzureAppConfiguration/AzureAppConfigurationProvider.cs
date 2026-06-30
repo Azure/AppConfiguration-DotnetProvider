@@ -309,6 +309,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         logDebugBuilder.Clear();
                         logInfoBuilder.Clear();
                         Uri endpoint = _configClientManager.GetEndpointForClient(client);
+                        FeatureFlagClient featureFlagClient = _configClientManager.GetFeatureFlagClient(client);
 
                         if (_options.RegisterAllEnabled)
                         {
@@ -344,7 +345,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             data = await LoadKeyValues(client, kvEtags, _options.Selectors, cancellationToken).ConfigureAwait(false);
 
-                            await LoadFeatureFlags(client, _options.FeatureFlagSelectors, data, sdkFFs, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
+                            await LoadFeatureFlags(client, featureFlagClient, _options.FeatureFlagSelectors, data, sdkFFs, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
 
                             watchedIndividualKvs = await LoadIndividualWatchedSettings(client, data, cancellationToken).ConfigureAwait(false);
 
@@ -363,6 +364,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }),
                             _watchedFfPages,
                             client,
+                            featureFlagClient,
                             cancellationToken).ConfigureAwait(false);
 
                         if (refreshFeatureFlag)
@@ -374,6 +376,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                             await LoadFeatureFlags(
                                 client,
+                                featureFlagClient,
                                 _options.FeatureFlagSelectors,
                                 ffCollectionData,
                                 sdkFFs,
@@ -686,7 +689,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         FeatureManagement.FeatureFlag model = SdkFeatureFlagModelMapper.MapToModel(featureFlag);
 
-                        ETag etag = string.IsNullOrEmpty(featureFlag.Etag) ? default : new ETag(featureFlag.Etag);
+                        ETag etag = featureFlag.Etag ?? default;
 
                         var metadata = new FeatureFlagMetadata(kvp.Key, featureFlag.Label, etag);
 
@@ -848,6 +851,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     await LoadFeatureFlags(
                         client,
+                        _configClientManager.GetFeatureFlagClient(client),
                         _options.FeatureFlagSelectors,
                         data,
                         sdkFFs,
@@ -992,6 +996,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private async Task LoadFeatureFlags(
             ConfigurationClient client,
+            FeatureFlagClient featureFlagClient,
             IEnumerable<FeatureFlagSelector> featureFlagSelectors,
             Dictionary<string, ConfigurationSetting> data,
             Dictionary<string, SdkFeatureFlag> sdkFFs,
@@ -1062,9 +1067,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 await CallWithRequestTracing(async () =>
                 {
-                    AsyncPageable<SdkFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
+                    AsyncPageable<SdkFeatureFlag> pageable = featureFlagClient.GetFeatureFlagsAsync(selector, cancellationToken);
 
-                    await foreach (Page<SdkFeatureFlag> page in pageable.AsPages().ConfigureAwait(false))
+                    await foreach (Page<SdkFeatureFlag> page in pageable.AsPages(_options.FeatureFlagPageIterator).ConfigureAwait(false))
                     {
                         using Response rawResponse = page.GetRawResponse();
                         DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
@@ -1667,6 +1672,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             IEnumerable<FeatureFlagSelector> selectors,
             Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> pageWatchers,
             ConfigurationClient client,
+            FeatureFlagClient featureFlagClient,
             CancellationToken cancellationToken)
         {
             // For each feature flag selector, check both the classic feature flags (unless excluded) and
@@ -1707,9 +1713,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 if (watchedPages.NewPages != null)
                 {
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => changed = await client.HaveFeatureFlagsChanged(
+                        async () => changed = await featureFlagClient.HaveFeatureFlagsChanged(
                             selector,
                             watchedPages.NewPages,
+                            _options.FeatureFlagPageIterator,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 
                     if (changed)

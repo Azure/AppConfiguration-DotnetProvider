@@ -14,7 +14,17 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Client = configurationClient;
         }
 
+        public ConfigurationClientWrapper(Uri endpoint, ConfigurationClient configurationClient, FeatureFlagClient featureFlagClient)
+        {
+            Endpoint = endpoint;
+            Client = configurationClient;
+            FeatureFlagClient = featureFlagClient;
+        }
+
         public ConfigurationClient Client { get; private set; }
+
+        public FeatureFlagClient FeatureFlagClient { get; private set; }
+
         public Uri Endpoint { get; private set; }
     }
 }

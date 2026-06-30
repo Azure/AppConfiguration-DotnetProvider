@@ -135,6 +135,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
 
         /// <summary>
+        /// For use in tests only. An optional class used to process pageable feature flag results from the standalone feature-flag endpoint.
+        /// </summary>
+        internal IFeatureFlagPageIterator FeatureFlagPageIterator { get; set; }
+
+        /// <summary>
         /// For use in tests only. An optional activity source name to specify the activity source used by the configuration provider.
         /// </summary>
         internal string ActivitySourceName { get; set; }
@@ -619,6 +624,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
+        }
+
+        /// <summary>
+        /// Builds <see cref="FeatureFlagClientOptions"/> that mirror the relevant settings of the
+        /// configured <see cref="ClientOptions"/> so that the feature-flag client communicates with the
+        /// same store, audience, transport and retry behavior as the configuration client.
+        /// </summary>
+        internal FeatureFlagClientOptions GetFeatureFlagClientOptions()
+        {
+            var ffClientOptions = new FeatureFlagClientOptions(FeatureFlagClientOptions.ServiceVersion.V2026_05_01_Preview);
+
+            ffClientOptions.Retry.MaxRetries = ClientOptions.Retry.MaxRetries;
+            ffClientOptions.Retry.MaxDelay = ClientOptions.Retry.MaxDelay;
+            ffClientOptions.Retry.Mode = ClientOptions.Retry.Mode;
+            ffClientOptions.Retry.NetworkTimeout = ClientOptions.Retry.NetworkTimeout;
+            ffClientOptions.Audience = ClientOptions.Audience;
+
+            if (ClientOptions.Transport != null)
+            {
+                ffClientOptions.Transport = ClientOptions.Transport;
+            }
+
+            ffClientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
+
+            return ffClientOptions;
         }
     }
 }

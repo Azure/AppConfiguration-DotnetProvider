@@ -27,6 +27,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     internal class ConfigurationClientManager : IConfigurationClientManager, IDisposable
     {
         private readonly IAzureClientFactory<ConfigurationClient> _clientFactory;
+        private readonly IAzureClientFactory<FeatureFlagClient> _featureFlagClientFactory;
         private readonly IList<ConfigurationClientWrapper> _clients;
 
         private readonly Uri _endpoint;
@@ -52,11 +53,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public ConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> clientFactory,
+            IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory,
             IEnumerable<Uri> endpoints,
             bool replicaDiscoveryEnabled,
             bool loadBalancingEnabled)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+            _featureFlagClientFactory = featureFlagClientFactory ?? throw new ArgumentNullException(nameof(featureFlagClientFactory));
 
             if (endpoints == null || !endpoints.Any())
             {
@@ -77,7 +80,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _srvLookupClient = new SrvLookupClient();
 
             _clients = endpoints
-                .Select(endpoint => new ConfigurationClientWrapper(endpoint, clientFactory.CreateClient(endpoint.AbsoluteUri)))
+                .Select(endpoint => new ConfigurationClientWrapper(
+                    endpoint,
+                    clientFactory.CreateClient(endpoint.AbsoluteUri),
+                    featureFlagClientFactory.CreateClient(endpoint.AbsoluteUri)))
                 .ToList();
         }
 
@@ -175,6 +181,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return currentClient?.Endpoint;
         }
 
+        public FeatureFlagClient GetFeatureFlagClient(ConfigurationClient client)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
+
+            if (_dynamicClients != null && currentClient == null)
+            {
+                currentClient = _dynamicClients.FirstOrDefault(c => c.Client == client);
+            }
+
+            return currentClient?.FeatureFlagClient;
+        }
+
         public void SetLogger(Logger logger)
         {
             if (logger == null)
@@ -249,7 +272,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     ConfigurationClient configClient = _clientFactory.CreateClient(targetEndpoint.AbsoluteUri);
 
-                    newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient));
+                    FeatureFlagClient featureFlagClient = _featureFlagClientFactory.CreateClient(targetEndpoint.AbsoluteUri);
+
+                    newDynamicClients.Add(new ConfigurationClientWrapper(targetEndpoint, configClient, featureFlagClient));
                 }
             }
 
