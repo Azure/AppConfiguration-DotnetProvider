@@ -58,7 +58,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (conditions.Filters != null)
             {
-                foreach (FeatureFlagFilter filter in conditions.Filters)
+                foreach (FeatureFilter filter in conditions.Filters)
                 {
                     featureConditions.ClientFilters.Add(new ClientFilter
                     {
@@ -118,11 +118,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             };
         }
 
-        // The SDK exposes filter parameters as IDictionary<string, object>. The feature-management
+        // The SDK exposes filter parameters as IDictionary<string, string>. The feature-management
         // adapter flattens a JsonElement to produce per-leaf keys (e.g. Audience:Users:0), so build a
         // JsonElement here. Parameter values that are JSON-encoded strings are embedded as parsed JSON
         // so the flattening produces the nested keys that feature-management filters bind against.
-        private static JsonElement BuildParametersElement(IDictionary<string, object> parameters)
+        private static JsonElement BuildParametersElement(IDictionary<string, string> parameters)
         {
             if (parameters == null || parameters.Count == 0)
             {
@@ -135,7 +135,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             {
                 writer.WriteStartObject();
 
-                foreach (KeyValuePair<string, object> kvp in parameters)
+                foreach (KeyValuePair<string, string> kvp in parameters)
                 {
                     writer.WritePropertyName(kvp.Key);
                     WriteParameterValue(writer, kvp.Value);
@@ -149,7 +149,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return doc.RootElement.Clone();
         }
 
-        private static void WriteParameterValue(Utf8JsonWriter writer, object value)
+        private static void WriteParameterValue(Utf8JsonWriter writer, string value)
         {
             if (value == null)
             {
@@ -158,31 +158,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return;
             }
 
-            if (value is string s)
+            string trimmed = value.TrimStart();
+
+            if (trimmed.Length > 0 && (trimmed[0] == '{' || trimmed[0] == '['))
             {
-                string trimmed = s.TrimStart();
-
-                if (trimmed.Length > 0 && (trimmed[0] == '{' || trimmed[0] == '['))
+                try
                 {
-                    try
-                    {
-                        using JsonDocument doc = JsonDocument.Parse(s);
-                        doc.RootElement.WriteTo(writer);
+                    using JsonDocument doc = JsonDocument.Parse(value);
+                    doc.RootElement.WriteTo(writer);
 
-                        return;
-                    }
-                    catch (JsonException)
-                    {
-                        // Fall through and write the original literal string.
-                    }
+                    return;
                 }
-
-                writer.WriteStringValue(s);
-
-                return;
+                catch (JsonException)
+                {
+                    // Fall through and write the original literal string.
+                }
             }
 
-            JsonSerializer.Serialize(writer, value);
+            writer.WriteStringValue(value);
         }
 
         // Variant values are exposed by the SDK as a string plus a content type. When the content type

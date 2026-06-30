@@ -67,17 +67,30 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 IEnumerable<Uri> endpoints;
 
+                FeatureFlagClientOptions featureFlagClientOptions = options.GetFeatureFlagClientOptions();
+
+                if (options.IsAfdUsed)
+                {
+                    featureFlagClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);
+                }
+
+                IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory;
+
                 if (options.ConnectionStrings != null)
                 {
                     endpoints = options.ConnectionStrings.Select(cs => new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection)));
 
                     clientFactory ??= new AzureAppConfigurationClientFactory(options.ConnectionStrings, options.ClientOptions);
+
+                    featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(options.ConnectionStrings, featureFlagClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     endpoints = options.Endpoints;
 
                     clientFactory ??= new AzureAppConfigurationClientFactory(options.Credential, options.ClientOptions);
+
+                    featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(options.Credential, featureFlagClientOptions);
                 }
                 else
                 {
@@ -86,11 +99,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (options.IsAfdUsed)
                 {
-                    provider = new AzureAppConfigurationProvider(new AfdConfigurationClientManager(clientFactory, endpoints.First()), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new AfdConfigurationClientManager(clientFactory, featureFlagClientFactory, endpoints.First()), options, _optional);
                 }
                 else
                 {
-                    provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, featureFlagClientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
                 }
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
