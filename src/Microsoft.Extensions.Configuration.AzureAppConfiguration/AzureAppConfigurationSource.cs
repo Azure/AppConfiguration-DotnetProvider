@@ -99,11 +99,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 if (options.IsAfdUsed)
                 {
-                    provider = new AzureAppConfigurationProvider(new AfdConfigurationClientManager(clientFactory, featureFlagClientFactory, endpoints.First()), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new AfdClientManager(clientFactory, featureFlagClientFactory, endpoints.First()), options, _optional);
                 }
                 else
                 {
-                    provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, featureFlagClientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new ClientManager(clientFactory, featureFlagClientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
                 }
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.

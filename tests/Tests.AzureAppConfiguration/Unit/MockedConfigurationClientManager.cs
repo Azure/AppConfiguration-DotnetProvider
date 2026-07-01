@@ -9,20 +9,20 @@ using System.Linq;
 
 namespace Tests.AzureAppConfiguration
 {
-    internal class MockedConfigurationClientManager : IConfigurationClientManager
+    internal class MockedConfigurationClientManager : IClientManager
     {
-        IList<ConfigurationClientWrapper> _clients;
-        IList<ConfigurationClientWrapper> _autoFailoverClients;
+        IList<ClientWrapper> _clients;
+        IList<ClientWrapper> _autoFailoverClients;
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
-        public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients)
+        public MockedConfigurationClientManager(IEnumerable<ClientWrapper> clients)
         {
             _clients = clients.ToList();
-            _autoFailoverClients = new List<ConfigurationClientWrapper>();
+            _autoFailoverClients = new List<ClientWrapper>();
         }
 
-        public MockedConfigurationClientManager(IEnumerable<ConfigurationClientWrapper> clients, IEnumerable<ConfigurationClientWrapper> autoFailoverClients)
+        public MockedConfigurationClientManager(IEnumerable<ClientWrapper> clients, IEnumerable<ClientWrapper> autoFailoverClients)
         {
             _autoFailoverClients = autoFailoverClients.ToList();
             _clients = clients.ToList();
@@ -37,39 +37,22 @@ namespace Tests.AzureAppConfiguration
         {
             this.UpdateSyncTokenCalled++;
             var client = _clients.SingleOrDefault(c => string.Equals(c.Endpoint.Host, endpoint.Host, StringComparison.OrdinalIgnoreCase));
-            client?.Client?.UpdateSyncToken(syncToken);
+            client?.ConfigurationClient?.UpdateSyncToken(syncToken);
             return true;
         }
 
-        public Uri GetEndpointForClient(ConfigurationClient client)
+        public IEnumerable<ClientWrapper> GetClients()
         {
-            if (client == null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-
-            ConfigurationClientWrapper currentClient = _clients.FirstOrDefault(c => c.Client == client);
-
-            if (currentClient == null)
-            {
-                currentClient = _autoFailoverClients.FirstOrDefault(c => c.Client == client);
-            }
-
-            return currentClient?.Endpoint;
-        }
-
-        public IEnumerable<ConfigurationClient> GetClients()
-        {
-            var result = new List<ConfigurationClient>();
+            var result = new List<ClientWrapper>();
 
             foreach (var client in _clients)
             {
-                result.Add(client.Client);
+                result.Add(client);
             }
 
             foreach (var client in _autoFailoverClients)
             {
-                result.Add(client.Client);
+                result.Add(client);
             }
 
             return result;

@@ -1989,6 +1989,7 @@ namespace Tests.AzureAppConfiguration
                 {
                     options.ClientManager = mockClientManager;
                     options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(RefreshInterval));
                     options.ConfigureRefresh(refreshOptions =>
                     {

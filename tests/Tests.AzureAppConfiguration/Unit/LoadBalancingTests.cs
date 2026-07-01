@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
 using Azure;
@@ -48,11 +48,11 @@ namespace Tests.AzureAppConfiguration
                        .ReturnsAsync(Response.FromValue(kv, mockResponse));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ClientManager(clientList);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -111,11 +111,11 @@ namespace Tests.AzureAppConfiguration
                        .ReturnsAsync(Response.FromValue(kv, mockResponse));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ClientManager(clientList);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>

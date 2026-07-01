@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -25,6 +26,12 @@ namespace Tests.AzureAppConfiguration
     {
         public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://azure.azconfig.io");
         public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://azure---wus.azconfig.io");
+
+        // Associates a mocked ConfigurationClient with the FeatureFlagClient that should be paired with it,
+        // so that existing tests can keep calling SetupMockFeatureFlagEndpoint(mockClient) before building
+        // the mocked client manager without having to thread the feature-flag client explicitly.
+        private static readonly ConditionalWeakTable<ConfigurationClient, FeatureFlagClient> _featureFlagClients =
+            new ConditionalWeakTable<ConfigurationClient, FeatureFlagClient>();
 
         static public ConfigurationClient CreateMockConfigurationClient(Uri endpoint, AzureAppConfigurationOptions options = null)
         {
@@ -35,15 +42,15 @@ namespace Tests.AzureAppConfiguration
             return new ConfigurationClient(endpoint, mockTokenCredential.Object, options.ClientOptions);
         }
 
-        static public IConfigurationClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
+        static public IClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
         {
             ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
             ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
 
-            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, c1);
-            ConfigurationClientWrapper w2 = new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, c2);
+            ClientWrapper w1 = new ClientWrapper(PrimaryConfigStoreEndpoint, c1, CreateMockFeatureFlagClient(PrimaryConfigStoreEndpoint, options));
+            ClientWrapper w2 = new ClientWrapper(SecondaryConfigStoreEndpoint, c2, CreateMockFeatureFlagClient(SecondaryConfigStoreEndpoint, options));
 
-            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1, w2 };
+            IList<ClientWrapper> clients = new List<ClientWrapper>() { w1, w2 };
 
             MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
 
@@ -52,10 +59,10 @@ namespace Tests.AzureAppConfiguration
 
         static public MockedConfigurationClientManager CreateMockedConfigurationClientManager(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
         {
-            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, primaryClient);
-            ConfigurationClientWrapper w2 = secondaryClient != null ? new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient) : null;
+            ClientWrapper w1 = new ClientWrapper(PrimaryConfigStoreEndpoint, primaryClient, GetAssociatedFeatureFlagClient(primaryClient));
+            ClientWrapper w2 = secondaryClient != null ? new ClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient, GetAssociatedFeatureFlagClient(secondaryClient)) : null;
 
-            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1 };
+            IList<ClientWrapper> clients = new List<ClientWrapper>() { w1 };
 
             if (secondaryClient != null)
             {
@@ -67,6 +74,25 @@ namespace Tests.AzureAppConfiguration
             return provider;
         }
 
+        static private FeatureFlagClient CreateMockFeatureFlagClient(Uri endpoint, AzureAppConfigurationOptions options)
+        {
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            return new FeatureFlagClient(endpoint, mockTokenCredential.Object, options.GetFeatureFlagClientOptions());
+        }
+
+        static private FeatureFlagClient GetAssociatedFeatureFlagClient(ConfigurationClient client)
+        {
+            if (client != null && _featureFlagClients.TryGetValue(client, out FeatureFlagClient featureFlagClient))
+            {
+                return featureFlagClient;
+            }
+
+            return null;
+        }
+
         static public string CreateMockEndpointString(string endpoint = "https://azure.azconfig.io")
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
@@ -75,16 +101,21 @@ namespace Tests.AzureAppConfiguration
         }
 
         /// <summary>
-        /// Sets up the standalone feature-flag endpoint on a strict mock <see cref="ConfigurationClient"/>
-        /// to return the supplied feature flags (empty by default). Returns the shared pageable so that
-        /// change detection across reloads is stable.
+        /// Sets up the standalone feature-flag endpoint to return the supplied feature flags (empty by
+        /// default) and associates the resulting <see cref="FeatureFlagClient"/> with the given
+        /// <see cref="ConfigurationClient"/> mock so that the mocked client manager pairs them. Returns the
+        /// shared pageable so that change detection across reloads is stable.
         /// </summary>
         static public MockFeatureFlagAsyncPageable SetupMockFeatureFlagEndpoint(Mock<ConfigurationClient> mockClient, List<FeatureFlag> flags = null)
         {
             var pageable = new MockFeatureFlagAsyncPageable(flags);
 
-            mockClient.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+            var mockFeatureFlagClient = new Mock<FeatureFlagClient>(MockBehavior.Strict);
+            mockFeatureFlagClient.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(pageable);
+
+            _featureFlagClients.Remove(mockClient.Object);
+            _featureFlagClients.Add(mockClient.Object, mockFeatureFlagClient.Object);
 
             return pageable;
         }
@@ -335,6 +366,19 @@ namespace Tests.AzureAppConfiguration
         }
 
         public IAsyncEnumerable<Page<ConfigurationSetting>> IteratePages(AsyncPageable<ConfigurationSetting> pageable)
+        {
+            return pageable.AsPages();
+        }
+    }
+
+    internal class MockFeatureFlagPageIterator : IFeatureFlagPageIterator
+    {
+        public IAsyncEnumerable<Page<FeatureFlag>> IteratePages(AsyncPageable<FeatureFlag> pageable)
+        {
+            return pageable.AsPages();
+        }
+
+        public IAsyncEnumerable<Page<FeatureFlag>> IteratePages(AsyncPageable<FeatureFlag> pageable, IEnumerable<MatchConditions> matchConditions)
         {
             return pageable.AsPages();
         }

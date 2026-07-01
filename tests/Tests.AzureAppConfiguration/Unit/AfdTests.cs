@@ -400,6 +400,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConnectAzureFrontDoor(afdEndpoint);
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(TimeSpan.FromSeconds(1)));
                     refresher = options.GetRefresher();
                 })

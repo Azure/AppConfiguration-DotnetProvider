@@ -8,11 +8,11 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
-    internal class AfdConfigurationClientManager : IConfigurationClientManager
+    internal class AfdClientManager : IClientManager
     {
-        private readonly ConfigurationClientWrapper _clientWrapper;
+        private readonly ClientWrapper _clientWrapper;
 
-        public AfdConfigurationClientManager(
+        public AfdClientManager(
             IAzureClientFactory<ConfigurationClient> configurationClientFactory,
             IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory,
             Uri endpoint)
@@ -32,15 +32,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            _clientWrapper = new ConfigurationClientWrapper(
+            _clientWrapper = new ClientWrapper(
                 endpoint,
                 configurationClientFactory.CreateClient(endpoint.AbsoluteUri),
                 featureFlagClientFactory.CreateClient(endpoint.AbsoluteUri));
         }
 
-        public IEnumerable<ConfigurationClient> GetClients()
+        public IEnumerable<ClientWrapper> GetClients()
         {
-            return new List<ConfigurationClient> { _clientWrapper.Client };
+            return new List<ClientWrapper> { _clientWrapper };
         }
 
         public void RefreshClients()
@@ -51,26 +51,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
         public bool UpdateSyncToken(Uri endpoint, string syncToken)
         {
             return false;
-        }
-
-        public Uri GetEndpointForClient(ConfigurationClient client)
-        {
-            if (client == null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-
-            return _clientWrapper.Client == client ? _clientWrapper.Endpoint : null;
-        }
-
-        public FeatureFlagClient GetFeatureFlagClient(ConfigurationClient client)
-        {
-            if (client == null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-
-            return _clientWrapper.Client == client ? _clientWrapper.FeatureFlagClient : null;
         }
     }
 }
