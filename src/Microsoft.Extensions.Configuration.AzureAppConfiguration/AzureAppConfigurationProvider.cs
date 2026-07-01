@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isInitialLoadComplete = false;
         private bool _isAssemblyInspected;
         private readonly bool _requestTracingEnabled;
-        private readonly IConfigurationClientManager _configClientManager;
+        private readonly IClientManager _clientManager;
         private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> _watchedKvPages = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
         private Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> _watchedFfPages = new Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages>();
         private RequestTracingOptions _requestTracingOptions;
-        private Dictionary<Uri, ConfigurationClientBackoffStatus> _configClientBackoffs = new Dictionary<Uri, ConfigurationClientBackoffStatus>();
+        private Dictionary<Uri, ClientBackoffStatus> _clientBackoffs = new Dictionary<Uri, ClientBackoffStatus>();
         private DateTimeOffset _nextCollectionRefreshTime;
 
         private readonly TimeSpan MinRefreshInterval;
@@ -63,7 +63,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private DateTimeOffset? _lastSuccessfulAttempt = null;
         private DateTimeOffset? _lastFailedAttempt = null;
 
-        private class ConfigurationClientBackoffStatus
+        private class ClientBackoffStatus
         {
             public int FailedAttempts { get; set; }
             public DateTimeOffset BackoffEndTime { get; set; }
@@ -108,7 +108,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
 
-                    if (_configClientManager is ConfigurationClientManager clientManager)
+                    if (_clientManager is ClientManager clientManager)
                     {
                         clientManager.SetLogger(_logger);
                     }
@@ -116,9 +116,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(IConfigurationClientManager configClientManager, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(IClientManager clientManager, AzureAppConfigurationOptions options, bool optional)
         {
-            _configClientManager = configClientManager ?? throw new ArgumentNullException(nameof(configClientManager));
+            _clientManager = clientManager ?? throw new ArgumentNullException(nameof(clientManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _optional = optional;
 
@@ -230,7 +230,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         return;
                     }
 
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+                    IEnumerable<ClientWrapper> clients = _clientManager.GetClients();
 
                     if (_requestTracingOptions != null)
                     {
@@ -239,15 +239,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Filter clients based on their backoff status
-                    clients = clients.Where(client =>
+                    clients = clients.Where(clientWrapper =>
                     {
-                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
+                        Uri endpoint = clientWrapper.Endpoint;
 
-                        if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+                        if (!_clientBackoffs.TryGetValue(endpoint, out ClientBackoffStatus clientBackoffStatus))
                         {
-                            clientBackoffStatus = new ConfigurationClientBackoffStatus();
+                            clientBackoffStatus = new ClientBackoffStatus();
 
-                            _configClientBackoffs[endpoint] = clientBackoffStatus;
+                            _clientBackoffs[endpoint] = clientBackoffStatus;
                         }
 
                         return clientBackoffStatus.BackoffEndTime <= utcNow;
@@ -256,7 +256,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (!clients.Any())
                     {
-                        _configClientManager.RefreshClients();
+                        _clientManager.RefreshClients();
 
                         _logger.LogDebug(LogHelper.BuildRefreshSkippedNoClientAvailableMessage());
 
@@ -294,7 +294,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     StringBuilder logInfoBuilder = new StringBuilder();
                     StringBuilder logDebugBuilder = new StringBuilder();
 
-                    await ExecuteWithFailOverPolicyAsync(clients, async (client) =>
+                    await ExecuteWithFailOverPolicyAsync(clients, async (clientWrapper) =>
                     {
                         kvEtags = null;
                         ffEtags = null;
@@ -308,8 +308,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         refreshAll = false;
                         logDebugBuilder.Clear();
                         logInfoBuilder.Clear();
-                        Uri endpoint = _configClientManager.GetEndpointForClient(client);
-                        FeatureFlagClient featureFlagClient = _configClientManager.GetFeatureFlagClient(client);
+                        ConfigurationClient configurationClient = clientWrapper.ConfigurationClient;
+                        Uri endpoint = clientWrapper.Endpoint;
+                        FeatureFlagClient featureFlagClient = clientWrapper.FeatureFlagClient;
 
                         if (_options.RegisterAllEnabled)
                         {
@@ -318,14 +319,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 refreshAll = await HaveCollectionsChanged(
                                     _options.KeyValueSelectors,
                                     _watchedKvPages,
-                                    client,
+                                    configurationClient,
                                     cancellationToken).ConfigureAwait(false);
                             }
                         }
                         else
                         {
                             refreshAll = await RefreshIndividualKvWatchers(
-                                client,
+                                configurationClient,
                                 watchedIndividualKvChanges,
                                 refreshableIndividualKvWatchers,
                                 endpoint,
@@ -343,11 +344,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             ffKeys = new HashSet<string>();
                             sdkFFs = new Dictionary<string, SdkFeatureFlag>();
 
-                            data = await LoadKeyValues(client, kvEtags, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
+                            data = await LoadKeyValues(configurationClient, kvEtags, _options.KeyValueSelectors, cancellationToken).ConfigureAwait(false);
 
-                            await LoadFeatureFlags(client, featureFlagClient, _options.FeatureFlagSelectors, data, sdkFFs, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
+                            await LoadFeatureFlags(configurationClient, featureFlagClient, _options.FeatureFlagSelectors, data, sdkFFs, ffEtags, ffKeys, cancellationToken).ConfigureAwait(false);
 
-                            watchedIndividualKvs = await LoadIndividualWatchedSettings(client, data, cancellationToken).ConfigureAwait(false);
+                            watchedIndividualKvs = await LoadIndividualWatchedSettings(configurationClient, data, cancellationToken).ConfigureAwait(false);
 
                             logInfoBuilder.AppendLine(LogHelper.BuildConfigurationUpdatedMessage());
 
@@ -363,7 +364,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 TagFilters = watcher.Tags
                             }),
                             _watchedFfPages,
-                            client,
+                            configurationClient,
                             featureFlagClient,
                             cancellationToken).ConfigureAwait(false);
 
@@ -375,7 +376,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             sdkFFs = new Dictionary<string, SdkFeatureFlag>();
 
                             await LoadFeatureFlags(
-                                client,
+                                configurationClient,
                                 featureFlagClient,
                                 _options.FeatureFlagSelectors,
                                 ffCollectionData,
@@ -584,7 +585,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     $"{nameof(pushNotification)}.{nameof(pushNotification.ResourceUri)}");
             }
 
-            if (_configClientManager.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
+            if (_clientManager.UpdateSyncToken(pushNotification.ResourceUri, pushNotification.SyncToken))
             {
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
@@ -730,7 +731,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 while (true)
                 {
-                    IEnumerable<ConfigurationClient> clients = _configClientManager.GetClients();
+                    IEnumerable<ClientWrapper> clients = _clientManager.GetClients();
 
                     if (_requestTracingEnabled && _requestTracingOptions != null)
                     {
@@ -783,7 +784,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             { }
         }
 
-        private async Task<bool> TryInitializeAsync(IEnumerable<ConfigurationClient> clients, List<Exception> startupExceptions, CancellationToken cancellationToken = default)
+        private async Task<bool> TryInitializeAsync(IEnumerable<ClientWrapper> clients, List<Exception> startupExceptions, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -829,7 +830,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return true;
         }
 
-        private async Task InitializeAsync(IEnumerable<ConfigurationClient> clients, CancellationToken cancellationToken = default)
+        private async Task InitializeAsync(IEnumerable<ClientWrapper> clients, CancellationToken cancellationToken = default)
         {
             Dictionary<string, ConfigurationSetting> data = null;
             Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> kvEtags = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
@@ -840,18 +841,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             await ExecuteWithFailOverPolicyAsync(
                 clients,
-                async (client) =>
+                async (clientWrapper) =>
                 {
+                    ConfigurationClient configurationClient = clientWrapper.ConfigurationClient;
+                    FeatureFlagClient featureFlagClient = clientWrapper.FeatureFlagClient;
+
                     data = await LoadKeyValues(
-                        client,
+                        configurationClient,
                         kvEtags,
                         _options.KeyValueSelectors,
                         cancellationToken)
                         .ConfigureAwait(false);
 
                     await LoadFeatureFlags(
-                        client,
-                        _configClientManager.GetFeatureFlagClient(client),
+                        configurationClient,
+                        featureFlagClient,
                         _options.FeatureFlagSelectors,
                         data,
                         sdkFFs,
@@ -861,7 +865,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         .ConfigureAwait(false);
 
                     watchedIndividualKvs = await LoadIndividualWatchedSettings(
-                        client,
+                        configurationClient,
                         data,
                         cancellationToken)
                         .ConfigureAwait(false);
@@ -1404,8 +1408,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         private async Task<T> ExecuteWithFailOverPolicyAsync<T>(
-            IEnumerable<ConfigurationClient> clients,
-            Func<ConfigurationClient, Task<T>> funcToExecute,
+            IEnumerable<ClientWrapper> clients,
+            Func<ClientWrapper, Task<T>> funcToExecute,
             CancellationToken cancellationToken = default)
         {
             if (_requestTracingEnabled && _requestTracingOptions != null)
@@ -1417,11 +1421,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 int nextClientIndex = 0;
 
-                foreach (ConfigurationClient client in clients)
+                foreach (ClientWrapper clientWrapper in clients)
                 {
                     nextClientIndex++;
 
-                    if (_configClientManager.GetEndpointForClient(client) == _lastSuccessfulEndpoint)
+                    if (clientWrapper.Endpoint == _lastSuccessfulEndpoint)
                     {
                         break;
                     }
@@ -1434,12 +1438,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            using IEnumerator<ConfigurationClient> clientEnumerator = clients.GetEnumerator();
+            using IEnumerator<ClientWrapper> clientEnumerator = clients.GetEnumerator();
 
             clientEnumerator.MoveNext();
 
-            Uri previousEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
-            ConfigurationClient currentClient;
+            Uri previousEndpoint = clientEnumerator.Current?.Endpoint;
+            ClientWrapper currentClient;
 
             while (true)
             {
@@ -1454,7 +1458,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     T result = await funcToExecute(currentClient).ConfigureAwait(false);
                     success = true;
 
-                    _lastSuccessfulEndpoint = _configClientManager.GetEndpointForClient(currentClient);
+                    _lastSuccessfulEndpoint = currentClient.Endpoint;
                     _lastSuccessfulAttempt = DateTime.UtcNow;
 
                     return result;
@@ -1486,7 +1490,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                         do
                         {
-                            UpdateClientBackoffStatus(_configClientManager.GetEndpointForClient(currentClient), success);
+                            UpdateClientBackoffStatus(currentClient.Endpoint, success);
 
                             clientEnumerator.MoveNext();
 
@@ -1500,7 +1504,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     }
                 }
 
-                Uri currentEndpoint = _configClientManager.GetEndpointForClient(clientEnumerator.Current);
+                Uri currentEndpoint = clientEnumerator.Current?.Endpoint;
 
                 if (previousEndpoint != currentEndpoint)
                 {
@@ -1517,13 +1521,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         }
 
         private async Task ExecuteWithFailOverPolicyAsync(
-            IEnumerable<ConfigurationClient> clients,
-            Func<ConfigurationClient, Task> funcToExecute,
+            IEnumerable<ClientWrapper> clients,
+            Func<ClientWrapper, Task> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
+            await ExecuteWithFailOverPolicyAsync<object>(clients, async (clientWrapper) =>
             {
-                await funcToExecute(client).ConfigureAwait(false);
+                await funcToExecute(clientWrapper).ConfigureAwait(false);
                 return null;
 
             }, cancellationToken).ConfigureAwait(false);
@@ -1615,9 +1619,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private void UpdateClientBackoffStatus(Uri endpoint, bool successful)
         {
-            if (!_configClientBackoffs.TryGetValue(endpoint, out ConfigurationClientBackoffStatus clientBackoffStatus))
+            if (!_clientBackoffs.TryGetValue(endpoint, out ClientBackoffStatus clientBackoffStatus))
             {
-                clientBackoffStatus = new ConfigurationClientBackoffStatus();
+                clientBackoffStatus = new ClientBackoffStatus();
             }
 
             if (successful)
@@ -1635,7 +1639,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 clientBackoffStatus.BackoffEndTime = DateTimeOffset.UtcNow.Add(backoffDuration);
             }
 
-            _configClientBackoffs[endpoint] = clientBackoffStatus;
+            _clientBackoffs[endpoint] = clientBackoffStatus;
         }
 
         private async Task<bool> HaveCollectionsChanged(
@@ -1671,7 +1675,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private async Task<bool> HaveFeatureFlagCollectionsChanged(
             IEnumerable<FeatureFlagSelector> selectors,
             Dictionary<FeatureFlagSelector, FeatureFlagWatchedPages> pageWatchers,
-            ConfigurationClient client,
+            ConfigurationClient configurationClient,
             FeatureFlagClient featureFlagClient,
             CancellationToken cancellationToken)
         {
@@ -1697,7 +1701,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     };
 
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => changed = await client.HaveCollectionsChanged(
+                        async () => changed = await configurationClient.HaveCollectionsChanged(
                             classicSelector,
                             watchedPages.ClassicPages,
                             _options.ConfigurationSettingPageIterator,
@@ -1785,7 +1789,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void Dispose()
         {
-            (_configClientManager as ConfigurationClientManager)?.Dispose();
+            (_clientManager as ClientManager)?.Dispose();
             _activitySource?.Dispose();
         }
     }

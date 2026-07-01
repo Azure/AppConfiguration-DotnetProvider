@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
 using Azure;
@@ -48,11 +48,11 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -116,11 +116,11 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -175,11 +175,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -242,11 +242,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
-            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
+            var clientList = new List<ClientWrapper>() { cw1 };
+            var autoFailoverList = new List<ClientWrapper>() { cw2 };
             var mockedConfigClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
 
             // Should not throw exception.
@@ -269,9 +269,11 @@ namespace Tests.AzureAppConfiguration
         public void FailOverTests_ValidateEndpoints()
         {
             var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
+            var featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(new DefaultAzureCredential(), new FeatureFlagClientOptions());
 
-            var configClientManager = new ConfigurationClientManager(
+            var configClientManager = new ClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.azconfig.io") },
                 true,
                 false);
@@ -285,8 +287,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager.IsValidEndpoint("azure.appconfig.azure.com"));
             Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
 
-            var configClientManager2 = new ConfigurationClientManager(
+            var configClientManager2 = new ClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.appconfig.azure.com") },
                 true,
                 false);
@@ -300,8 +303,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager2.IsValidEndpoint("azure.badappconfig.azure.com"));
             Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
 
-            var configClientManager3 = new ConfigurationClientManager(
+            var configClientManager3 = new ClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.azconfig-test.io") },
                 true,
                 false);
@@ -309,8 +313,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
 
-            var configClientManager4 = new ConfigurationClientManager(
+            var configClientManager4 = new ClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
                 true,
                 false);
@@ -324,9 +329,11 @@ namespace Tests.AzureAppConfiguration
         public void FailOverTests_GetNoDynamicClient()
         {
             var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
+            var featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(new DefaultAzureCredential(), new FeatureFlagClientOptions());
 
-            var configClientManager = new ConfigurationClientManager(
+            var configClientManager = new ClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://azure.azconfig.io") },
                 true,
                 false);
@@ -360,11 +367,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
-            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
+            var clientList = new List<ClientWrapper>() { cw1 };
+            var autoFailoverList = new List<ClientWrapper>() { cw2 };
             var configClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
 
             // Make sure the provider fails over and will load correctly using the second client
@@ -445,11 +452,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new ClientManager(clientList);
 
             // Verify 2 clients are available
             Assert.Equal(2, configClientManager.GetClients().Count());

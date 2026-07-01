@@ -8,16 +8,12 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal interface IConfigurationClientManager
+    internal interface IClientManager
     {
-        IEnumerable<ConfigurationClient> GetClients();
+        IEnumerable<ClientWrapper> GetClients();
 
         void RefreshClients();
 
         bool UpdateSyncToken(Uri endpoint, string syncToken);
-
-        Uri GetEndpointForClient(ConfigurationClient client);
-
-        FeatureFlagClient GetFeatureFlagClient(ConfigurationClient client);
     }
 }

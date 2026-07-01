@@ -6,22 +6,22 @@ using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal class ConfigurationClientWrapper
+    internal class ClientWrapper
     {
-        public ConfigurationClientWrapper(Uri endpoint, ConfigurationClient configurationClient)
+        public ClientWrapper(Uri endpoint, ConfigurationClient configurationClient)
         {
             Endpoint = endpoint;
-            Client = configurationClient;
+            ConfigurationClient = configurationClient;
         }
 
-        public ConfigurationClientWrapper(Uri endpoint, ConfigurationClient configurationClient, FeatureFlagClient featureFlagClient)
+        public ClientWrapper(Uri endpoint, ConfigurationClient configurationClient, FeatureFlagClient featureFlagClient)
         {
             Endpoint = endpoint;
-            Client = configurationClient;
+            ConfigurationClient = configurationClient;
             FeatureFlagClient = featureFlagClient;
         }
 
-        public ConfigurationClient Client { get; private set; }
+        public ConfigurationClient ConfigurationClient { get; private set; }
 
         public FeatureFlagClient FeatureFlagClient { get; private set; }
 
