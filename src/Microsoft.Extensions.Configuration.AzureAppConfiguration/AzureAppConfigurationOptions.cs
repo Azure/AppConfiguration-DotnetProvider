@@ -155,6 +155,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal ConfigurationClientOptions ClientOptions { get; private set; } = GetDefaultClientOptions();
 
         /// <summary>
+        /// Options used to configure the client used to communicate with the Azure App Configuration feature-flag endpoint.
+        /// </summary>
+        internal FeatureFlagClientOptions FeatureFlagClientOptions { get; private set; } = GetDefaultFeatureFlagClientOptions();
+
+        /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
         /// </summary>
         internal bool IsKeyVaultConfigured { get; private set; } = false;
@@ -509,6 +514,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
         {
             configure?.Invoke(ClientOptions);
+
+            // Reflect the relevant settings onto the feature-flag client options so that both clients
+            // communicate with the same store, audience, transport and retry behavior.
+            FeatureFlagClientOptions.Retry.MaxRetries = ClientOptions.Retry.MaxRetries;
+            FeatureFlagClientOptions.Retry.MaxDelay = ClientOptions.Retry.MaxDelay;
+            FeatureFlagClientOptions.Retry.Mode = ClientOptions.Retry.Mode;
+            FeatureFlagClientOptions.Retry.NetworkTimeout = ClientOptions.Retry.NetworkTimeout;
+            FeatureFlagClientOptions.Audience = ClientOptions.Audience;
+
+            if (ClientOptions.Transport != null)
+            {
+                FeatureFlagClientOptions.Transport = ClientOptions.Transport;
+            }
+
             return this;
         }
 
@@ -626,26 +645,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return clientOptions;
         }
 
-        /// <summary>
-        /// Builds <see cref="FeatureFlagClientOptions"/> that mirror the relevant settings of the
-        /// configured <see cref="ClientOptions"/> so that the feature-flag client communicates with the
-        /// same store, audience, transport and retry behavior as the configuration client.
-        /// </summary>
-        internal FeatureFlagClientOptions GetFeatureFlagClientOptions()
+        private static FeatureFlagClientOptions GetDefaultFeatureFlagClientOptions()
         {
             var ffClientOptions = new FeatureFlagClientOptions(FeatureFlagClientOptions.ServiceVersion.V2026_05_01_Preview);
-
-            ffClientOptions.Retry.MaxRetries = ClientOptions.Retry.MaxRetries;
-            ffClientOptions.Retry.MaxDelay = ClientOptions.Retry.MaxDelay;
-            ffClientOptions.Retry.Mode = ClientOptions.Retry.Mode;
-            ffClientOptions.Retry.NetworkTimeout = ClientOptions.Retry.NetworkTimeout;
-            ffClientOptions.Audience = ClientOptions.Audience;
-
-            if (ClientOptions.Transport != null)
-            {
-                ffClientOptions.Transport = ClientOptions.Transport;
-            }
-
+            ffClientOptions.Retry.MaxRetries = MaxRetries;
+            ffClientOptions.Retry.MaxDelay = MaxRetryDelay;
+            ffClientOptions.Retry.Mode = RetryMode.Exponential;
+            ffClientOptions.Retry.NetworkTimeout = NetworkTimeout;
             ffClientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return ffClientOptions;

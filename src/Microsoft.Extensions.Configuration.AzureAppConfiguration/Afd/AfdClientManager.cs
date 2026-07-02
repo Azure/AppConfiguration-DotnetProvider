@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
     internal class AfdClientManager : IClientManager
     {
-        private readonly ClientWrapper _clientWrapper;
+        private readonly AppConfigurationClient _clientWrapper;
 
         public AfdClientManager(
             IAzureClientFactory<ConfigurationClient> configurationClientFactory,
@@ -32,15 +32,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
                 throw new ArgumentNullException(nameof(endpoint));
             }
 
-            _clientWrapper = new ClientWrapper(
+            _clientWrapper = new AppConfigurationClient(
                 endpoint,
                 configurationClientFactory.CreateClient(endpoint.AbsoluteUri),
                 featureFlagClientFactory.CreateClient(endpoint.AbsoluteUri));
         }
 
-        public IEnumerable<ClientWrapper> GetClients()
+        public IEnumerable<IAppConfigurationClient> GetClients()
         {
-            return new List<ClientWrapper> { _clientWrapper };
+            return new List<IAppConfigurationClient> { _clientWrapper };
         }
 
         public void RefreshClients()

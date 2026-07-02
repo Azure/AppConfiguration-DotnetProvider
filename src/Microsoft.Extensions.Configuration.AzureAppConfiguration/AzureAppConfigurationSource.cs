@@ -67,7 +67,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 IEnumerable<Uri> endpoints;
 
-                FeatureFlagClientOptions featureFlagClientOptions = options.GetFeatureFlagClientOptions();
+                FeatureFlagClientOptions featureFlagClientOptions = options.FeatureFlagClientOptions;
 
                 if (options.IsAfdUsed)
                 {

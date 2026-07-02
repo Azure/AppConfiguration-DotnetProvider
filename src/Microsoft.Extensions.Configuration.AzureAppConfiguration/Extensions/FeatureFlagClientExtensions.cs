@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     internal static class FeatureFlagClientExtensions
     {
         public static async Task<bool> HaveFeatureFlagsChanged(
-            this FeatureFlagClient client,
+            this IAppConfigurationClient client,
             Models.FeatureFlagSelector featureFlagSelector,
             IEnumerable<WatchedPage> pageWatchers,
             IFeatureFlagPageIterator pageIterator,

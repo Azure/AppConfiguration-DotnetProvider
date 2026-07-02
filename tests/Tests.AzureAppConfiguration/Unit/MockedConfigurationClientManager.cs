@@ -11,18 +11,18 @@ namespace Tests.AzureAppConfiguration
 {
     internal class MockedConfigurationClientManager : IClientManager
     {
-        IList<ClientWrapper> _clients;
-        IList<ClientWrapper> _autoFailoverClients;
+        IList<AppConfigurationClient> _clients;
+        IList<AppConfigurationClient> _autoFailoverClients;
 
         internal int UpdateSyncTokenCalled { get; set; } = 0;
 
-        public MockedConfigurationClientManager(IEnumerable<ClientWrapper> clients)
+        public MockedConfigurationClientManager(IEnumerable<AppConfigurationClient> clients)
         {
             _clients = clients.ToList();
-            _autoFailoverClients = new List<ClientWrapper>();
+            _autoFailoverClients = new List<AppConfigurationClient>();
         }
 
-        public MockedConfigurationClientManager(IEnumerable<ClientWrapper> clients, IEnumerable<ClientWrapper> autoFailoverClients)
+        public MockedConfigurationClientManager(IEnumerable<AppConfigurationClient> clients, IEnumerable<AppConfigurationClient> autoFailoverClients)
         {
             _autoFailoverClients = autoFailoverClients.ToList();
             _clients = clients.ToList();
@@ -37,13 +37,13 @@ namespace Tests.AzureAppConfiguration
         {
             this.UpdateSyncTokenCalled++;
             var client = _clients.SingleOrDefault(c => string.Equals(c.Endpoint.Host, endpoint.Host, StringComparison.OrdinalIgnoreCase));
-            client?.ConfigurationClient?.UpdateSyncToken(syncToken);
+            client?.UpdateSyncToken(syncToken);
             return true;
         }
 
-        public IEnumerable<ClientWrapper> GetClients()
+        public IEnumerable<IAppConfigurationClient> GetClients()
         {
-            var result = new List<ClientWrapper>();
+            var result = new List<IAppConfigurationClient>();
 
             foreach (var client in _clients)
             {

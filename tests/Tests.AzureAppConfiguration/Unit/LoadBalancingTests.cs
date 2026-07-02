@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using ClientWrapper = Microsoft.Extensions.Configuration.AzureAppConfiguration.AppConfigurationClient;
 
 namespace Tests.AzureAppConfiguration
 {

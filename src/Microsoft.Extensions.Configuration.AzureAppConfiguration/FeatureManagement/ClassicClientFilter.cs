@@ -1,15 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-
-using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class FeatureTelemetry
+    internal class ClassicClientFilter
     {
-        public bool Enabled { get; set; }
+        public string Name { get; set; }
 
-        public IDictionary<string, string> Metadata { get; set; }
+        public JsonElement Parameters { get; set; }
     }
 }
