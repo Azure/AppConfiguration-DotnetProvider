@@ -238,9 +238,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     //
                     // Filter clients based on their backoff status
-                    clients = clients.Where(clientWrapper =>
+                    clients = clients.Where(client =>
                     {
-                        Uri endpoint = clientWrapper.Endpoint;
+                        Uri endpoint = client.Endpoint;
 
                         if (!_clientBackoffs.TryGetValue(endpoint, out ClientBackoffStatus clientBackoffStatus))
                         {
