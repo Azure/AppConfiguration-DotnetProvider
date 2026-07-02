@@ -1088,7 +1088,7 @@ namespace Tests.AzureAppConfiguration
             });
 
             var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
+            options.ConfigureClientOptions(o => o.Transport = mockTransport);
             var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
 
             var builder = new ConfigurationBuilder();
@@ -1116,7 +1116,7 @@ namespace Tests.AzureAppConfiguration
             });
 
             var options = new AzureAppConfigurationOptions();
-            options.ClientOptions.Transport = mockTransport;
+            options.ConfigureClientOptions(o => o.Transport = mockTransport);
             var clientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>

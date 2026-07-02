@@ -47,10 +47,10 @@ namespace Tests.AzureAppConfiguration
             ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
             ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
 
-            ClientWrapper w1 = new ClientWrapper(PrimaryConfigStoreEndpoint, c1, CreateMockFeatureFlagClient(PrimaryConfigStoreEndpoint, options));
-            ClientWrapper w2 = new ClientWrapper(SecondaryConfigStoreEndpoint, c2, CreateMockFeatureFlagClient(SecondaryConfigStoreEndpoint, options));
+            AppConfigurationClient w1 = new AppConfigurationClient(PrimaryConfigStoreEndpoint, c1, CreateMockFeatureFlagClient(PrimaryConfigStoreEndpoint, options));
+            AppConfigurationClient w2 = new AppConfigurationClient(SecondaryConfigStoreEndpoint, c2, CreateMockFeatureFlagClient(SecondaryConfigStoreEndpoint, options));
 
-            IList<ClientWrapper> clients = new List<ClientWrapper>() { w1, w2 };
+            IList<AppConfigurationClient> clients = new List<AppConfigurationClient>() { w1, w2 };
 
             MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
 
@@ -59,10 +59,10 @@ namespace Tests.AzureAppConfiguration
 
         static public MockedConfigurationClientManager CreateMockedConfigurationClientManager(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
         {
-            ClientWrapper w1 = new ClientWrapper(PrimaryConfigStoreEndpoint, primaryClient, GetAssociatedFeatureFlagClient(primaryClient));
-            ClientWrapper w2 = secondaryClient != null ? new ClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient, GetAssociatedFeatureFlagClient(secondaryClient)) : null;
+            AppConfigurationClient w1 = new AppConfigurationClient(PrimaryConfigStoreEndpoint, primaryClient, GetAssociatedFeatureFlagClient(primaryClient));
+            AppConfigurationClient w2 = secondaryClient != null ? new AppConfigurationClient(SecondaryConfigStoreEndpoint, secondaryClient, GetAssociatedFeatureFlagClient(secondaryClient)) : null;
 
-            IList<ClientWrapper> clients = new List<ClientWrapper>() { w1 };
+            IList<AppConfigurationClient> clients = new List<AppConfigurationClient>() { w1 };
 
             if (secondaryClient != null)
             {
@@ -80,7 +80,7 @@ namespace Tests.AzureAppConfiguration
             mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
                 .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
 
-            return new FeatureFlagClient(endpoint, mockTokenCredential.Object, options.GetFeatureFlagClientOptions());
+            return new FeatureFlagClient(endpoint, mockTokenCredential.Object, options.FeatureFlagClientOptions);
         }
 
         static private FeatureFlagClient GetAssociatedFeatureFlagClient(ConfigurationClient client)

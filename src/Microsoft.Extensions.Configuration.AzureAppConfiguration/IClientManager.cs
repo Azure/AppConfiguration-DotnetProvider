@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     internal interface IClientManager
     {
-        IEnumerable<ClientWrapper> GetClients();
+        IEnumerable<IAppConfigurationClient> GetClients();
 
         void RefreshClients();
 

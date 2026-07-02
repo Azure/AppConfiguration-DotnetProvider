@@ -5,9 +5,9 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class FeatureConditions
+    internal class ClassicFeatureConditions
     {
-        public List<ClientFilter> ClientFilters { get; set; } = new List<ClientFilter>();
+        public List<ClassicClientFilter> ClientFilters { get; set; } = new List<ClassicClientFilter>();
 
         public string RequirementType { get; set; }
     }

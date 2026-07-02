@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class FeatureVariant
+    internal class ClassicFeatureVariant
     {
         public string Name { get; set; }
 
