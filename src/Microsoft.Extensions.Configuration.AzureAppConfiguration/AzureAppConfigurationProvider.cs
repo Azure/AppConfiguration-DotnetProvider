@@ -684,18 +684,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 return;
             }
 
-            FeatureManagementKeyValueAdapter featureFlagAdapter = _options.Adapters
+            // Continue the "feature_management:feature_flags" array index after any classic feature flags
+            // already emitted (by the feature-management adapter) in this load, so that the combined array
+            // uses a single contiguous set of indices.
+            int featureFlagIndex = _options.Adapters
                 .OfType<FeatureManagementKeyValueAdapter>()
-                .FirstOrDefault();
-
-            if (featureFlagAdapter == null)
-            {
-                return;
-            }
+                .FirstOrDefault()?.FeatureFlagIndex ?? 0;
 
             foreach (FeatureFlag featureFlag in featureFlags)
             {
-                foreach (KeyValuePair<string, string> kv in featureFlagAdapter.ProcessFeatureFlag(featureFlag, AppConfigurationEndpoint))
+                foreach (KeyValuePair<string, string> kv in FeatureFlagConverter.ToConfiguration(
+                    featureFlag,
+                    ref featureFlagIndex,
+                    AppConfigurationEndpoint,
+                    _options.FeatureFlagTracing))
                 {
                     AddWithTrimmedPrefix(data, kv.Key, kv.Value);
                 }

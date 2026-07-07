@@ -345,8 +345,8 @@ namespace Tests.AzureAppConfiguration
             mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
             mockClient2.Setup(c => c.Equals(mockClient1)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
             var configClientManager = new ClientManager(clientList);

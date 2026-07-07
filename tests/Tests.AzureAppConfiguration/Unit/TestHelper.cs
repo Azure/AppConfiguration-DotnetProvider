@@ -59,8 +59,8 @@ namespace Tests.AzureAppConfiguration
 
         static public MockedConfigurationClientManager CreateMockedConfigurationClientManager(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
         {
-            AppConfigurationClient w1 = new AppConfigurationClient(PrimaryConfigStoreEndpoint, primaryClient, GetAssociatedFeatureFlagClient(primaryClient));
-            AppConfigurationClient w2 = secondaryClient != null ? new AppConfigurationClient(SecondaryConfigStoreEndpoint, secondaryClient, GetAssociatedFeatureFlagClient(secondaryClient)) : null;
+            AppConfigurationClient w1 = new AppConfigurationClient(PrimaryConfigStoreEndpoint, primaryClient, GetAssociatedFeatureFlagClient(PrimaryConfigStoreEndpoint, primaryClient));
+            AppConfigurationClient w2 = secondaryClient != null ? new AppConfigurationClient(SecondaryConfigStoreEndpoint, secondaryClient, GetAssociatedFeatureFlagClient(SecondaryConfigStoreEndpoint, secondaryClient)) : null;
 
             IList<AppConfigurationClient> clients = new List<AppConfigurationClient>() { w1 };
 
@@ -83,14 +83,25 @@ namespace Tests.AzureAppConfiguration
             return new FeatureFlagClient(endpoint, mockTokenCredential.Object, options.FeatureFlagClientOptions);
         }
 
-        static private FeatureFlagClient GetAssociatedFeatureFlagClient(ConfigurationClient client)
+        // Creates a real (non-mocked) FeatureFlagClient for tests that don't exercise feature flags but
+        // still need a non-null feature-flag client to construct an AppConfigurationClient.
+        static public FeatureFlagClient CreateFeatureFlagClient(Uri endpoint)
+        {
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            return new FeatureFlagClient(endpoint, mockTokenCredential.Object, new FeatureFlagClientOptions());
+        }
+
+        static private FeatureFlagClient GetAssociatedFeatureFlagClient(Uri endpoint, ConfigurationClient client)
         {
             if (client != null && _featureFlagClients.TryGetValue(client, out FeatureFlagClient featureFlagClient))
             {
                 return featureFlagClient;
             }
 
-            return null;
+            return CreateFeatureFlagClient(endpoint);
         }
 
         static public string CreateMockEndpointString(string endpoint = "https://azure.azconfig.io")

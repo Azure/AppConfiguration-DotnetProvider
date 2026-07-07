@@ -14,29 +14,47 @@ using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal partial class FeatureManagementKeyValueAdapter
+    /// <summary>
+    /// Converts a standalone feature flag (returned by the feature-flag endpoint as an Azure SDK
+    /// <see cref="FeatureFlag"/>) directly into the flattened feature-management configuration key-values
+    /// consumed by <c>Microsoft.FeatureManagement</c>. Standalone feature flags are not configuration
+    /// settings, so they are converted here rather than through an <see cref="IKeyValueAdapter"/>.
+    /// </summary>
+    internal static class FeatureFlagConverter
     {
-        // Emits feature-management configuration key-values directly from a standalone feature flag
-        // (returned by the feature-flag endpoint as an Azure SDK FeatureFlag).
-        public IEnumerable<KeyValuePair<string, string>> ProcessFeatureFlag(FeatureFlag featureFlag, Uri endpoint)
+        /// <summary>
+        /// Produces the feature-management configuration key-values for a single standalone feature flag.
+        /// </summary>
+        /// <param name="flag">The feature flag to convert.</param>
+        /// <param name="featureFlagIndex">
+        /// The next available index in the "feature_management:feature_flags" array. It is advanced when the
+        /// flag is emitted using the Microsoft schema, so that a caller converting multiple flags produces a
+        /// contiguous set of indices.
+        /// </param>
+        /// <param name="endpoint">The endpoint used to build the feature flag reference for telemetry.</param>
+        /// <param name="tracing">Tracing used to record feature filter, variant, seed and telemetry usage.</param>
+        public static IEnumerable<KeyValuePair<string, string>> ToConfiguration(
+            FeatureFlag flag,
+            ref int featureFlagIndex,
+            Uri endpoint,
+            FeatureFlagTracing tracing)
         {
-            string key = FeatureManagementConstants.FeatureFlagMarker + (featureFlag.Name ?? string.Empty);
+            string key = FeatureManagementConstants.FeatureFlagMarker + (flag.Name ?? string.Empty);
 
-            var metadata = new FeatureFlagMetadata(key, featureFlag.Label, featureFlag.Etag ?? default);
+            var metadata = new FeatureFlagMetadata(key, flag.Label, flag.Etag ?? default);
 
             // Check if we need to process the feature flag using the microsoft schema
-            if (_fmSchemaCompatibilityDisabled ||
-                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
-                featureFlag.Allocation != null ||
-                featureFlag.Telemetry != null)
+            if ((flag.Variants != null && flag.Variants.Any()) ||
+                flag.Allocation != null ||
+                flag.Telemetry != null)
             {
-                return ProcessMicrosoftSchemaFeatureFlag(featureFlag, metadata, endpoint);
+                return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint, ref featureFlagIndex, tracing);
             }
 
-            return ProcessDotnetSchemaFeatureFlag(featureFlag);
+            return ProcessDotnetSchemaFeatureFlag(flag, tracing);
         }
 
-        private List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag)
+        private static List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag, FeatureFlagTracing tracing)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -59,7 +77,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         FeatureFilter clientFilter = featureFlag.Conditions.Filters[i];
 
-                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        tracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
 
@@ -89,7 +107,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(FeatureFlag featureFlag, FeatureFlagMetadata metadata, Uri endpoint)
+        private static List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(
+            FeatureFlag featureFlag,
+            FeatureFlagMetadata metadata,
+            Uri endpoint,
+            ref int featureFlagIndex,
+            FeatureFlagTracing tracing)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -98,9 +121,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{featureFlagIndex}";
 
-            _featureFlagIndex++;
+            featureFlagIndex++;
 
             bool enabled = featureFlag.Enabled ?? false;
 
@@ -118,7 +141,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     {
                         FeatureFilter clientFilter = featureFlag.Conditions.Filters[i];
 
-                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
+                        tracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{i}";
 
@@ -165,7 +188,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     i++;
                 }
 
-                _featureFlagTracing.NotifyMaxVariants(i);
+                tracing.NotifyMaxVariants(i);
             }
 
             if (featureFlag.Allocation != null)
@@ -244,7 +267,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Seed != null)
                 {
-                    _featureFlagTracing.UsesSeed = true;
+                    tracing.UsesSeed = true;
 
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
@@ -258,7 +281,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
-                    _featureFlagTracing.UsesTelemetry = true;
+                    tracing.UsesTelemetry = true;
 
                     if (telemetry.Metadata != null)
                     {
@@ -294,7 +317,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private string CalculateAllocationId(FeatureFlag flag)
+        private static string CalculateAllocationId(FeatureFlag flag)
         {
             Debug.Assert(flag.Allocation != null);
 
@@ -373,9 +396,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         }
 
         // The SDK exposes filter parameters as IDictionary<string, string>. The feature-management
-        // adapter flattens a JsonElement to produce per-leaf keys (e.g. Audience:Users:0), so build a
-        // JsonElement here. Parameter values that are JSON-encoded strings are embedded as parsed JSON
-        // so the flattening produces the nested keys that feature-management filters bind against.
+        // flattening produces per-leaf keys (e.g. Audience:Users:0), so build a JsonElement here. Parameter
+        // values that are JSON-encoded strings are embedded as parsed JSON so the flattening produces the
+        // nested keys that feature-management filters bind against.
         private static JsonElement BuildParametersElement(IDictionary<string, string> parameters)
         {
             if (parameters == null || parameters.Count == 0)
