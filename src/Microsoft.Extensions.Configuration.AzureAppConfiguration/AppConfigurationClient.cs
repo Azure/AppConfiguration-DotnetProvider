@@ -20,17 +20,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private readonly ConfigurationClient _configurationClient;
         private readonly FeatureFlagClient _featureFlagClient;
 
-        public AppConfigurationClient(Uri endpoint, ConfigurationClient configurationClient)
-        {
-            Endpoint = endpoint;
-            _configurationClient = configurationClient;
-        }
-
         public AppConfigurationClient(Uri endpoint, ConfigurationClient configurationClient, FeatureFlagClient featureFlagClient)
         {
             Endpoint = endpoint;
-            _configurationClient = configurationClient;
-            _featureFlagClient = featureFlagClient;
+            _configurationClient = configurationClient ?? throw new ArgumentNullException(nameof(configurationClient));
+            _featureFlagClient = featureFlagClient ?? throw new ArgumentNullException(nameof(featureFlagClient));
         }
 
         public Uri Endpoint { get; }

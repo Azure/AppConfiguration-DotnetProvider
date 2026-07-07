@@ -49,8 +49,8 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
             var configClientManager = new ClientManager(clientList);
@@ -117,8 +117,8 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
             var configClientManager = new ClientManager(clientList);
@@ -176,8 +176,8 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
             var configClientManager = new ClientManager(clientList);
@@ -243,8 +243,8 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1 };
             var autoFailoverList = new List<ClientWrapper>() { cw2 };
@@ -368,8 +368,8 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1 };
             var autoFailoverList = new List<ClientWrapper>() { cw2 };
@@ -453,8 +453,8 @@ namespace Tests.AzureAppConfiguration
                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
             var configClientManager = new ClientManager(clientList);

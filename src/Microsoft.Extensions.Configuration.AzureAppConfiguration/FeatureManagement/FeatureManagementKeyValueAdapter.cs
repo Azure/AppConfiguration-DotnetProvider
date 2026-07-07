@@ -17,11 +17,16 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal partial class FeatureManagementKeyValueAdapter : IKeyValueAdapter
+    internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
     {
         private FeatureFlagTracing _featureFlagTracing;
         private int _featureFlagIndex = 0;
         private bool _fmSchemaCompatibilityDisabled = false;
+
+        // The next available index in the "feature_management:feature_flags" array. Classic feature flags
+        // (processed by this adapter) advance this counter; standalone feature flags continue from here so
+        // that the combined array uses a single contiguous set of indices.
+        internal int FeatureFlagIndex => _featureFlagIndex;
 
         public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
         {
