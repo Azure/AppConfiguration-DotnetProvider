@@ -17,52 +17,14 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class FeatureManagementKeyValueAdapter : IKeyValueAdapter
+    /// <summary>
+    /// Converts a classic feature flag (stored as a <see cref="ConfigurationSetting"/> in the
+    /// ".appconfig.featureflag/" key-value namespace) into the flattened feature-management configuration
+    /// key-values consumed by <c>Microsoft.FeatureManagement</c>.
+    /// </summary>
+    internal static class ClassicFeatureFlagConverter
     {
-        private FeatureFlagTracing _featureFlagTracing;
-        private int _featureFlagIndex = 0;
-        private bool _fmSchemaCompatibilityDisabled = false;
-
-        // The next available index in the "feature_management:feature_flags" array. Classic feature flags
-        // (processed by this adapter) advance this counter; standalone feature flags continue from here so
-        // that the combined array uses a single contiguous set of indices.
-        internal int FeatureFlagIndex => _featureFlagIndex;
-
-        public FeatureManagementKeyValueAdapter(FeatureFlagTracing featureFlagTracing)
-        {
-            _featureFlagTracing = featureFlagTracing ?? throw new ArgumentNullException(nameof(featureFlagTracing));
-
-            _fmSchemaCompatibilityDisabled = EnvironmentVariableHelper.GetBoolOrDefault(EnvironmentVariableNames.FmSchemacompatibilityDisabled);
-        }
-
-        public Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken)
-        {
-            ClassicFeatureFlag featureFlag = ParseFeatureFlag(setting.Key, setting.Value);
-
-            var metadata = new FeatureFlagMetadata(setting.Key, setting.Label, setting.ETag);
-
-            IEnumerable<KeyValuePair<string, string>> keyValues = ProcessFeatureFlag(featureFlag, metadata, endpoint);
-
-            return Task.FromResult(keyValues);
-        }
-
-        // Emits feature-management configuration key-values for a classic feature flag (parsed from a
-        // ConfigurationSetting in the ".appconfig.featureflag/" key-value namespace).
-        public IEnumerable<KeyValuePair<string, string>> ProcessFeatureFlag(ClassicFeatureFlag featureFlag, FeatureFlagMetadata metadata, Uri endpoint)
-        {
-            // Check if we need to process the feature flag using the microsoft schema
-            if (_fmSchemaCompatibilityDisabled ||
-                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
-                featureFlag.Allocation != null ||
-                featureFlag.Telemetry != null)
-            {
-                return ProcessMicrosoftSchemaFeatureFlag(featureFlag, metadata, endpoint);
-            }
-
-            return ProcessDotnetSchemaFeatureFlag(featureFlag);
-        }
-
-        public bool CanProcess(ConfigurationSetting setting)
+        public static bool IsClassicFeatureFlag(ConfigurationSetting setting)
         {
             if (setting == null ||
                 string.IsNullOrWhiteSpace(setting.Value) ||
@@ -71,33 +33,58 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return false;
             }
 
-            if (setting.Key.StartsWith(FeatureManagementConstants.FeatureFlagMarker))
-            {
-                return true;
-            }
-
             return setting.ContentType.TryParseContentType(out ContentType contentType) &&
                 contentType.IsFeatureFlag();
         }
 
-        public bool NeedsRefresh()
+        public static ClassicFeatureFlag Parse(ConfigurationSetting setting)
         {
-            return false;
+            return ParseFeatureFlag(setting.Key, setting.Value);
         }
 
-        public void OnChangeDetected(ConfigurationSetting setting = null)
+        /// <summary>
+        /// Produces the feature-management configuration key-values for a single classic feature flag.
+        /// </summary>
+        /// <param name="featureFlag">The parsed classic feature flag.</param>
+        /// <param name="metadata">Metadata used to build the feature flag reference for telemetry.</param>
+        /// <param name="endpoint">The endpoint used to build the feature flag reference for telemetry.</param>
+        /// <param name="fmSchemaCompatibilityDisabled">
+        /// When <c>true</c>, all feature flags are emitted using the Microsoft schema.
+        /// </param>
+        /// <param name="featureFlagIndex">
+        /// The current index in the "feature_management:feature_flags" array to use if the flag is emitted
+        /// using the Microsoft schema.
+        /// </param>
+        /// <param name="nextFeatureFlagIndex">
+        /// The next available index in the "feature_management:feature_flags" array. It is advanced past the
+        /// supplied index only when the flag is emitted using the Microsoft schema, so that the caller can
+        /// keep a single contiguous set of indices across classic and standalone feature flags.
+        /// </param>
+        public static IEnumerable<KeyValuePair<string, string>> ToConfiguration(
+            ClassicFeatureFlag featureFlag,
+            FeatureFlagMetadata metadata,
+            Uri endpoint,
+            bool fmSchemaCompatibilityDisabled,
+            int featureFlagIndex,
+            out int nextFeatureFlagIndex)
         {
-            return;
+            // Check if we need to process the feature flag using the microsoft schema
+            if (fmSchemaCompatibilityDisabled ||
+                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
+                featureFlag.Allocation != null ||
+                featureFlag.Telemetry != null)
+            {
+                nextFeatureFlagIndex = featureFlagIndex + 1;
+
+                return ProcessMicrosoftSchemaFeatureFlag(featureFlag, metadata, endpoint, featureFlagIndex);
+            }
+
+            nextFeatureFlagIndex = featureFlagIndex;
+
+            return ProcessDotnetSchemaFeatureFlag(featureFlag);
         }
 
-        public void OnConfigUpdated()
-        {
-            _featureFlagIndex = 0;
-
-            return;
-        }
-
-        private List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(ClassicFeatureFlag featureFlag)
+        private static List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(ClassicFeatureFlag featureFlag)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -119,8 +106,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClassicClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
-
-                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
 
@@ -150,7 +135,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(ClassicFeatureFlag featureFlag, FeatureFlagMetadata metadata, Uri endpoint)
+        private static List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(ClassicFeatureFlag featureFlag, FeatureFlagMetadata metadata, Uri endpoint, int featureFlagIndex)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -159,9 +144,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{_featureFlagIndex}";
-
-            _featureFlagIndex++;
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{featureFlagIndex}";
 
             keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}:{FeatureManagementConstants.Id}", featureFlag.Id));
 
@@ -176,8 +159,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.ClientFilters.Count; i++)
                     {
                         ClassicClientFilter clientFilter = featureFlag.Conditions.ClientFilters[i];
-
-                        _featureFlagTracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{i}";
 
@@ -223,8 +204,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     i++;
                 }
-
-                _featureFlagTracing.NotifyMaxVariants(i);
             }
 
             if (featureFlag.Allocation != null)
@@ -303,8 +282,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Seed != null)
                 {
-                    _featureFlagTracing.UsesSeed = true;
-
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
             }
@@ -317,8 +294,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
-                    _featureFlagTracing.UsesTelemetry = true;
-
                     if (telemetry.Metadata != null)
                     {
                         foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
@@ -353,7 +328,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return keyValues;
         }
 
-        private string CalculateAllocationId(ClassicFeatureFlag flag)
+        private static string CalculateAllocationId(ClassicFeatureFlag flag)
         {
             Debug.Assert(flag.Allocation != null);
 
@@ -429,7 +404,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
-        private FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string foundJsonValueKind, string expectedJsonValueKind)
+        private static FormatException CreateFeatureFlagFormatException(string jsonPropertyName, string settingKey, string foundJsonValueKind, string expectedJsonValueKind)
         {
             return new FormatException(string.Format(
                 ErrorMessages.FeatureFlagInvalidJsonProperty,
@@ -439,7 +414,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 expectedJsonValueKind));
         }
 
-        private ClassicFeatureFlag ParseFeatureFlag(string settingKey, string settingValue)
+        private static ClassicFeatureFlag ParseFeatureFlag(string settingKey, string settingValue)
         {
             var featureFlag = new ClassicFeatureFlag();
 
@@ -622,7 +597,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featureFlag;
         }
 
-        private ClassicFeatureConditions ParseFeatureConditions(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeatureConditions ParseFeatureConditions(ref Utf8JsonReader reader, string settingKey)
         {
             var featureConditions = new ClassicFeatureConditions();
 
@@ -708,7 +683,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featureConditions;
         }
 
-        private ClassicClientFilter ParseClientFilter(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicClientFilter ParseClientFilter(ref Utf8JsonReader reader, string settingKey)
         {
             var clientFilter = new ClassicClientFilter();
 
@@ -769,7 +744,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return clientFilter;
         }
 
-        private ClassicFeatureAllocation ParseFeatureAllocation(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeatureAllocation ParseFeatureAllocation(ref Utf8JsonReader reader, string settingKey)
         {
             var featureAllocation = new ClassicFeatureAllocation();
 
@@ -984,7 +959,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featureAllocation;
         }
 
-        private ClassicFeatureUserAllocation ParseFeatureUserAllocation(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeatureUserAllocation ParseFeatureUserAllocation(ref Utf8JsonReader reader, string settingKey)
         {
             var featureUserAllocation = new ClassicFeatureUserAllocation();
 
@@ -1067,7 +1042,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featureUserAllocation;
         }
 
-        private ClassicFeatureGroupAllocation ParseFeatureGroupAllocation(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeatureGroupAllocation ParseFeatureGroupAllocation(ref Utf8JsonReader reader, string settingKey)
         {
             var featureGroupAllocation = new ClassicFeatureGroupAllocation();
 
@@ -1150,7 +1125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featureGroupAllocation;
         }
 
-        private ClassicFeaturePercentileAllocation ParseFeaturePercentileAllocation(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeaturePercentileAllocation ParseFeaturePercentileAllocation(ref Utf8JsonReader reader, string settingKey)
         {
             var featurePercentileAllocation = new ClassicFeaturePercentileAllocation();
 
@@ -1233,7 +1208,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featurePercentileAllocation;
         }
 
-        private ClassicFeatureVariant ParseFeatureVariant(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeatureVariant ParseFeatureVariant(ref Utf8JsonReader reader, string settingKey)
         {
             var featureVariant = new ClassicFeatureVariant();
 
@@ -1304,7 +1279,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             return featureVariant;
         }
 
-        private ClassicFeatureTelemetry ParseFeatureTelemetry(ref Utf8JsonReader reader, string settingKey)
+        private static ClassicFeatureTelemetry ParseFeatureTelemetry(ref Utf8JsonReader reader, string settingKey)
         {
             var featureTelemetry = new ClassicFeatureTelemetry();
 

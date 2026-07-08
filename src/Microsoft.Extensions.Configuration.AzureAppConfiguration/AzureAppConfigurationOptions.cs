@@ -197,8 +197,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters = new List<IKeyValueAdapter>()
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-                new JsonKeyValueAdapter(),
-                new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
+                new JsonKeyValueAdapter()
             };
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.

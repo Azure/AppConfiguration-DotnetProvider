@@ -24,95 +24,28 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     {
         /// <summary>
         /// Produces the feature-management configuration key-values for a single standalone feature flag.
+        /// Standalone feature flags are always emitted using the Microsoft schema. The returned keys are
+        /// relative to a single "feature_management:feature_flags" array item (each key begins with ':'); the
+        /// caller is responsible for prefixing them with the array item path so that it can manage a single
+        /// contiguous set of indices across classic and standalone feature flags.
         /// </summary>
         /// <param name="flag">The feature flag to convert.</param>
-        /// <param name="featureFlagIndex">
-        /// The next available index in the "feature_management:feature_flags" array. It is advanced when the
-        /// flag is emitted using the Microsoft schema, so that a caller converting multiple flags produces a
-        /// contiguous set of indices.
-        /// </param>
         /// <param name="endpoint">The endpoint used to build the feature flag reference for telemetry.</param>
-        /// <param name="tracing">Tracing used to record feature filter, variant, seed and telemetry usage.</param>
         public static IEnumerable<KeyValuePair<string, string>> ToConfiguration(
             FeatureFlag flag,
-            ref int featureFlagIndex,
-            Uri endpoint,
-            FeatureFlagTracing tracing)
+            Uri endpoint)
         {
             string key = FeatureManagementConstants.FeatureFlagMarker + (flag.Name ?? string.Empty);
 
             var metadata = new FeatureFlagMetadata(key, flag.Label, flag.Etag ?? default);
 
-            // Check if we need to process the feature flag using the microsoft schema
-            if ((flag.Variants != null && flag.Variants.Any()) ||
-                flag.Allocation != null ||
-                flag.Telemetry != null)
-            {
-                return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint, ref featureFlagIndex, tracing);
-            }
-
-            return ProcessDotnetSchemaFeatureFlag(flag, tracing);
-        }
-
-        private static List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(FeatureFlag featureFlag, FeatureFlagTracing tracing)
-        {
-            var keyValues = new List<KeyValuePair<string, string>>();
-
-            if (string.IsNullOrEmpty(featureFlag.Name))
-            {
-                return keyValues;
-            }
-
-            string featureFlagPath = $"{FeatureManagementConstants.DotnetSchemaSectionName}:{featureFlag.Name}";
-
-            if (featureFlag.Enabled ?? false)
-            {
-                if (featureFlag.Conditions?.Filters == null || !featureFlag.Conditions.Filters.Any())
-                {
-                    keyValues.Add(new KeyValuePair<string, string>(featureFlagPath, true.ToString()));
-                }
-                else
-                {
-                    for (int i = 0; i < featureFlag.Conditions.Filters.Count; i++)
-                    {
-                        FeatureFilter clientFilter = featureFlag.Conditions.Filters[i];
-
-                        tracing.UpdateFeatureFilterTracing(clientFilter.Name);
-
-                        string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaEnabledFor}:{i}";
-
-                        keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Name", clientFilter.Name));
-
-                        foreach (KeyValuePair<string, string> kvp in new JsonFlattener().FlattenJson(BuildParametersElement(clientFilter.Parameters)))
-                        {
-                            keyValues.Add(new KeyValuePair<string, string>($"{clientFiltersPath}:Parameters:{kvp.Key}", kvp.Value));
-                        }
-                    }
-
-                    //
-                    // process RequirementType only when filters are not empty
-                    if (featureFlag.Conditions.RequirementType != null)
-                    {
-                        keyValues.Add(new KeyValuePair<string, string>(
-                            $"{featureFlagPath}:{FeatureManagementConstants.DotnetSchemaRequirementType}",
-                            featureFlag.Conditions.RequirementType.Value.ToString()));
-                    }
-                }
-            }
-            else
-            {
-                keyValues.Add(new KeyValuePair<string, string>($"{featureFlagPath}", false.ToString()));
-            }
-
-            return keyValues;
+            return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint);
         }
 
         private static List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(
             FeatureFlag featureFlag,
             FeatureFlagMetadata metadata,
-            Uri endpoint,
-            ref int featureFlagIndex,
-            FeatureFlagTracing tracing)
+            Uri endpoint)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -121,9 +54,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{featureFlagIndex}";
-
-            featureFlagIndex++;
+            // Keys are emitted relative to a single "feature_management:feature_flags" array item. The caller
+            // prefixes them with the array item path (e.g. "feature_management:feature_flags:{index}").
+            string featureFlagPath = string.Empty;
 
             bool enabled = featureFlag.Enabled ?? false;
 
@@ -140,8 +73,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                     for (int i = 0; i < featureFlag.Conditions.Filters.Count; i++)
                     {
                         FeatureFilter clientFilter = featureFlag.Conditions.Filters[i];
-
-                        tracing.UpdateFeatureFilterTracing(clientFilter.Name);
 
                         string clientFiltersPath = $"{featureFlagPath}:{FeatureManagementConstants.Conditions}:{FeatureManagementConstants.ClientFilters}:{i}";
 
@@ -187,8 +118,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     i++;
                 }
-
-                tracing.NotifyMaxVariants(i);
             }
 
             if (featureFlag.Allocation != null)
@@ -267,8 +196,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (allocation.Seed != null)
                 {
-                    tracing.UsesSeed = true;
-
                     keyValues.Add(new KeyValuePair<string, string>($"{allocationPath}:{FeatureManagementConstants.Seed}", allocation.Seed));
                 }
             }
@@ -281,8 +208,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                 if (telemetry.Enabled)
                 {
-                    tracing.UsesTelemetry = true;
-
                     if (telemetry.Metadata != null)
                     {
                         foreach (KeyValuePair<string, string> kvp in telemetry.Metadata)
