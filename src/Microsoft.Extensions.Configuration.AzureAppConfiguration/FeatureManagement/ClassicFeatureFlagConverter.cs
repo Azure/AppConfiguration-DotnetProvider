@@ -55,18 +55,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// The current index in the "feature_management:feature_flags" array to use if the flag is emitted
         /// using the Microsoft schema.
         /// </param>
-        /// <param name="nextFeatureFlagIndex">
-        /// The next available index in the "feature_management:feature_flags" array. It is advanced past the
-        /// supplied index only when the flag is emitted using the Microsoft schema, so that the caller can
-        /// keep a single contiguous set of indices across classic and standalone feature flags.
-        /// </param>
         public static IEnumerable<KeyValuePair<string, string>> ToConfiguration(
             ClassicFeatureFlag featureFlag,
             FeatureFlagMetadata metadata,
             Uri endpoint,
             bool fmSchemaCompatibilityDisabled,
-            int featureFlagIndex,
-            out int nextFeatureFlagIndex)
+            int featureFlagIndex)
         {
             // Check if we need to process the feature flag using the microsoft schema
             if (fmSchemaCompatibilityDisabled ||
@@ -74,12 +68,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 featureFlag.Allocation != null ||
                 featureFlag.Telemetry != null)
             {
-                nextFeatureFlagIndex = featureFlagIndex + 1;
-
                 return ProcessMicrosoftSchemaFeatureFlag(featureFlag, metadata, endpoint, featureFlagIndex);
             }
-
-            nextFeatureFlagIndex = featureFlagIndex;
 
             return ProcessDotnetSchemaFeatureFlag(featureFlag);
         }

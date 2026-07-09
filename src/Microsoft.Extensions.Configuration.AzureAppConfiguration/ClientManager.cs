@@ -148,16 +148,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(syncToken));
             }
 
-            AppConfigurationClient clientWrapper = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+            AppConfigurationClient client = _clients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
 
-            if (_dynamicClients != null && clientWrapper == null)
+            if (_dynamicClients != null && client == null)
             {
-                clientWrapper = _dynamicClients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
+                client = _dynamicClients.SingleOrDefault(c => new EndpointComparer().Equals(c.Endpoint, endpoint));
             }
 
-            if (clientWrapper != null)
+            if (client != null)
             {
-                clientWrapper.UpdateSyncToken(syncToken);
+                client.UpdateSyncToken(syncToken);
                 return true;
             }
 

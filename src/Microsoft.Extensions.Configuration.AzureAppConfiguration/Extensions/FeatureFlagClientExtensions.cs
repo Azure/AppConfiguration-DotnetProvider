@@ -4,8 +4,8 @@
 using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-using SdkFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
-using SdkFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
+using AppConfigFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
+using AppConfigFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +34,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 throw new ArgumentNullException(nameof(featureFlagSelector));
             }
 
-            var selector = new SdkFeatureFlagSelector
+            var selector = new AppConfigFeatureFlagSelector
             {
                 NameFilter = featureFlagSelector.NameFilter,
                 LabelFilter = featureFlagSelector.LabelFilter
@@ -48,11 +48,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 }
             }
 
-            AsyncPageable<SdkFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
+            AsyncPageable<AppConfigFeatureFlag> pageable = client.GetFeatureFlagsAsync(selector, cancellationToken);
 
             using IEnumerator<WatchedPage> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();
 
-            await foreach (Page<SdkFeatureFlag> page in pageable.AsPages(pageIterator, pageWatchers.Select(p => p.MatchConditions)).ConfigureAwait(false))
+            await foreach (Page<AppConfigFeatureFlag> page in pageable.AsPages(pageIterator, pageWatchers.Select(p => p.MatchConditions)).ConfigureAwait(false))
             {
                 using Response rawResponse = page.GetRawResponse();
                 DateTimeOffset serverResponseTime = rawResponse.GetMsDate();

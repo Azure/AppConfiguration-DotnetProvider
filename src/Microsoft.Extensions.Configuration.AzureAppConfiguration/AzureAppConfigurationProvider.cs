@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using FeatureFlagSelector = Microsoft.Extensions.Configuration.AzureAppConfiguration.Models.FeatureFlagSelector;
-using FlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
+using AppConfigFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System;
@@ -39,7 +39,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private Dictionary<string, ConfigurationSetting> _mappedData;
         private Dictionary<KeyValueIdentifier, ConfigurationSetting> _watchedIndividualKvs = new Dictionary<KeyValueIdentifier, ConfigurationSetting>();
         private HashSet<string> _ffKeys = new HashSet<string>();
-        private int _classicFeatureFlagCount = 0;
         private IEnumerable<FeatureFlag> _featureFlags = Enumerable.Empty<FeatureFlag>();
         private Dictionary<KeyValueSelector, IEnumerable<WatchedPage>> _watchedKvPages = new Dictionary<KeyValueSelector, IEnumerable<WatchedPage>>();
         private Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> _watchedClassicFeatureFlagPages = new Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>>();
@@ -69,6 +68,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             public int FailedAttempts { get; set; }
             public DateTimeOffset BackoffEndTime { get; set; }
+        }
+
+        private class FeatureFlagLoadResult
+        {
+            public IEnumerable<FeatureFlag> FeatureFlags { get; set; }
+            public Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> Pages { get; set; }
+        }
+
+        class ClassicFeatureFlagLoadResult
+        {
+            public IEnumerable<ConfigurationSetting> ClassicFeatureFlags { get; set; }
+            public Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> Pages { get; set; }
         }
 
         public Uri AppConfigurationEndpoint
@@ -351,7 +362,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 _options.FeatureFlagSelectors,
                                 cancellationToken).ConfigureAwait(false);
 
-                            ffKeys = GetFeatureFlagKeys(classicFeatureFlagLoadResult, featureFlagLoadResult);
+                            ffKeys = new HashSet<string>(
+                                classicFeatureFlagLoadResult.ClassicFeatureFlags.Select(ff => ff.Key)
+                                .Concat(featureFlagLoadResult.FeatureFlags.Select(ff => FeatureManagementConstants.FeatureFlagMarker + ff.Name))
+                            );
 
                             watchedIndividualKvs = await LoadIndividualWatchedSettings(appConfigClient, data, cancellationToken).ConfigureAwait(false);
 
@@ -361,17 +375,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         }
 
                         // Get feature flag changes
-                        refreshFeatureFlag = await HaveFeatureFlagCollectionsChanged(
-                            refreshableFfWatchers.Select(watcher => new FeatureFlagSelector
-                            {
-                                NameFilter = watcher.Key,
-                                LabelFilter = watcher.Label,
-                                TagFilters = watcher.Tags
-                            }),
-                            _watchedClassicFeatureFlagPages,
-                            _watchedFeatureFlagPages,
-                            appConfigClient,
-                            cancellationToken).ConfigureAwait(false);
+                        refreshFeatureFlag = await HaveClassicFeatureFlagsChanged(_options.FeatureFlagSelectors, _watchedClassicFeatureFlagPages, appConfigClient, cancellationToken).ConfigureAwait(false)
+                                            || await HaveFeatureFlagsChanged(_options.FeatureFlagSelectors, _watchedFeatureFlagPages, appConfigClient, cancellationToken).ConfigureAwait(false);
 
                         if (refreshFeatureFlag)
                         {
@@ -385,7 +390,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                                 _options.FeatureFlagSelectors,
                                 cancellationToken).ConfigureAwait(false);
 
-                            ffKeys = GetFeatureFlagKeys(classicFeatureFlagLoadResult, featureFlagLoadResult);
+                            ffKeys = new HashSet<string>(
+                                classicFeatureFlagLoadResult.ClassicFeatureFlags.Select(ff => ff.Key)
+                                .Concat(featureFlagLoadResult.FeatureFlags.Select(ff => FeatureManagementConstants.FeatureFlagMarker + ff.Name))
+                            );
 
                             logInfoBuilder.Append(LogHelper.BuildFeatureFlagsUpdatedMessage());
                         }
@@ -399,7 +407,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     if (refreshAll)
                     {
-                        _mappedData = await MapConfigurationSettings(MergeClassicFeatureFlags(data, classicFeatureFlagLoadResult)).ConfigureAwait(false);
+                        // Merges the classic feature flags loaded from the ".appconfig.featureflag/" key-value namespace into the key-value data.
+                        foreach (ConfigurationSetting setting in classicFeatureFlagLoadResult.ClassicFeatureFlags)
+                        {
+                            data[setting.Key] = setting;
+                        }
+
+                        _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                         _featureFlags = featureFlagLoadResult.FeatureFlags;
 
                         // Invalidate all the cached KeyVault secrets
@@ -424,13 +438,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         {
                             // Remove all feature flag keys that are not present in the latest loading of feature flags, but were loaded previously
                             foreach (string key in _ffKeys.Except(ffKeys))
-                            {
-                                _mappedData.Remove(key);
-                            }
-
-                            // Drop any classic feature flag in the mapped data that is now superseded by a
-                            // feature flag from the standalone endpoint (which is emitted separately).
-                            foreach (string key in classicFeatureFlagLoadResult.ClassicFeatureFlags.Select(x => x.Key))
                             {
                                 _mappedData.Remove(key);
                             }
@@ -485,7 +492,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         // As long as adapter.NeedsRefresh is true, we will attempt to update keyvault again the next time RefreshAsync is called.
                         Dictionary<string, string> preparedData = await PrepareData(_mappedData, _featureFlags, cancellationToken).ConfigureAwait(false);
 
-                        IEnumerable<KeyValuePair<string, string>> processedFeatureFlags = ProcessFeatureFlags(_featureFlags, _classicFeatureFlagCount);
+                        int classicFeatureFlagCount = classicFeatureFlagLoadResult?.ClassicFeatureFlags.Count() ?? 0;
+
+                        IEnumerable<KeyValuePair<string, string>> processedFeatureFlags = ProcessFeatureFlags(_featureFlags, classicFeatureFlagCount);
 
                         foreach (KeyValuePair<string, string> kv in processedFeatureFlags)
                         {
@@ -681,8 +690,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
 
             // The running index into the "feature_management:feature_flags" array. Classic feature flags emitted
-            // using the Microsoft schema advance this index; standalone feature flags continue from here (see
-            // ProcessFeatureFlags) so that the combined array uses a single contiguous set of indices.
+            // using the Microsoft schema advance this index;
             int featureFlagIndex = 0;
 
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
@@ -702,14 +710,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     var metadata = new FeatureFlagMetadata(kvp.Value.Key, kvp.Value.Label, kvp.Value.ETag);
 
-                    // TODO - indexing
                     keyValuePairs = ClassicFeatureFlagConverter.ToConfiguration(
                         classicFeatureFlag,
                         metadata,
                         AppConfigurationEndpoint,
                         _fmSchemaCompatibilityDisabled,
-                        featureFlagIndex,
-                        out featureFlagIndex);
+                        featureFlagIndex);
+
+                    featureFlagIndex++;
                 }
                 else
                 {
@@ -718,23 +726,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                 foreach (KeyValuePair<string, string> kv in keyValuePairs)
                 {
-                    AddWithTrimmedPrefix(applicationData, kv.Key, kv.Value);
+                    string key = kv.Key;
+
+                    foreach (string prefix in _options.KeyPrefixes)
+                    {
+                        if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            key = key.Substring(prefix.Length);
+                            break;
+                        }
+                    }
+
+                    applicationData[key] = kv.Value;
                 }
             }
-
-            // The number of classic feature flags emitted using the Microsoft schema. Standalone feature flags
-            // continue the "feature_management:feature_flags" array from this index so that the combined array
-            // uses a single contiguous set of indices. Classic flags emitted using the .NET schema do not
-            // occupy an array slot and therefore do not advance this count.
-            _classicFeatureFlagCount = featureFlagIndex;
 
             return applicationData;
         }
 
-        // Produces the feature-management configuration key-values for standalone feature flags directly from
-        // the SDK FeatureFlag model, without materializing an intermediate representation. The array index
-        // continues from the number of Microsoft-schema classic feature flags (see PrepareData) so that classic
-        // and standalone feature flags share a single contiguous "feature_management:feature_flags" array.
+        // Produces the feature-management configuration key-values for standalone feature flags directly from the SDK FeatureFlag model.
         private IEnumerable<KeyValuePair<string, string>> ProcessFeatureFlags(IEnumerable<FeatureFlag> featureFlags, int featureFlagIndex)
         {
             var processedFeatureFlags = new List<KeyValuePair<string, string>>();
@@ -748,35 +758,15 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 _options.FeatureFlagTracing.Update(featureFlag);
 
-                string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{featureFlagIndex}";
-
-                foreach (KeyValuePair<string, string> kv in FeatureFlagConverter.ToConfiguration(featureFlag, AppConfigurationEndpoint))
+                foreach (KeyValuePair<string, string> kv in FeatureFlagConverter.ToConfiguration(featureFlag, AppConfigurationEndpoint, featureFlagIndex))
                 {
-                    processedFeatureFlags.Add(new KeyValuePair<string, string>(TrimPrefix(featureFlagPath + kv.Key), kv.Value));
+                    processedFeatureFlags.Add(new KeyValuePair<string, string>(kv.Key, kv.Value));
                 }
 
                 featureFlagIndex++;
             }
 
             return processedFeatureFlags;
-        }
-
-        private void AddWithTrimmedPrefix(Dictionary<string, string> applicationData, string key, string value)
-        {
-            applicationData[TrimPrefix(key)] = value;
-        }
-
-        private string TrimPrefix(string key)
-        {
-            foreach (string prefix in _options.KeyPrefixes)
-            {
-                if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    return key.Substring(prefix.Length);
-                }
-            }
-
-            return key;
         }
 
         private async Task LoadAsync(bool ignoreFailures, CancellationToken cancellationToken)
@@ -941,33 +931,41 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _nextCollectionRefreshTime = DateTimeOffset.UtcNow.Add(_options.KvCollectionRefreshInterval);
             }
 
-            if (data != null)
+            // Invalidate all the cached KeyVault secrets
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
             {
-                // Invalidate all the cached KeyVault secrets
-                foreach (IKeyValueAdapter adapter in _options.Adapters)
-                {
-                    adapter.OnChangeDetected();
-                }
-
-                Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(MergeClassicFeatureFlags(data, classicFeatureFlagLoadResult)).ConfigureAwait(false);
-
-                Dictionary<string, string> preparedData = await PrepareData(mappedData, featureFlagLoadResult.FeatureFlags, cancellationToken).ConfigureAwait(false);
-
-                foreach (KeyValuePair<string, string> kv in ProcessFeatureFlags(featureFlagLoadResult.FeatureFlags, _classicFeatureFlagCount))
-                {
-                    preparedData[kv.Key] = kv.Value;
-                }
-
-                SetData(preparedData);
-
-                _mappedData = mappedData;
-                _watchedKvPages = kvEtags;
-                _watchedClassicFeatureFlagPages = classicFeatureFlagLoadResult.Pages;
-                _watchedFeatureFlagPages = featureFlagLoadResult.Pages;
-                _watchedIndividualKvs = watchedIndividualKvs;
-                _ffKeys = GetFeatureFlagKeys(classicFeatureFlagLoadResult, featureFlagLoadResult);
-                _featureFlags = featureFlagLoadResult.FeatureFlags;
+                adapter.OnChangeDetected();
             }
+
+            // Merges the classic feature flags loaded from the ".appconfig.featureflag/" key-value namespace into the key-value data.
+            foreach (ConfigurationSetting setting in classicFeatureFlagLoadResult.ClassicFeatureFlags)
+            {
+                data[setting.Key] = setting;
+            }
+
+            Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
+
+            Dictionary<string, string> preparedData = await PrepareData(mappedData, featureFlagLoadResult.FeatureFlags, cancellationToken).ConfigureAwait(false);
+
+            int classicFeatureFlagCount = classicFeatureFlagLoadResult?.ClassicFeatureFlags.Count() ?? 0;
+
+            foreach (KeyValuePair<string, string> kv in ProcessFeatureFlags(featureFlagLoadResult.FeatureFlags, classicFeatureFlagCount))
+            {
+                preparedData[kv.Key] = kv.Value;
+            }
+
+            SetData(preparedData);
+
+            _mappedData = mappedData;
+            _watchedKvPages = kvEtags;
+            _watchedClassicFeatureFlagPages = classicFeatureFlagLoadResult.Pages;
+            _watchedFeatureFlagPages = featureFlagLoadResult.Pages;
+            _watchedIndividualKvs = watchedIndividualKvs;
+            _featureFlags = featureFlagLoadResult.FeatureFlags;
+            _ffKeys = new HashSet<string>(
+                classicFeatureFlagLoadResult.ClassicFeatureFlags.Select(ff => ff.Key)
+                .Concat(featureFlagLoadResult.FeatureFlags.Select(ff => FeatureManagementConstants.FeatureFlagMarker + ff.Name))
+            );
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> LoadKeyValues(
@@ -1063,12 +1061,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return data;
         }
 
-        class ClassicFeatureFlagLoadResult
-        {
-            public IEnumerable<ConfigurationSetting> ClassicFeatureFlags { get; set; }
-            public Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> Pages { get; set; }
-        }
-
         // Loads classic feature flags (from the ".appconfig.featureflag/" key-value namespace) into `data`
         // as configuration settings. Returns the watched pages per selector.
         private async Task<ClassicFeatureFlagLoadResult> LoadClassicFeatureFlags(
@@ -1132,15 +1124,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             };
         }
 
-        class FeatureFlagLoadResult
-        {
-            public IEnumerable<FeatureFlag> FeatureFlags { get; set; }
-            public Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> Pages { get; set; }
-        }
-
-        // Loads standalone feature flags from the feature-flag endpoint into `featureFlags`. These are kept
-        // as SDK models and emitted as feature-management configuration directly during PrepareData. Returns
-        // the watched pages per selector.
+        // Loads standalone feature flags from the feature-flag endpoint into `featureFlags`.
+        // Returns the watched pages per selector.
         private async Task<FeatureFlagLoadResult> LoadFeatureFlags(
             IAppConfigurationClient client,
             IEnumerable<FeatureFlagSelector> featureFlagSelectors,
@@ -1152,7 +1137,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (FeatureFlagSelector ffSelector in featureFlagSelectors)
             {
-                FlagSelector selector = BuildFlagSelector(ffSelector);
+                var selector = new AppConfigFeatureFlagSelector
+                {
+                    NameFilter = ffSelector.NameFilter,
+                    LabelFilter = ffSelector.LabelFilter
+                };
+
+                if (ffSelector.TagFilters != null)
+                {
+                    foreach (string tag in ffSelector.TagFilters)
+                    {
+                        selector.TagsFilter.Add(tag);
+                    }
+                }
 
                 var pageWatchers = new List<WatchedPage>();
 
@@ -1188,71 +1185,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 FeatureFlags = featureFlags,
                 Pages = pages
             };
-        }
-
-        // Merges the classic feature flags loaded from the ".appconfig.featureflag/" key-value namespace into
-        // the key-value data so that they are mapped and emitted alongside the regular key-values. Standalone
-        // feature flags are kept separate and emitted directly (see ProcessFeatureFlags).
-        private static Dictionary<string, ConfigurationSetting> MergeClassicFeatureFlags(
-            Dictionary<string, ConfigurationSetting> data,
-            ClassicFeatureFlagLoadResult classicFeatureFlagLoadResult)
-        {
-            if (classicFeatureFlagLoadResult?.ClassicFeatureFlags != null)
-            {
-                foreach (ConfigurationSetting setting in classicFeatureFlagLoadResult.ClassicFeatureFlags)
-                {
-                    data[setting.Key] = setting;
-                }
-            }
-
-            return data;
-        }
-
-        // Returns the set of feature flag keys (".appconfig.featureflag/{name}") loaded from both the classic
-        // key-value namespace and the standalone feature-flag endpoint. Used to evict feature flags that were
-        // present in a previous load but are absent from the latest one during a feature-flag-only refresh.
-        private static HashSet<string> GetFeatureFlagKeys(
-            ClassicFeatureFlagLoadResult classicFeatureFlagLoadResult,
-            FeatureFlagLoadResult featureFlagLoadResult)
-        {
-            var ffKeys = new HashSet<string>();
-
-            if (classicFeatureFlagLoadResult?.ClassicFeatureFlags != null)
-            {
-                foreach (ConfigurationSetting setting in classicFeatureFlagLoadResult.ClassicFeatureFlags)
-                {
-                    ffKeys.Add(setting.Key);
-                }
-            }
-
-            if (featureFlagLoadResult?.FeatureFlags != null)
-            {
-                foreach (FeatureFlag featureFlag in featureFlagLoadResult.FeatureFlags)
-                {
-                    ffKeys.Add(FeatureManagementConstants.FeatureFlagMarker + (featureFlag.Name ?? string.Empty));
-                }
-            }
-
-            return ffKeys;
-        }
-
-        private static FlagSelector BuildFlagSelector(FeatureFlagSelector ffSelector)
-        {
-            var selector = new FlagSelector
-            {
-                NameFilter = ffSelector.NameFilter,
-                LabelFilter = ffSelector.LabelFilter
-            };
-
-            if (ffSelector.TagFilters != null)
-            {
-                foreach (string tag in ffSelector.TagFilters)
-                {
-                    selector.TagsFilter.Add(tag);
-                }
-            }
-
-            return selector;
         }
 
         private async Task<Dictionary<string, ConfigurationSetting>> LoadSnapshotData(string snapshotName, IAppConfigurationClient client, CancellationToken cancellationToken)
@@ -1650,9 +1582,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             Func<IAppConfigurationClient, Task> funcToExecute,
             CancellationToken cancellationToken = default)
         {
-            await ExecuteWithFailOverPolicyAsync<object>(clients, async (clientWrapper) =>
+            await ExecuteWithFailOverPolicyAsync<object>(clients, async (client) =>
             {
-                await funcToExecute(clientWrapper).ConfigureAwait(false);
+                await funcToExecute(client).ConfigureAwait(false);
                 return null;
 
             }, cancellationToken).ConfigureAwait(false);
@@ -1797,63 +1729,73 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             return haveCollectionsChanged;
         }
 
-        private async Task<bool> HaveFeatureFlagCollectionsChanged(
+        private async Task<bool> HaveClassicFeatureFlagsChanged(
             IEnumerable<FeatureFlagSelector> selectors,
-            Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> classicPageWatchers,
-            Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> featureFlagPageWatchers,
+            Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> classicFeatureFlagPageWatchers,
             IAppConfigurationClient client,
             CancellationToken cancellationToken)
         {
-            // For each feature flag selector, check both the classic feature flags (unless excluded) and
-            // the feature flags served by the standalone feature-flag endpoint for changes.
+            bool haveClassicFeatureFlagsChanged = false;
+
             foreach (FeatureFlagSelector selector in selectors)
             {
-                bool changed = false;
-
                 if (!_options.ExcludeClassicFeatureFlags &&
-                    classicPageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> classicPages) &&
+                    classicFeatureFlagPageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> classicPages) &&
                     classicPages != null)
                 {
-                    var classicSelector = new KeyValueSelector
+                    var classicFfSelector = new KeyValueSelector
                     {
                         KeyFilter = FeatureManagementConstants.FeatureFlagMarker + selector.NameFilter,
                         LabelFilter = selector.LabelFilter,
                         TagFilters = selector.TagFilters,
-                        IsFeatureFlagSelector = true
                     };
 
                     await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => changed = await client.HaveCollectionsChanged(
-                            classicSelector,
+                        async () => haveClassicFeatureFlagsChanged = await client.HaveCollectionsChanged(
+                            classicFfSelector,
                             classicPages,
                             _options.ConfigurationSettingPageIterator,
                             makeConditionalRequest: !_options.IsAfdUsed,
                             cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 
-                    if (changed)
-                    {
-                        return true;
-                    }
-                }
-
-                if (featureFlagPageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> featureFlagPages) &&
-                    featureFlagPages != null)
-                {
-                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
-                        async () => changed = await client.HaveFeatureFlagsChanged(
-                            selector,
-                            featureFlagPages,
-                            _options.FeatureFlagPageIterator,
-                            cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-
-                    if (changed)
+                    if (haveClassicFeatureFlagsChanged)
                     {
                         return true;
                     }
                 }
             }
 
-            return false;
+            return haveClassicFeatureFlagsChanged;
+        }
+
+        private async Task<bool> HaveFeatureFlagsChanged(
+            IEnumerable<FeatureFlagSelector> selectors,
+            Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>> featureFlagPageWatchers,
+            IAppConfigurationClient client,
+            CancellationToken cancellationToken)
+        {
+            bool haveFeatureFlagsChanged = false;
+
+            foreach (FeatureFlagSelector selector in selectors)
+            {
+                if (featureFlagPageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> featureFlagPages) &&
+                    featureFlagPages != null)
+                {
+                    await TracingUtils.CallWithRequestTracing(_requestTracingEnabled, RequestType.Watch, _requestTracingOptions,
+                        async () => haveFeatureFlagsChanged = await client.HaveFeatureFlagsChanged(
+                            selector,
+                            featureFlagPages,
+                            _options.FeatureFlagPageIterator,
+                            cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+
+                    if (haveFeatureFlagsChanged)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return haveFeatureFlagsChanged;
         }
 
         private async Task ProcessKeyValueChangesAsync(

@@ -17,35 +17,34 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// <summary>
     /// Converts a standalone feature flag (returned by the feature-flag endpoint as an Azure SDK
     /// <see cref="FeatureFlag"/>) directly into the flattened feature-management configuration key-values
-    /// consumed by <c>Microsoft.FeatureManagement</c>. Standalone feature flags are not configuration
-    /// settings, so they are converted here rather than through an <see cref="IKeyValueAdapter"/>.
+    /// consumed by <c>Microsoft.FeatureManagement</c>.
     /// </summary>
     internal static class FeatureFlagConverter
     {
         /// <summary>
         /// Produces the feature-management configuration key-values for a single standalone feature flag.
-        /// Standalone feature flags are always emitted using the Microsoft schema. The returned keys are
-        /// relative to a single "feature_management:feature_flags" array item (each key begins with ':'); the
-        /// caller is responsible for prefixing them with the array item path so that it can manage a single
-        /// contiguous set of indices across classic and standalone feature flags.
+        /// Standalone feature flags are always emitted using the Microsoft schema. 
         /// </summary>
         /// <param name="flag">The feature flag to convert.</param>
         /// <param name="endpoint">The endpoint used to build the feature flag reference for telemetry.</param>
+        /// <param name="featureFlagIndex">The index of the feature flag in the feature flags array.</param>
         public static IEnumerable<KeyValuePair<string, string>> ToConfiguration(
             FeatureFlag flag,
-            Uri endpoint)
+            Uri endpoint,
+            int featureFlagIndex)
         {
             string key = FeatureManagementConstants.FeatureFlagMarker + (flag.Name ?? string.Empty);
 
             var metadata = new FeatureFlagMetadata(key, flag.Label, flag.Etag ?? default);
 
-            return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint);
+            return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint, featureFlagIndex);
         }
 
         private static List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(
             FeatureFlag featureFlag,
             FeatureFlagMetadata metadata,
-            Uri endpoint)
+            Uri endpoint,
+            int featureFlagIndex)
         {
             var keyValues = new List<KeyValuePair<string, string>>();
 
@@ -54,9 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return keyValues;
             }
 
-            // Keys are emitted relative to a single "feature_management:feature_flags" array item. The caller
-            // prefixes them with the array item path (e.g. "feature_management:feature_flags:{index}").
-            string featureFlagPath = string.Empty;
+            string featureFlagPath = $"{FeatureManagementConstants.FeatureManagementSectionName}:{FeatureManagementConstants.FeatureFlagsSectionName}:{featureFlagIndex}";
 
             bool enabled = featureFlag.Enabled ?? false;
 
@@ -218,7 +215,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
                     if (endpoint != null)
                     {
-                        string featureFlagReference = $"{endpoint.AbsoluteUri}kv/{metadata.Key}{(!string.IsNullOrWhiteSpace(metadata.Label) ? $"?label={metadata.Label}" : "")}";
+                        string featureFlagReference = $"{endpoint.AbsoluteUri}ff/{metadata.Key}{(!string.IsNullOrWhiteSpace(metadata.Label) ? $"?label={metadata.Label}" : "")}";
 
                         keyValues.Add(new KeyValuePair<string, string>($"{telemetryPath}:{FeatureManagementConstants.Metadata}:{FeatureManagementConstants.FeatureFlagReference}", featureFlagReference));
                     }

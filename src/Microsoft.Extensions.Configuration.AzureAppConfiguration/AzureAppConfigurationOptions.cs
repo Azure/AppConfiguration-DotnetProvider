@@ -125,7 +125,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// For use in tests only. An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
+        /// For use in tests only. An optional client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
         internal IClientManager ClientManager { get; set; }
 
