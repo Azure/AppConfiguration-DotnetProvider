@@ -123,8 +123,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return;
             }
 
-            HashSet<Uri> seen = null;
-            List<(KeyVaultSecretIdentifier Identifier, ConfigurationSetting Setting, string SecretRefUri)> toFetch = null;
+            HashSet<Uri> seen = new HashSet<Uri>();
+            List<(KeyVaultSecretIdentifier Identifier, ConfigurationSetting Setting, string SecretRefUri)> toFetch = new List<(KeyVaultSecretIdentifier, ConfigurationSetting, string)>();
 
             foreach (ConfigurationSetting setting in settings)
             {
@@ -142,32 +142,29 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
                 }
 
-                seen = seen ?? new HashSet<Uri>();
-
                 if (!seen.Add(secretIdentifier.SourceId))
                 {
                     continue;
                 }
 
-                toFetch = toFetch ?? new List<(KeyVaultSecretIdentifier, ConfigurationSetting, string)>();
                 toFetch.Add((secretIdentifier, setting, secretRefUri));
             }
 
-            if (toFetch == null)
+            if (toFetch.Count == 0)
             {
                 return;
             }
 
             if (_secretProvider.IsParallelSecretResolutionEnabled)
             {
-                using (var throttle = new SemaphoreSlim(KeyVaultConstants.MaxParallelSecretResolution))
+                using (var semaphore = new SemaphoreSlim(KeyVaultConstants.MaxParallelSecretResolution))
                 {
                     var tasks = new Task[toFetch.Count];
 
                     for (int i = 0; i < toFetch.Count; i++)
                     {
                         (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[i];
-                        tasks[i] = PreloadSecretAsync(identifier, setting, secretRefUri, throttle, logger, cancellationToken);
+                        tasks[i] = PreloadSecretAsync(identifier, setting, secretRefUri, semaphore, logger, cancellationToken);
                     }
 
                     await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -177,16 +174,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 foreach ((KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) in toFetch)
                 {
-                    await PreloadSecretAsync(identifier, setting, secretRefUri, throttle: null, logger, cancellationToken).ConfigureAwait(false);
+                    await PreloadSecretAsync(identifier, setting, secretRefUri, semaphore: null, logger, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
 
-        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri, SemaphoreSlim throttle, Logger logger, CancellationToken cancellationToken)
+        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri, SemaphoreSlim semaphore, Logger logger, CancellationToken cancellationToken)
         {
-            if (throttle != null)
+            if (semaphore != null)
             {
-                await throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
 
             try
@@ -207,7 +204,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             finally
             {
-                throttle?.Release();
+                semaphore?.Release();
             }
         }
 
