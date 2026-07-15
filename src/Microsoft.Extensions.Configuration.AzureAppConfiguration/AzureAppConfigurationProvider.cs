@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         private bool _isAssemblyInspected;
         private readonly bool _requestTracingEnabled;
         private readonly bool _fmSchemaCompatibilityDisabled;
-        private readonly IClientManager _clientManager;
+        private readonly IAppConfigurationClientManager _clientManager;
         private Uri _lastSuccessfulEndpoint;
         private AzureAppConfigurationOptions _options;
         private Dictionary<string, ConfigurationSetting> _mappedData;
@@ -121,7 +121,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 {
                     _logger = new Logger(_loggerFactory.CreateLogger(LoggingConstants.AppConfigRefreshLogCategory));
 
-                    if (_clientManager is ClientManager clientManager)
+                    if (_clientManager is AppConfigurationClientManager clientManager)
                     {
                         clientManager.SetLogger(_logger);
                     }
@@ -129,7 +129,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             }
         }
 
-        public AzureAppConfigurationProvider(IClientManager clientManager, AzureAppConfigurationOptions options, bool optional)
+        public AzureAppConfigurationProvider(IAppConfigurationClientManager clientManager, AzureAppConfigurationOptions options, bool optional)
         {
             _clientManager = clientManager ?? throw new ArgumentNullException(nameof(clientManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -1854,7 +1854,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         public void Dispose()
         {
-            (_clientManager as ClientManager)?.Dispose();
+            (_clientManager as AppConfigurationClientManager)?.Dispose();
             _activitySource?.Dispose();
         }
     }

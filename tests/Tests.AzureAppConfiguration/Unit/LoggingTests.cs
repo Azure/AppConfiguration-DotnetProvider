@@ -349,7 +349,7 @@ namespace Tests.AzureAppConfiguration
             ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ClientManager(clientList);
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             string warningInvocation = "";
             using var _ = new AzureEventSourceListener(

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
-    internal interface IClientManager
+    internal interface IAppConfigurationClientManager
     {
         IEnumerable<IAppConfigurationClient> GetClients();
 

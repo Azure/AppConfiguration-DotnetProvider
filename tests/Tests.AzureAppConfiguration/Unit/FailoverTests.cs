@@ -53,7 +53,7 @@ namespace Tests.AzureAppConfiguration
             ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ClientManager(clientList);
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -121,7 +121,7 @@ namespace Tests.AzureAppConfiguration
             ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ClientManager(clientList);
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -180,7 +180,7 @@ namespace Tests.AzureAppConfiguration
             ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ClientManager(clientList);
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -457,7 +457,7 @@ namespace Tests.AzureAppConfiguration
             ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
             var clientList = new List<ClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ClientManager(clientList);
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // Verify 2 clients are available
             Assert.Equal(2, configClientManager.GetClients().Count());

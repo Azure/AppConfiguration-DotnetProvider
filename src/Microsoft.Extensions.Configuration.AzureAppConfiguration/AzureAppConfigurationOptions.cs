@@ -127,7 +127,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// For use in tests only. An optional client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal IClientManager ClientManager { get; set; }
+        internal IAppConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
         /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.

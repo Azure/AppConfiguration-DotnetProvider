@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd
 {
-    internal class AfdClientManager : IClientManager
+    internal class AfdClientManager : IAppConfigurationClientManager
     {
         private readonly AppConfigurationClient _clientWrapper;
 

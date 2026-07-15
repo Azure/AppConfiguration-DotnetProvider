@@ -103,7 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
                 else
                 {
-                    provider = new AzureAppConfigurationProvider(new ClientManager(clientFactory, featureFlagClientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                    provider = new AzureAppConfigurationProvider(new AppConfigurationClientManager(clientFactory, featureFlagClientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
                 }
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.

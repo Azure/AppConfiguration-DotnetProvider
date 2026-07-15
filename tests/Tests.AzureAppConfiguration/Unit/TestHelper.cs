@@ -42,7 +42,7 @@ namespace Tests.AzureAppConfiguration
             return new ConfigurationClient(endpoint, mockTokenCredential.Object, options.ClientOptions);
         }
 
-        static public IClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
+        static public IAppConfigurationClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
         {
             ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
             ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);

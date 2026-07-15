@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     /// This class is not thread-safe. Since config provider does not allow multiple network requests at the same time,
     /// there won't be multiple threads calling this client at the same time.
     /// </remarks>
-    internal class ClientManager : IClientManager, IDisposable
+    internal class AppConfigurationClientManager : IAppConfigurationClientManager, IDisposable
     {
         private readonly IAzureClientFactory<ConfigurationClient> _configurationClientFactory;
         private readonly IAzureClientFactory<FeatureFlagClient> _featureFlagClientFactory;
@@ -51,7 +51,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         // Only used for unit testing
         internal int RefreshClientsCalled { get; set; } = 0;
 
-        public ClientManager(
+        public AppConfigurationClientManager(
             IAzureClientFactory<ConfigurationClient> configurationClientFactory,
             IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory,
             IEnumerable<Uri> endpoints,
@@ -91,7 +91,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Internal constructor; Only used for unit testing.
         /// </summary>
         /// <param name="clients"></param>
-        internal ClientManager(IList<AppConfigurationClient> clients)
+        internal AppConfigurationClientManager(IList<AppConfigurationClient> clients)
         {
             _clients = clients;
         }

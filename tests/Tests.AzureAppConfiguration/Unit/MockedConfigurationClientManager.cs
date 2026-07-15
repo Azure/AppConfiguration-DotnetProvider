@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace Tests.AzureAppConfiguration
 {
-    internal class MockedConfigurationClientManager : IClientManager
+    internal class MockedConfigurationClientManager : IAppConfigurationClientManager
     {
         IList<AppConfigurationClient> _clients;
         IList<AppConfigurationClient> _autoFailoverClients;
