@@ -765,10 +765,44 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ExcludeClassicFeatureFlagsDoesNotLoadClassicFeatureFlags()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
+            var settingCollection = new List<ConfigurationSetting>
+            {
+                ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", label: null,
+                    eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63")),
+                _kv
+            };
+
+            // A wildcard key-value selector returns both regular key-values and classic feature flags.
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settingCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.UseFeatureFlags(ff => ff.ExcludeClassicFeatureFlags = true);
+                })
+                .Build();
+
+            // The regular key-value is still loaded.
+            Assert.Equal("TestValue1", config["TestKey1"]);
+
+            // The classic feature flag is excluded and must not appear in the loaded configuration.
+            Assert.Null(config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+            Assert.Null(config[".appconfig.featureflag/myFeature"]);
+        }
+
+        [Fact]
         public async Task WatchesFeatureFlags()
         {
             var mockResponse = new MockResponse(200);
-
             var featureFlags = new List<ConfigurationSetting> { _kv };
 
             var mockAsyncPageable = new MockAsyncPageable(featureFlags);
@@ -2323,20 +2357,34 @@ namespace Tests.AzureAppConfiguration
 
             TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.UseFeatureFlags();
-                })
-                .Build();
+            try
+            {
+                // Force Microsoft schema for all flags so requirement_type is emitted under the Microsoft schema paths.
+                Environment.SetEnvironmentVariable(EnvironmentVariableNames.FmSchemacompatibilityDisabled, "true");
 
-            Assert.Null(config["feature_management:feature_flags:0:requirement_type"]);
-            Assert.Equal("Feature_NoFilters", config["feature_management:feature_flags:0:id"]);
-            Assert.Equal("All", config["feature_management:feature_flags:1:conditions:requirement_type"]);
-            Assert.Equal("Feature_RequireAll", config["feature_management:feature_flags:1:id"]);
-            Assert.Equal("Any", config["feature_management:feature_flags:2:conditions:requirement_type"]);
-            Assert.Equal("Feature_RequireAny", config["feature_management:feature_flags:2:id"]);
+                var config = new ConfigurationBuilder()
+                    .AddAzureAppConfiguration(options =>
+                    {
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                        options.UseFeatureFlags();
+                    })
+                    .Build();
+
+                // Index 0 is _kv2 (MyFeature2), which has a client filter but no requirement_type.
+                Assert.Equal("MyFeature2", config["feature_management:feature_flags:0:id"]);
+                Assert.Null(config["feature_management:feature_flags:0:conditions:requirement_type"]);
+
+                Assert.Null(config["feature_management:feature_flags:1:conditions:requirement_type"]);
+                Assert.Equal("Feature_NoFilters", config["feature_management:feature_flags:1:id"]);
+                Assert.Equal("All", config["feature_management:feature_flags:2:conditions:requirement_type"]);
+                Assert.Equal("Feature_RequireAll", config["feature_management:feature_flags:2:id"]);
+                Assert.Equal("Any", config["feature_management:feature_flags:3:conditions:requirement_type"]);
+                Assert.Equal("Feature_RequireAny", config["feature_management:feature_flags:3:id"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(EnvironmentVariableNames.FmSchemacompatibilityDisabled, null);
+            }
         }
 
         [Fact]
@@ -2455,8 +2503,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Firefox", configWithoutEnvVar["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
 
             // Second flag (has variants) should be in Microsoft schema
-            Assert.Equal("VariantsFeature1", configWithoutEnvVar["feature_management:feature_flags:0:id"]);
-            Assert.Equal("Big", configWithoutEnvVar["feature_management:feature_flags:0:variants:0:name"]);
+            Assert.Equal("VariantsFeature1", configWithoutEnvVar["feature_management:feature_flags:1:id"]);
+            Assert.Equal("Big", configWithoutEnvVar["feature_management:feature_flags:1:variants:0:name"]);
         }
 
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)

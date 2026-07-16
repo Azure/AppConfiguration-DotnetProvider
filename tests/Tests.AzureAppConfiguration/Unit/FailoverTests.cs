@@ -272,7 +272,7 @@ namespace Tests.AzureAppConfiguration
             var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
             var featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(new DefaultAzureCredential(), new FeatureFlagClientOptions());
 
-            var configClientManager = new ClientManager(
+            var configClientManager = new AppConfigurationClientManager(
                 clientFactory,
                 featureFlagClientFactory,
                 new[] { new Uri("https://foobar.azconfig.io") },
@@ -288,7 +288,7 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager.IsValidEndpoint("azure.appconfig.azure.com"));
             Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
 
-            var configClientManager2 = new ClientManager(
+            var configClientManager2 = new AppConfigurationClientManager(
                 clientFactory,
                 featureFlagClientFactory,
                 new[] { new Uri("https://foobar.appconfig.azure.com") },
@@ -304,7 +304,7 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager2.IsValidEndpoint("azure.badappconfig.azure.com"));
             Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
 
-            var configClientManager3 = new ClientManager(
+            var configClientManager3 = new AppConfigurationClientManager(
                 clientFactory,
                 featureFlagClientFactory,
                 new[] { new Uri("https://foobar.azconfig-test.io") },
@@ -314,7 +314,7 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
 
-            var configClientManager4 = new ClientManager(
+            var configClientManager4 = new AppConfigurationClientManager(
                 clientFactory,
                 featureFlagClientFactory,
                 new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
@@ -332,7 +332,7 @@ namespace Tests.AzureAppConfiguration
             var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
             var featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(new DefaultAzureCredential(), new FeatureFlagClientOptions());
 
-            var configClientManager = new ClientManager(
+            var configClientManager = new AppConfigurationClientManager(
                 clientFactory,
                 featureFlagClientFactory,
                 new[] { new Uri("https://azure.azconfig.io") },
