@@ -731,7 +731,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         _fmSchemaCompatibilityDisabled,
                         featureFlagIndex);
 
-                    featureFlagIndex++;
+                    // Only advance the index when the flag was emitted using the Microsoft schema
+                    if (ClassicFeatureFlagConverter.UsesMicrosoftSchema(classicFeatureFlag, _fmSchemaCompatibilityDisabled))
+                    {
+                        featureFlagIndex++;
+                    }
                 }
                 else
                 {

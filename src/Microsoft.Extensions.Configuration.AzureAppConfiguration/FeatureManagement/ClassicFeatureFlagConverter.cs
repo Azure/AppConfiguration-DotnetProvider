@@ -63,15 +63,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             int featureFlagIndex)
         {
             // Check if we need to process the feature flag using the microsoft schema
-            if (fmSchemaCompatibilityDisabled ||
-                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
-                featureFlag.Allocation != null ||
-                featureFlag.Telemetry != null)
+            if (UsesMicrosoftSchema(featureFlag, fmSchemaCompatibilityDisabled))
             {
                 return ProcessMicrosoftSchemaFeatureFlag(featureFlag, metadata, endpoint, featureFlagIndex);
             }
 
             return ProcessDotnetSchemaFeatureFlag(featureFlag);
+        }
+
+        /// <summary>
+        /// Determines whether the classic feature flag is emitted using the Microsoft schema (and therefore
+        /// occupies a slot in the "feature_management:feature_flags" array) rather than the .NET schema.
+        /// </summary>
+        public static bool UsesMicrosoftSchema(ClassicFeatureFlag featureFlag, bool fmSchemaCompatibilityDisabled)
+        {
+            return fmSchemaCompatibilityDisabled ||
+                (featureFlag.Variants != null && featureFlag.Variants.Any()) ||
+                featureFlag.Allocation != null ||
+                featureFlag.Telemetry != null;
         }
 
         private static List<KeyValuePair<string, string>> ProcessDotnetSchemaFeatureFlag(ClassicFeatureFlag featureFlag)

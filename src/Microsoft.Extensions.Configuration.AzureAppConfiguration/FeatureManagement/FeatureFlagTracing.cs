@@ -82,7 +82,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// </summary>
         public void Update(FeatureFlag flag)
         {
-            if ((flag.Enabled ?? false) && flag.Conditions?.Filters != null)
+            if (flag.Enabled && flag.Conditions?.Filters != null)
             {
                 foreach (FeatureFilter filter in flag.Conditions.Filters)
                 {

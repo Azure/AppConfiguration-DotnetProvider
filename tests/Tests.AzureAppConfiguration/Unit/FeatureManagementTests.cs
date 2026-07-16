@@ -2503,8 +2503,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Firefox", configWithoutEnvVar["FeatureManagement:Beta:EnabledFor:0:Parameters:AllowedBrowsers:0"]);
 
             // Second flag (has variants) should be in Microsoft schema
-            Assert.Equal("VariantsFeature1", configWithoutEnvVar["feature_management:feature_flags:1:id"]);
-            Assert.Equal("Big", configWithoutEnvVar["feature_management:feature_flags:1:variants:0:name"]);
+            Assert.Equal("VariantsFeature1", configWithoutEnvVar["feature_management:feature_flags:0:id"]);
+            Assert.Equal("Big", configWithoutEnvVar["feature_management:feature_flags:0:variants:0:name"]);
         }
 
         Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
