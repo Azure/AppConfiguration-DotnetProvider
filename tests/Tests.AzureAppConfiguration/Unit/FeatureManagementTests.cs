@@ -800,6 +800,305 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void ExcludeClassicFeatureFlagsStillLoadsStandaloneFeatureFlags()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            var standaloneFlags = new List<FeatureFlag>
+            {
+                CreateFeatureFlag("StandaloneFlag", enabled: true, etag: "sa-1")
+            };
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
+
+            // The wildcard key-value selector also returns the classic feature flag, which must be excluded.
+            var settingCollection = new List<ConfigurationSetting> { _kv };
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settingCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.UseFeatureFlags(ff => ff.ExcludeClassicFeatureFlags = true);
+                })
+                .Build();
+
+            // The classic feature flag is excluded.
+            Assert.Null(config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+
+            // The standalone feature flag from the feature-flag endpoint is still loaded at index 0.
+            Assert.Equal("StandaloneFlag", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
+        }
+
+        [Fact]
+        public void ExcludeClassicFeatureFlagsWithNoStandaloneFlagsProducesEmptyFeatureManagement()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            // No standalone feature flags are returned by the feature-flag endpoint.
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
+            // Only classic feature flags exist in the store.
+            var settingCollection = new List<ConfigurationSetting> { _kv, _kv2 };
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settingCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.UseFeatureFlags(ff => ff.ExcludeClassicFeatureFlags = true);
+                })
+                .Build();
+
+            // With classic flags excluded and no standalone flags, no feature-management configuration is produced.
+            Assert.Empty(config.GetSection("FeatureManagement").GetChildren());
+            Assert.Empty(config.GetSection("feature_management").GetChildren());
+        }
+
+        [Fact]
+        public void StandaloneFeatureFlagsAreIndexedAfterMicrosoftSchemaClassicFlags()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            var standaloneFlags = new List<FeatureFlag>
+            {
+                CreateFeatureFlag("StandaloneA", enabled: true, etag: "sa-1"),
+                CreateFeatureFlag("StandaloneB", enabled: false, etag: "sb-1")
+            };
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
+
+            // A single Microsoft-schema classic flag (has variants) occupies a slot in the feature_flags array.
+            var settingCollection = new List<ConfigurationSetting>
+            {
+                CreateClassicFeatureFlag("ClassicMs", enabled: true, etag: "ms-1")
+            };
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settingCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // The Microsoft-schema classic flag occupies index 0.
+            Assert.Equal("ClassicMs", config["feature_management:feature_flags:0:id"]);
+
+            // Standalone flags are appended after the classic flag, in order.
+            Assert.Equal("StandaloneA", config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("StandaloneB", config["feature_management:feature_flags:2:id"]);
+            Assert.Null(config["feature_management:feature_flags:3:id"]);
+
+            // All flags bind via GetChildren().
+            Assert.Equal(3, config.GetSection("feature_management:feature_flags").GetChildren().Count());
+        }
+
+        [Fact]
+        public void StandaloneFeatureFlagsAreIndexedAfterMicrosoftSchemaClassicFlagsOnly()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            var standaloneFlags = new List<FeatureFlag>
+            {
+                CreateFeatureFlag("StandaloneA", enabled: true, etag: "sa-1")
+            };
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
+
+            // _kv (Beta) is a .NET-schema classic flag (no variants/allocation/telemetry). It is emitted under the
+            // "FeatureManagement" section and does not occupy a slot in the "feature_management:feature_flags" array.
+            // ClassicMs is a Microsoft-schema classic flag that does occupy a slot.
+            var settingCollection = new List<ConfigurationSetting>
+            {
+                _kv,
+                CreateClassicFeatureFlag("ClassicMs", enabled: true, etag: "ms-1")
+            };
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settingCollection));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // The .NET-schema classic flag is emitted under the "FeatureManagement" section.
+            Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
+
+            // Only the Microsoft-schema classic flag occupies the array (index 0). The standalone flag follows at
+            // index 1 - the .NET-schema classic flag must NOT advance the array index.
+            Assert.Equal("ClassicMs", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("StandaloneA", config["feature_management:feature_flags:1:id"]);
+            Assert.Null(config["feature_management:feature_flags:2:id"]);
+            Assert.Equal(2, config.GetSection("feature_management:feature_flags").GetChildren().Count());
+        }
+
+        [Fact]
+        public void StandaloneFeatureFlagSupersedesClassicFeatureFlagWithSameName()
+        {
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            // A standalone flag named "Shared" (disabled) should supersede the classic flag with the same name.
+            var standaloneFlags = new List<FeatureFlag>
+            {
+                CreateFeatureFlag("Shared", enabled: false, etag: "sa-1")
+            };
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
+
+            // Distinguish the classic feature-flag query (key filter prefixed with the feature-flag marker) from the
+            // regular key-value query so that the classic "Shared" flag is only returned by the feature-flag query.
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(s => s.KeyFilter != null && s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
+                    It.IsAny<CancellationToken>()))
+                .Returns(() => new MockAsyncPageable(new List<ConfigurationSetting>
+                {
+                    CreateClassicFeatureFlag("Shared", enabled: true, etag: "ms-1")
+                }));
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(s => s.KeyFilter == null || !s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
+                    It.IsAny<CancellationToken>()))
+                .Returns(() => new MockAsyncPageable(new List<ConfigurationSetting>()));
+
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.UseFeatureFlags();
+                })
+                .Build();
+
+            // Only one flag named "Shared" is present, and it is the standalone (disabled) version.
+            Assert.Equal("Shared", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("False", config["feature_management:feature_flags:0:enabled"]);
+            Assert.Null(config["feature_management:feature_flags:1:id"]);
+            Assert.Single(config.GetSection("feature_management:feature_flags").GetChildren());
+        }
+
+        [Fact]
+        public async Task IndividualKvRefreshDoesNotCorruptFeatureFlagIndices()
+        {
+            var testKey1 = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "v1", label: null, contentType: "text", eTag: new ETag("kv-1"));
+            var classicMs = CreateClassicFeatureFlag("ClassicMs", enabled: true, etag: "ms-1");
+            var loadCollection = new List<ConfigurationSetting> { testKey1, classicMs };
+
+            var changedTestKey1 = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "v2", label: null, contentType: "text", eTag: new ETag("kv-2"));
+
+            var standaloneFlags = new List<FeatureFlag>
+            {
+                CreateFeatureFlag("StandaloneA", enabled: true, etag: "sa-1")
+            };
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() => new MockAsyncPageable(loadCollection));
+
+            // The classic feature-flag collection reports unchanged (304) on refresh.
+            var classicCheckPageable = new MockAsyncPageable(loadCollection);
+            classicCheckPageable.UpdateCollection(loadCollection);
+
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(classicCheckPageable);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string k, string l, CancellationToken ct) => Response.FromValue(testKey1, new MockResponse(200)));
+
+            // The individually-watched key-value reports a change on refresh.
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((ConfigurationSetting s, bool onlyIfChanged, CancellationToken ct) => Response.FromValue(changedTestKey1, new MockResponse(200)));
+
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.ConfigureRefresh(refresh => refresh.Register("TestKey1").SetRefreshInterval(RefreshInterval));
+                    options.UseFeatureFlags(ff => ff.SetRefreshInterval(TimeSpan.FromSeconds(10)));
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            // Initial state: ClassicMs @ index 0, StandaloneA @ index 1.
+            Assert.Equal("v1", config["TestKey1"]);
+            Assert.Equal("ClassicMs", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("StandaloneA", config["feature_management:feature_flags:1:id"]);
+
+            // Sleep to let the refresh interval elapse, then refresh (only the watched key-value changed).
+            Thread.Sleep(RefreshInterval);
+            await refresher.RefreshAsync();
+
+            // The watched key-value was updated.
+            Assert.Equal("v2", config["TestKey1"]);
+
+            // The feature-flag indices are preserved: the standalone flag must not be re-emitted starting at index 0
+            // and overwrite the classic flag's slot.
+            Assert.Equal("ClassicMs", config["feature_management:feature_flags:0:id"]);
+            Assert.Equal("StandaloneA", config["feature_management:feature_flags:1:id"]);
+            Assert.Null(config["feature_management:feature_flags:2:id"]);
+            Assert.Equal(2, config.GetSection("feature_management:feature_flags").GetChildren().Count());
+        }
+
+        private FeatureFlag CreateFeatureFlag(string name, bool enabled, string etag)
+        {
+            return ConfigurationModelFactory.FeatureFlag(
+                name: name,
+                enabled: enabled,
+                label: null,
+                description: null,
+                conditions: null,
+                variants: null,
+                allocation: null,
+                telemetry: null,
+                tags: null,
+                lastModified: null,
+                etag: new ETag(etag));
+        }
+
+        private ConfigurationSetting CreateClassicFeatureFlag(string id, bool enabled, string etag)
+        {
+            return ConfigurationModelFactory.ConfigurationSetting(
+                key: FeatureManagementConstants.FeatureFlagMarker + id,
+                value: $@"
+                    {{
+                      ""id"": ""{id}"",
+                      ""enabled"": {enabled.ToString().ToLowerInvariant()},
+                      ""variants"": [ {{ ""name"": ""On"", ""configuration_value"": true }} ]
+                    }}",
+                label: default,
+                contentType: FeatureManagementConstants.ContentType + ";charset=utf-8",
+                eTag: new ETag(etag));
+        }
+
+        [Fact]
         public async Task WatchesFeatureFlags()
         {
             var mockResponse = new MockResponse(200);
