@@ -414,16 +414,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         var featureFlagKeys = new HashSet<string>(
                             featureFlagLoadResult.FeatureFlags.Select(ff => FeatureManagementConstants.FeatureFlagMarker + ff.Name));
 
-                        List<ConfigurationSetting> classicFeatureFlags = classicFeatureFlagLoadResult.ClassicFeatureFlags
-                            .Where(setting => !featureFlagKeys.Contains(setting.Key))
-                            .ToList();
+                        IEnumerable<ConfigurationSetting> classicFeatureFlags = classicFeatureFlagLoadResult.ClassicFeatureFlags
+                            .Where(setting => !featureFlagKeys.Contains(setting.Key));
 
                         foreach (ConfigurationSetting setting in classicFeatureFlags)
                         {
                             data[setting.Key] = setting;
+                            classicFeatureFlagCount++;
                         }
-
-                        classicFeatureFlagCount = classicFeatureFlags.Count;
 
                         _mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
                         _featureFlags = featureFlagLoadResult.FeatureFlags;
@@ -452,11 +450,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             var featureFlagKeys = new HashSet<string>(
                                 featureFlagLoadResult.FeatureFlags.Select(ff => FeatureManagementConstants.FeatureFlagMarker + ff.Name));
 
-                            List<ConfigurationSetting> classicFeatureFlags = classicFeatureFlagLoadResult.ClassicFeatureFlags
-                                .Where(setting => !featureFlagKeys.Contains(setting.Key))
-                                .ToList();
-
-                            classicFeatureFlagCount = classicFeatureFlags.Count;
+                            IEnumerable<ConfigurationSetting> classicFeatureFlags = classicFeatureFlagLoadResult.ClassicFeatureFlags
+                                .Where(setting => !featureFlagKeys.Contains(setting.Key));
 
                             // Remove all feature flag keys that are not present in the latest loading of feature flags, but were loaded previously
                             foreach (string key in _ffKeys.Except(ffKeys))
@@ -471,6 +466,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             }
 
                             Dictionary<string, ConfigurationSetting> mappedFfData = await MapConfigurationSettings(classicFeatureFlags.ToDictionary(x => x.Key, x => x)).ConfigureAwait(false);
+                            classicFeatureFlagCount = mappedFfData.Count;
 
                             foreach (KeyValuePair<string, ConfigurationSetting> kvp in mappedFfData)
                             {
@@ -960,20 +956,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             var featureFlagKeys = new HashSet<string>(
                 featureFlagLoadResult.FeatureFlags.Select(ff => FeatureManagementConstants.FeatureFlagMarker + ff.Name));
 
-            List<ConfigurationSetting> classicFeatureFlags = classicFeatureFlagLoadResult.ClassicFeatureFlags
-                .Where(setting => !featureFlagKeys.Contains(setting.Key))
-                .ToList();
+            IEnumerable<ConfigurationSetting> classicFeatureFlags = classicFeatureFlagLoadResult.ClassicFeatureFlags
+                .Where(setting => !featureFlagKeys.Contains(setting.Key));
 
+            int classicFeatureFlagCount = 0;
             foreach (ConfigurationSetting setting in classicFeatureFlags)
             {
                 data[setting.Key] = setting;
+                classicFeatureFlagCount++;
             }
 
             Dictionary<string, ConfigurationSetting> mappedData = await MapConfigurationSettings(data).ConfigureAwait(false);
 
             Dictionary<string, string> preparedData = await PrepareData(mappedData, cancellationToken).ConfigureAwait(false);
 
-            foreach (KeyValuePair<string, string> kv in ProcessFeatureFlags(featureFlagLoadResult.FeatureFlags, classicFeatureFlags.Count))
+            foreach (KeyValuePair<string, string> kv in ProcessFeatureFlags(featureFlagLoadResult.FeatureFlags, classicFeatureFlagCount))
             {
                 preparedData[kv.Key] = kv.Value;
             }
