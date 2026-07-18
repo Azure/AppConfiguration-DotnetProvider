@@ -41,7 +41,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         /// returned by the new feature-flag endpoint will be loaded.
         /// Defaults to false; classic flags are loaded alongside new flags for backward compatibility.
         /// </summary>
-        public bool ExcludeClassicFeatureFlags { get; set; } = false;
+        public bool ExcludeClassicFeatureFlags { get; set; }
 
         /// <summary>
         /// The time after which the cached values of the feature flags expire.  Must be greater than or equal to 1 second.

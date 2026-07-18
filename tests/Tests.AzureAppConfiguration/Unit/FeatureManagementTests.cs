@@ -945,11 +945,12 @@ namespace Tests.AzureAppConfiguration
             // The .NET-schema classic flag is emitted under the "FeatureManagement" section.
             Assert.Equal("Browser", config["FeatureManagement:Beta:EnabledFor:0:Name"]);
 
-            // Only the Microsoft-schema classic flag occupies the array (index 0). The standalone flag follows at
-            // index 1 - the .NET-schema classic flag must NOT advance the array index.
+            // The Microsoft-schema classic flag occupies index 0. Standalone flags are appended after the classic
+            // feature flag count (2), which leaves a harmless gap at index 1 for the .NET-schema classic flag that
+            // does not occupy an array slot.
             Assert.Equal("ClassicMs", config["feature_management:feature_flags:0:id"]);
-            Assert.Equal("StandaloneA", config["feature_management:feature_flags:1:id"]);
-            Assert.Null(config["feature_management:feature_flags:2:id"]);
+            Assert.Null(config["feature_management:feature_flags:1:id"]);
+            Assert.Equal("StandaloneA", config["feature_management:feature_flags:2:id"]);
             Assert.Equal(2, config.GetSection("feature_management:feature_flags").GetChildren().Count());
         }
 
@@ -1016,12 +1017,22 @@ namespace Tests.AzureAppConfiguration
 
             TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
 
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+            // The classic feature-flag query (key filter prefixed with the feature-flag marker) returns only the
+            // classic feature flag, matching the server's prefix filtering. The regular key-value query returns the
+            // full collection (which also includes the classic feature flag, as a wildcard key-value query would).
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(s => s.KeyFilter != null && s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
+                    It.IsAny<CancellationToken>()))
+                .Returns(() => new MockAsyncPageable(new List<ConfigurationSetting> { classicMs }));
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(s => s.KeyFilter == null || !s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
+                    It.IsAny<CancellationToken>()))
                 .Returns(() => new MockAsyncPageable(loadCollection));
 
             // The classic feature-flag collection reports unchanged (304) on refresh.
-            var classicCheckPageable = new MockAsyncPageable(loadCollection);
-            classicCheckPageable.UpdateCollection(loadCollection);
+            var classicCheckPageable = new MockAsyncPageable(new List<ConfigurationSetting> { classicMs });
+            classicCheckPageable.UpdateCollection(new List<ConfigurationSetting> { classicMs });
 
             mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(classicCheckPageable);
