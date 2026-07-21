@@ -1,26 +1,17 @@
-# Azure DevOps pipeline for AppConfiguration-DotnetProvider.
+# Azure DevOps (OneBranch) placeholder pipeline for AppConfiguration-DotnetProvider.
 #
-# Replaces the GitHub Actions workflow in .github/workflows/ci.yml.
-# Per GitHub inside Microsoft (GiM) guidance (https://aka.ms/gim/pipelines),
-# production repos run CI in Azure Pipelines with 1ES Pipeline Templates for
-# compliance. Integration tests authenticate to Azure through an Azure Resource
-# Manager service connection instead of the GitHub -> Azure OIDC login, which is
-# being phased out for the corp tenant.
+# TEMPORARY validation pipeline. It does NOT build or run tests yet - it only:
+#   1. Confirms pull requests trigger this pipeline in Azure DevOps.
+#   2. Confirms Azure login works via the shared ARM service connection.
+#   3. Logs a message.
 #
-# Reuse the SAME ARM service connection the existing OOBReleases OneBranch
-# pipeline already uses to build and test this repo - its identity already has
-# access to the integration-test resources, so no new service connection or
-# RBAC setup is needed. Create this CI pipeline in the same ADO project so the
-# connection is available.
-#
-# The 1ES Official template runs CodeQL/SDL automatically during the build, so
-# no manual CodeQL tasks are required.
-#
-# ---------------------------------------------------------------------------
-# TODO before first run - set the values below:
-#   * azureServiceConnection : name of the shared ARM service connection.
-#   * pool.name / pool.image : your 1ES-managed Windows pool and image.
-# ---------------------------------------------------------------------------
+# Once verified, this will be replaced with the full build + integration-test
+# pipeline. Per GitHub inside Microsoft (GiM) guidance (https://aka.ms/gim/pipelines),
+# it extends the OneBranch governed templates - the same setup the OOBReleases
+# pipeline uses for this repo. Create it via StartRight (Governed Pipeline) in the
+# msazure / "Azure AppConfig" project with the "I'm creating a OneBranch pipeline"
+# box CHECKED. StartRight reads the YAML from the default branch, so this file
+# must be on main.
 
 trigger:
   branches:
@@ -28,7 +19,7 @@ trigger:
       - main
       - preview
       - release/*
-      - zhiyuanliang/ci   # TEMP: remove before merging - lets pushes to this branch run CI
+      - zhiyuanliang/ci   # TEMP: lets pushes to this branch run the pipeline
 
 pr:
   branches:
@@ -37,77 +28,65 @@ pr:
       - preview
       - release/*
 
+variables:
+  CDP_DEFINITION_BUILD_COUNT: $[counter('', 0)]
+  system.debug: false
+  REPOROOT: $(Build.SourcesDirectory)
+  WindowsContainerImage: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest'
+  # ARM service connection shared with the OOBReleases pipeline (its identity
+  # already has access to the integration-test resources). Same id OOBReleases
+  # references - replace with its display name if you prefer.
+  azureServiceConnection: 'ba69879b-1ca3-4e17-93f9-0f52dcf69bc5'
+
 resources:
   repositories:
-    - repository: 1ESPipelineTemplates
+    - repository: templates
       type: git
-      name: 1ESPipelineTemplates/1ESPipelineTemplates
-      ref: refs/tags/release
-
-variables:
-  # ARM service connection used to authenticate the integration tests. Use the
-  # same connection the OOBReleases OneBranch pipeline uses for this repo - its
-  # identity already has access to the integration-test resources. Replaces the
-  # GitHub OIDC azure/login@v1 step.
-  azureServiceConnection: '<shared-arm-service-connection>'
+      name: OneBranch.Pipelines/GovernedTemplates
+      ref: refs/heads/main
 
 extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1ESPipelineTemplates
+  template: v2/OneBranch.NonOfficial.CrossPlat.yml@templates
   parameters:
-    pool:
-      name: '<your-1ES-windows-pool>'
-      image: '<your-1ES-windows-image>'
-      os: windows
-    sdl:
-      # The 1ES Official template runs SDL, including CodeQL, automatically.
-      # This block is explicit for clarity and can be tuned or removed.
-      codeql:
-        compiled:
-          enabled: true
+    cloudvault:
+      enabled: false
+    globalSdl:
+      tsa:
+        enabled: false
+      binskim:
+        break: false
+      policheck:
+        break: false
+      cg:
+        failOnAlert: false
     stages:
-      - stage: Build
+      - stage: Validate
         jobs:
-          - job: Build
-            displayName: 'Build and Test'
+          - job: Validate
+            displayName: 'Verify PR trigger and Azure login'
+            pool:
+              type: windows
+            variables:
+              ob_outputDirectory: '$(REPOROOT)\out'
             steps:
               - checkout: self
 
-              - pwsh: build/install-dotnet.ps1 -RestoreOnly
-                displayName: 'Install .NET'
+              - script: if not exist "$(REPOROOT)\out" mkdir "$(REPOROOT)\out"
+                displayName: 'Create output directory'
 
-              - pwsh: ./build.ps1 -RestoreOnly
-                displayName: 'Restore'
+              - script: echo Hello from Azure Pipelines - verifying PR trigger
+                displayName: 'Log a message'
 
-              - pwsh: ./build.ps1
-                displayName: 'Dotnet Build'
-
-              - pwsh: ./pack.ps1
-                displayName: 'Dotnet Pack'
-
-              # Runs the tests inside the AzureCLI task, which logs "az" in via the
-              # service connection. The AZURESUBSCRIPTION_* variables the task exposes
-              # are mapped to the AZURE_* variables that DefaultAzureCredential reads
-              # (EnvironmentCredential) - the same approach as the OOBReleases pipeline.
+              # Proves the shared ARM service connection authenticates from this
+              # pipeline. Prints the signed-in account (no secrets are logged).
               - task: AzureCLI@2
-                displayName: 'Dotnet Test'
+                displayName: 'Verify Azure login'
                 inputs:
                   azureSubscription: '$(azureServiceConnection)'
-                  scriptType: 'pscore'
-                  scriptLocation: 'inlineScript'
-                  workingDirectory: '$(Build.SourcesDirectory)'
+                  scriptType: ps
+                  scriptLocation: inlineScript
                   inlineScript: |
-                    $env:AZURE_TENANT_ID = $env:AZURESUBSCRIPTION_TENANT_ID
-                    $env:AZURE_CLIENT_ID = $env:AZURESUBSCRIPTION_CLIENT_ID
-                    $env:AZURE_CLIENT_SECRET = $env:AZURESUBSCRIPTION_CLIENT_SECRET
-                    $env:AZURE_SUBSCRIPTION_ID = (az account show --query id -o tsv)
-                    ./test.ps1
-
-              - task: PublishTestResults@2
-                displayName: 'Publish Test Results'
-                condition: succeededOrFailed()
-                inputs:
-                  testResultsFormat: 'VSTest'
-                  testResultsFiles: '**/*.trx'
-                  searchFolder: '$(Build.SourcesDirectory)/tests'
-                  testRunTitle: 'Unit Test Results'
-                  mergeTestResults: true
+                    Write-Host "Verifying Azure login via the service connection..."
+                    az account show
+                    Write-Host "Client id: $env:AZURESUBSCRIPTION_CLIENT_ID"
+                    Write-Host "Tenant id: $env:AZURESUBSCRIPTION_TENANT_ID"
