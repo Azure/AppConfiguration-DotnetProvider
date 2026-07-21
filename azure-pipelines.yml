@@ -1,0 +1,92 @@
+# Azure DevOps (OneBranch) placeholder pipeline for AppConfiguration-DotnetProvider.
+#
+# TEMPORARY validation pipeline. It does NOT build or run tests yet - it only:
+#   1. Confirms pull requests trigger this pipeline in Azure DevOps.
+#   2. Confirms Azure login works via the shared ARM service connection.
+#   3. Logs a message.
+#
+# Once verified, this will be replaced with the full build + integration-test
+# pipeline. Per GitHub inside Microsoft (GiM) guidance (https://aka.ms/gim/pipelines),
+# it extends the OneBranch governed templates - the same setup the OOBReleases
+# pipeline uses for this repo. Create it via StartRight (Governed Pipeline) in the
+# msazure / "Azure AppConfig" project with the "I'm creating a OneBranch pipeline"
+# box CHECKED. StartRight reads the YAML from the default branch, so this file
+# must be on main.
+
+trigger:
+  branches:
+    include:
+      - main
+      - preview
+      - release/*
+      - zhiyuanliang/ci   # TEMP: lets pushes to this branch run the pipeline
+
+pr:
+  branches:
+    include:
+      - main
+      - preview
+      - release/*
+
+variables:
+  CDP_DEFINITION_BUILD_COUNT: $[counter('', 0)]
+  system.debug: false
+  REPOROOT: $(Build.SourcesDirectory)
+  WindowsContainerImage: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest'
+  # ARM service connection shared with the OOBReleases pipeline (its identity
+  # already has access to the integration-test resources). Same id OOBReleases
+  # references - replace with its display name if you prefer.
+  azureServiceConnection: 'ba69879b-1ca3-4e17-93f9-0f52dcf69bc5'
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: OneBranch.Pipelines/GovernedTemplates
+      ref: refs/heads/main
+
+extends:
+  template: v2/OneBranch.NonOfficial.CrossPlat.yml@templates
+  parameters:
+    cloudvault:
+      enabled: false
+    globalSdl:
+      tsa:
+        enabled: false
+      binskim:
+        break: false
+      policheck:
+        break: false
+      cg:
+        failOnAlert: false
+    stages:
+      - stage: Validate
+        jobs:
+          - job: Validate
+            displayName: 'Verify PR trigger and Azure login'
+            pool:
+              type: windows
+            variables:
+              ob_outputDirectory: '$(REPOROOT)\out'
+            steps:
+              - checkout: self
+
+              - script: if not exist "$(REPOROOT)\out" mkdir "$(REPOROOT)\out"
+                displayName: 'Create output directory'
+
+              - script: echo Hello from Azure Pipelines - verifying PR trigger
+                displayName: 'Log a message'
+
+              # Proves the shared ARM service connection authenticates from this
+              # pipeline. Prints the signed-in account (no secrets are logged).
+              - task: AzureCLI@2
+                displayName: 'Verify Azure login'
+                inputs:
+                  azureSubscription: '$(azureServiceConnection)'
+                  scriptType: ps
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    Write-Host "Verifying Azure login via the service connection..."
+                    az account show
+                    Write-Host "Client id: $env:AZURESUBSCRIPTION_CLIENT_ID"
+                    Write-Host "Tenant id: $env:AZURESUBSCRIPTION_TENANT_ID"

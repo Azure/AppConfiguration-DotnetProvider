@@ -746,7 +746,7 @@ namespace Tests.AzureAppConfiguration
 
             // Update sentinel key-value
             sentinelKv = TestHelpers.ChangeValue(sentinelKv, "Value2");
-            Thread.Sleep(refreshInterval);
+            Thread.Sleep(refreshInterval + TimeSpan.FromSeconds(1)); // buffer avoids the boundary race on the refresh interval
             await refresher.RefreshAsync();
 
             Assert.Equal("Value2", config["Sentinel"]);
@@ -818,7 +818,7 @@ namespace Tests.AzureAppConfiguration
 
             // Update sentinel key-value to trigger refresh operation
             sentinelKv = TestHelpers.ChangeValue(sentinelKv, "Value2");
-            Thread.Sleep(refreshInterval);
+            Thread.Sleep(refreshInterval + TimeSpan.FromSeconds(1)); // buffer avoids the boundary race on the refresh interval
             await refresher.RefreshAsync();
 
             Assert.Equal("Value2", config["Sentinel"]);
@@ -863,7 +863,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config[_kv.Key]);
 
             // Sleep to let the secret cache expire 
-            Thread.Sleep(refreshInterval);
+            Thread.Sleep(refreshInterval + TimeSpan.FromSeconds(1)); // buffer avoids the boundary race on the refresh interval
             await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config[_kv.Key]);
@@ -907,7 +907,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config["TK2"]);
 
             // Sleep to let the secret cache expire for both secrets 
-            Thread.Sleep(shortRefreshInterval);
+            Thread.Sleep(shortRefreshInterval + TimeSpan.FromSeconds(1)); // buffer avoids the boundary race on the refresh interval
             await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config["TK1"]);
@@ -953,8 +953,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(_secretValue, config["TK1"]);
             Assert.Equal(_secretValue, config["TK2"]);
 
-            // Sleep to let the secret cache expire for one secret 
-            Thread.Sleep(shortRefreshInterval);
+            // Sleep past the short interval (plus a small buffer to avoid a boundary race) so only that secret's cache expires
+            Thread.Sleep(shortRefreshInterval + TimeSpan.FromSeconds(1));
             await refresher.RefreshAsync();
 
             Assert.Equal(_secretValue, config["TK1"]);
