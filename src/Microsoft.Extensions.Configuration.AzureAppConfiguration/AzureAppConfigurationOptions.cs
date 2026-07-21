@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
+using FeatureFlagSelector = Microsoft.Extensions.Configuration.AzureAppConfiguration.Models.FeatureFlagSelector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,9 +30,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private List<KeyValueWatcher> _individualKvWatchers = new List<KeyValueWatcher>();
         private List<KeyValueWatcher> _ffWatchers = new List<KeyValueWatcher>();
+        private List<FeatureFlagSelector> _ffSelectors = new List<FeatureFlagSelector>();
         private List<IKeyValueAdapter> _adapters;
         private List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>> _mappers = new List<Func<ConfigurationSetting, ValueTask<ConfigurationSetting>>>();
-        private List<KeyValueSelector> _selectors;
+        private List<KeyValueSelector> _kvSelectors;
         private IConfigurationRefresher _refresher = new AzureAppConfigurationRefresher();
         private bool _selectCalled = false;
 
@@ -69,7 +71,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// <summary>
         /// A collection of <see cref="KeyValueSelector"/> specified by user.
         /// </summary>
-        internal IEnumerable<KeyValueSelector> Selectors => _selectors;
+        internal IEnumerable<KeyValueSelector> KeyValueSelectors => _kvSelectors;
 
         /// <summary>
         /// Indicates if <see cref="AzureAppConfigurationRefreshOptions.RegisterAll"/> was called.
@@ -92,6 +94,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<KeyValueWatcher> FeatureFlagWatchers => _ffWatchers;
 
         /// <summary>
+        /// A collection of <see cref="FeatureFlagSelector"/> used to select feature flags.
+        /// </summary>
+        internal IEnumerable<FeatureFlagSelector> FeatureFlagSelectors => _ffSelectors;
+
+        /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
         /// </summary>
         internal IEnumerable<IKeyValueAdapter> Adapters
@@ -111,14 +118,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<string> KeyPrefixes => _keyPrefixes;
 
         /// <summary>
-        /// For use in tests only. An optional configuration client manager that can be used to provide clients to communicate with Azure App Configuration.
+        /// For use in tests only. An optional client manager that can be used to provide clients to communicate with Azure App Configuration.
         /// </summary>
-        internal IConfigurationClientManager ClientManager { get; set; }
+        internal IAppConfigurationClientManager ClientManager { get; set; }
 
         /// <summary>
         /// For use in tests only. An optional class used to process pageable results from Azure App Configuration.
         /// </summary>
         internal IConfigurationSettingPageIterator ConfigurationSettingPageIterator { get; set; }
+
+        /// <summary>
+        /// For use in tests only. An optional class used to process pageable feature flag results from the standalone feature-flag endpoint.
+        /// </summary>
+        internal IFeatureFlagPageIterator FeatureFlagPageIterator { get; set; }
 
         /// <summary>
         /// For use in tests only. An optional activity source name to specify the activity source used by the configuration provider.
@@ -134,6 +146,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Options used to configure the client used to communicate with Azure App Configuration.
         /// </summary>
         internal ConfigurationClientOptions ClientOptions { get; private set; } = GetDefaultClientOptions();
+
+        /// <summary>
+        /// Options used to configure the client used to communicate with the Azure App Configuration feature-flag endpoint.
+        /// </summary>
+        internal FeatureFlagClientOptions FeatureFlagClientOptions { get; private set; } = GetDefaultFeatureFlagClientOptions();
 
         /// <summary>
         /// Flag to indicate whether Key Vault options have been configured.
@@ -173,12 +190,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             _adapters = new List<IKeyValueAdapter>()
             {
                 new AzureKeyVaultKeyValueAdapter(new AzureKeyVaultSecretProvider()),
-                new JsonKeyValueAdapter(),
-                new FeatureManagementKeyValueAdapter(FeatureFlagTracing)
+                new JsonKeyValueAdapter()
             };
 
             // Adds the default query to App Configuration if <see cref="Select"/> and <see cref="SelectSnapshot"/> are never called.
-            _selectors = new List<KeyValueSelector> { DefaultQuery };
+            _kvSelectors = new List<KeyValueSelector> { DefaultQuery };
         }
 
         /// <summary>
@@ -253,12 +269,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Remove(DefaultQuery);
+                _kvSelectors.Remove(DefaultQuery);
 
                 _selectCalled = true;
             }
 
-            _selectors.AppendUnique(new KeyValueSelector
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
                 KeyFilter = keyFilter,
                 LabelFilter = labelFilter,
@@ -282,12 +298,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             if (!_selectCalled)
             {
-                _selectors.Remove(DefaultQuery);
+                _kvSelectors.Remove(DefaultQuery);
 
                 _selectCalled = true;
             }
 
-            _selectors.AppendUnique(new KeyValueSelector
+            _kvSelectors.AppendUnique(new KeyValueSelector
             {
                 SnapshotName = name
             });
@@ -320,24 +336,23 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             if (options.FeatureFlagSelectors.Count() == 0)
             {
                 // Select clause is not present
-                options.FeatureFlagSelectors.Add(new KeyValueSelector
+                options.FeatureFlagSelectors.Add(new FeatureFlagSelector
                 {
-                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + "*",
-                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label,
-                    IsFeatureFlagSelector = true
+                    NameFilter = KeyFilter.Any,
+                    LabelFilter = string.IsNullOrWhiteSpace(options.Label) ? LabelFilter.Null : options.Label
                 });
             }
 
-            foreach (KeyValueSelector featureFlagSelector in options.FeatureFlagSelectors)
+            foreach (FeatureFlagSelector featureFlagSelector in options.FeatureFlagSelectors)
             {
-                _selectors.AppendUnique(featureFlagSelector);
+                _ffSelectors.AppendUnique(featureFlagSelector);
 
                 _ffWatchers.AppendUnique(new KeyValueWatcher
                 {
-                    Key = featureFlagSelector.KeyFilter,
+                    Key = featureFlagSelector.NameFilter,
                     Label = featureFlagSelector.LabelFilter,
                     Tags = featureFlagSelector.TagFilters,
-                    // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
+                    // If UseFeatureFlags is called multiple times for the same name and label filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
             }
@@ -489,6 +504,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions ConfigureClientOptions(Action<ConfigurationClientOptions> configure)
         {
             configure?.Invoke(ClientOptions);
+
+            // Reflect the relevant settings onto the feature-flag client options so that both clients
+            // communicate with the same store, audience, transport and retry behavior.
+            FeatureFlagClientOptions.Retry.MaxRetries = ClientOptions.Retry.MaxRetries;
+            FeatureFlagClientOptions.Retry.MaxDelay = ClientOptions.Retry.MaxDelay;
+            FeatureFlagClientOptions.Retry.Mode = ClientOptions.Retry.Mode;
+            FeatureFlagClientOptions.Retry.NetworkTimeout = ClientOptions.Retry.NetworkTimeout;
+            FeatureFlagClientOptions.Audience = ClientOptions.Audience;
+
+            if (ClientOptions.Transport != null)
+            {
+                FeatureFlagClientOptions.Transport = ClientOptions.Transport;
+            }
+
             return this;
         }
 
@@ -596,7 +625,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         private static ConfigurationClientOptions GetDefaultClientOptions()
         {
-            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2023_11_01);
+            var clientOptions = new ConfigurationClientOptions(ConfigurationClientOptions.ServiceVersion.V2026_05_01_Preview);
             clientOptions.Retry.MaxRetries = MaxRetries;
             clientOptions.Retry.MaxDelay = MaxRetryDelay;
             clientOptions.Retry.Mode = RetryMode.Exponential;
@@ -604,6 +633,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             clientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
 
             return clientOptions;
+        }
+
+        private static FeatureFlagClientOptions GetDefaultFeatureFlagClientOptions()
+        {
+            var ffClientOptions = new FeatureFlagClientOptions(FeatureFlagClientOptions.ServiceVersion.V2026_05_01_Preview);
+            ffClientOptions.Retry.MaxRetries = MaxRetries;
+            ffClientOptions.Retry.MaxDelay = MaxRetryDelay;
+            ffClientOptions.Retry.Mode = RetryMode.Exponential;
+            ffClientOptions.Retry.NetworkTimeout = NetworkTimeout;
+            ffClientOptions.AddPolicy(new UserAgentHeaderPolicy(), HttpPipelinePosition.PerCall);
+
+            return ffClientOptions;
         }
     }
 }

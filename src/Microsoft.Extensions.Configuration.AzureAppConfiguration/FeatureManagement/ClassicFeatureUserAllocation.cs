@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class FeatureUserAllocation
+    internal class ClassicFeatureUserAllocation
     {
         public string Variant { get; set; }
 
