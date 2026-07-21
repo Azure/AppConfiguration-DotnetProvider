@@ -99,13 +99,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IEnumerable<FeatureFlagSelector> FeatureFlagSelectors => _ffSelectors;
 
         /// <summary>
-        /// When set to true, classic feature flags (key-values prefixed with ".appconfig.featureflag/")
-        /// are not loaded from the configuration store. Only feature flags returned by the standalone
-        /// feature-flag endpoint will be loaded.
-        /// </summary>
-        internal bool ExcludeClassicFeatureFlags { get; private set; }
-
-        /// <summary>
         /// A collection of <see cref="IKeyValueAdapter"/>.
         /// </summary>
         internal IEnumerable<IKeyValueAdapter> Adapters
@@ -339,8 +332,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 throw new InvalidOperationException($"Please select feature flags by either the {nameof(options.Select)} method or by setting the {nameof(options.Label)} property, not both.");
             }
-
-            ExcludeClassicFeatureFlags = options.ExcludeClassicFeatureFlags;
 
             if (options.FeatureFlagSelectors.Count() == 0)
             {

@@ -765,106 +765,6 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void ExcludeClassicFeatureFlagsDoesNotLoadClassicFeatureFlags()
-        {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
-
-            var settingCollection = new List<ConfigurationSetting>
-            {
-                ConfigurationModelFactory.ConfigurationSetting("TestKey1", "TestValue1", label: null,
-                    eTag: new ETag("0a76e3d7-7ec1-4e37-883c-9ea6d0d89e63")),
-                _kv
-            };
-
-            // A wildcard key-value selector returns both regular key-values and classic feature flags.
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(settingCollection));
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
-                    options.UseFeatureFlags(ff => ff.ExcludeClassicFeatureFlags = true);
-                })
-                .Build();
-
-            // The regular key-value is still loaded.
-            Assert.Equal("TestValue1", config["TestKey1"]);
-
-            // The classic feature flag is excluded and must not appear in the loaded configuration.
-            Assert.Null(config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-            Assert.Null(config[".appconfig.featureflag/myFeature"]);
-        }
-
-        [Fact]
-        public void ExcludeClassicFeatureFlagsStillLoadsStandaloneFeatureFlags()
-        {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            var standaloneFlags = new List<FeatureFlag>
-            {
-                CreateFeatureFlag("StandaloneFlag", enabled: true, etag: "sa-1")
-            };
-
-            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
-
-            // The wildcard key-value selector also returns the classic feature flag, which must be excluded.
-            var settingCollection = new List<ConfigurationSetting> { _kv };
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(settingCollection));
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
-                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
-                    options.UseFeatureFlags(ff => ff.ExcludeClassicFeatureFlags = true);
-                })
-                .Build();
-
-            // The classic feature flag is excluded.
-            Assert.Null(config["FeatureManagement:Beta:EnabledFor:0:Name"]);
-
-            // The standalone feature flag from the feature-flag endpoint is still loaded at index 0.
-            Assert.Equal("StandaloneFlag", config["feature_management:feature_flags:0:id"]);
-            Assert.Equal("True", config["feature_management:feature_flags:0:enabled"]);
-        }
-
-        [Fact]
-        public void ExcludeClassicFeatureFlagsWithNoStandaloneFlagsProducesEmptyFeatureManagement()
-        {
-            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
-
-            // No standalone feature flags are returned by the feature-flag endpoint.
-            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
-
-            // Only classic feature flags exist in the store.
-            var settingCollection = new List<ConfigurationSetting> { _kv, _kv2 };
-
-            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                .Returns(new MockAsyncPageable(settingCollection));
-
-            var config = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
-                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
-                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
-                    options.UseFeatureFlags(ff => ff.ExcludeClassicFeatureFlags = true);
-                })
-                .Build();
-
-            // With classic flags excluded and no standalone flags, no feature-management configuration is produced.
-            Assert.Empty(config.GetSection("FeatureManagement").GetChildren());
-            Assert.Empty(config.GetSection("feature_management").GetChildren());
-        }
-
-        [Fact]
         public void StandaloneFeatureFlagsAreIndexedAfterMicrosoftSchemaClassicFlags()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1018,21 +918,22 @@ namespace Tests.AzureAppConfiguration
             TestHelpers.SetupMockFeatureFlagEndpoint(mockClient, standaloneFlags);
 
             // The classic feature-flag query (key filter prefixed with the feature-flag marker) returns only the
-            // classic feature flag, matching the server's prefix filtering. The regular key-value query returns the
-            // full collection (which also includes the classic feature flag, as a wildcard key-value query would).
+            // classic feature flag, matching the server-side key filter.
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(
                     It.Is<SettingSelector>(s => s.KeyFilter != null && s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
                     It.IsAny<CancellationToken>()))
                 .Returns(() => new MockAsyncPageable(new List<ConfigurationSetting> { classicMs }));
 
+            // The regular key-value query returns the watched key-value along with the classic flag, which
+            // LoadKeyValues strips out of the key-value data.
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(
                     It.Is<SettingSelector>(s => s.KeyFilter == null || !s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
                     It.IsAny<CancellationToken>()))
                 .Returns(() => new MockAsyncPageable(loadCollection));
 
             // The classic feature-flag collection reports unchanged (304) on refresh.
-            var classicCheckPageable = new MockAsyncPageable(new List<ConfigurationSetting> { classicMs });
-            classicCheckPageable.UpdateCollection(new List<ConfigurationSetting> { classicMs });
+            var classicCheckPageable = new MockAsyncPageable(loadCollection);
+            classicCheckPageable.UpdateCollection(loadCollection);
 
             mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(classicCheckPageable);

@@ -1060,17 +1060,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
             }
 
-            if (_options.ExcludeClassicFeatureFlags)
-            {
-                foreach (string key in data.Keys.ToList())
-                {
-                    if (ClassicFeatureFlagConverter.IsClassicFeatureFlag(data[key]))
-                    {
-                        data.Remove(key);
-                    }
-                }
-            }
-
             return data;
         }
 
@@ -1085,52 +1074,49 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             var pages = new Dictionary<FeatureFlagSelector, IEnumerable<WatchedPage>>();
 
-            if (!_options.ExcludeClassicFeatureFlags)
+            foreach (FeatureFlagSelector ffSelector in featureFlagSelectors)
             {
-                foreach (FeatureFlagSelector ffSelector in featureFlagSelectors)
+                var selector = new SettingSelector()
                 {
-                    var selector = new SettingSelector()
-                    {
-                        KeyFilter = FeatureManagementConstants.FeatureFlagMarker + ffSelector.NameFilter,
-                        LabelFilter = ffSelector.LabelFilter
-                    };
+                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + ffSelector.NameFilter,
+                    LabelFilter = ffSelector.LabelFilter
+                };
 
-                    if (ffSelector.TagFilters != null)
+                if (ffSelector.TagFilters != null)
+                {
+                    foreach (string tagFilter in ffSelector.TagFilters)
                     {
-                        foreach (string tagFilter in ffSelector.TagFilters)
-                        {
-                            selector.TagsFilter.Add(tagFilter);
-                        }
+                        selector.TagsFilter.Add(tagFilter);
                     }
-
-                    var pageWatchers = new List<WatchedPage>();
-
-                    await CallWithRequestTracing(async () =>
-                    {
-                        AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
-
-                        await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
-                        {
-                            using Response rawResponse = page.GetRawResponse();
-                            DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
-
-                            foreach (ConfigurationSetting setting in page.Values)
-                            {
-                                classicFeatureFlags[setting.Key] = setting;
-                            }
-
-                            // The ETag will never be null here because it's not a conditional request
-                            // Each successful response should have 200 status code and an ETag
-                            pageWatchers.Add(new WatchedPage()
-                            {
-                                MatchConditions = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
-                                LastServerResponseTime = serverResponseTime
-                            });
-                        }
-                    }).ConfigureAwait(false);
-
-                    pages[ffSelector] = pageWatchers;
                 }
+
+                var pageWatchers = new List<WatchedPage>();
+
+                await CallWithRequestTracing(async () =>
+                {
+                    AsyncPageable<ConfigurationSetting> pageableSettings = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+
+                    await foreach (Page<ConfigurationSetting> page in pageableSettings.AsPages(_options.ConfigurationSettingPageIterator).ConfigureAwait(false))
+                    {
+                        using Response rawResponse = page.GetRawResponse();
+                        DateTimeOffset serverResponseTime = rawResponse.GetMsDate();
+
+                        foreach (ConfigurationSetting setting in page.Values)
+                        {
+                            classicFeatureFlags[setting.Key] = setting;
+                        }
+
+                        // The ETag will never be null here because it's not a conditional request
+                        // Each successful response should have 200 status code and an ETag
+                        pageWatchers.Add(new WatchedPage()
+                        {
+                            MatchConditions = new MatchConditions { IfNoneMatch = rawResponse.Headers.ETag },
+                            LastServerResponseTime = serverResponseTime
+                        });
+                    }
+                }).ConfigureAwait(false);
+
+                pages[ffSelector] = pageWatchers;
             }
 
             return new ClassicFeatureFlagLoadResult
@@ -1753,8 +1739,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
             foreach (FeatureFlagSelector selector in selectors)
             {
-                if (!_options.ExcludeClassicFeatureFlags &&
-                    classicFeatureFlagPageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> classicPages) &&
+                if (classicFeatureFlagPageWatchers.TryGetValue(selector, out IEnumerable<WatchedPage> classicPages) &&
                     classicPages != null)
                 {
                     var classicFfSelector = new KeyValueSelector
