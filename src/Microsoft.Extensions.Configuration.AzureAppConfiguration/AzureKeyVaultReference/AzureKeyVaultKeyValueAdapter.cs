@@ -1,15 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using Azure;
 using Azure.Data.AppConfiguration;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Mime;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,8 +17,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
     internal class AzureKeyVaultKeyValueAdapter : IKeyValueAdapter
     {
-        private const string AzureIdentityAssemblyName = "Azure.Identity";
-
         private readonly AzureKeyVaultSecretProvider _secretProvider;
 
         public AzureKeyVaultKeyValueAdapter(AzureKeyVaultSecretProvider secretProvider)
@@ -37,39 +34,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             // Uri validation
             if (string.IsNullOrEmpty(secretRefUri) || !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) || !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
             {
-                throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
+                throw KeyVaultReferenceException.Create("Invalid Key vault secret identifier.", setting, null, secretRefUri);
             }
 
-            string secret;
-
-            try
-            {
-                secret = await _secretProvider.GetSecretValue(secretIdentifier, setting.Key, setting.Label, logger, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRefUri);
-            }
-            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
-            {
-                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRefUri);
-            }
+            string secret = await _secretProvider.GetSecretValue(secretIdentifier, setting, secretRefUri, logger, cancellationToken).ConfigureAwait(false);
 
             return new KeyValuePair<string, string>[]
             {
                 new KeyValuePair<string, string>(setting.Key, secret)
-            };
-        }
-
-        KeyVaultReferenceException CreateKeyVaultReferenceException(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
-        {
-            return new KeyVaultReferenceException(message, inner)
-            {
-                Key = setting.Key,
-                Label = setting.Label,
-                Etag = setting.ETag.ToString(),
-                ErrorCode = (inner as RequestFailedException)?.ErrorCode,
-                SecretIdentifier = secretRefUri
             };
         }
 
@@ -139,7 +111,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     !Uri.TryCreate(secretRefUri, UriKind.Absolute, out Uri secretUri) ||
                     !KeyVaultSecretIdentifier.TryCreate(secretUri, out KeyVaultSecretIdentifier secretIdentifier))
                 {
-                    throw CreateKeyVaultReferenceException("Invalid Key vault secret identifier.", setting, null, secretRefUri);
+                    throw KeyVaultReferenceException.Create("Invalid Key vault secret identifier.", setting, null, secretRefUri);
                 }
 
                 if (!seen.Add(secretIdentifier.SourceId))
@@ -157,54 +129,59 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             if (_secretProvider.IsParallelSecretResolutionEnabled)
             {
-                using (var semaphore = new SemaphoreSlim(KeyVaultConstants.MaxParallelSecretResolution))
-                {
-                    var tasks = new Task[toFetch.Count];
+                int workerCount = Math.Min(KeyVaultConstants.MaxParallelSecretResolution, toFetch.Count);
+                int nextIndex = -1;
+                Exception firstException = null;
+                Task[] workers = new Task[workerCount];
 
-                    for (int i = 0; i < toFetch.Count; i++)
+                using (var failFastCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                {
+                    async Task WorkerLoopAsync()
                     {
-                        (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[i];
-                        tasks[i] = PreloadSecretAsync(identifier, setting, secretRefUri, semaphore, logger, cancellationToken);
+                        while (!failFastCts.IsCancellationRequested)
+                        {
+                            int index = Interlocked.Increment(ref nextIndex);
+
+                            if (index >= toFetch.Count)
+                            {
+                                return;
+                            }
+
+                            (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[index];
+
+                            try
+                            {
+                                await _secretProvider.GetSecretValue(identifier, setting, secretRefUri, logger, failFastCts.Token).ConfigureAwait(false);
+                            }
+                            catch (Exception e)
+                            {
+                                // Stop other workers from picking up new work and remember the first failure so it can be surfaced below.
+                                Interlocked.CompareExchange(ref firstException, e, null);
+                                failFastCts.Cancel();
+                                return;
+                            }
+                        }
                     }
 
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                    for (int i = 0; i < workerCount; i++)
+                    {
+                        workers[i] = WorkerLoopAsync();
+                    }
+
+                    await Task.WhenAll(workers).ConfigureAwait(false);
+                }
+
+                if (firstException != null)
+                {
+                    ExceptionDispatchInfo.Capture(firstException).Throw();
                 }
             }
             else
             {
                 foreach ((KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) in toFetch)
                 {
-                    await PreloadSecretAsync(identifier, setting, secretRefUri, semaphore: null, logger, cancellationToken).ConfigureAwait(false);
+                    await _secretProvider.GetSecretValue(identifier, setting, secretRefUri, logger, cancellationToken).ConfigureAwait(false);
                 }
-            }
-        }
-
-        private async Task PreloadSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri, SemaphoreSlim semaphore, Logger logger, CancellationToken cancellationToken)
-        {
-            if (semaphore != null)
-            {
-                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            try
-            {
-                await _secretProvider.GetSecretValue(identifier, setting.Key, setting.Label, logger, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                throw CreateKeyVaultReferenceException(e.Message, setting, e, secretRefUri);
-            }
-            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
-            {
-                throw CreateKeyVaultReferenceException("Key vault error.", setting, e, secretRefUri);
-            }
-            finally
-            {
-                semaphore?.Release();
             }
         }
 
@@ -218,7 +195,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
                 if (reader.Read() && reader.TokenType != JsonTokenType.StartObject)
                 {
-                    throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
+                    throw KeyVaultReferenceException.Create(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
                 }
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -236,7 +213,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                         }
                         else
                         {
-                            throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
+                            throw KeyVaultReferenceException.Create(ErrorMessages.InvalidKeyVaultReference, setting, null, null);
                         }
                     }
                     else
@@ -247,7 +224,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (JsonException e)
             {
-                throw CreateKeyVaultReferenceException(ErrorMessages.InvalidKeyVaultReference, setting, e, null);
+                throw KeyVaultReferenceException.Create(ErrorMessages.InvalidKeyVaultReference, setting, e, null);
             }
 
             return secretRefUri;

@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
+using Azure.Data.AppConfiguration;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,6 +16,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 {
     internal class AzureKeyVaultSecretProvider
     {
+        private const string AzureIdentityAssemblyName = "Azure.Identity";
+
         private readonly AzureAppConfigurationKeyVaultOptions _keyVaultOptions;
         private readonly ConcurrentDictionary<string, SecretClient> _secretClients;
         private readonly ConcurrentDictionary<Uri, CachedKeyVaultSecret> _cachedKeyVaultSecrets;
@@ -35,7 +40,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, string key, string label, Logger logger, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, ConfigurationSetting setting, string secretRefUri, Logger logger, CancellationToken cancellationToken)
         {
             string secretValue = null;
 
@@ -49,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             if (client == null && _keyVaultOptions.SecretResolver == null)
             {
-                throw new UnauthorizedAccessException("No key vault credential or secret resolver callback configured, and no matching secret client could be found.");
+                throw KeyVaultReferenceException.Create("No key vault credential or secret resolver callback configured, and no matching secret client could be found.", setting, null, secretRefUri);
             }
 
             CachedKeyVaultSecret updatedCachedSecret = null;
@@ -60,8 +65,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 if (client != null)
                 {
                     KeyVaultSecret secret = await client.GetSecretAsync(secretIdentifier.Name, secretIdentifier.Version, cancellationToken).ConfigureAwait(false);
-                    logger.LogDebug(LogHelper.BuildKeyVaultSecretReadMessage(key, label));
-                    logger.LogInformation(LogHelper.BuildKeyVaultSettingUpdatedMessage(key));
+                    logger.LogDebug(LogHelper.BuildKeyVaultSecretReadMessage(setting.Key, setting.Label));
+                    logger.LogInformation(LogHelper.BuildKeyVaultSettingUpdatedMessage(setting.Key));
                     secretValue = secret.Value;
                 }
                 else if (_keyVaultOptions.SecretResolver != null)
@@ -72,9 +77,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 updatedCachedSecret = new CachedKeyVaultSecret(secretValue, secretIdentifier.SourceId);
                 success = true;
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
+            {
+                throw KeyVaultReferenceException.Create(e.Message, setting, e, secretRefUri);
+            }
+            catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
+            {
+                throw KeyVaultReferenceException.Create("Key vault error.", setting, e, secretRefUri);
+            }
             finally
             {
-                SetSecretInCache(secretIdentifier.SourceId, key, updatedCachedSecret, success);
+                SetSecretInCache(secretIdentifier.SourceId, setting.Key, updatedCachedSecret, success);
             }
 
             return secretValue;
