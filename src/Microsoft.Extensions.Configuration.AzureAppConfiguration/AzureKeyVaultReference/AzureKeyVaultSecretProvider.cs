@@ -77,10 +77,6 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 updatedCachedSecret = new CachedKeyVaultSecret(secretValue, secretIdentifier.SourceId);
                 success = true;
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
                 throw KeyVaultReferenceException.Create(e.Message, setting, e, secretRefUri);

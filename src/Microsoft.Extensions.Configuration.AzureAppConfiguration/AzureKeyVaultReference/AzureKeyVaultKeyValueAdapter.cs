@@ -8,7 +8,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using System;
 using System.Collections.Generic;
 using System.Net.Mime;
-using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -95,8 +94,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 return;
             }
 
-            HashSet<Uri> seen = new HashSet<Uri>();
-            List<(KeyVaultSecretIdentifier Identifier, ConfigurationSetting Setting, string SecretRefUri)> toFetch = new List<(KeyVaultSecretIdentifier, ConfigurationSetting, string)>();
+            var seen = new HashSet<Uri>();
+            var toFetch = new List<(KeyVaultSecretIdentifier, ConfigurationSetting, string)>();
 
             foreach (ConfigurationSetting setting in settings)
             {
@@ -129,51 +128,31 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             if (_secretProvider.IsParallelSecretResolutionEnabled)
             {
-                int workerCount = Math.Min(KeyVaultConstants.MaxParallelSecretResolution, toFetch.Count);
-                int nextIndex = -1;
-                Exception firstException = null;
-                Task[] workers = new Task[workerCount];
-
-                using (var failFastCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                using (var semaphore = new SemaphoreSlim(KeyVaultConstants.MaxParallelSecretResolution))
                 {
-                    async Task WorkerLoopAsync()
+                    async Task ResolveSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri)
                     {
-                        while (!failFastCts.IsCancellationRequested)
+                        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+                        try
                         {
-                            int index = Interlocked.Increment(ref nextIndex);
-
-                            if (index >= toFetch.Count)
-                            {
-                                return;
-                            }
-
-                            (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[index];
-
-                            try
-                            {
-                                await _secretProvider.GetSecretValue(identifier, setting, secretRefUri, logger, failFastCts.Token).ConfigureAwait(false);
-                            }
-                            catch (Exception e)
-                            {
-                                // Stop other workers from picking up new work and remember the first failure so it can be surfaced below.
-                                Interlocked.CompareExchange(ref firstException, e, null);
-                                failFastCts.Cancel();
-                                return;
-                            }
+                            await _secretProvider.GetSecretValue(identifier, setting, secretRefUri, logger, cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
                         }
                     }
 
-                    for (int i = 0; i < workerCount; i++)
+                    Task[] tasks = new Task[toFetch.Count];
+
+                    for (int i = 0; i < toFetch.Count; i++)
                     {
-                        workers[i] = WorkerLoopAsync();
+                        (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[i];
+                        tasks[i] = ResolveSecretAsync(identifier, setting, secretRefUri);
                     }
 
-                    await Task.WhenAll(workers).ConfigureAwait(false);
-                }
-
-                if (firstException != null)
-                {
-                    ExceptionDispatchInfo.Capture(firstException).Throw();
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
             }
             else
