@@ -14,3 +14,14 @@ pool:
 steps:
 - script: echo "Hello from Azure Pipelines"
   displayName: Hello world
+
+- task: AzureCLI@2
+  displayName: Verify Azure login
+  inputs:
+    azureSubscription: a4f7a683-6e11-4c35-a16e-db4a1f4e2111
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      echo "Verifying Azure login via the new service connection..."
+      az account show
+      echo "Client id: $AZURESUBSCRIPTION_CLIENT_ID"
