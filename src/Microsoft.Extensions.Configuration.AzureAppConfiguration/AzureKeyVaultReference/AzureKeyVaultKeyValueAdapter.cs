@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                 throw KeyVaultReferenceException.Create("Invalid Key vault secret identifier.", setting, null, secretRefUri);
             }
 
-            string secret = await _secretProvider.GetSecretValue(secretIdentifier, setting, secretRefUri, logger, cancellationToken).ConfigureAwait(false);
+            string secret = await _secretProvider.GetSecretValue(secretIdentifier, setting, logger, cancellationToken).ConfigureAwait(false);
 
             return new KeyValuePair<string, string>[]
             {
@@ -95,7 +95,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
 
             var seen = new HashSet<Uri>();
-            var toFetch = new List<(KeyVaultSecretIdentifier, ConfigurationSetting, string)>();
+            var toFetch = new List<(KeyVaultSecretIdentifier, ConfigurationSetting)>();
 
             foreach (ConfigurationSetting setting in settings)
             {
@@ -113,12 +113,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
                     throw KeyVaultReferenceException.Create("Invalid Key vault secret identifier.", setting, null, secretRefUri);
                 }
 
-                if (!seen.Add(secretIdentifier.SourceId))
+                if (seen.Add(secretIdentifier.SourceId))
                 {
-                    continue;
+                    toFetch.Add((secretIdentifier, setting));
                 }
-
-                toFetch.Add((secretIdentifier, setting, secretRefUri));
             }
 
             if (toFetch.Count == 0)
@@ -130,13 +128,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             {
                 using (var semaphore = new SemaphoreSlim(KeyVaultConstants.MaxParallelSecretResolution))
                 {
-                    async Task ResolveSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri)
+                    async Task ResolveSecretAsync(KeyVaultSecretIdentifier identifier, ConfigurationSetting setting)
                     {
                         await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                         try
                         {
-                            await _secretProvider.GetSecretValue(identifier, setting, secretRefUri, logger, cancellationToken).ConfigureAwait(false);
+                            await _secretProvider.GetSecretValue(identifier, setting, logger, cancellationToken).ConfigureAwait(false);
                         }
                         finally
                         {
@@ -148,8 +146,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
                     for (int i = 0; i < toFetch.Count; i++)
                     {
-                        (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) = toFetch[i];
-                        tasks[i] = ResolveSecretAsync(identifier, setting, secretRefUri);
+                        (KeyVaultSecretIdentifier identifier, ConfigurationSetting setting) = toFetch[i];
+                        tasks[i] = ResolveSecretAsync(identifier, setting);
                     }
 
                     await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -157,9 +155,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             else
             {
-                foreach ((KeyVaultSecretIdentifier identifier, ConfigurationSetting setting, string secretRefUri) in toFetch)
+                foreach ((KeyVaultSecretIdentifier identifier, ConfigurationSetting setting) in toFetch)
                 {
-                    await _secretProvider.GetSecretValue(identifier, setting, secretRefUri, logger, cancellationToken).ConfigureAwait(false);
+                    await _secretProvider.GetSecretValue(identifier, setting, logger, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

@@ -40,7 +40,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
         }
 
-        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, ConfigurationSetting setting, string secretRefUri, Logger logger, CancellationToken cancellationToken)
+        public async Task<string> GetSecretValue(KeyVaultSecretIdentifier secretIdentifier, ConfigurationSetting setting, Logger logger, CancellationToken cancellationToken)
         {
             string secretValue = null;
 
@@ -54,7 +54,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
 
             if (client == null && _keyVaultOptions.SecretResolver == null)
             {
-                throw KeyVaultReferenceException.Create("No key vault credential or secret resolver callback configured, and no matching secret client could be found.", setting, null, secretRefUri);
+                throw KeyVaultReferenceException.Create("No key vault credential or secret resolver callback configured, and no matching secret client could be found.", setting, null, secretIdentifier.SourceId.ToString());
             }
 
             CachedKeyVaultSecret updatedCachedSecret = null;
@@ -79,11 +79,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
             }
             catch (Exception e) when (e is UnauthorizedAccessException || (e.Source?.Equals(AzureIdentityAssemblyName, StringComparison.OrdinalIgnoreCase) ?? false))
             {
-                throw KeyVaultReferenceException.Create(e.Message, setting, e, secretRefUri);
+                throw KeyVaultReferenceException.Create(e.Message, setting, e, secretIdentifier.SourceId.ToString());
             }
             catch (Exception e) when (e is RequestFailedException || ((e as AggregateException)?.InnerExceptions?.All(e => e is RequestFailedException) ?? false))
             {
-                throw KeyVaultReferenceException.Create("Key vault error.", setting, e, secretRefUri);
+                throw KeyVaultReferenceException.Create("Key vault error.", setting, e, secretIdentifier.SourceId.ToString());
             }
             finally
             {
