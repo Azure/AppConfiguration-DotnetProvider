@@ -625,16 +625,19 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _requestTracingOptions.ResetAiConfigurationTracing();
             }
 
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                await adapter.PreloadAsync(data.Values, _logger, cancellationToken).ConfigureAwait(false);
+            }
+
             foreach (KeyValuePair<string, ConfigurationSetting> kvp in data)
             {
-                IEnumerable<KeyValuePair<string, string>> keyValuePairs = null;
-
                 if (_requestTracingEnabled && _requestTracingOptions != null)
                 {
                     _requestTracingOptions.UpdateAiConfigurationTracing(kvp.Value.ContentType);
                 }
 
-                keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
+                IEnumerable<KeyValuePair<string, string>> keyValuePairs = await ProcessAdapters(kvp.Value, cancellationToken).ConfigureAwait(false);
 
                 foreach (KeyValuePair<string, string> kv in keyValuePairs)
                 {

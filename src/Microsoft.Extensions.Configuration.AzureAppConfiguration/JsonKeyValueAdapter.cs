@@ -80,5 +80,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             return false;
         }
+
+        public Task PreloadAsync(IEnumerable<ConfigurationSetting> settings, Logger logger, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
