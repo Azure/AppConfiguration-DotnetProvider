@@ -8,5 +8,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.AzureKeyVault
         public const string ContentType = "application/vnd.microsoft.appconfig.keyvaultref+json";
 
         public const string SecretReferenceUriJsonPropertyName = "uri";
+
+        public const int MaxParallelSecretResolution = 16;
     }
 }

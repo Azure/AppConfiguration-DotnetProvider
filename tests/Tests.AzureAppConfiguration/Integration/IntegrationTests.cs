@@ -1661,13 +1661,15 @@ namespace Tests.AzureAppConfiguration
             TestContext testContext = CreateTestContext("KeyVaultDifferentIntervals");
             IConfigurationRefresher refresher = null;
 
-            // Create a secret in Key Vault with short refresh interval
-            string secretName1 = $"test-secret1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            // Create a secret in Key Vault with short refresh interval.
+            // Name must start with TestKeyPrefix so CleanupStaleResources() can find and delete it.
+            string secretName1 = $"{testContext.KeyPrefix}-secret1";
             string secretValue1 = $"SecretValue1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
             await _secretClient.SetSecretAsync(secretName1, secretValue1);
 
-            // Create another secret in Key Vault with long refresh interval
-            string secretName2 = $"test-secret2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
+            // Create another secret in Key Vault with long refresh interval.
+            // Name must start with TestKeyPrefix so CleanupStaleResources() can find and delete it.
+            string secretName2 = $"{testContext.KeyPrefix}-secret2";
             string secretValue2 = $"SecretValue2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
             await _secretClient.SetSecretAsync(secretName2, secretValue2);
 
