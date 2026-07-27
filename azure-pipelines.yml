@@ -2,6 +2,7 @@ trigger:
 - main
 - preview
 - release/*
+- zhiyuanliang/test-ap   # TEMP: test push-triggering on this branch
 
 pr:
 - main
