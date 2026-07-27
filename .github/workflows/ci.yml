@@ -25,6 +25,7 @@ jobs:
       - name: CI disabled (migrating to Azure Pipelines)
         run: echo "CI steps are temporarily skipped; they run in the Azure DevOps pipeline."
 
+      #
       # - name: Checkout code
       #   uses: actions/checkout@v2
       #
