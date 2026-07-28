@@ -38,6 +38,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public const string FailoverRequestTag = "Failover";
         public const string PushRefreshTag = "PushRefresh";
         public const string AfdTag = "AFD";
+        public const string EnhancedFeatureFlagTag = "EnhFF";
 
         public const string FeatureFlagFilterTypeKey = "Filter";
         public const string CustomFilter = "CSTM";

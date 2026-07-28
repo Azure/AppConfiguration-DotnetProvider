@@ -675,10 +675,12 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             // Reset old feature flag tracing in order to track the information present in the current response from server.
             _options.FeatureFlagTracing.ResetFeatureFlagTracing();
 
-            // Reset old request tracing values for content type
+            // Reset old request tracing values for content type and enhanced feature flags
             if (_requestTracingEnabled && _requestTracingOptions != null)
             {
                 _requestTracingOptions.ResetAiConfigurationTracing();
+
+                _requestTracingOptions.UsesEnhancedFeatureFlag = false;
             }
 
             // The running index into the "feature_management:feature_flags" array. Classic feature flags emitted
@@ -745,9 +747,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         {
             var processedFeatureFlags = new List<KeyValuePair<string, string>>();
 
-            if (featureFlags == null)
+            if (featureFlags == null || !featureFlags.Any())
             {
                 return processedFeatureFlags;
+            }
+
+            if (_requestTracingEnabled && _requestTracingOptions != null)
+            {
+                _requestTracingOptions.UsesEnhancedFeatureFlag = true;
             }
 
             int featureFlagIndex = _classicFfKeys.Count;

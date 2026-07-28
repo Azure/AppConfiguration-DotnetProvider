@@ -98,6 +98,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool UsesSnapshotReference { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate whether enhanced feature flags are used.
+        /// </summary>
+        public bool UsesEnhancedFeatureFlag { get; set; } = false;
+
+        /// <summary>
         /// Resets the AI configuration tracing flags.
         /// </summary>
         public void ResetAiConfigurationTracing()
@@ -137,7 +142,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 UsesAIConfiguration ||
                 UsesAIChatCompletionConfiguration ||
                 UsesSnapshotReference ||
-                IsAfdUsed;
+                IsAfdUsed ||
+                UsesEnhancedFeatureFlag;
         }
 
         /// <summary>
@@ -206,6 +212,16 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.AfdTag);
+            }
+
+            if (UsesEnhancedFeatureFlag)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.EnhancedFeatureFlagTag);
             }
 
             return sb.ToString();
