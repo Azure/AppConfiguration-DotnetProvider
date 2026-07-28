@@ -12,7 +12,7 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
-- script: echo "Hello from Azure Pipelines"
+- script: echo "Hello from Azure Pipelines - 1"
   displayName: Hello world
 
 - task: AzureCLI@2
