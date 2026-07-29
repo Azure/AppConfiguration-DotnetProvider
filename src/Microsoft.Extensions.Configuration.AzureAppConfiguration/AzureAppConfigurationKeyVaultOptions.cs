@@ -32,6 +32,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal bool IsKeyVaultRefreshConfigured = false;
 
         /// <summary>
+        /// Flag to indicate whether Key Vault references should be resolved in parallel. Disabled by default.
+        /// </summary>
+        public bool ParallelSecretResolutionEnabled { get; set; }
+
+        /// <summary>
         /// Sets the credentials used to authenticate to key vaults that have no registered <see cref="SecretClient"/>.
         /// </summary>
         /// <param name="credential">Default token credentials.</param>
