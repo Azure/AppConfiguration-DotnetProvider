@@ -507,6 +507,8 @@ namespace Tests.AzureAppConfiguration
             var mockKeyValueAdapter = new Mock<IKeyValueAdapter>(MockBehavior.Strict);
             mockKeyValueAdapter.Setup(adapter => adapter.CanProcess(It.IsAny<ConfigurationSetting>()))
                 .Returns(true);
+            mockKeyValueAdapter.Setup(adapter => adapter.PreloadAsync(It.IsAny<IEnumerable<ConfigurationSetting>>(), It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
             mockKeyValueAdapter.Setup(adapter => adapter.ProcessKeyValue(It.IsAny<ConfigurationSetting>(), It.IsAny<Uri>(), It.IsAny<Logger>(), It.IsAny<CancellationToken>()))
                 .Throws(new KeyVaultReferenceException("Key vault error", null));
             mockKeyValueAdapter.Setup(adapter => adapter.OnChangeDetected(null));
@@ -1049,6 +1051,189 @@ namespace Tests.AzureAppConfiguration
                 // Each of the secret references should work as normal and use the uri
                 Assert.Equal(_secretValue, config[setting.Key]);
             }
+        }
+
+        [Fact]
+        public void ParallelSecretResolution_ResolvesAllReferences()
+        {
+            // Build a collection of distinct Key Vault references.
+            const int referenceCount = 20;
+            var settings = new List<ConfigurationSetting>();
+
+            for (int i = 0; i < referenceCount; i++)
+            {
+                settings.Add(ConfigurationModelFactory.ConfigurationSetting(
+                    key: $"Key{i}",
+                    value: $@"{{""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/Secret{i}""}}",
+                    eTag: new ETag($"etag-{i}"),
+                    contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
+            }
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settings));
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns((string name, string version, CancellationToken cancellationToken) =>
+                    Task.FromResult((Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, $"value-of-{name}"))));
+
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.Register(mockSecretClient.Object);
+                        kv.ParallelSecretResolutionEnabled = true;
+                    });
+                })
+                .Build();
+
+            for (int i = 0; i < referenceCount; i++)
+            {
+                Assert.Equal($"value-of-Secret{i}", configuration[$"Key{i}"]);
+            }
+        }
+
+        [Fact]
+        public void ParallelSecretResolution_RunsConcurrently()
+        {
+            // Use a gated mock secret client to detect concurrent in-flight calls.
+            const int referenceCount = 10;
+            var settings = new List<ConfigurationSetting>();
+
+            for (int i = 0; i < referenceCount; i++)
+            {
+                settings.Add(ConfigurationModelFactory.ConfigurationSetting(
+                    key: $"Key{i}",
+                    value: $@"{{""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/Secret{i}""}}",
+                    eTag: new ETag($"etag-{i}"),
+                    contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
+            }
+
+            int inFlight = 0;
+            int maxInFlight = 0;
+            var inFlightLock = new object();
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settings));
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(async (string name, string version, CancellationToken cancellationToken) =>
+                {
+                    lock (inFlightLock)
+                    {
+                        inFlight++;
+                        if (inFlight > maxInFlight)
+                        {
+                            maxInFlight = inFlight;
+                        }
+                    }
+
+                    try
+                    {
+                        await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        lock (inFlightLock)
+                        {
+                            inFlight--;
+                        }
+                    }
+
+                    return (Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, $"value-of-{name}"));
+                });
+
+            var configuration = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureKeyVault(kv =>
+                    {
+                        kv.Register(mockSecretClient.Object);
+                        kv.ParallelSecretResolutionEnabled = true;
+                    });
+                })
+                .Build();
+
+            // Verify all references resolved.
+            for (int i = 0; i < referenceCount; i++)
+            {
+                Assert.Equal($"value-of-Secret{i}", configuration[$"Key{i}"]);
+            }
+
+            // When run in parallel, more than one secret request must have been in flight at the same time.
+            Assert.True(maxInFlight > 1, $"Expected concurrent Key Vault requests, but observed max in-flight = {maxInFlight}.");
+        }
+
+        [Fact]
+        public void ParallelSecretResolution_DisabledByDefault_RunsSequentially()
+        {
+            const int referenceCount = 5;
+            var settings = new List<ConfigurationSetting>();
+
+            for (int i = 0; i < referenceCount; i++)
+            {
+                settings.Add(ConfigurationModelFactory.ConfigurationSetting(
+                    key: $"Key{i}",
+                    value: $@"{{""uri"":""https://keyvault-theclassics.vault.azure.net/secrets/Secret{i}""}}",
+                    eTag: new ETag($"etag-{i}"),
+                    contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
+            }
+
+            int inFlight = 0;
+            int maxInFlight = 0;
+            var inFlightLock = new object();
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(settings));
+
+            var mockSecretClient = new Mock<SecretClient>(MockBehavior.Strict);
+            mockSecretClient.SetupGet(client => client.VaultUri).Returns(new Uri("https://keyvault-theclassics.vault.azure.net"));
+            mockSecretClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Returns(async (string name, string version, CancellationToken cancellationToken) =>
+                {
+                    lock (inFlightLock)
+                    {
+                        inFlight++;
+                        if (inFlight > maxInFlight)
+                        {
+                            maxInFlight = inFlight;
+                        }
+                    }
+
+                    try
+                    {
+                        await Task.Delay(20, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        lock (inFlightLock)
+                        {
+                            inFlight--;
+                        }
+                    }
+
+                    return (Response<KeyVaultSecret>)new MockResponse<KeyVaultSecret>(new KeyVaultSecret(name, $"value-of-{name}"));
+                });
+
+            new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.ConfigureKeyVault(kv => kv.Register(mockSecretClient.Object));
+                })
+                .Build();
+
+            // Default (sequential) path should never have more than one in-flight Key Vault request.
+            Assert.Equal(1, maxInFlight);
         }
     }
 }
