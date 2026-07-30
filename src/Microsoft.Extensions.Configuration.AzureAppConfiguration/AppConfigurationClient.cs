@@ -11,8 +11,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 {
     /// <summary>
     /// The default <see cref="IAppConfigurationClient"/> implementation. It holds a
-    /// <see cref="ConfigurationClient"/> for key-values (including classic feature flags) and a
-    /// <see cref="FeatureFlagClient"/> for feature flags served by the standalone feature-flag endpoint,
+    /// <see cref="ConfigurationClient"/> for key-values (including feature flags) and a
+    /// <see cref="FeatureFlagClient"/> for enhanced feature flags served by the dedicated feature-flag endpoint,
     /// both targeting the same <see cref="Endpoint"/>.
     /// </summary>
     internal class AppConfigurationClient : IAppConfigurationClient

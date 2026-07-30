@@ -9,8 +9,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
     /// Identity information about a feature flag that is needed when emitting feature-management
     /// configuration key-values (in particular for telemetry metadata such as the feature flag
     /// reference and ETag). This decouples the emit logic from the source of the feature flag,
-    /// allowing both classic feature flags (loaded as <see cref="Azure.Data.AppConfiguration.ConfigurationSetting"/>)
-    /// and new feature flags (loaded from the standalone feature-flag endpoint) to share it.
+    /// allowing both feature flags (loaded as <see cref="Azure.Data.AppConfiguration.ConfigurationSetting"/>)
+    /// and enhanced feature flags (loaded from the dedicated feature-flag endpoint) to share it.
     /// </summary>
     internal readonly struct FeatureFlagMetadata
     {

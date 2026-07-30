@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Azure.Data.AppConfiguration;
+using EnhancedFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -78,9 +79,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         }
 
         /// <summary>
-        /// Records feature filter, variant, seed and telemetry usage for a standalone feature flag.
+        /// Records feature filter, variant, seed and telemetry usage for an enhanced feature flag.
         /// </summary>
-        public void Update(FeatureFlag flag)
+        public void Update(EnhancedFeatureFlag flag)
         {
             if (flag.Enabled && flag.Conditions?.Filters != null)
             {
@@ -107,13 +108,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         }
 
         /// <summary>
-        /// Records feature filter, variant, seed and telemetry usage for a classic feature flag.
+        /// Records feature filter, variant, seed and telemetry usage for a feature flag.
         /// </summary>
-        public void Update(ClassicFeatureFlag flag)
+        public void Update(FeatureFlag flag)
         {
             if (flag.Enabled && flag.Conditions?.ClientFilters != null)
             {
-                foreach (ClassicClientFilter filter in flag.Conditions.ClientFilters)
+                foreach (ClientFilter filter in flag.Conditions.ClientFilters)
                 {
                     UpdateFeatureFilterTracing(filter.Name);
                 }

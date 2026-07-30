@@ -9,8 +9,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
     /// <summary>
     /// A selector used to control what feature flags are retrieved from Azure App Configuration.
-    /// A single feature flag selector is used to query both classic feature flags (key-values prefixed
-    /// with ".appconfig.featureflag/") and feature flags returned by the standalone feature-flag endpoint.
+    /// A single feature flag selector is used to query both feature flags (key-values prefixed
+    /// with ".appconfig.featureflag/") and enhanced feature flags returned by the dedicated feature-flag endpoint.
     /// </summary>
     internal class FeatureFlagSelector
     {

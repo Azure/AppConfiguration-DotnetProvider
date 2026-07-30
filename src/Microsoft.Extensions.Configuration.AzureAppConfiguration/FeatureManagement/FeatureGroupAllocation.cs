@@ -1,15 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-
 using System.Collections.Generic;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class ClassicFeatureTelemetry
+    internal class FeatureGroupAllocation
     {
-        public bool Enabled { get; set; }
+        public string Variant { get; set; }
 
-        public IDictionary<string, string> Metadata { get; set; }
+        public IEnumerable<string> Groups { get; set; }
     }
 }

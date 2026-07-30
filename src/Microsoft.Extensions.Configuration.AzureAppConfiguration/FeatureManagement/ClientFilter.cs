@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
-using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
-    internal class ClassicFeatureGroupAllocation
+    internal class ClientFilter
     {
-        public string Variant { get; set; }
+        public string Name { get; set; }
 
-        public IEnumerable<string> Groups { get; set; }
+        public JsonElement Parameters { get; set; }
     }
 }

@@ -6,6 +6,7 @@ using Azure.Core.Diagnostics;
 using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Data.AppConfiguration.Tests;
+using EnhancedFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
@@ -769,7 +770,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            var standaloneFlags = new List<FeatureFlag>
+            var standaloneFlags = new List<EnhancedFeatureFlag>
             {
                 CreateFeatureFlag("StandaloneA", enabled: true, etag: "sa-1"),
                 CreateFeatureFlag("StandaloneB", enabled: false, etag: "sb-1")
@@ -813,7 +814,7 @@ namespace Tests.AzureAppConfiguration
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            var standaloneFlags = new List<FeatureFlag>
+            var standaloneFlags = new List<EnhancedFeatureFlag>
             {
                 CreateFeatureFlag("StandaloneA", enabled: true, etag: "sa-1")
             };
@@ -860,7 +861,7 @@ namespace Tests.AzureAppConfiguration
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             // A standalone flag named "Shared" (disabled) should supersede the classic flag with the same name.
-            var standaloneFlags = new List<FeatureFlag>
+            var standaloneFlags = new List<EnhancedFeatureFlag>
             {
                 CreateFeatureFlag("Shared", enabled: false, etag: "sa-1")
             };
@@ -908,7 +909,7 @@ namespace Tests.AzureAppConfiguration
 
             var changedTestKey1 = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "v2", label: null, contentType: "text", eTag: new ETag("kv-2"));
 
-            var standaloneFlags = new List<FeatureFlag>
+            var standaloneFlags = new List<EnhancedFeatureFlag>
             {
                 CreateFeatureFlag("StandaloneA", enabled: true, etag: "sa-1")
             };
@@ -979,7 +980,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(2, config.GetSection("feature_management:feature_flags").GetChildren().Count());
         }
 
-        private FeatureFlag CreateFeatureFlag(string name, bool enabled, string etag)
+        private EnhancedFeatureFlag CreateFeatureFlag(string name, bool enabled, string etag)
         {
             return ConfigurationModelFactory.FeatureFlag(
                 name: name,
