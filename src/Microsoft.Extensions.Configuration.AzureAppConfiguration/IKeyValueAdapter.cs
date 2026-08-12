@@ -13,6 +13,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
     {
         Task<IEnumerable<KeyValuePair<string, string>>> ProcessKeyValue(ConfigurationSetting setting, Uri endpoint, Logger logger, CancellationToken cancellationToken);
 
+        Task PreloadAsync(IEnumerable<ConfigurationSetting> settings, Logger logger, CancellationToken cancellationToken);
+
         bool CanProcess(ConfigurationSetting setting);
 
         void OnChangeDetected(ConfigurationSetting setting = null);

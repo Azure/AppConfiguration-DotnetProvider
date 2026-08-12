@@ -1,0 +1,67 @@
+trigger:
+- main
+- preview
+- release/*
+
+pr:
+- main
+- preview
+- release/*
+
+pool:
+  vmImage: windows-latest
+
+steps:
+- task: PowerShell@2
+  displayName: 'Install .NET'
+  inputs:
+    filePath: build/install-dotnet.ps1
+
+- task: PowerShell@2
+  displayName: 'Restore'
+  inputs:
+    filePath: build.ps1
+    arguments: -RestoreOnly
+
+- task: PowerShell@2
+  displayName: 'Dotnet Build'
+  inputs:
+    filePath: build.ps1
+
+- task: PowerShell@2
+  displayName: 'Dotnet Pack'
+  inputs:
+    filePath: pack.ps1
+
+- task: AzureCLI@2
+  displayName: 'Dotnet Test'
+  inputs:
+    # ARM service connection using Workload Identity Federation (no client secret).
+    azureSubscription: '.NET Provider GitHub PR Integration Test'
+    addSpnToEnvironment: true
+    scriptType: ps
+    scriptLocation: inlineScript
+    inlineScript: |
+      # Configure the env vars that DefaultAzureCredential -> WorkloadIdentityCredential reads.
+      # Do NOT set AZURE_CLIENT_SECRET.
+      $env:AZURE_CLIENT_ID = $env:servicePrincipalId
+      $env:AZURE_TENANT_ID = $env:tenantId
+
+      $tokenPath = Join-Path "$(Agent.TempDirectory)" "azure-federated-token.txt"
+      Set-Content -Path $tokenPath -Value $env:idToken -NoNewline
+      $env:AZURE_FEDERATED_TOKEN_FILE = $tokenPath
+
+      $env:AZURE_SUBSCRIPTION_ID = (az account show --query id -o tsv)
+
+      & "$(Build.SourcesDirectory)\test.ps1"
+    workingDirectory: '$(Build.SourcesDirectory)'
+
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results'
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: 'vstest'
+    testResultsFiles: '**/*.trx'
+    searchFolder: '$(Build.SourcesDirectory)'
+    failTaskOnFailedTests: true
+    testRunTitle: 'Unit Tests'
