@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure;
+using Azure.Data.AppConfiguration;
 using System;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
@@ -55,5 +57,20 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// The error code, if available, describing the cause of the exception. 
         /// </summary>
         public string ErrorCode { get; set; }
+
+        /// <summary>
+        /// Creates a <see cref="KeyVaultReferenceException"/> populated with identifying information from the setting that failed to resolve.
+        /// </summary>
+        internal static KeyVaultReferenceException Create(string message, ConfigurationSetting setting, Exception inner, string secretRefUri = null)
+        {
+            return new KeyVaultReferenceException(message, inner)
+            {
+                Key = setting.Key,
+                Label = setting.Label,
+                Etag = setting.ETag.ToString(),
+                ErrorCode = (inner as RequestFailedException)?.ErrorCode,
+                SecretIdentifier = secretRefUri
+            };
+        }
     }
 }

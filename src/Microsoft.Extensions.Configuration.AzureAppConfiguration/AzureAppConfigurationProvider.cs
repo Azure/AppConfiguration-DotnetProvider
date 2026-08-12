@@ -685,6 +685,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 _requestTracingOptions.UsesEnhancedFeatureFlag = false;
             }
 
+            foreach (IKeyValueAdapter adapter in _options.Adapters)
+            {
+                await adapter.PreloadAsync(data.Values, _logger, cancellationToken).ConfigureAwait(false);
+            }
+
             // The running index into the "feature_management:feature_flags" array. Feature flags emitted
             // using the Microsoft schema advance this index;
             int featureFlagIndex = 0;
