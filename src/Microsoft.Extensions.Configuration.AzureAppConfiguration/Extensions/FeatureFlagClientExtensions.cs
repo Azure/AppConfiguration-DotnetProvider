@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
     {
         public static async Task<bool> HaveFeatureFlagsChanged(
             this IAppConfigurationClient client,
-            Models.FeatureFlagSelector featureFlagSelector,
+            FeatureFlagSelector featureFlagSelector,
             IEnumerable<WatchedPage> pageWatchers,
             IFeatureFlagPageIterator pageIterator,
             CancellationToken cancellationToken)
