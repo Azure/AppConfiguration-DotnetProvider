@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using AppConfigFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 using AppConfigFeatureFlagSelector = Azure.Data.AppConfiguration.FeatureFlagSelector;
+using FeatureFlagSelector = Microsoft.Extensions.Configuration.AzureAppConfiguration.Models.FeatureFlagSelector;
 using System;
 using System.Collections.Generic;
 using System.Linq;
