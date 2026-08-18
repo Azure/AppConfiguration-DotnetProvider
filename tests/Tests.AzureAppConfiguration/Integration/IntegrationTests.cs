@@ -1426,8 +1426,8 @@ namespace Tests.AzureAppConfiguration
                     })
                     .Build();
 
-                // Assert - Should have feature flag enabled state from snapshot
-                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+                // Assert - Should have live feature flag state
+                Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
             }
             finally
             {
