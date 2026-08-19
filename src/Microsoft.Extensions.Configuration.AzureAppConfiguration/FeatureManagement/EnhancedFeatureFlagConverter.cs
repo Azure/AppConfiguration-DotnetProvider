@@ -326,10 +326,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
-        // The SDK exposes filter parameters as IDictionary<string, string>. The feature-management
-        // flattening produces per-leaf keys (e.g. Audience:Users:0), so build a JsonElement here. Parameter
-        // values that are JSON-encoded strings are embedded as parsed JSON so the flattening produces the
-        // nested keys that feature-management filters bind against.
+        // The SDK exposes filter parameters as IDictionary<string, string>, with each value containing JSON.
+        // Rebuild the parameters object so it can be flattened into the keys that feature-management filters bind against.
         private static JsonElement BuildParametersElement(IDictionary<string, string> parameters)
         {
             if (parameters == null || parameters.Count == 0)
@@ -366,17 +364,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return;
             }
 
-            string trimmed = value.TrimStart();
+            using JsonDocument doc = JsonDocument.Parse(value);
 
-            if (trimmed.Length > 0 && (trimmed[0] == '{' || trimmed[0] == '['))
-            {
-                using JsonDocument doc = JsonDocument.Parse(value);
-                doc.RootElement.WriteTo(writer);
-
-                return;
-            }
-
-            writer.WriteStringValue(value);
+            doc.RootElement.WriteTo(writer);
         }
 
         // Variant values are exposed by the SDK as a string plus a content type. When the content type
