@@ -791,6 +791,113 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void InvalidEnhancedFeatureFlagFilterParameterJsonThrowsFormatException()
+        {
+            var filter = new FeatureFilter("Filter");
+            filter.Parameters["Audience"] = "{ invalid json";
+
+            var conditions = new FeatureFlagConditions();
+            conditions.Filters.Add(filter);
+
+            EnhancedFeatureFlag featureFlag = CreateFeatureFlag(
+                "InvalidFilterParameter",
+                enabled: true,
+                etag: "etag",
+                conditions: conditions);
+
+            void action() => EnhancedFeatureFlagConverter
+                .ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0)
+                .ToList();
+
+            FormatException exception = Assert.Throws<FormatException>(action);
+
+            Assert.Equal("Enhanced feature flag 'InvalidFilterParameter'", exception.Message);
+            Assert.IsAssignableFrom<JsonException>(exception.InnerException);
+        }
+
+        [Theory]
+        [InlineData("application/json")]
+        [InlineData("application/vnd.microsoft.appconfig.ff+json")]
+        public void InvalidEnhancedFeatureFlagVariantJsonThrowsFormatException(string contentType)
+        {
+            var variant = new FeatureFlagVariantDefinition("Variant")
+            {
+                Value = "{ invalid json",
+                ContentType = contentType
+            };
+
+            EnhancedFeatureFlag featureFlag = CreateFeatureFlag(
+                "InvalidVariant",
+                enabled: true,
+                etag: "etag",
+                variants: new List<FeatureFlagVariantDefinition> { variant });
+
+            void action() => EnhancedFeatureFlagConverter
+                .ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0)
+                .ToList();
+
+            FormatException exception = Assert.Throws<FormatException>(action);
+
+            Assert.Equal("Enhanced feature flag 'InvalidVariant'", exception.Message);
+            Assert.IsAssignableFrom<JsonException>(exception.InnerException);
+        }
+
+        [Fact]
+        public void EnhancedFeatureFlagVariantWithNonJsonContentTypeIsString()
+        {
+            var variant = new FeatureFlagVariantDefinition("Variant")
+            {
+                Value = "{ invalid json",
+                ContentType = "text/json"
+            };
+
+            EnhancedFeatureFlag featureFlag = CreateFeatureFlag(
+                "NonJsonVariant",
+                enabled: true,
+                etag: "etag",
+                variants: new List<FeatureFlagVariantDefinition> { variant });
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(EnhancedFeatureFlagConverter.ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0))
+                .Build();
+
+            Assert.Equal("{ invalid json", config["feature_management:feature_flags:0:variants:0:configuration_value"]);
+        }
+
+        [Fact]
+        public void EnhancedFeatureFlagJsonValuesAreFlattened()
+        {
+            var filter = new FeatureFilter("Filter");
+            filter.Parameters["Audience"] = @"{ ""Users"": [ ""alice"" ], ""DefaultRolloutPercentage"": 50 }";
+            filter.Parameters["Region"] = "US";
+
+            var conditions = new FeatureFlagConditions();
+            conditions.Filters.Add(filter);
+
+            var variant = new FeatureFlagVariantDefinition("Variant")
+            {
+                Value = @"{ ""Color"": ""blue"" }",
+                ContentType = "application/vnd.microsoft.appconfig.ff+json"
+            };
+
+            EnhancedFeatureFlag featureFlag = CreateFeatureFlag(
+                "JsonValues",
+                enabled: true,
+                etag: "etag",
+                conditions: conditions,
+                variants: new List<FeatureFlagVariantDefinition> { variant });
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(EnhancedFeatureFlagConverter.ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0))
+                .Build();
+
+            Assert.Equal("alice", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:Audience:Users:0"]);
+            Assert.Equal("50", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:Audience:DefaultRolloutPercentage"]);
+            Assert.Equal("US", config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:Region"]);
+            Assert.Equal("blue", config["feature_management:feature_flags:0:variants:0:configuration_value:Color"]);
+        }
+
+        [Fact]
         public void StandaloneFeatureFlagsAreIndexedAfterMicrosoftSchemaClassicFlags()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
@@ -1005,15 +1112,20 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(2, config.GetSection("feature_management:feature_flags").GetChildren().Count());
         }
 
-        private EnhancedFeatureFlag CreateFeatureFlag(string name, bool enabled, string etag)
+        private EnhancedFeatureFlag CreateFeatureFlag(
+            string name,
+            bool enabled,
+            string etag,
+            FeatureFlagConditions conditions = null,
+            IList<FeatureFlagVariantDefinition> variants = null)
         {
             return ConfigurationModelFactory.FeatureFlag(
                 name: name,
                 enabled: enabled,
                 label: null,
                 description: null,
-                conditions: null,
-                variants: null,
+                conditions: conditions,
+                variants: variants,
                 allocation: null,
                 telemetry: null,
                 tags: null,

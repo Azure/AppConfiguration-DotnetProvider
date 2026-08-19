@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -38,7 +39,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             var metadata = new FeatureFlagMetadata(key, flag.Label, flag.Etag ?? default);
 
-            return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint, featureFlagIndex);
+            try
+            {
+                return ProcessMicrosoftSchemaFeatureFlag(flag, metadata, endpoint, featureFlagIndex);
+            }
+            catch (JsonException e)
+            {
+                throw new FormatException($"Enhanced feature flag '{flag.Name}'", e);
+            }
         }
 
         private static List<KeyValuePair<string, string>> ProcessMicrosoftSchemaFeatureFlag(
@@ -362,17 +370,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
             if (trimmed.Length > 0 && (trimmed[0] == '{' || trimmed[0] == '['))
             {
-                try
-                {
-                    using JsonDocument doc = JsonDocument.Parse(value);
-                    doc.RootElement.WriteTo(writer);
+                using JsonDocument doc = JsonDocument.Parse(value);
+                doc.RootElement.WriteTo(writer);
 
-                    return;
-                }
-                catch (JsonException)
-                {
-                    // Fall through and write the original literal string.
-                }
+                return;
             }
 
             writer.WriteStringValue(value);
@@ -388,21 +389,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return default;
             }
 
-            bool looksLikeJson = !string.IsNullOrEmpty(contentType) &&
-                contentType.IndexOf("json", StringComparison.OrdinalIgnoreCase) >= 0;
-
-            if (looksLikeJson)
+            if (contentType.TryParseContentType(out ContentType parsedContentType) && parsedContentType.IsJson())
             {
-                try
-                {
-                    using JsonDocument doc = JsonDocument.Parse(value);
+                using JsonDocument doc = JsonDocument.Parse(value);
 
-                    return doc.RootElement.Clone();
-                }
-                catch (JsonException)
-                {
-                    // Fall through to writing as a raw string when the body is not valid JSON.
-                }
+                return doc.RootElement.Clone();
             }
 
             using var stream = new MemoryStream();
