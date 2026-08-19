@@ -766,6 +766,31 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
+        public void EnhancedFeatureFlagReferenceDoesNotIncludeClassicPrefix()
+        {
+            EnhancedFeatureFlag featureFlag = ConfigurationModelFactory.FeatureFlag(
+                name: "TelemetryFeature",
+                enabled: true,
+                label: "label",
+                description: null,
+                conditions: null,
+                variants: null,
+                allocation: null,
+                telemetry: new FeatureFlagTelemetryConfiguration(true),
+                tags: null,
+                lastModified: null,
+                etag: new ETag("etag"));
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(EnhancedFeatureFlagConverter.ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0))
+                .Build();
+
+            Assert.Equal(
+                $"{TestHelpers.PrimaryConfigStoreEndpoint}ff/TelemetryFeature?label=label",
+                config["feature_management:feature_flags:0:telemetry:metadata:FeatureFlagReference"]);
+        }
+
+        [Fact]
         public void StandaloneFeatureFlagsAreIndexedAfterMicrosoftSchemaClassicFlags()
         {
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
