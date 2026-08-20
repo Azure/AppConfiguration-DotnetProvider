@@ -792,9 +792,11 @@ namespace Tests.AzureAppConfiguration
 
         [Theory]
         [InlineData("{ invalid json")]
+        [InlineData("[ invalid json")]
         [InlineData("US")]
         [InlineData("")]
-        public void InvalidEnhancedFeatureFlagFilterParameterJsonThrowsFormatException(string parameterValue)
+        [InlineData("null")]
+        public void EnhancedFeatureFlagFilterParameterFallsBackToString(string parameterValue)
         {
             var filter = new FeatureFilter("Filter");
             filter.Parameters["Audience"] = parameterValue;
@@ -808,23 +810,18 @@ namespace Tests.AzureAppConfiguration
                 etag: "etag",
                 conditions: conditions);
 
-            void action() => EnhancedFeatureFlagConverter
-                .ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0)
-                .ToList();
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(EnhancedFeatureFlagConverter.ToConfiguration(featureFlag, TestHelpers.PrimaryConfigStoreEndpoint, 0))
+                .Build();
 
-            FormatException exception = Assert.Throws<FormatException>(action);
-
-            Assert.Equal("Enhanced feature flag 'InvalidFilterParameter'", exception.Message);
-            Assert.IsAssignableFrom<JsonException>(exception.InnerException);
+            Assert.Equal(parameterValue, config["feature_management:feature_flags:0:conditions:client_filters:0:parameters:Audience"]);
         }
 
-        [Theory]
-        [InlineData(null)]
-        [InlineData("null")]
-        public void EnhancedFeatureFlagNullFilterParameterIsEmptyString(string parameterValue)
+        [Fact]
+        public void EnhancedFeatureFlagNullFilterParameterIsEmptyString()
         {
             var filter = new FeatureFilter("Filter");
-            filter.Parameters["Audience"] = parameterValue;
+            filter.Parameters["Audience"] = null;
 
             var conditions = new FeatureFlagConditions();
             conditions.Filters.Add(filter);
@@ -896,7 +893,7 @@ namespace Tests.AzureAppConfiguration
         {
             var filter = new FeatureFilter("Filter");
             filter.Parameters["Audience"] = @"{ ""Users"": [ ""alice"" ], ""DefaultRolloutPercentage"": 50 }";
-            filter.Parameters["Region"] = @"""US""";
+            filter.Parameters["Region"] = "US";
 
             var conditions = new FeatureFlagConditions();
             conditions.Filters.Add(filter);

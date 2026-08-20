@@ -326,8 +326,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             }
         }
 
-        // The SDK exposes filter parameters as IDictionary<string, string>, with each value containing JSON.
-        // Rebuild the parameters object so it can be flattened into the keys that feature-management filters bind against.
+        // The SDK exposes filter parameters as IDictionary<string, string>. The feature-management
+        // flattening produces per-leaf keys (e.g. Audience:Users:0), so build a JsonElement here. Parameter
+        // values that are JSON-encoded strings are embedded as parsed JSON so the flattening produces the
+        // nested keys that feature-management filters bind against.
         private static JsonElement BuildParametersElement(IDictionary<string, string> parameters)
         {
             if (parameters == null || parameters.Count == 0)
@@ -350,7 +352,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 writer.WriteEndObject();
             }
 
-            using JsonDocument doc = JsonDocument.Parse(stream.ToArray());
+            stream.Position = 0;
+
+            using JsonDocument doc = JsonDocument.Parse(stream);
 
             return doc.RootElement.Clone();
         }
@@ -364,9 +368,24 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return;
             }
 
-            using JsonDocument doc = JsonDocument.Parse(value);
+            string trimmed = value.TrimStart();
 
-            doc.RootElement.WriteTo(writer);
+            if (trimmed.Length > 0 && (trimmed[0] == '{' || trimmed[0] == '['))
+            {
+                try
+                {
+                    using JsonDocument doc = JsonDocument.Parse(value);
+                    doc.RootElement.WriteTo(writer);
+
+                    return;
+                }
+                catch (JsonException)
+                {
+                    // Fall through and write the original literal string.
+                }
+            }
+
+            writer.WriteStringValue(value);
         }
 
         // Variant values are exposed by the SDK as a string plus a content type. When the content type
@@ -386,14 +405,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 return doc.RootElement.Clone();
             }
 
-            using var stream = new MemoryStream();
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(value);
 
-            using (var writer = new Utf8JsonWriter(stream))
-            {
-                writer.WriteStringValue(value);
-            }
-
-            using JsonDocument stringDoc = JsonDocument.Parse(stream.ToArray());
+            using JsonDocument stringDoc = JsonDocument.Parse(bytes);
 
             return stringDoc.RootElement.Clone();
         }
