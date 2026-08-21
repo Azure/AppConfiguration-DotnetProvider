@@ -37,6 +37,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 AzureAppConfigurationOptions options = _optionsProvider();
 
                 IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
+                IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory = options.FeatureFlagClientFactory;
 
                 if (options.IsAfdUsed)
                 {
@@ -45,7 +46,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                         throw new InvalidOperationException(ErrorMessages.AfdLoadBalancingUnsupported);
                     }
 
-                    if (clientFactory != null)
+                    if (clientFactory != null || featureFlagClientFactory != null)
                     {
                         throw new InvalidOperationException(ErrorMessages.AfdCustomClientFactoryUnsupported);
                     }
@@ -74,15 +75,13 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     featureFlagClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);
                 }
 
-                IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory;
-
                 if (options.ConnectionStrings != null)
                 {
                     endpoints = options.ConnectionStrings.Select(cs => new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection)));
 
                     clientFactory ??= new AzureAppConfigurationClientFactory(options.ConnectionStrings, options.ClientOptions);
 
-                    featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(options.ConnectionStrings, featureFlagClientOptions);
+                    featureFlagClientFactory ??= new AzureAppConfigurationFeatureFlagClientFactory(options.ConnectionStrings, featureFlagClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
@@ -90,7 +89,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
                     clientFactory ??= new AzureAppConfigurationClientFactory(options.Credential, options.ClientOptions);
 
-                    featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(options.Credential, featureFlagClientOptions);
+                    featureFlagClientFactory ??= new AzureAppConfigurationFeatureFlagClientFactory(options.Credential, featureFlagClientOptions);
                 }
                 else
                 {

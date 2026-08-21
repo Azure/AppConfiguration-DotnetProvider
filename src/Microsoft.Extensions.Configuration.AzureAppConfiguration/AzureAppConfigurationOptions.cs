@@ -183,6 +183,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         internal IAzureClientFactory<ConfigurationClient> ClientFactory { get; private set; }
 
         /// <summary>
+        /// Client factory that is responsible for creating instances of FeatureFlagClient.
+        /// </summary>
+        internal IAzureClientFactory<FeatureFlagClient> FeatureFlagClientFactory { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="AzureAppConfigurationOptions"/> class.
         /// </summary>
         public AzureAppConfigurationOptions()
@@ -208,6 +213,21 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public AzureAppConfigurationOptions SetClientFactory(IAzureClientFactory<ConfigurationClient> factory)
         {
             ClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the client factory used to create <see cref="FeatureFlagClient"/> instances.
+        /// If a client factory is provided using this method, a call to Connect is
+        /// still required to identify one or more Azure App Configuration stores but
+        /// will not be used to authenticate a <see cref="FeatureFlagClient"/>.
+        /// </summary>
+        /// <param name="factory">The client factory.</param>
+        /// <returns>The current <see cref="AzureAppConfigurationOptions"/> instance.</returns>
+        public AzureAppConfigurationOptions SetFeatureFlagClientFactory(IAzureClientFactory<FeatureFlagClient> factory)
+        {
+            FeatureFlagClientFactory = factory ?? throw new ArgumentNullException(nameof(factory));
 
             return this;
         }
