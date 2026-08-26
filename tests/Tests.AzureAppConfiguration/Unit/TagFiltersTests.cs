@@ -169,6 +169,8 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")));
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -210,6 +212,8 @@ namespace Tests.AzureAppConfiguration
                     kv.Tags.ContainsKey("EmptyTag") && kv.Tags["EmptyTag"] == "" &&
                     kv.Tags.ContainsKey("NullTag") && kv.Tags["NullTag"] == null)));
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -250,6 +254,8 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("App") && kv.Tags["App"] == "TestApp" &&
                     kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")));
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -320,6 +326,8 @@ namespace Tests.AzureAppConfiguration
                 It.IsAny<CancellationToken>()))
                 .Throws(new RequestFailedException($"Invalid parameter TagsFilter. Maximum filters is {MaxTagFilters}"));
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -372,6 +380,8 @@ namespace Tests.AzureAppConfiguration
                     kv.Tags.ContainsKey("Environment") &&
                     kv.Tags["Environment"] == "Development")));
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -410,6 +420,8 @@ namespace Tests.AzureAppConfiguration
                 s.TagsFilter.Count == 0),
                 It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection));
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -451,6 +463,8 @@ namespace Tests.AzureAppConfiguration
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("Special:Tag") && kv.Tags["Special:Tag"] == "Value:With:Colons")));
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
@@ -490,6 +504,8 @@ namespace Tests.AzureAppConfiguration
                 It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("Tag,With,Commas") && kv.Tags["Tag,With,Commas"] == "Value,With,Commas")));
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -536,6 +552,8 @@ namespace Tests.AzureAppConfiguration
                 .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection.FindAll(kv =>
                     kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")))
                 .Returns(mockAsyncPageable);
+
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>

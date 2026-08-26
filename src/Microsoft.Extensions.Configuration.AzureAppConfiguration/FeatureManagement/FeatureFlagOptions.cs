@@ -17,9 +17,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
         private TimeSpan _refreshInterval = RefreshConstants.DefaultFeatureFlagRefreshInterval;
 
         /// <summary>
-        /// A collection of <see cref="KeyValueSelector"/>.
+        /// A collection of <see cref="FeatureFlagSelector"/>.
         /// </summary>
-        internal List<KeyValueSelector> FeatureFlagSelectors = new List<KeyValueSelector>();
+        internal List<FeatureFlagSelector> FeatureFlagSelectors = new List<FeatureFlagSelector>();
 
         /// <summary>
         /// The time after which feature flags can be refreshed.  Must be greater than or equal to 1 second.
@@ -115,14 +115,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
                 }
             }
 
-            string featureFlagPrefix = FeatureManagementConstants.FeatureFlagMarker + featureFlagFilter;
-
-            FeatureFlagSelectors.AppendUnique(new KeyValueSelector
+            FeatureFlagSelectors.AppendUnique(new FeatureFlagSelector
             {
-                KeyFilter = featureFlagPrefix,
+                NameFilter = featureFlagFilter,
                 LabelFilter = labelFilter,
-                TagFilters = tagFilters,
-                IsFeatureFlagSelector = true
+                TagFilters = tagFilters
             });
 
             return this;

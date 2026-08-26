@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
 {
     internal static class ConfigurationClientExtensions
     {
-        public static async Task<KeyValueChange> GetKeyValueChange(this ConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
+        public static async Task<KeyValueChange> GetKeyValueChange(this IAppConfigurationClient client, ConfigurationSetting setting, CancellationToken cancellationToken)
         {
             if (setting == null)
             {
@@ -67,7 +67,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
         }
 
         public static async Task<bool> HaveCollectionsChanged(
-            this ConfigurationClient client,
+            this IAppConfigurationClient client,
             KeyValueSelector keyValueSelector,
             IEnumerable<WatchedPage> pageWatchers,
             IConfigurationSettingPageIterator pageIterator,
