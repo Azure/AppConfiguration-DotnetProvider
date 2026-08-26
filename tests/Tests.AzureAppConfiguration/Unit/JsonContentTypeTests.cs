@@ -360,7 +360,7 @@ namespace Tests.AzureAppConfiguration
                     ", config["OnlyComments"]);
         }
 
-        private IConfigurationClientManager GetMockConfigurationClientManager(List<ConfigurationSetting> _kvCollection)
+        private IAppConfigurationClientManager GetMockConfigurationClientManager(List<ConfigurationSetting> _kvCollection)
         {
             var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);

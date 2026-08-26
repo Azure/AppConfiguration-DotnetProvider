@@ -44,6 +44,14 @@ namespace Tests.AzureAppConfiguration
             }
         }
 
+        private class TestFeatureFlagClientFactory : IAzureClientFactory<FeatureFlagClient>
+        {
+            public FeatureFlagClient CreateClient(string name)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         [Fact]
         public void AfdTests_ConnectThrowsAfterConnectAzureFrontDoor()
         {
@@ -194,6 +202,28 @@ namespace Tests.AzureAppConfiguration
                 });
                 builder.Build();
             });
+            Assert.NotNull(exception);
+            Assert.IsType<ArgumentException>(exception);
+            Assert.IsType<InvalidOperationException>(exception.InnerException);
+            Assert.Equal(ErrorMessages.AfdCustomClientFactoryUnsupported, exception.InnerException.Message);
+        }
+
+        [Fact]
+        public void AfdTests_CustomFeatureFlagClientFactoryNotSupported()
+        {
+            var afdEndpoint = new Uri("https://test.b01.azurefd.net");
+            var builder = new ConfigurationBuilder();
+
+            Exception exception = Record.Exception(() =>
+            {
+                builder.AddAzureAppConfiguration(options =>
+                {
+                    options.ConnectAzureFrontDoor(afdEndpoint);
+                    options.SetFeatureFlagClientFactory(new TestFeatureFlagClientFactory());
+                });
+                builder.Build();
+            });
+
             Assert.NotNull(exception);
             Assert.IsType<ArgumentException>(exception);
             Assert.IsType<InvalidOperationException>(exception.InnerException);
@@ -390,6 +420,8 @@ namespace Tests.AzureAppConfiguration
                 .Returns(mockAsyncPageable2)  // watch request, should not trigger refresh
                 .Returns(mockAsyncPageable3); // watch request, should trigger refresh
 
+            TestHelpers.SetupMockFeatureFlagEndpoint(mockClient);
+
             var afdEndpoint = new Uri("https://test.b01.azurefd.net");
             IConfigurationRefresher refresher = null;
             var config = new ConfigurationBuilder()
@@ -398,6 +430,7 @@ namespace Tests.AzureAppConfiguration
                     options.ConnectAzureFrontDoor(afdEndpoint);
                     options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
                     options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
                     options.UseFeatureFlags(o => o.SetRefreshInterval(TimeSpan.FromSeconds(1)));
                     refresher = options.GetRefresher();
                 })

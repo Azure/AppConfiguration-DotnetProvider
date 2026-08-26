@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Azure.Data.AppConfiguration;
+using EnhancedFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 {
@@ -73,6 +75,64 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
             if (currentFlagTotalVariants > MaxVariants)
             {
                 MaxVariants = currentFlagTotalVariants;
+            }
+        }
+
+        /// <summary>
+        /// Records feature filter, variant, seed and telemetry usage for an enhanced feature flag.
+        /// </summary>
+        public void Update(EnhancedFeatureFlag flag)
+        {
+            if (flag.Enabled && flag.Conditions?.Filters != null)
+            {
+                foreach (FeatureFilter filter in flag.Conditions.Filters)
+                {
+                    UpdateFeatureFilterTracing(filter.Name);
+                }
+            }
+
+            if (flag.Variants != null)
+            {
+                NotifyMaxVariants(flag.Variants.Count());
+            }
+
+            if (flag.Allocation?.Seed != null)
+            {
+                UsesSeed = true;
+            }
+
+            if (flag.Telemetry != null && flag.Telemetry.Enabled)
+            {
+                UsesTelemetry = true;
+            }
+        }
+
+        /// <summary>
+        /// Records feature filter, variant, seed and telemetry usage for a feature flag.
+        /// </summary>
+        public void Update(FeatureFlag flag)
+        {
+            if (flag.Enabled && flag.Conditions?.ClientFilters != null)
+            {
+                foreach (ClientFilter filter in flag.Conditions.ClientFilters)
+                {
+                    UpdateFeatureFilterTracing(filter.Name);
+                }
+            }
+
+            if (flag.Variants != null)
+            {
+                NotifyMaxVariants(flag.Variants.Count());
+            }
+
+            if (flag.Allocation?.Seed != null)
+            {
+                UsesSeed = true;
+            }
+
+            if (flag.Telemetry != null && flag.Telemetry.Enabled)
+            {
+                UsesTelemetry = true;
             }
         }
 
