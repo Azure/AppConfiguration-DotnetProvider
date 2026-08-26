@@ -24,6 +24,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                     // 3. Set up the provider to listen for changes to the background color key-value in Azure App Configuration
 
                     var settings = config.AddJsonFile("appsettings.json").Build();
+
+                    if (string.IsNullOrEmpty(settings["connection_string"]))
+                    {
+                        throw new InvalidOperationException(
+                            "Connection string not found. " +
+                            "Please set the 'connection_string' in appsettings.json.");
+                    }
+
                     config.AddAzureAppConfiguration(options =>
                     {
                         options.Connect(settings["connection_string"])
