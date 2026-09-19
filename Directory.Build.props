@@ -2,6 +2,7 @@
 
    <PropertyGroup>
       <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+      <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
    </PropertyGroup>
 
 </Project>
