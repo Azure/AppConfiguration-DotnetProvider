@@ -11,6 +11,7 @@
   
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="Microsoft.FeatureManagement" Version="4.8.0" />
     <ProjectReference Include="..\..\src\Microsoft.Azure.AppConfiguration.AspNetCore\Microsoft.Azure.AppConfiguration.AspNetCore.csproj" />
   </ItemGroup>
   

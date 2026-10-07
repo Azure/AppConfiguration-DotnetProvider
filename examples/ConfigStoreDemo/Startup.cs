@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.FeatureManagement;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.ConfigStoreDemo
 {
@@ -28,6 +29,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
 
             services.Configure<HomePageOptions>(Configuration.GetSection("HomePage"));
             services.AddAzureAppConfiguration();
+            services.AddHttpContextAccessor();
+            services.AddFeatureManagement()
+                .WithTargeting<VisitorTargetingContextAccessor>();
             services.AddMvc();
         }
 

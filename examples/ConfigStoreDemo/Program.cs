@@ -38,6 +38,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                             {
                                 refresh.RegisterAll()
                                     .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                            })
+                            .UseFeatureFlags(featureFlags =>
+                            {
+                                featureFlags.SetRefreshInterval(TimeSpan.FromSeconds(1));
                             });
                     });
                 })

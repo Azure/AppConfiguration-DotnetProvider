@@ -18,6 +18,13 @@
 <div class="center" id="messageBox">
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.EasterEggImageUrl))
+{
+    <div class="easter-egg">
+        <img src="@Model.EasterEggImageUrl" alt="Easter egg" />
+    </div>
+}
+
 @section scripts {
     <script type="text/javascript">
 
