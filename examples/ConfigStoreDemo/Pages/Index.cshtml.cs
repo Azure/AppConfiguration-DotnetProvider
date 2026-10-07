@@ -5,23 +5,22 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
 {
     using Microsoft.AspNetCore.Mvc.RazorPages;
     using Microsoft.Extensions.Options;
+    using System;
 
     public class IndexModel : PageModel
     {
-        private Settings settings;
+        private HomePageOptions _options;
 
-        public IndexModel(IOptionsSnapshot<Settings> options)
+        public IndexModel(IOptionsSnapshot<HomePageOptions> options)
         {
-            settings = options.Value;
+            _options = options?.Value ?? throw new ArgumentNullException();
         }
         public void OnGet()
         {
-            ViewData["AppName"] = settings.AppName;
-            ViewData["Language"] = settings.Language;
-            ViewData["Messages"] = settings.Messages;
-            ViewData["FontSize"] = settings.FontSize;
-            ViewData["RefreshRate"] = settings.RefreshRate;
-            ViewData["BackgroundColor"] = settings.BackgroundColor;
+            ViewData["Messages"] = _options.Messages;
+            ViewData["FontSize"] = _options.FontSize;
+            ViewData["RefreshRate"] = _options.RefreshRate;
+            ViewData["BackgroundColor"] = _options.BackgroundColor;
         }
     }
 }

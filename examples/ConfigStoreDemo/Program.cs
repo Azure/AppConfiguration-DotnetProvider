@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Identity;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using System;
@@ -19,27 +20,25 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
             return WebHost.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
-                    // 1. Load settings from a JSON file and Azure App Configuration
-                    // 2. Retrieve the Azure App Configuration connection string from an environment variable
-                    // 3. Set up the provider to listen for changes to the background color key-value in Azure App Configuration
+                    const string endpointSettingName = "AppConfigurationEndpoint";
 
-                    var settings = config.AddJsonFile("appsettings.json").Build();
+                    string endpoint = config.Build()[endpointSettingName];
 
-                    if (string.IsNullOrEmpty(settings["connection_string"]))
+                    if (string.IsNullOrEmpty(endpoint))
                     {
                         throw new InvalidOperationException(
-                            "Connection string not found. " +
-                            "Please set the 'connection_string' in appsettings.json.");
+                            $"The required setting '{endpointSettingName}' is missing. " +
+                            $"Please set it in appsettings.json or as an environment variable.");
                     }
 
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(settings["connection_string"])
-                               .ConfigureRefresh(refresh =>
-                               {
-                                   refresh.Register("Settings:BackgroundColor")
-                                          .SetRefreshInterval(TimeSpan.FromSeconds(10));
-                               });
+                        options.Connect(new Uri(endpoint), new DefaultAzureCredential())
+                            .ConfigureRefresh(refresh =>
+                            {
+                                refresh.RegisterAll()
+                                    .SetRefreshInterval(TimeSpan.FromSeconds(1));
+                            });
                     });
                 })
                 .UseStartup<Startup>()

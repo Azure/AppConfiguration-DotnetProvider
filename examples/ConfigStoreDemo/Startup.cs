@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Examples.Conf
                 options.EnableEndpointRouting = false;
             });
 
-            services.Configure<Settings>(Configuration.GetSection("Settings"));
+            services.Configure<HomePageOptions>(Configuration.GetSection("HomePage"));
             services.AddAzureAppConfiguration();
             services.AddMvc();
         }
