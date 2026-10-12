@@ -2,19 +2,14 @@
 // Licensed under the MIT license.
 //
 using Azure;
-using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
-using Azure.Data.AppConfiguration.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
-using Microsoft.Extensions.Primitives;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -694,102 +689,6 @@ namespace Tests.AzureAppConfiguration
             Assert.NotEqual(selector, filteredSelector);
             Assert.NotEqual(equivalentSelector, filteredSelector);
             Assert.Equal(2, new HashSet<KeyValueSelector> { selector, equivalentSelector, filteredSelector }.Count);
-        }
-
-        private MockTransport CreateRefreshTransport()
-        {
-            return new MockTransport(request =>
-            {
-                Uri uri = request.Uri.ToUri();
-                Assert.Equal("/kv", uri.AbsolutePath);
-                ILookup<string, string> query = uri.Query.TrimStart('?').Split('&')
-                    .Select(parameter => parameter.Split(new[] { '=' }, 2))
-                    .ToLookup(parameter => Uri.UnescapeDataString(parameter[0]),
-                        parameter => Uri.UnescapeDataString(parameter[1]));
-                string keyFilter = query["key"].Single();
-                string labelFilter = query["label"].Single();
-                string[] tagFilters = query["tags"].ToArray();
-                Assert.EndsWith("*", keyFilter);
-                string keyPrefix = keyFilter.Substring(0, keyFilter.Length - 1);
-                IEnumerable<ConfigurationSetting> settings = _kvCollection.Where(setting =>
-                    setting.Key.StartsWith(keyPrefix, StringComparison.Ordinal) && setting.Label == labelFilter);
-                settings = settings.Where(setting => tagFilters.All(filter => setting.Tags.Any(tag =>
-                    $"{EscapeTag(tag.Key)}={EscapeTag(tag.Value)}" == filter)));
-
-                byte[] content = SerializationHelpers.Serialize(settings.ToArray(), TestHelpers.SerializeBatch);
-                using SHA256 hash = SHA256.Create();
-                string eTag = $"\"{Convert.ToBase64String(hash.ComputeHash(content))}\"";
-                bool unchanged = request.Headers.TryGetValue("If-None-Match", out string ifNoneMatch) && ifNoneMatch == eTag;
-                var response = new MockResponse(unchanged ? 304 : 200, eTag: eTag);
-
-                if (!unchanged)
-                {
-                    response.SetContent(content);
-                }
-
-                return response;
-            });
-        }
-
-        private (IConfigurationRoot Configuration, IConfigurationRefresher Refresher) BuildRefreshConfiguration(
-            MockTransport transport, bool featureFlags, params string[][] tagFilterSets)
-        {
-            IConfigurationRefresher refresher = null;
-            IConfigurationRoot configuration = new ConfigurationBuilder()
-                .AddAzureAppConfiguration(options =>
-                {
-                    options.ClientOptions.Transport = transport;
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
-
-                    if (featureFlags)
-                    {
-                        options.Select("Unselected*", "label");
-                        options.UseFeatureFlags(flags =>
-                        {
-                            foreach (string[] tagFilters in tagFilterSets)
-                            {
-                                flags.Select(KeyFilter.Any, "label", tagFilters);
-                            }
-
-                            flags.SetRefreshInterval(TimeSpan.FromSeconds(1));
-                        });
-                    }
-                    else
-                    {
-                        foreach (string[] tagFilters in tagFilterSets)
-                        {
-                            options.Select("TestKey*", "label", tagFilters);
-                        }
-
-                        options.ConfigureRefresh(refresh => refresh.RegisterAll().SetRefreshInterval(TimeSpan.FromSeconds(1)));
-                    }
-
-                    refresher = options.GetRefresher();
-                })
-                .Build();
-
-            return (configuration, refresher);
-        }
-
-        private static async Task AssertUnchangedAfterRefreshAsync(
-            IConfigurationRoot configuration, IConfigurationRefresher refresher, MockTransport transport,
-            int expectedChecks = 1, CancellationToken cancellationToken = default)
-        {
-            IChangeToken reloadToken = configuration.GetReloadToken();
-            int requestCount = transport.Requests.Count;
-
-            await Task.Delay(1500, cancellationToken);
-            await refresher.RefreshAsync(cancellationToken);
-
-            Assert.False(reloadToken.HasChanged);
-            Assert.Equal(requestCount + expectedChecks, transport.Requests.Count);
-            Assert.All(transport.Requests.Skip(requestCount),
-                request => Assert.True(request.Headers.TryGetValue("If-None-Match", out _)));
-        }
-
-        private static string EscapeTag(string value)
-        {
-            return value == null ? TagValue.Null : value.Replace("\\", "\\\\").Replace("*", "\\*").Replace(",", "\\,");
         }
     }
 }
