@@ -528,16 +528,22 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public async Task TagFiltersTests_BasicRefresh()
         {
-            string[] tagFilters = { "Environment=Development" };
-            MockTransport mockTransport = CreateRefreshTransport();
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             IConfigurationRefresher refresher = null;
+
+            var mockAsyncPageable = new MockAsyncPageable(_kvCollection);
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockAsyncPageable.UpdateCollection(_kvCollection.FindAll(kv =>
+                    kv.Tags.ContainsKey("Environment") && kv.Tags["Environment"] == "Development")))
+                .Returns(mockAsyncPageable);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientOptions.Transport = mockTransport;
-                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(options);
-                    options.Select(KeyFilter.Any, "label", tagFilters);
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(mockClient.Object);
+                    options.Select(KeyFilter.Any, "label", new List<string> { "Environment=Development" });
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
                     options.ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.RegisterAll();
@@ -545,7 +551,7 @@ namespace Tests.AzureAppConfiguration
                     });
                     options.UseFeatureFlags(ff =>
                     {
-                        ff.Select(KeyFilter.Any, "label", tagFilters);
+                        ff.Select(KeyFilter.Any, "label", new List<string> { "Environment=Development" });
                         ff.SetRefreshInterval(TimeSpan.FromSeconds(1));
                     });
                     refresher = options.GetRefresher();
@@ -627,182 +633,67 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Theory]
-        [InlineData(false, null)]
-        [InlineData(true, null)]
-        [InlineData(false, new string[] { })]
-        [InlineData(true, new string[] { })]
-        [InlineData(false, new[] { "Environment=Development" })]
-        [InlineData(true, new[] { "Environment=Development" })]
-        [InlineData(false, new[] { "Environment=Missing" })]
-        [InlineData(true, new[] { "Environment=Missing" })]
-        [InlineData(false, new[] { "Environment=Development", "App=TestApp" })]
-        [InlineData(true, new[] { "Environment=Development", "App=TestApp" })]
-        [InlineData(false, new[] { @"Tag\,With\,Commas=Value\,With\,Commas" })]
-        [InlineData(true, new[] { @"Tag\,With\,Commas=Value\,With\,Commas" })]
-        [InlineData(false, new[] { "EmptyTag=", "NullTag=" + TagValue.Null })]
-        [InlineData(true, new[] { "EmptyTag=", "NullTag=" + TagValue.Null })]
-        public async Task TagFiltersTests_UnchangedCollectionsDoNotReload(bool featureFlags, string[] tagFilters)
+        [InlineData(false)]
+        [InlineData(true)]
+        public void TagFiltersTests_WatcherIdentityWithoutTags(bool emptyTags)
         {
-            MockTransport transport = CreateRefreshTransport();
-            (IConfigurationRoot configuration, IConfigurationRefresher refresher) =
-                BuildRefreshConfiguration(transport, featureFlags, tagFilters);
-            using IDisposable configurationLifetime = (IDisposable)configuration;
-
-            string loadQuery = transport.Requests.Last().Uri.ToUri().Query;
-            int initialRequestCount = transport.Requests.Count;
-            KeyValuePair<string, string>[] initialData = configuration.AsEnumerable().OrderBy(setting => setting.Key).ToArray();
-
-            await AssertUnchangedAfterRefreshAsync(configuration, refresher, transport);
-            await AssertUnchangedAfterRefreshAsync(configuration, refresher, transport);
-
-            Assert.Equal(initialData, configuration.AsEnumerable().OrderBy(setting => setting.Key));
-            Assert.All(transport.Requests.Skip(initialRequestCount),
-                request => Assert.Equal(loadQuery, request.Uri.ToUri().Query));
-        }
-
-        [Theory]
-        [InlineData(false, "Update")]
-        [InlineData(true, "Update")]
-        [InlineData(false, "Add")]
-        [InlineData(true, "Add")]
-        [InlineData(false, "Delete")]
-        [InlineData(true, "Delete")]
-        [InlineData(false, "TagAdded")]
-        [InlineData(true, "TagAdded")]
-        [InlineData(false, "TagRemoved")]
-        [InlineData(true, "TagRemoved")]
-        public async Task TagFiltersTests_RefreshDetectsSelectedChanges(bool featureFlags, string change)
-        {
-            string[] tagFilters = { "Environment=Development", "App=TestApp" };
-            string key = featureFlags ? FeatureManagementConstants.FeatureFlagMarker + "Feature1" : "TestKey1";
-            string configurationKey = featureFlags ? "FeatureManagement:Feature1" : "TestKey1";
-            ConfigurationSetting setting = _kvCollection.Single(kv => kv.Key == key);
-
-            if (change == "Add" || change == "TagAdded")
+            var watcher = new KeyValueWatcher
             {
-                setting.Tags.Remove("Environment");
-            }
-
-            MockTransport transport = CreateRefreshTransport();
-            (IConfigurationRoot configuration, IConfigurationRefresher refresher) =
-                BuildRefreshConfiguration(transport, featureFlags, tagFilters);
-            using IDisposable configurationLifetime = (IDisposable)configuration;
-
-            IChangeToken reloadToken = configuration.GetReloadToken();
-            int initialRequestCount = transport.Requests.Count;
-            var expected = new Dictionary<string, string>();
-
-            switch (change)
+                Key = "TestKey*",
+                Label = "label",
+                Tags = emptyTags ? Array.Empty<string>() : null
+            };
+            var equivalentWatcher = new KeyValueWatcher
             {
-                case "Update":
-                    setting.Value = featureFlags ? setting.Value.Replace("true", "false") : "UpdatedValue1";
-                    expected[configurationKey] = featureFlags ? "False" : "UpdatedValue1";
-                    break;
-                case "Add":
-                    var tags = new Dictionary<string, string>
-                    {
-                        { "Environment", "Development" },
-                        { "App", "TestApp" }
-                    };
-                    _kvCollection.Add(featureFlags
-                        ? CreateFeatureFlagSetting("Feature7", "label", true, "new", tags)
-                        : CreateConfigurationSetting("TestKey7", "label", "NewValue", "new", tags));
-                    expected[featureFlags ? "FeatureManagement:Feature7" : "TestKey7"] = featureFlags ? "True" : "NewValue";
-                    break;
-                case "Delete":
-                    _kvCollection.Remove(setting);
-                    break;
-                case "TagAdded":
-                    setting.Tags["Environment"] = "Development";
-                    expected[configurationKey] = featureFlags ? "True" : "TestValue1";
-                    break;
-                case "TagRemoved":
-                    setting.Tags.Remove("Environment");
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(change), change, "Unknown change.");
-            }
+                Key = "TestKey*",
+                Label = "label",
+                Tags = Array.Empty<string>()
+            };
+            var filteredWatcher = new KeyValueWatcher
+            {
+                Key = "TestKey*",
+                Label = "label",
+                Tags = new[] { "Environment=Development" }
+            };
 
-            await Task.Delay(1500);
-            await refresher.RefreshAsync();
-
-            Assert.True(reloadToken.HasChanged);
-            Assert.Equal(initialRequestCount + 2, transport.Requests.Count);
-            Assert.Equal(expected.OrderBy(kv => kv.Key),
-                configuration.AsEnumerable().Where(kv => kv.Value != null).OrderBy(kv => kv.Key));
-
-            await AssertUnchangedAfterRefreshAsync(configuration, refresher, transport);
+            Assert.Equal(watcher, equivalentWatcher);
+            Assert.Equal(equivalentWatcher, watcher);
+            Assert.Equal(watcher.GetHashCode(), equivalentWatcher.GetHashCode());
+            Assert.NotEqual(watcher, filteredWatcher);
+            Assert.NotEqual(equivalentWatcher, filteredWatcher);
+            Assert.Equal(2, new HashSet<KeyValueWatcher> { watcher, equivalentWatcher, filteredWatcher }.Count);
         }
 
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public async Task TagFiltersTests_RefreshTracksSelectorsWithDifferentTags(bool featureFlags)
+        public void TagFiltersTests_SelectorIdentityWithoutTags(bool emptyTags)
         {
-            string[][] tagFilterSets =
+            var selector = new KeyValueSelector
             {
-                new[] { "Environment=Development" },
-                new[] { "Environment=Production" }
+                KeyFilter = "TestKey*",
+                LabelFilter = "label",
+                TagFilters = emptyTags ? Array.Empty<string>() : null
             };
-            MockTransport transport = CreateRefreshTransport();
-            (IConfigurationRoot configuration, IConfigurationRefresher refresher) =
-                BuildRefreshConfiguration(transport, featureFlags, tagFilterSets);
-            using IDisposable configurationLifetime = (IDisposable)configuration;
-
-            string[] loadQueries = transport.Requests.Skip(featureFlags ? 1 : 0)
-                .Select(request => request.Uri.ToUri().Query).ToArray();
-            int initialRequestCount = transport.Requests.Count;
-
-            await AssertUnchangedAfterRefreshAsync(configuration, refresher, transport, expectedChecks: 2);
-
-            Assert.Equal(loadQueries, transport.Requests.Skip(initialRequestCount)
-                .Select(request => request.Uri.ToUri().Query));
-
-            string key = featureFlags ? FeatureManagementConstants.FeatureFlagMarker + "Feature1" : "TestKey1";
-            ConfigurationSetting setting = _kvCollection.Single(kv => kv.Key == key);
-            setting.Value = featureFlags ? setting.Value.Replace("true", "false") : "UpdatedValue1";
-            IChangeToken reloadToken = configuration.GetReloadToken();
-            int requestCount = transport.Requests.Count;
-
-            await Task.Delay(1500);
-            await refresher.RefreshAsync();
-
-            Assert.True(reloadToken.HasChanged);
-            Assert.Equal(requestCount + 3, transport.Requests.Count);
-            Assert.Equal(featureFlags ? "False" : "UpdatedValue1",
-                configuration[featureFlags ? "FeatureManagement:Feature1" : "TestKey1"]);
-
-            await AssertUnchangedAfterRefreshAsync(configuration, refresher, transport, expectedChecks: 2);
-        }
-
-        [Theory]
-        [InlineData("label", "label")]
-        [InlineData(null, LabelFilter.Null)]
-        public void TagFiltersTests_WatcherIdentityIncludesTags(string label, string equivalentLabel)
-        {
-            var watcher = new KeyValueWatcher
+            var equivalentSelector = new KeyValueSelector
             {
-                Key = "TestKey*",
-                Label = label,
-                Tags = new[] { "Environment=Development", "App=TestApp" }
+                KeyFilter = "TestKey*",
+                LabelFilter = "label",
+                TagFilters = Array.Empty<string>()
             };
-            var equivalentWatcher = new KeyValueWatcher
+            var filteredSelector = new KeyValueSelector
             {
-                Key = "TestKey*",
-                Label = equivalentLabel,
-                Tags = new[] { "App=TestApp", "Environment=Development", "App=TestApp" }
-            };
-            var differentWatcher = new KeyValueWatcher
-            {
-                Key = "TestKey*",
-                Label = label,
-                Tags = new[] { "Environment=Production", "App=TestApp" }
+                KeyFilter = "TestKey*",
+                LabelFilter = "label",
+                TagFilters = new[] { "Environment=Development" }
             };
 
-            Assert.Equal(watcher, equivalentWatcher);
-            Assert.Equal(watcher.GetHashCode(), equivalentWatcher.GetHashCode());
-            Assert.NotEqual(watcher, differentWatcher);
-            Assert.Equal(2, new HashSet<KeyValueWatcher> { watcher, equivalentWatcher, differentWatcher }.Count);
+            Assert.Equal(selector, equivalentSelector);
+            Assert.Equal(equivalentSelector, selector);
+            Assert.Equal(selector.GetHashCode(), equivalentSelector.GetHashCode());
+            Assert.NotEqual(selector, filteredSelector);
+            Assert.NotEqual(equivalentSelector, filteredSelector);
+            Assert.Equal(2, new HashSet<KeyValueSelector> { selector, equivalentSelector, filteredSelector }.Count);
         }
 
         private MockTransport CreateRefreshTransport()

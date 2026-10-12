@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -45,9 +46,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
             {
                 return Key == kvWatcher.Key
                     && Label.NormalizeNull() == kvWatcher.Label.NormalizeNull()
-                    && (Tags == null
-                        ? kvWatcher.Tags == null
-                        : kvWatcher.Tags != null && new HashSet<string>(Tags).SetEquals(kvWatcher.Tags));
+                    && new HashSet<string>(Tags ?? Enumerable.Empty<string>())
+                        .SetEquals(kvWatcher.Tags ?? Enumerable.Empty<string>());
             }
 
             return false;
