@@ -53,6 +53,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
 
         /// <summary>
         /// Register all key-values loaded outside of <see cref="AzureAppConfigurationOptions.ConfigureRefresh"/> to be refreshed when the configuration provider's <see cref="IConfigurationRefresher"/> triggers a refresh.
+        /// Collection change checks use the key, label, and tag filters specified by <see cref="AzureAppConfigurationOptions.Select"/>.
         /// The <see cref="IConfigurationRefresher"/> instance can be obtained by calling <see cref="AzureAppConfigurationOptions.GetRefresher()"/>.
         /// </summary>
         public AzureAppConfigurationRefreshOptions RegisterAll()

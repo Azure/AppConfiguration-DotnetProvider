@@ -330,7 +330,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                     Key = featureFlagSelector.KeyFilter,
                     Label = featureFlagSelector.LabelFilter,
                     Tags = featureFlagSelector.TagFilters,
-                    // If UseFeatureFlags is called multiple times for the same key and label filters, last refresh interval wins
+                    // If UseFeatureFlags is called multiple times for the same key, label, and tag filters, last refresh interval wins
                     RefreshInterval = options.RefreshInterval
                 });
             }
