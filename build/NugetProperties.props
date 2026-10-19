@@ -4,7 +4,7 @@
     <Company>Microsoft</Company>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
     <AssemblyOriginatorKeyFile>..\..\build\AzureAppConfiguration.snk</AssemblyOriginatorKeyFile>
-    <RepositoryUrl>https://github.com/Azure/Azconfig-DotnetProvider</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Azure/AppConfiguration-DotnetProvider</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Azure/AppConfiguration</PackageProjectUrl>
     <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
     <PackageIconUrl>https://aka.ms/AzureAppConfigurationPackageIcon</PackageIconUrl>
