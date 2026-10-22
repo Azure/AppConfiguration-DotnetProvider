@@ -8,7 +8,6 @@ using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.AppConfiguration;
-using Azure.ResourceManager.AppConfiguration.Models;
 using Azure.ResourceManager.KeyVault;
 using Azure.ResourceManager.Resources;
 using Azure.Security.KeyVault.Secrets;
@@ -33,8 +32,8 @@ namespace Tests.AzureAppConfiguration
 
     /// <summary>
     /// Integration tests for Azure App Configuration that connect to a real service.
-    /// Uses an existing App Configuration store and Key Vault for testing.
-    /// Requires Azure credentials with appropriate permissions.
+    /// Uses Microsoft Entra ID to access an existing App Configuration store and Key Vault. Access keys are not required.
+    /// Requires resource-read permissions, App Configuration data read/write permissions, and Key Vault secret permissions.
     /// NOTE: Before running these tests locally, execute the GetAzureSubscription.ps1 script to create appsettings.Secrets.json.
     /// </summary>
     [Trait("Category", "Integration")]
@@ -77,7 +76,7 @@ namespace Tests.AzureAppConfiguration
 
         private SecretClient _secretClient;
 
-        private string _connectionString;
+        private Uri _appConfigEndpoint;
 
         private Uri _keyVaultEndpoint;
 
@@ -156,11 +155,8 @@ namespace Tests.AzureAppConfiguration
                 throw new InvalidOperationException($"App Configuration store '{AppConfigStoreName}' not found in resource group '{ResourceGroupName}'. Please create it before running tests.", ex);
             }
 
-            AsyncPageable<AppConfigurationStoreApiKey> accessKeys = appConfigStore.GetKeysAsync();
-
-            _connectionString = (await accessKeys.FirstAsync()).ConnectionString;
-
-            _configClient = new ConfigurationClient(_connectionString);
+            _appConfigEndpoint = new Uri(appConfigStore.Data.Endpoint);
+            _configClient = new ConfigurationClient(_appConfigEndpoint, credential);
 
             KeyVaultResource keyVault = null;
 
@@ -480,7 +476,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                 })
                 .Build();
@@ -501,7 +497,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
@@ -541,7 +537,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
 
                     // Use RegisterAll to refresh everything when sentinel changes
@@ -585,7 +581,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
 
                     options.ConfigureRefresh(refresh =>
@@ -624,7 +620,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
 
                     // Configure feature flags with the correct ID pattern
@@ -695,7 +691,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
@@ -724,7 +720,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext1.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
@@ -736,7 +732,7 @@ namespace Tests.AzureAppConfiguration
                 })
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext2.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
@@ -811,7 +807,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
@@ -861,7 +857,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                 })
                 .Build();
@@ -914,7 +910,7 @@ namespace Tests.AzureAppConfiguration
             var config1 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureRefresh(refresh =>
                     {
@@ -935,7 +931,7 @@ namespace Tests.AzureAppConfiguration
             var config2 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.ConfigureRefresh(refresh =>
                     {
                         refresh.Register(testContext.SentinelKey, true)
@@ -956,7 +952,7 @@ namespace Tests.AzureAppConfiguration
             var config3 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
                         featureFlagOptions.Select(testContext.KeyPrefix + "*");
@@ -977,7 +973,7 @@ namespace Tests.AzureAppConfiguration
             var config4 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
                         featureFlagOptions.Select(testContext.KeyPrefix + "*");
@@ -1076,7 +1072,7 @@ namespace Tests.AzureAppConfiguration
             var config1 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
@@ -1097,7 +1093,7 @@ namespace Tests.AzureAppConfiguration
             var config2 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
@@ -1198,19 +1194,10 @@ namespace Tests.AzureAppConfiguration
             await SetupKeyValues(testContext);
             IConfigurationRefresher refresher = null;
 
-            string connectionString = _connectionString;
-
-            // Create a connection string that will fail
-            string primaryConnectionString = ConnectionStringUtils.Build(
-                TestHelpers.PrimaryConfigStoreEndpoint,
-                ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.IdSection),
-                ConnectionStringUtils.Parse(connectionString, ConnectionStringUtils.SecretSection));
-            string secondaryConnectionString = connectionString;
-
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(new List<string> { primaryConnectionString, secondaryConnectionString });
+                    options.Connect(new List<Uri> { TestHelpers.PrimaryConfigStoreEndpoint, _appConfigEndpoint }, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
 
                     // Configure refresh
@@ -1246,7 +1233,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.SelectSnapshot(snapshotName);
                 })
                 .Build();
@@ -1270,7 +1257,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.SelectSnapshot(nonExistentSnapshotName);
                 })
                 .Build();
@@ -1305,7 +1292,7 @@ namespace Tests.AzureAppConfiguration
                 var config = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.SelectSnapshot(snapshotName1);
                         options.SelectSnapshot(snapshotName2);
                     })
@@ -1351,7 +1338,7 @@ namespace Tests.AzureAppConfiguration
                 var config1 = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.SelectSnapshot(keyOnlySnapshotName);
                     })
                     .Build();
@@ -1364,7 +1351,7 @@ namespace Tests.AzureAppConfiguration
                     return Task.FromResult(new ConfigurationBuilder()
                         .AddAzureAppConfiguration(options =>
                         {
-                            options.Connect(_connectionString);
+                            options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                             options.SelectSnapshot(invalidCompositionSnapshotName);
                         })
                         .Build());
@@ -1420,7 +1407,7 @@ namespace Tests.AzureAppConfiguration
                 var config = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.UseFeatureFlags();
                         options.SelectSnapshot(snapshotName);
                     })
@@ -1493,7 +1480,7 @@ namespace Tests.AzureAppConfiguration
                 var config1 = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.SelectSnapshot(snapshot1);
                         options.Select($"{mainContext.KeyPrefix}:*");
                         options.UseFeatureFlags(ff =>
@@ -1507,7 +1494,7 @@ namespace Tests.AzureAppConfiguration
                 var config2 = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.Select($"{secondContext.KeyPrefix}:*");
                         options.SelectSnapshot(snapshot2);
                         options.UseFeatureFlags(ff =>
@@ -1521,7 +1508,7 @@ namespace Tests.AzureAppConfiguration
                 var config3 = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.UseFeatureFlags();
                         options.SelectSnapshot(snapshot3);
                         options.Select($"{thirdContext.KeyPrefix}:*");
@@ -1532,7 +1519,7 @@ namespace Tests.AzureAppConfiguration
                 var config4 = new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(_connectionString);
+                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                         options.SelectSnapshot(snapshot1);
                         options.UseFeatureFlags(ff =>
                         {
@@ -1596,7 +1583,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                 })
@@ -1630,7 +1617,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
                     options.ConfigureKeyVault(kv =>
                     {
@@ -1696,7 +1683,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*", KeyVaultReferenceLabel);
                     options.ConfigureKeyVault(kv =>
                     {
@@ -1745,7 +1732,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:Setting*");
                     options.Select(testContext.SnapshotReferenceKey);
                 })
@@ -1777,7 +1764,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                 })
                 .Build();
@@ -1830,7 +1817,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select(testContext.SnapshotReferenceKey);
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                 })
@@ -1910,7 +1897,7 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureClientOptions(clientOptions =>
                     {
@@ -1959,7 +1946,7 @@ namespace Tests.AzureAppConfiguration
             var config1 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development" });
                     options.UseFeatureFlags(ff =>
                     {
@@ -1985,7 +1972,7 @@ namespace Tests.AzureAppConfiguration
             var config2 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development", "App=TestApp" });
                     options.UseFeatureFlags(ff =>
                     {
@@ -2011,7 +1998,7 @@ namespace Tests.AzureAppConfiguration
             var config3 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Special:Tag=Value:With:Colons" });
                     options.UseFeatureFlags(ff =>
                     {
@@ -2038,7 +2025,7 @@ namespace Tests.AzureAppConfiguration
             var config4 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Tag@With@At=Value@With@At" });
                 })
                 .Build();
@@ -2054,7 +2041,7 @@ namespace Tests.AzureAppConfiguration
             var config5 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "EmptyTag=", $"NullTag={TagValue.Null}" });
                     options.UseFeatureFlags(ff =>
                     {
@@ -2081,7 +2068,7 @@ namespace Tests.AzureAppConfiguration
             var config9 = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.Connect(_connectionString);
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
                     options.Select($"{keyPrefix}:*", tagFilters: new[] { "Environment=Development" });
                     options.ConfigureRefresh(refresh =>
                     {
