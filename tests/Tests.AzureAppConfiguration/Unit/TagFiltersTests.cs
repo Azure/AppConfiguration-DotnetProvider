@@ -6,6 +6,7 @@ using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Models;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -624,6 +625,70 @@ namespace Tests.AzureAppConfiguration
             Assert.Null(config["FeatureManagement:Feature4"]);
             Assert.Null(config["FeatureManagement:Feature5"]);
             Assert.Null(config["FeatureManagement:Feature6"]);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void TagFiltersTests_WatcherIdentityWithoutTags(bool emptyTags)
+        {
+            var watcher = new KeyValueWatcher
+            {
+                Key = "TestKey*",
+                Label = "label",
+                Tags = emptyTags ? Array.Empty<string>() : null
+            };
+            var equivalentWatcher = new KeyValueWatcher
+            {
+                Key = "TestKey*",
+                Label = "label",
+                Tags = Array.Empty<string>()
+            };
+            var filteredWatcher = new KeyValueWatcher
+            {
+                Key = "TestKey*",
+                Label = "label",
+                Tags = new[] { "Environment=Development" }
+            };
+
+            Assert.Equal(watcher, equivalentWatcher);
+            Assert.Equal(equivalentWatcher, watcher);
+            Assert.Equal(watcher.GetHashCode(), equivalentWatcher.GetHashCode());
+            Assert.NotEqual(watcher, filteredWatcher);
+            Assert.NotEqual(equivalentWatcher, filteredWatcher);
+            Assert.Equal(2, new HashSet<KeyValueWatcher> { watcher, equivalentWatcher, filteredWatcher }.Count);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void TagFiltersTests_SelectorIdentityWithoutTags(bool emptyTags)
+        {
+            var selector = new KeyValueSelector
+            {
+                KeyFilter = "TestKey*",
+                LabelFilter = "label",
+                TagFilters = emptyTags ? Array.Empty<string>() : null
+            };
+            var equivalentSelector = new KeyValueSelector
+            {
+                KeyFilter = "TestKey*",
+                LabelFilter = "label",
+                TagFilters = Array.Empty<string>()
+            };
+            var filteredSelector = new KeyValueSelector
+            {
+                KeyFilter = "TestKey*",
+                LabelFilter = "label",
+                TagFilters = new[] { "Environment=Development" }
+            };
+
+            Assert.Equal(selector, equivalentSelector);
+            Assert.Equal(equivalentSelector, selector);
+            Assert.Equal(selector.GetHashCode(), equivalentSelector.GetHashCode());
+            Assert.NotEqual(selector, filteredSelector);
+            Assert.NotEqual(equivalentSelector, filteredSelector);
+            Assert.Equal(2, new HashSet<KeyValueSelector> { selector, equivalentSelector, filteredSelector }.Count);
         }
     }
 }
