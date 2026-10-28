@@ -1,7 +1,9 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core;
+using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +15,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using ClientWrapper = Microsoft.Extensions.Configuration.AzureAppConfiguration.AppConfigurationClient;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -27,7 +30,6 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -47,11 +49,11 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -96,7 +98,6 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -116,11 +117,11 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(503, "Request failed."));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -148,7 +149,7 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -156,11 +157,11 @@ namespace Tests.AzureAppConfiguration
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
 
             var mockClient2 = new Mock<ConfigurationClient>();
@@ -168,18 +169,18 @@ namespace Tests.AzureAppConfiguration
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // The client enumerator should return 2 clients
             Assert.Equal(2, configClientManager.GetClients().Count());
@@ -222,7 +223,7 @@ namespace Tests.AzureAppConfiguration
         {
             // Arrange
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
@@ -237,16 +238,16 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
-            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
+            var clientList = new List<ClientWrapper>() { cw1 };
+            var autoFailoverList = new List<ClientWrapper>() { cw2 };
             var mockedConfigClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
 
             // Should not throw exception.
@@ -269,9 +270,11 @@ namespace Tests.AzureAppConfiguration
         public void FailOverTests_ValidateEndpoints()
         {
             var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
+            var featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(new DefaultAzureCredential(), new FeatureFlagClientOptions());
 
-            var configClientManager = new ConfigurationClientManager(
+            var configClientManager = new AppConfigurationClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.azconfig.io") },
                 true,
                 false);
@@ -285,8 +288,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager.IsValidEndpoint("azure.appconfig.azure.com"));
             Assert.False(configClientManager.IsValidEndpoint("azure.azconfig.bad.io"));
 
-            var configClientManager2 = new ConfigurationClientManager(
+            var configClientManager2 = new AppConfigurationClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.appconfig.azure.com") },
                 true,
                 false);
@@ -300,8 +304,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager2.IsValidEndpoint("azure.badappconfig.azure.com"));
             Assert.False(configClientManager2.IsValidEndpoint("azure.appconfigbad.azure.com"));
 
-            var configClientManager3 = new ConfigurationClientManager(
+            var configClientManager3 = new AppConfigurationClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.azconfig-test.io") },
                 true,
                 false);
@@ -309,8 +314,9 @@ namespace Tests.AzureAppConfiguration
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig-test.io"));
             Assert.False(configClientManager3.IsValidEndpoint("azure.azconfig.io"));
 
-            var configClientManager4 = new ConfigurationClientManager(
+            var configClientManager4 = new AppConfigurationClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://foobar.z1.appconfig-test.azure.com") },
                 true,
                 false);
@@ -324,9 +330,11 @@ namespace Tests.AzureAppConfiguration
         public void FailOverTests_GetNoDynamicClient()
         {
             var clientFactory = new AzureAppConfigurationClientFactory(new DefaultAzureCredential(), new ConfigurationClientOptions());
+            var featureFlagClientFactory = new AzureAppConfigurationFeatureFlagClientFactory(new DefaultAzureCredential(), new FeatureFlagClientOptions());
 
-            var configClientManager = new ConfigurationClientManager(
+            var configClientManager = new AppConfigurationClientManager(
                 clientFactory,
+                featureFlagClientFactory,
                 new[] { new Uri("https://azure.azconfig.io") },
                 true,
                 false);
@@ -340,9 +348,7 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void FailOverTests_NetworkTimeout()
         {
-            // Arrange
-            IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             var client1 = new ConfigurationClient(TestHelpers.CreateMockEndpointString(),
                 new ConfigurationClientOptions()
@@ -357,16 +363,16 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
-            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
+            var clientList = new List<ClientWrapper>() { cw1 };
+            var autoFailoverList = new List<ClientWrapper>() { cw2 };
             var configClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
 
             // Make sure the provider fails over and will load correctly using the second client
@@ -420,7 +426,7 @@ namespace Tests.AzureAppConfiguration
         public async Task FailOverTests_AllClientsBackedOffAfterNonFailoverableException()
         {
             IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
 
             // Setup first client - succeeds on startup, fails with 404 (non-failoverable) on first refresh
             var mockClient1 = new Mock<ConfigurationClient>();
@@ -429,7 +435,7 @@ namespace Tests.AzureAppConfiguration
                        .Throws(new RequestFailedException(412, "Request failed."))
                        .Throws(new RequestFailedException(412, "Request failed."));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)))
+                        .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)))
                         .Throws(new RequestFailedException(412, "Request failed."))
                         .Throws(new RequestFailedException(412, "Request failed."));
             mockClient1.SetupSequence(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -442,16 +448,16 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
+                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse)));
             mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             // Verify 2 clients are available
             Assert.Equal(2, configClientManager.GetClients().Count());

@@ -537,7 +537,7 @@ namespace Tests.AzureAppConfiguration
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
         {
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
@@ -547,7 +547,7 @@ namespace Tests.AzureAppConfiguration
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse.Object);
+                return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)

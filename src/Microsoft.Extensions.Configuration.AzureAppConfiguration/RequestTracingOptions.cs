@@ -3,7 +3,6 @@
 //
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration.SnapshotReference;
 using System.Net.Mime;
 using System.Text;
 
@@ -77,6 +76,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         public bool IsPushRefreshUsed { get; set; } = false;
 
         /// <summary>
+        /// Flag to indicate wether the request is sent to a AFD.
+        /// </summary>
+        public bool IsAfdUsed { get; set; } = false;
+
+        /// <summary>
         /// Flag to indicate whether any key-value uses the json content type and contains
         /// a parameter indicating an AI profile.
         /// </summary>
@@ -92,6 +96,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
         /// Flag to indicate whether any key-value uses snapshot references.
         /// </summary>
         public bool UsesSnapshotReference { get; set; } = false;
+
+        /// <summary>
+        /// Flag to indicate whether enhanced feature flags are used.
+        /// </summary>
+        public bool UsesEnhancedFeatureFlag { get; set; } = false;
 
         /// <summary>
         /// Resets the AI configuration tracing flags.
@@ -132,7 +141,9 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 IsSignalRUsed ||
                 UsesAIConfiguration ||
                 UsesAIChatCompletionConfiguration ||
-                UsesSnapshotReference;
+                UsesSnapshotReference ||
+                IsAfdUsed ||
+                UsesEnhancedFeatureFlag;
         }
 
         /// <summary>
@@ -191,6 +202,26 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                 }
 
                 sb.Append(RequestTracingConstants.SnapshotReferenceTag);
+            }
+
+            if (IsAfdUsed)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.AfdTag);
+            }
+
+            if (UsesEnhancedFeatureFlag)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(RequestTracingConstants.Delimiter);
+                }
+
+                sb.Append(RequestTracingConstants.EnhancedFeatureFlagTag);
             }
 
             return sb.ToString();

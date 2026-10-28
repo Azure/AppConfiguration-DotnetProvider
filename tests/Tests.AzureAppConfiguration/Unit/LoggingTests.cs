@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
 using Azure;
@@ -17,6 +17,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using ClientWrapper = Microsoft.Extensions.Configuration.AzureAppConfiguration.AppConfigurationClient;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -187,12 +188,12 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
 
             // Mock ConfigurationClient
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
-                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), mockResponse.Object);
+                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), mockResponse);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
@@ -344,11 +345,11 @@ namespace Tests.AzureAppConfiguration
             mockClient1.Setup(c => c.Equals(mockClient1)).Returns(true);
             mockClient2.Setup(c => c.Equals(mockClient1)).Returns(true);
 
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
+            ClientWrapper cw1 = new ClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, mockClient1.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.PrimaryConfigStoreEndpoint));
+            ClientWrapper cw2 = new ClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object, TestHelpers.CreateFeatureFlagClient(TestHelpers.SecondaryConfigStoreEndpoint));
 
-            var clientList = new List<ConfigurationClientWrapper>() { cw1, cw2 };
-            var configClientManager = new ConfigurationClientManager(clientList);
+            var clientList = new List<ClientWrapper>() { cw1, cw2 };
+            var configClientManager = new AppConfigurationClientManager(clientList);
 
             string warningInvocation = "";
             using var _ = new AzureEventSourceListener(
@@ -602,17 +603,24 @@ namespace Tests.AzureAppConfiguration
 
         private Mock<ConfigurationClient> GetMockConfigurationClient()
         {
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
-            Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
+            Response<ConfigurationSetting> GetSetting(string key, string label, CancellationToken cancellationToken)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                return Response.FromValue(TestHelpers.CloneSetting(_kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label)), mockResponse.Object);
+                if (label.Equals(LabelFilter.Null))
+                {
+                    label = null;
+                }
+
+                ConfigurationSetting setting = _kvCollection.FirstOrDefault(s => s.Key == key && s.Label == label);
+
+                return Response.FromValue(TestHelpers.CloneSetting(setting), mockResponse);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
@@ -636,7 +644,7 @@ namespace Tests.AzureAppConfiguration
                 });
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetTestKey);
+                .ReturnsAsync((Func<string, string, CancellationToken, Response<ConfigurationSetting>>)GetSetting);
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Func<ConfigurationSetting, bool, CancellationToken, Response<ConfigurationSetting>>)GetIfChanged);

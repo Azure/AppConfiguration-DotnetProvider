@@ -1,8 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 //
+using Azure.Core;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration.Afd;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,32 +36,74 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
             {
                 AzureAppConfigurationOptions options = _optionsProvider();
 
+                IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
+                IAzureClientFactory<FeatureFlagClient> featureFlagClientFactory = options.FeatureFlagClientFactory;
+
+                if (options.IsAfdUsed)
+                {
+                    if (options.LoadBalancingEnabled)
+                    {
+                        throw new InvalidOperationException(ErrorMessages.AfdLoadBalancingUnsupported);
+                    }
+
+                    if (clientFactory != null || featureFlagClientFactory != null)
+                    {
+                        throw new InvalidOperationException(ErrorMessages.AfdCustomClientFactoryUnsupported);
+                    }
+
+                    if (options.IndividualKvWatchers.Any())
+                    {
+                        throw new InvalidOperationException($"Registering individual keys for refresh via `{nameof(AzureAppConfigurationRefreshOptions)}.{nameof(AzureAppConfigurationRefreshOptions.Register)}` is not supported when connecting to Azure Front Door. Instead, to enable configuration refresh, use `{nameof(AzureAppConfigurationRefreshOptions)}.{nameof(AzureAppConfigurationRefreshOptions.RegisterAll)}`.");
+                    }
+
+                    options.ReplicaDiscoveryEnabled = false;
+
+                    options.ClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);
+                }
+
                 if (options.ClientManager != null)
                 {
                     return new AzureAppConfigurationProvider(options.ClientManager, options, _optional);
                 }
 
                 IEnumerable<Uri> endpoints;
-                IAzureClientFactory<ConfigurationClient> clientFactory = options.ClientFactory;
+
+                FeatureFlagClientOptions featureFlagClientOptions = options.FeatureFlagClientOptions;
+
+                if (options.IsAfdUsed)
+                {
+                    featureFlagClientOptions.AddPolicy(new AfdPolicy(), HttpPipelinePosition.PerRetry);
+                }
 
                 if (options.ConnectionStrings != null)
                 {
                     endpoints = options.ConnectionStrings.Select(cs => new Uri(ConnectionStringUtils.Parse(cs, ConnectionStringUtils.EndpointSection)));
 
                     clientFactory ??= new AzureAppConfigurationClientFactory(options.ConnectionStrings, options.ClientOptions);
+
+                    featureFlagClientFactory ??= new AzureAppConfigurationFeatureFlagClientFactory(options.ConnectionStrings, featureFlagClientOptions);
                 }
                 else if (options.Endpoints != null && options.Credential != null)
                 {
                     endpoints = options.Endpoints;
 
                     clientFactory ??= new AzureAppConfigurationClientFactory(options.Credential, options.ClientOptions);
+
+                    featureFlagClientFactory ??= new AzureAppConfigurationFeatureFlagClientFactory(options.Credential, featureFlagClientOptions);
                 }
                 else
                 {
-                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} to specify how to connect to Azure App Configuration.");
+                    throw new ArgumentException($"Please call {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.Connect)} or {nameof(AzureAppConfigurationOptions)}.{nameof(AzureAppConfigurationOptions.ConnectAzureFrontDoor)} to specify how to connect to Azure App Configuration.");
                 }
 
-                provider = new AzureAppConfigurationProvider(new ConfigurationClientManager(clientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                if (options.IsAfdUsed)
+                {
+                    provider = new AzureAppConfigurationProvider(new AfdClientManager(clientFactory, featureFlagClientFactory, endpoints.First()), options, _optional);
+                }
+                else
+                {
+                    provider = new AzureAppConfigurationProvider(new AppConfigurationClientManager(clientFactory, featureFlagClientFactory, endpoints, options.ReplicaDiscoveryEnabled, options.LoadBalancingEnabled), options, _optional);
+                }
             }
             catch (InvalidOperationException ex) // InvalidOperationException is thrown when any problems are found while configuring AzureAppConfigurationOptions or when SDK fails to create a configurationClient.
             {

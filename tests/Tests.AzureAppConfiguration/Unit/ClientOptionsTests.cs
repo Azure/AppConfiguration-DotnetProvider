@@ -3,7 +3,11 @@
 //
 using Azure;
 using Azure.Core;
+using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Moq;
 using System;
 using System.Linq;
 using Xunit;
@@ -12,6 +16,20 @@ namespace Tests.AzureAppConfiguration
 {
     public class ClientOptionsTests
     {
+        [Fact]
+        public void ClientOptionsTests_SetFeatureFlagClientFactory()
+        {
+            var clientFactory = new Mock<IAzureClientFactory<FeatureFlagClient>>();
+            var options = new AzureAppConfigurationOptions();
+
+            Assert.Same(options, options.SetFeatureFlagClientFactory(clientFactory.Object));
+            Assert.Same(clientFactory.Object, options.FeatureFlagClientFactory);
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() => options.SetFeatureFlagClientFactory(null));
+
+            Assert.Equal("factory", exception.ParamName);
+        }
+
         [Fact]
         public void ClientOptionsTests_OverridesDefaultClientOptions()
         {

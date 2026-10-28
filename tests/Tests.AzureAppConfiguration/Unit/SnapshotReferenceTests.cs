@@ -366,7 +366,7 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
 
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             bool refreshAllTriggered = false;
@@ -378,7 +378,7 @@ namespace Tests.AzureAppConfiguration
             var realSnapshot = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
 
             mockClient.Setup(c => c.GetSnapshotAsync("snapshot1", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot1 }));
@@ -387,7 +387,7 @@ namespace Tests.AzureAppConfiguration
             var realSnapshot2 = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
 
             mockClient.Setup(c => c.GetSnapshotAsync("snapshot2", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(realSnapshot2, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(realSnapshot2, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot2", It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot2 }));
@@ -395,7 +395,7 @@ namespace Tests.AzureAppConfiguration
             mockClient.Setup(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() =>
                 {
-                    return Response.FromValue(updatedSnapshotRef1, mockResponse.Object);
+                    return Response.FromValue(updatedSnapshotRef1, mockResponse);
                 });
 
             // Setup refresh check - simulate change detected
@@ -439,7 +439,7 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
 
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             bool refreshAllTriggered = false;
@@ -451,13 +451,13 @@ namespace Tests.AzureAppConfiguration
             var realSnapshot = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
 
             mockClient.Setup(c => c.GetSnapshotAsync("snapshot1", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot1 }));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse.Object));
+                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ConfigurationSetting setting, bool onlyIfChanged, CancellationToken token) =>
@@ -497,7 +497,7 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
 
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             bool refreshAllTriggered = false;
@@ -509,13 +509,13 @@ namespace Tests.AzureAppConfiguration
             var realSnapshot = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
 
             mockClient.Setup(c => c.GetSnapshotAsync("snapshot1", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot1 }));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse.Object));
+                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ConfigurationSetting setting, bool onlyIfChanged, CancellationToken token) =>
@@ -555,7 +555,7 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
 
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             // Only return regular key-value in initial load (snapshot reference not selected)
@@ -567,14 +567,14 @@ namespace Tests.AzureAppConfiguration
             var realSnapshot = new ConfigurationSnapshot(settingsToInclude) { SnapshotComposition = SnapshotComposition.Key };
 
             mockClient.Setup(c => c.GetSnapshotAsync("snapshot1", It.IsAny<IEnumerable<SnapshotFields>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse.Object));
+                .ReturnsAsync(Response.FromValue(realSnapshot, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingsForSnapshotAsync("snapshot1", It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _settingInSnapshot1 }));
 
             // Mock the GetConfigurationSettingAsync call for the registered snapshot reference
             mockClient.Setup(c => c.GetConfigurationSettingAsync("SnapshotRef1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse.Object));
+                .ReturnsAsync(() => Response.FromValue(_snapshotReference1, mockResponse));
 
             mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ConfigurationSetting setting, bool onlyIfChanged, CancellationToken token) =>

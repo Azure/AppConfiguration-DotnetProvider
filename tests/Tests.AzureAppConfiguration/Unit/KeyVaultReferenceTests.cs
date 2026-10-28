@@ -171,7 +171,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void NotSecretIdentifierURI()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvNoUrl }));
@@ -198,7 +197,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UseSecret()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -223,7 +221,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void UseCertificate()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvCertRef }));
@@ -248,7 +245,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenSecretNotFound()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -273,7 +269,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void DisabledSecretIdentifier()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -298,7 +293,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void WrongContentType()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kvWrongContentType }));
@@ -320,7 +314,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void MultipleKeys()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -346,7 +339,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void CancellationToken()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(_kvCollectionPageOne));
@@ -374,7 +366,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void HasNoAccessToKeyVault()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -400,7 +391,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void RegisterMultipleClients()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -431,7 +421,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ServerRequestIsMadeWhenDefaultCredentialIsSet()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -452,7 +441,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenNoMatchingSecretClientIsFound()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -481,7 +469,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenConfigureKeyVaultIsMissing()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -526,7 +513,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void CallsSecretResolverCallbackWhenNoMatchingSecretClientIsFound()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -551,7 +537,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenBothDefaultCredentialAndSecretResolverCallbackAreSet()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -581,7 +566,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenSecretResolverIsNull()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -603,7 +587,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void LastKeyVaultOptionsWinWithMultipleConfigureKeyVaultCalls()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -632,7 +615,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void DontUseSecretResolverCallbackWhenMatchingSecretClientIsPresent()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -665,7 +647,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenSecretRefreshIntervalIsTooShort()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -690,12 +671,12 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(1);
 
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
-                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), mockResponse.Object);
+                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), mockResponse);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
@@ -763,12 +744,12 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(60);
 
-            var mockResponse = new Mock<Response>();
+            var mockResponse = new MockResponse(200);
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
 
             Response<ConfigurationSetting> GetTestKey(string key, string label, CancellationToken cancellationToken)
             {
-                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), mockResponse.Object);
+                return Response.FromValue(TestHelpers.CloneSetting(sentinelKv), mockResponse);
             }
 
             Response<ConfigurationSetting> GetIfChanged(ConfigurationSetting setting, bool onlyIfChanged, CancellationToken cancellationToken)
@@ -835,7 +816,6 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             TimeSpan refreshInterval = TimeSpan.FromSeconds(60);
 
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             mockClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                 .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { _kv }));
@@ -967,7 +947,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void ThrowsWhenInvalidKeyVaultSecretReferenceJson()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var cacheExpiration = TimeSpan.FromSeconds(1);
 
@@ -1010,7 +989,6 @@ namespace Tests.AzureAppConfiguration
         [Fact]
         public void AlternateValidKeyVaultSecretReferenceJsons()
         {
-            var mockResponse = new Mock<Response>();
             var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
             var cacheExpiration = TimeSpan.FromSeconds(1);
 
