@@ -95,6 +95,14 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 LabelFilter = keyValueSelector.LabelFilter
             };
 
+            if (keyValueSelector.TagFilters != null)
+            {
+                foreach (string tagFilter in keyValueSelector.TagFilters)
+                {
+                    selector.TagsFilter.Add(tagFilter);
+                }
+            }
+
             AsyncPageable<ConfigurationSetting> pageable = client.CheckConfigurationSettingsAsync(selector, cancellationToken);
 
             using IEnumerator<WatchedPage> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();

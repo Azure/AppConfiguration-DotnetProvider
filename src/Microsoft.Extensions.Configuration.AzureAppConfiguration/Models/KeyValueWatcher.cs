@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 {
@@ -43,7 +44,10 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
         {
             if (obj is KeyValueWatcher kvWatcher)
             {
-                return Key == kvWatcher.Key && Label.NormalizeNull() == kvWatcher.Label.NormalizeNull();
+                return Key == kvWatcher.Key
+                    && Label.NormalizeNull() == kvWatcher.Label.NormalizeNull()
+                    && new HashSet<string>(Tags ?? Enumerable.Empty<string>())
+                        .SetEquals(kvWatcher.Tags ?? Enumerable.Empty<string>());
             }
 
             return false;
@@ -51,7 +55,11 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
 
         public override int GetHashCode()
         {
-            return Label != null ? Key.GetHashCode() ^ Label.GetHashCode() : Key.GetHashCode();
+            string tags = Tags == null
+                ? string.Empty
+                : string.Join("\n", new SortedSet<string>(Tags, StringComparer.Ordinal));
+
+            return HashCode.Combine(Key, Label.NormalizeNull(), tags);
         }
     }
 }
