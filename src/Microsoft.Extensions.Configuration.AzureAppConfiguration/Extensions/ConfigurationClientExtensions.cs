@@ -103,7 +103,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Extensions
                 }
             }
 
-            AsyncPageable<ConfigurationSetting> pageable = client.GetConfigurationSettingsAsync(selector, cancellationToken);
+            AsyncPageable<ConfigurationSetting> pageable = client.CheckConfigurationSettingsAsync(selector, cancellationToken);
 
             using IEnumerator<WatchedPage> existingPageWatcherEnumerator = pageWatchers.GetEnumerator();
 
