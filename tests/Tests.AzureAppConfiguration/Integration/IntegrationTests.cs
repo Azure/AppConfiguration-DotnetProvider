@@ -6,10 +6,6 @@ using Azure.Core;
 using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
-using Azure.ResourceManager;
-using Azure.ResourceManager.AppConfiguration;
-using Azure.ResourceManager.KeyVault;
-using Azure.ResourceManager.Resources;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
@@ -19,7 +15,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using Microsoft.FeatureManagement;
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -38,28 +34,17 @@ namespace Tests.AzureAppConfiguration
     /// </summary>
     [Trait("Category", "Integration")]
     [CollectionDefinition(nameof(IntegrationTests), DisableParallelization = true)]
-    public class IntegrationTests : IAsyncLifetime
+    public class IntegrationTests : IClassFixture<IntegrationTestFixture>, IAsyncLifetime
     {
         // Test constants
-        private const string TestKeyPrefix = "IntegrationTest";
-        private const string SubscriptionJsonPath = "appsettings.Secrets.json";
-        private static readonly TimeSpan StaleResourceThreshold = TimeSpan.FromHours(3);
+        private const string TestKeyPrefix = IntegrationTestResources.TestKeyPrefix;
         private const string KeyVaultReferenceLabel = "KeyVaultRef";
 
         // Content type constants
         private const string FeatureFlagContentType = FeatureManagementConstants.ContentType + ";charset=utf-8";
         private const string JsonContentType = "application/json";
 
-        // Fixed resource names - already existing
-        private const string AppConfigStoreName = "appconfig-dotnetprovider-integrationtest";
-        private const string KeyVaultName = "keyvault-dotnetprovider";
-        private const string ResourceGroupName = "dotnetprovider-integrationtest";
-
-        private readonly DefaultAzureCredential _defaultAzureCredential = new DefaultAzureCredential(
-            new DefaultAzureCredentialOptions
-            {
-                ExcludeSharedTokenCacheCredential = true
-            });
+        private readonly DefaultAzureCredential _defaultAzureCredential;
 
         private class TestContext
         {
@@ -72,44 +57,44 @@ namespace Tests.AzureAppConfiguration
             public string SnapshotName { get; set; }
         }
 
-        private ConfigurationClient _configClient;
+        private readonly ConfigurationClient _configClient;
 
-        private SecretClient _secretClient;
+        private readonly SecretClient _secretClient;
 
-        private Uri _appConfigEndpoint;
+        private readonly Uri _appConfigEndpoint;
 
-        private Uri _keyVaultEndpoint;
+        private readonly Uri _keyVaultEndpoint;
+
+        private readonly IntegrationTestResources _resources;
+
+        private readonly Stopwatch _executionStopwatch = new Stopwatch();
 
         private readonly ITestOutputHelper _output;
 
-        public IntegrationTests(ITestOutputHelper output)
+        public IntegrationTests(IntegrationTestFixture fixture, ITestOutputHelper output)
         {
+            if (fixture == null)
+            {
+                throw new ArgumentNullException(nameof(fixture));
+            }
+
+            if (output == null)
+            {
+                throw new ArgumentNullException(nameof(output));
+            }
+
             _output = output;
-        }
+            _defaultAzureCredential = fixture.Credential;
+            _configClient = fixture.ConfigurationClient;
+            _secretClient = fixture.SecretClient;
+            _appConfigEndpoint = fixture.AppConfigurationEndpoint;
+            _keyVaultEndpoint = fixture.KeyVaultEndpoint;
+            _resources = new IntegrationTestResources(_configClient, _secretClient);
 
-        private string GetCurrentSubscriptionId()
-        {
-            string subscriptionIdFromEnv = Environment.GetEnvironmentVariable("AZURE_SUBSCRIPTION_ID");
-
-            if (!string.IsNullOrEmpty(subscriptionIdFromEnv))
+            foreach (string message in fixture.InitializationLog)
             {
-                return subscriptionIdFromEnv;
+                _output.WriteLine(message);
             }
-
-            // Read the JSON file created by the script
-            string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Integration", SubscriptionJsonPath);
-
-            if (!File.Exists(jsonPath))
-            {
-                throw new InvalidOperationException($"Subscription JSON file not found at {jsonPath}. Run the GetAzureSubscription.ps1 script first.");
-            }
-
-            string jsonContent = File.ReadAllText(jsonPath);
-
-            using JsonDocument doc = JsonDocument.Parse(jsonContent);
-            JsonElement root = doc.RootElement;
-
-            return root.GetProperty("SubscriptionId").GetString();
         }
 
         private string GetUniqueKeyPrefix(string testName)
@@ -125,8 +110,7 @@ namespace Tests.AzureAppConfiguration
             snapshot.SnapshotComposition = snapshotComposition;
             snapshot.RetentionPeriod = TimeSpan.FromHours(1);
 
-            CreateSnapshotOperation operation = await _configClient.CreateSnapshotAsync(
-                WaitUntil.Completed,
+            CreateSnapshotOperation operation = await _resources.CreateSnapshotAsync(
                 snapshotName,
                 snapshot,
                 cancellationToken);
@@ -134,139 +118,26 @@ namespace Tests.AzureAppConfiguration
             return operation.Value.Name;
         }
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
-            DefaultAzureCredential credential = _defaultAzureCredential;
-            string subscriptionId = GetCurrentSubscriptionId();
-
-            var armClient = new ArmClient(credential);
-            SubscriptionResource subscription = armClient.GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
-
-            ResourceGroupResource resourceGroup = await subscription.GetResourceGroups().GetAsync(ResourceGroupName);
-
-            AppConfigurationStoreResource appConfigStore = null;
-
-            try
-            {
-                appConfigStore = await resourceGroup.GetAppConfigurationStores().GetAsync(AppConfigStoreName);
-            }
-            catch (RequestFailedException ex) when (ex.Status == 404)
-            {
-                throw new InvalidOperationException($"App Configuration store '{AppConfigStoreName}' not found in resource group '{ResourceGroupName}'. Please create it before running tests.", ex);
-            }
-
-            _appConfigEndpoint = new Uri(appConfigStore.Data.Endpoint);
-            _configClient = new ConfigurationClient(_appConfigEndpoint, credential);
-
-            KeyVaultResource keyVault = null;
-
-            // Find and initialize Key Vault - look in the same resource group
-            keyVault = await resourceGroup.GetKeyVaults().GetAsync(KeyVaultName);
-
-            if (keyVault == null)
-            {
-                throw new InvalidOperationException(
-                    $"Key Vault '{KeyVaultName}' not found in subscription {subscriptionId}. " +
-                    "This resource is required for integration tests. " +
-                    "Please create the Key Vault with the appropriate permissions before running tests.");
-            }
-
-            _keyVaultEndpoint = keyVault.Data.Properties.VaultUri;
-
-            _secretClient = new SecretClient(_keyVaultEndpoint, credential);
-
-            _output.WriteLine($"Successfully connected to App Configuration store '{AppConfigStoreName}' and Key Vault '{KeyVaultName}'");
-        }
-
-        private async Task CleanupStaleResources()
-        {
-            _output.WriteLine($"Checking for stale resources older than {StaleResourceThreshold}...");
-
-            var cutoffTime = DateTimeOffset.UtcNow.Subtract(StaleResourceThreshold);
-
-            // Clean up stale configuration settings, snapshots, and Key Vault secrets
-            try
-            {
-                int staleConfigCount = 0;
-                var configSettingsToCleanup = new List<ConfigurationSetting>();
-
-                AsyncPageable<ConfigurationSetting> kvSettings = _configClient.GetConfigurationSettingsAsync(new SettingSelector
-                {
-                    KeyFilter = TestKeyPrefix + "*"
-                });
-
-                AsyncPageable<ConfigurationSetting> flagSettings = _configClient.GetConfigurationSettingsAsync(new SettingSelector
-                {
-                    KeyFilter = FeatureManagementConstants.FeatureFlagMarker + TestKeyPrefix + "*"
-                });
-
-                await foreach (ConfigurationSetting setting in kvSettings.Concat(flagSettings))
-                {
-                    // Check if the setting is older than the threshold
-                    if (setting.LastModified < cutoffTime)
-                    {
-                        configSettingsToCleanup.Add(setting);
-                        staleConfigCount++;
-                    }
-                }
-
-                // Delete configuration settings sequentially to avoid 429 errors
-                foreach (ConfigurationSetting setting in configSettingsToCleanup)
-                {
-                    await _configClient.DeleteConfigurationSettingAsync(setting.Key, setting.Label);
-                }
-
-                int staleSnapshotCount = 0;
-                var snapshotsToArchive = new List<string>();
-                AsyncPageable<ConfigurationSnapshot> snapshots = _configClient.GetSnapshotsAsync(new SnapshotSelector());
-                await foreach (ConfigurationSnapshot snapshot in snapshots)
-                {
-                    if (snapshot.Name.StartsWith("snapshot-" + TestKeyPrefix) && snapshot.CreatedOn < cutoffTime && snapshot.Status == ConfigurationSnapshotStatus.Ready)
-                    {
-                        snapshotsToArchive.Add(snapshot.Name);
-                        staleSnapshotCount++;
-                    }
-                }
-
-                // Archive snapshots sequentially to avoid 429 errors
-                foreach (string snapshotName in snapshotsToArchive)
-                {
-                    await _configClient.ArchiveSnapshotAsync(snapshotName);
-                }
-
-                int staleSecretCount = 0;
-                var secretsToDelete = new List<string>();
-                if (_secretClient != null)
-                {
-                    AsyncPageable<SecretProperties> secrets = _secretClient.GetPropertiesOfSecretsAsync();
-                    await foreach (SecretProperties secretProperties in secrets)
-                    {
-                        if (secretProperties.Name.StartsWith(TestKeyPrefix) && secretProperties.CreatedOn.HasValue && secretProperties.CreatedOn.Value < cutoffTime)
-                        {
-                            secretsToDelete.Add(secretProperties.Name);
-                            staleSecretCount++;
-                        }
-                    }
-
-                    // Delete secrets sequentially to avoid 429 errors
-                    foreach (string secretName in secretsToDelete)
-                    {
-                        await _secretClient.StartDeleteSecretAsync(secretName);
-                    }
-                }
-
-                _output.WriteLine($"Cleaned up {staleConfigCount} stale configuration settings, {staleSnapshotCount} snapshots, and {staleSecretCount} secrets");
-            }
-            catch (RequestFailedException ex)
-            {
-                _output.WriteLine($"Error during stale resource cleanup: {ex.Message}");
-                // Continue execution even if cleanup fails
-            }
+            _executionStopwatch.Start();
+            return Task.CompletedTask;
         }
 
         public async Task DisposeAsync()
         {
-            await CleanupStaleResources();
+            _executionStopwatch.Stop();
+            _output.WriteLine($"Test execution (including data setup): {_executionStopwatch.Elapsed}.");
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                await _resources.CleanupAsync(_output.WriteLine);
+            }
+            finally
+            {
+                _output.WriteLine($"Per-test resource cleanup: {stopwatch.Elapsed}.");
+            }
         }
 
         private TestContext CreateTestContext(string testName)
@@ -278,7 +149,7 @@ namespace Tests.AzureAppConfiguration
             string secretValue = "SecretValue";
             string keyVaultReferenceKey = $"{keyPrefix}:KeyVaultRef";
             string snapshotReferenceKey = $"{keyPrefix}:SnapshotRef";
-            string snapshotName = $"{keyPrefix}-snapshot";
+            string snapshotName = $"snapshot-{keyPrefix}";
 
             return new TestContext
             {
@@ -303,7 +174,7 @@ namespace Tests.AzureAppConfiguration
 
             foreach (ConfigurationSetting setting in testSettings)
             {
-                await _configClient.SetConfigurationSettingAsync(setting);
+                await _resources.SetConfigurationSettingAsync(setting);
             }
         }
 
@@ -314,14 +185,14 @@ namespace Tests.AzureAppConfiguration
                 @"{""id"":""" + context.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
                 contentType: FeatureFlagContentType);
 
-            await _configClient.SetConfigurationSettingAsync(featureFlagSetting);
+            await _resources.SetConfigurationSettingAsync(featureFlagSetting);
         }
 
         private async Task SetupKeyVaultReferences(TestContext context)
         {
             if (_secretClient != null)
             {
-                await _secretClient.SetSecretAsync(context.KeyPrefix + "-secret", context.SecretValue);
+                await _resources.SetSecretAsync(context.KeyPrefix + "-secret", context.SecretValue);
 
                 string keyVaultUri = $"{_keyVaultEndpoint}secrets/{context.KeyPrefix}-secret";
                 string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
@@ -332,7 +203,7 @@ namespace Tests.AzureAppConfiguration
                     label: KeyVaultReferenceLabel,
                     contentType: KeyVaultConstants.ContentType);
 
-                await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+                await _resources.SetConfigurationSettingAsync(keyVaultRefSetting);
             }
         }
 
@@ -351,7 +222,7 @@ namespace Tests.AzureAppConfiguration
                     JsonSerializer.Serialize(new { snapshot_name = context.SnapshotName }),
                     contentType: SnapshotReferenceConstants.ContentType
                 );
-                await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
+                await _resources.SetConfigurationSettingAsync(snapshotReferenceSetting);
             }
         }
 
@@ -406,7 +277,7 @@ namespace Tests.AzureAppConfiguration
 
             foreach (ConfigurationSetting setting in taggedSettings)
             {
-                await _configClient.SetConfigurationSettingAsync(setting);
+                await _resources.SetConfigurationSettingAsync(setting);
             }
 
             // Create feature flags with tags
@@ -449,7 +320,7 @@ namespace Tests.AzureAppConfiguration
 
             foreach (ConfigurationSetting setting in taggedFeatureFlags)
             {
-                await _configClient.SetConfigurationSettingAsync(setting);
+                await _resources.SetConfigurationSettingAsync(setting);
             }
         }
 
@@ -513,8 +384,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
 
             // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -556,8 +427,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
 
             // Update all values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -598,7 +469,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
 
             // Update data but not sentinel
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -621,6 +492,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
 
                     // Configure feature flags with the correct ID pattern
@@ -638,7 +510,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("False", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
 
             // Update the feature flag to enabled=true
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
@@ -661,7 +533,7 @@ namespace Tests.AzureAppConfiguration
             await SetupFeatureFlags(testContext);
 
             // Create a feature flag with complex conditions
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{
@@ -692,6 +564,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
@@ -749,8 +622,8 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("InitialValue1", config[$"{testContext2.KeyPrefix}:Setting1"]);
 
             // Update values and sentinel keys
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext1.KeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext1.SentinelKey, "Updated"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext1.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting(testContext1.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -769,14 +642,14 @@ namespace Tests.AzureAppConfiguration
             TestContext testContext = CreateTestContext("FeatureFlagVariants");
             await SetupFeatureFlags(testContext);
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
                     contentType: FeatureFlagContentType));
 
             // Create a feature flag with variants
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey + "WithVariants",
                     @"{
@@ -808,6 +681,7 @@ namespace Tests.AzureAppConfiguration
                 .AddAzureAppConfiguration(options =>
                 {
                     options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.Select($"{testContext.KeyPrefix}:*");
                     options.ConfigureKeyVault(kv => kv.SetCredential(_defaultAzureCredential));
                     options.UseFeatureFlags(featureFlagOptions =>
                     {
@@ -835,7 +709,7 @@ namespace Tests.AzureAppConfiguration
 
             // Create a complex JSON structure
             string jsonKey = $"{testContext.KeyPrefix}:JsonConfig";
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     jsonKey,
                     @"{
@@ -882,7 +756,7 @@ namespace Tests.AzureAppConfiguration
             await SetupFeatureFlags(testContext);
 
             // Add an additional feature flag for testing
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey + "_Ordering",
                     @"{
@@ -896,7 +770,7 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureFlagContentType));
 
             // Add a section-based setting
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{testContext.KeyPrefix}:Section1:Setting1", "SectionValue1"));
 
             // Create four different configurations with different method orderings
@@ -1004,13 +878,13 @@ namespace Tests.AzureAppConfiguration
             }
 
             // Update values in the store
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{testContext.KeyPrefix}:Section1:Setting1", "UpdatedSectionValue1"));
 
             // Update a feature flag
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{
@@ -1024,7 +898,7 @@ namespace Tests.AzureAppConfiguration
                     contentType: FeatureFlagContentType));
 
             // Update the sentinel key to trigger refresh
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
@@ -1060,7 +934,7 @@ namespace Tests.AzureAppConfiguration
 
             // Add another feature flag for testing
             string secondFeatureFlagKey = $".appconfig.featureflag/{testContext.KeyPrefix}Feature2";
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     secondFeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature2"",""description"":""Second test feature"",""enabled"":false}",
@@ -1121,24 +995,24 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("False", config2[$"FeatureManagement:{testContext.KeyPrefix}Feature2"]);
 
             // Update all values in the store
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting2", "UpdatedValue2"));
 
             // Update the feature flags
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
                     contentType: FeatureFlagContentType));
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     secondFeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature2"",""description"":""Second test feature"",""enabled"":true}",
                     contentType: FeatureFlagContentType));
 
             // Update the sentinel key to trigger refresh
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -1165,7 +1039,7 @@ namespace Tests.AzureAppConfiguration
             await _configClient.DeleteConfigurationSettingAsync(secondFeatureFlagKey);
 
             // Update the sentinel key again to trigger refresh
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "UpdatedAgain"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "UpdatedAgain"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));
@@ -1227,7 +1101,7 @@ namespace Tests.AzureAppConfiguration
             await CreateSnapshot(snapshotName, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext.KeyPrefix + "*") }, SnapshotComposition.Key);
 
             // Update values after snapshot is taken to verify snapshot has original values
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
 
             // Act - Load configuration from snapshot
             var config = new ConfigurationBuilder()
@@ -1241,9 +1115,6 @@ namespace Tests.AzureAppConfiguration
             // Assert - Should have original values from snapshot, not updated values
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
-
-            // Cleanup - Delete the snapshot
-            await _configClient.ArchiveSnapshotAsync(snapshotName);
         }
 
         [Fact]
@@ -1276,7 +1147,7 @@ namespace Tests.AzureAppConfiguration
             await SetupKeyValues(testContext2);
 
             // Create specific values for second snapshot
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{testContext2.KeyPrefix}:UniqueKey", "UniqueValue"));
 
             string snapshotName1 = $"snapshot-{testContext1.KeyPrefix}";
@@ -1286,29 +1157,20 @@ namespace Tests.AzureAppConfiguration
             await CreateSnapshot(snapshotName1, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext1.KeyPrefix + "*") }, SnapshotComposition.Key);
             await CreateSnapshot(snapshotName2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(testContext2.KeyPrefix + "*") }, SnapshotComposition.Key);
 
-            try
-            {
-                // Act - Load configuration from both snapshots
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
-                    {
-                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.SelectSnapshot(snapshotName1);
-                        options.SelectSnapshot(snapshotName2);
-                    })
-                    .Build();
+            // Act - Load configuration from both snapshots
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.SelectSnapshot(snapshotName1);
+                    options.SelectSnapshot(snapshotName2);
+                })
+                .Build();
 
-                // Assert - Should have values from both snapshots
-                Assert.Equal("InitialValue1", config[$"{testContext1.KeyPrefix}:Setting1"]);
-                Assert.Equal("InitialValue1", config[$"{testContext2.KeyPrefix}:Setting1"]);
-                Assert.Equal("UniqueValue", config[$"{testContext2.KeyPrefix}:UniqueKey"]);
-            }
-            finally
-            {
-                // Cleanup - Delete the snapshots
-                await _configClient.ArchiveSnapshotAsync(snapshotName1);
-                await _configClient.ArchiveSnapshotAsync(snapshotName2);
-            }
+            // Assert - Should have values from both snapshots
+            Assert.Equal("InitialValue1", config[$"{testContext1.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue1", config[$"{testContext2.KeyPrefix}:Setting1"]);
+            Assert.Equal("UniqueValue", config[$"{testContext2.KeyPrefix}:UniqueKey"]);
         }
 
         [Fact]
@@ -1317,8 +1179,8 @@ namespace Tests.AzureAppConfiguration
             // Arrange - Setup test-specific keys
             TestContext testContext = CreateTestContext("SnapshotCompositionTest");
             await SetupKeyValues(testContext);
-            string keyOnlySnapshotName = $"snapshot-key-{testContext.KeyPrefix}";
-            string invalidCompositionSnapshotName = $"snapshot-invalid-{testContext.KeyPrefix}";
+            string keyOnlySnapshotName = $"snapshot-{testContext.KeyPrefix}-key";
+            string invalidCompositionSnapshotName = $"snapshot-{testContext.KeyPrefix}-invalid";
 
             // Create a snapshot with the test keys
             var settingsToInclude = new List<ConfigurationSettingsFilter>
@@ -1332,42 +1194,33 @@ namespace Tests.AzureAppConfiguration
             // Create the snapshot
             await CreateSnapshot(invalidCompositionSnapshotName, settingsToInclude, SnapshotComposition.KeyLabel);
 
-            try
+            // Act & Assert - Loading a key-only snapshot should work
+            var config1 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.SelectSnapshot(keyOnlySnapshotName);
+                })
+                .Build();
+
+            Assert.Equal("InitialValue1", config1[$"{testContext.KeyPrefix}:Setting1"]);
+
+            // Act & Assert - Loading a snapshot with invalid composition should throw
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             {
-                // Act & Assert - Loading a key-only snapshot should work
-                var config1 = new ConfigurationBuilder()
+                return Task.FromResult(new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
                         options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.SelectSnapshot(keyOnlySnapshotName);
+                        options.SelectSnapshot(invalidCompositionSnapshotName);
                     })
-                    .Build();
+                    .Build());
+            });
 
-                Assert.Equal("InitialValue1", config1[$"{testContext.KeyPrefix}:Setting1"]);
-
-                // Act & Assert - Loading a snapshot with invalid composition should throw
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                {
-                    return Task.FromResult(new ConfigurationBuilder()
-                        .AddAzureAppConfiguration(options =>
-                        {
-                            options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                            options.SelectSnapshot(invalidCompositionSnapshotName);
-                        })
-                        .Build());
-                });
-
-                // Verify the exception message mentions composition type
-                Assert.Contains("SnapshotComposition", exception.Message);
-                Assert.Contains("key", exception.Message);
-                Assert.Contains("label", exception.Message);
-            }
-            finally
-            {
-                // Cleanup - Delete the snapshots
-                await _configClient.ArchiveSnapshotAsync(keyOnlySnapshotName);
-                await _configClient.ArchiveSnapshotAsync(invalidCompositionSnapshotName);
-            }
+            // Verify the exception message mentions composition type
+            Assert.Contains("SnapshotComposition", exception.Message);
+            Assert.Contains("key", exception.Message);
+            Assert.Contains("label", exception.Message);
         }
 
         [Fact]
@@ -1376,10 +1229,10 @@ namespace Tests.AzureAppConfiguration
             // Arrange - Setup test-specific keys
             TestContext testContext = CreateTestContext("SnapshotFeatureFlagTest");
             await SetupFeatureFlags(testContext);
-            string snapshotName = $"snapshot-ff-{testContext.KeyPrefix}";
+            string snapshotName = $"snapshot-{testContext.KeyPrefix}-ff";
 
             // Update the feature flag to be enabled before creating the snapshot
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":true}",
@@ -1395,32 +1248,24 @@ namespace Tests.AzureAppConfiguration
             await CreateSnapshot(snapshotName, settingsToInclude, SnapshotComposition.Key);
 
             // Update feature flag to disabled after creating snapshot
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{""id"":""" + testContext.KeyPrefix + @"Feature"",""description"":""Test feature"",""enabled"":false}",
                     contentType: FeatureFlagContentType));
 
-            try
-            {
-                // Act - Load configuration from snapshot with feature flags
-                var config = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
-                    {
-                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.UseFeatureFlags();
-                        options.SelectSnapshot(snapshotName);
-                    })
-                    .Build();
+            // Act - Load configuration from snapshot with feature flags
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.UseFeatureFlags();
+                    options.SelectSnapshot(snapshotName);
+                })
+                .Build();
 
-                // Assert - Should have feature flag enabled state from snapshot
-                Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
-            }
-            finally
-            {
-                // Cleanup - Delete the snapshot
-                await _configClient.ArchiveSnapshotAsync(snapshotName);
-            }
+            // Assert - Should have feature flag enabled state from snapshot
+            Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
         }
 
         [Fact]
@@ -1439,25 +1284,25 @@ namespace Tests.AzureAppConfiguration
             await SetupKeyValues(thirdContext);
 
             // Create specific values for each snapshot
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{mainContext.KeyPrefix}:UniqueMain", "MainValue"));
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{secondContext.KeyPrefix}:UniqueSecond", "SecondValue"));
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{thirdContext.KeyPrefix}:UniqueThird", "ThirdValue"));
 
             // Create additional feature flags
             string secondFeatureFlagKey = $".appconfig.featureflag/{mainContext.KeyPrefix}Feature2";
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     secondFeatureFlagKey,
                     @"{""id"":""" + mainContext.KeyPrefix + @"Feature2"",""description"":""Second test feature"",""enabled"":true}",
                     contentType: FeatureFlagContentType));
 
             string thirdFeatureFlagKey = $".appconfig.featureflag/{secondContext.KeyPrefix}Feature";
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     thirdFeatureFlagKey,
                     @"{""id"":""" + secondContext.KeyPrefix + @"Feature"",""description"":""Third test feature"",""enabled"":true}",
@@ -1472,104 +1317,94 @@ namespace Tests.AzureAppConfiguration
             await CreateSnapshot(snapshot2, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(secondContext.KeyPrefix + "*") }, SnapshotComposition.Key);
             await CreateSnapshot(snapshot3, new List<ConfigurationSettingsFilter> { new ConfigurationSettingsFilter(thirdContext.KeyPrefix + "*") }, SnapshotComposition.Key);
 
-            try
-            {
-                // Test different orderings of SelectSnapshot, Select and UseFeatureFlags
+            // Test different orderings of SelectSnapshot, Select and UseFeatureFlags
 
-                // Order 1: SelectSnapshot -> Select -> UseFeatureFlags
-                var config1 = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
+            // Order 1: SelectSnapshot -> Select -> UseFeatureFlags
+            var config1 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.SelectSnapshot(snapshot1);
+                    options.Select($"{mainContext.KeyPrefix}:*");
+                    options.UseFeatureFlags(ff =>
                     {
-                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.SelectSnapshot(snapshot1);
-                        options.Select($"{mainContext.KeyPrefix}:*");
-                        options.UseFeatureFlags(ff =>
-                        {
-                            ff.Select($"{mainContext.KeyPrefix}Feature*");
-                        });
-                    })
-                    .Build();
+                        ff.Select($"{mainContext.KeyPrefix}Feature*");
+                    });
+                })
+                .Build();
 
-                // Order 2: Select -> SelectSnapshot -> UseFeatureFlags
-                var config2 = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
+            // Order 2: Select -> SelectSnapshot -> UseFeatureFlags
+            var config2 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.Select($"{secondContext.KeyPrefix}:*");
+                    options.SelectSnapshot(snapshot2);
+                    options.UseFeatureFlags(ff =>
                     {
-                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.Select($"{secondContext.KeyPrefix}:*");
-                        options.SelectSnapshot(snapshot2);
-                        options.UseFeatureFlags(ff =>
-                        {
-                            ff.Select($"{secondContext.KeyPrefix}Feature*");
-                        });
-                    })
-                    .Build();
+                        ff.Select($"{secondContext.KeyPrefix}Feature*");
+                    });
+                })
+                .Build();
 
-                // Order 3: UseFeatureFlags -> SelectSnapshot -> Select
-                var config3 = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
+            // Order 3: UseFeatureFlags -> SelectSnapshot -> Select
+            var config3 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.UseFeatureFlags();
+                    options.SelectSnapshot(snapshot3);
+                    options.Select($"{thirdContext.KeyPrefix}:*");
+                })
+                .Build();
+
+            // Order 4: Multiple snapshots with interleaved operations
+            var config4 = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                    options.SelectSnapshot(snapshot1);
+                    options.UseFeatureFlags(ff =>
                     {
-                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.UseFeatureFlags();
-                        options.SelectSnapshot(snapshot3);
-                        options.Select($"{thirdContext.KeyPrefix}:*");
-                    })
-                    .Build();
-
-                // Order 4: Multiple snapshots with interleaved operations
-                var config4 = new ConfigurationBuilder()
-                    .AddAzureAppConfiguration(options =>
+                        ff.Select($"{mainContext.KeyPrefix}Feature*");
+                    });
+                    options.SelectSnapshot(snapshot2);
+                    options.Select($"{secondContext.KeyPrefix}:*");
+                    options.UseFeatureFlags(ff =>
                     {
-                        options.Connect(_appConfigEndpoint, _defaultAzureCredential);
-                        options.SelectSnapshot(snapshot1);
-                        options.UseFeatureFlags(ff =>
-                        {
-                            ff.Select($"{mainContext.KeyPrefix}Feature*");
-                        });
-                        options.SelectSnapshot(snapshot2);
-                        options.Select($"{secondContext.KeyPrefix}:*");
-                        options.UseFeatureFlags(ff =>
-                        {
-                            ff.Select($"{secondContext.KeyPrefix}Feature*");
-                        });
-                        options.SelectSnapshot(snapshot3);
-                    })
-                    .Build();
+                        ff.Select($"{secondContext.KeyPrefix}Feature*");
+                    });
+                    options.SelectSnapshot(snapshot3);
+                })
+                .Build();
 
-                // Verify config1: Should have values from snapshot1 and feature flags from mainContext
-                Assert.Equal("InitialValue1", config1[$"{mainContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("MainValue", config1[$"{mainContext.KeyPrefix}:UniqueMain"]);
-                Assert.Equal("False", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
-                Assert.Equal("True", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
+            // Verify config1: Should have values from snapshot1 and feature flags from mainContext
+            Assert.Equal("InitialValue1", config1[$"{mainContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("MainValue", config1[$"{mainContext.KeyPrefix}:UniqueMain"]);
+            Assert.Equal("False", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+            Assert.Equal("True", config1[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
 
-                // Verify config2: Should have values from snapshot2 and feature flags from secondContext
-                Assert.Equal("InitialValue1", config2[$"{secondContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("SecondValue", config2[$"{secondContext.KeyPrefix}:UniqueSecond"]);
-                Assert.Equal("True", config2[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
+            // Verify config2: Should have values from snapshot2 and feature flags from secondContext
+            Assert.Equal("InitialValue1", config2[$"{secondContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("SecondValue", config2[$"{secondContext.KeyPrefix}:UniqueSecond"]);
+            Assert.Equal("True", config2[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
 
-                // Verify config3: Should have values from snapshot3 and all feature flags
-                Assert.Equal("InitialValue1", config3[$"{thirdContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("ThirdValue", config3[$"{thirdContext.KeyPrefix}:UniqueThird"]);
-                Assert.Equal("False", config3[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
-                Assert.Equal("True", config3[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
+            // Verify config3: Should have values from snapshot3 and all feature flags
+            Assert.Equal("InitialValue1", config3[$"{thirdContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("ThirdValue", config3[$"{thirdContext.KeyPrefix}:UniqueThird"]);
+            Assert.Equal("False", config3[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+            Assert.Equal("True", config3[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
 
-                // Verify config4: Should have values from all three snapshots
-                Assert.Equal("InitialValue1", config4[$"{mainContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("MainValue", config4[$"{mainContext.KeyPrefix}:UniqueMain"]);
-                Assert.Equal("InitialValue1", config4[$"{secondContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("SecondValue", config4[$"{secondContext.KeyPrefix}:UniqueSecond"]);
-                Assert.Equal("InitialValue1", config4[$"{thirdContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("ThirdValue", config4[$"{thirdContext.KeyPrefix}:UniqueThird"]);
-                Assert.Equal("False", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
-                Assert.Equal("True", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
-                Assert.Equal("True", config4[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
-            }
-            finally
-            {
-                // Cleanup - Delete the snapshots
-                await _configClient.ArchiveSnapshotAsync(snapshot1);
-                await _configClient.ArchiveSnapshotAsync(snapshot2);
-                await _configClient.ArchiveSnapshotAsync(snapshot3);
-            }
+            // Verify config4: Should have values from all three snapshots
+            Assert.Equal("InitialValue1", config4[$"{mainContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("MainValue", config4[$"{mainContext.KeyPrefix}:UniqueMain"]);
+            Assert.Equal("InitialValue1", config4[$"{secondContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("SecondValue", config4[$"{secondContext.KeyPrefix}:UniqueSecond"]);
+            Assert.Equal("InitialValue1", config4[$"{thirdContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("ThirdValue", config4[$"{thirdContext.KeyPrefix}:UniqueThird"]);
+            Assert.Equal("False", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature"]);
+            Assert.Equal("True", config4[$"FeatureManagement:{mainContext.KeyPrefix}Feature2"]);
+            Assert.Equal("True", config4[$"FeatureManagement:{secondContext.KeyPrefix}Feature"]);
         }
 
         [Fact]
@@ -1649,30 +1484,28 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
 
             // Create a secret in Key Vault with short refresh interval.
-            // Name must start with TestKeyPrefix so CleanupStaleResources() can find and delete it.
             string secretName1 = $"{testContext.KeyPrefix}-secret1";
             string secretValue1 = $"SecretValue1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
-            await _secretClient.SetSecretAsync(secretName1, secretValue1);
+            await _resources.SetSecretAsync(secretName1, secretValue1);
 
             // Create another secret in Key Vault with long refresh interval.
-            // Name must start with TestKeyPrefix so CleanupStaleResources() can find and delete it.
             string secretName2 = $"{testContext.KeyPrefix}-secret2";
             string secretValue2 = $"SecretValue2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
-            await _secretClient.SetSecretAsync(secretName2, secretValue2);
+            await _resources.SetSecretAsync(secretName2, secretValue2);
 
             // Create Key Vault references in App Configuration
             string keyVaultUri = _keyVaultEndpoint.ToString().TrimEnd('/');
             string kvRefKey1 = $"{testContext.KeyPrefix}:KeyVaultRef1";
             string kvRefKey2 = $"{testContext.KeyPrefix}:KeyVaultRef2";
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     kvRefKey1,
                     $@"{{""uri"":""{keyVaultUri}/secrets/{secretName1}""}}",
                     label: KeyVaultReferenceLabel,
                     contentType: KeyVaultConstants.ContentType + "; charset=utf-8"));
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     kvRefKey2,
                     $@"{{""uri"":""{keyVaultUri}/secrets/{secretName2}""}}",
@@ -1705,8 +1538,8 @@ namespace Tests.AzureAppConfiguration
             string updatedValue1 = $"UpdatedValue1-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
             string updatedValue2 = $"UpdatedValue2-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
 
-            await _secretClient.SetSecretAsync(secretName1, updatedValue1);
-            await _secretClient.SetSecretAsync(secretName2, updatedValue2);
+            await _resources.SetSecretAsync(secretName1, updatedValue1);
+            await _resources.SetSecretAsync(secretName2, updatedValue2);
 
             // Wait for the short interval cache to expire
             await Task.Delay(TimeSpan.FromSeconds(61));
@@ -1726,7 +1559,7 @@ namespace Tests.AzureAppConfiguration
             await SetupKeyValues(testContext);
             await SetUpSnapshotReferences(testContext);
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedAfterSnapshot"));
 
             var config = new ConfigurationBuilder()
@@ -1741,8 +1574,6 @@ namespace Tests.AzureAppConfiguration
             // Assert - Should get values from snapshot, not current values
             Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
             Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
-
-            await _configClient.ArchiveSnapshotAsync(testContext.SnapshotName);
         }
 
         [Fact]
@@ -1759,7 +1590,7 @@ namespace Tests.AzureAppConfiguration
                 JsonSerializer.Serialize(new { snapshot_name = nonExistentSnapshotName }),
                 contentType: SnapshotReferenceConstants.ContentType
             );
-            await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
+            await _resources.SetConfigurationSettingAsync(snapshotReferenceSetting);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -1788,7 +1619,7 @@ namespace Tests.AzureAppConfiguration
 
             if (_secretClient != null)
             {
-                await _secretClient.SetSecretAsync(testContext.KeyPrefix + "-secret", testContext.SecretValue);
+                await _resources.SetSecretAsync(testContext.KeyPrefix + "-secret", testContext.SecretValue);
 
                 string keyVaultUri = $"{_keyVaultEndpoint}secrets/{testContext.KeyPrefix}-secret";
                 string keyVaultRefValue = @$"{{""uri"":""{keyVaultUri}""}}";
@@ -1798,7 +1629,7 @@ namespace Tests.AzureAppConfiguration
                     keyVaultRefValue,
                     contentType: KeyVaultConstants.ContentType);
 
-                await _configClient.SetConfigurationSettingAsync(keyVaultRefSetting);
+                await _resources.SetConfigurationSettingAsync(keyVaultRefSetting);
             }
 
             var settingsToInclude = new List<ConfigurationSettingsFilter>
@@ -1812,7 +1643,7 @@ namespace Tests.AzureAppConfiguration
                 JsonSerializer.Serialize(new { snapshot_name = testContext.SnapshotName }),
                 contentType: SnapshotReferenceConstants.ContentType
             );
-            await _configClient.SetConfigurationSettingAsync(snapshotReferenceSetting);
+            await _resources.SetConfigurationSettingAsync(snapshotReferenceSetting);
 
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
@@ -1823,16 +1654,9 @@ namespace Tests.AzureAppConfiguration
                 })
                 .Build();
 
-            try
-            {
-                Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
-                Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
-                Assert.Equal("SecretValue", config[keyVaultReferenceKeyNoLabel]);
-            }
-            finally
-            {
-                await _configClient.ArchiveSnapshotAsync(testContext.SnapshotName);
-            }
+            Assert.Equal("InitialValue1", config[$"{testContext.KeyPrefix}:Setting1"]);
+            Assert.Equal("InitialValue2", config[$"{testContext.KeyPrefix}:Setting2"]);
+            Assert.Equal("SecretValue", config[keyVaultReferenceKeyNoLabel]);
         }
 
         [Fact]
@@ -1849,7 +1673,7 @@ namespace Tests.AzureAppConfiguration
             // Create a custom HttpPipeline that can inspect outgoing requests
             var requestInspector = new RequestInspectionHandler();
 
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 ConfigurationModelFactory.ConfigurationSetting(
                     testContext.FeatureFlagKey,
                     @"{
@@ -1923,7 +1747,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains(RequestTracingConstants.KeyVaultConfiguredTag, requestInspector.CorrelationContextHeaders.Last());
             Assert.Contains(RequestTracingConstants.LoadBalancingEnabledTag, requestInspector.CorrelationContextHeaders.Last());
 
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting($"{testContext.KeyPrefix}:Setting1", "UpdatedValue1"));
             await Task.Delay(1500);
             await refresher.RefreshAsync();
 
@@ -2084,7 +1908,7 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal("Value3", config9[$"{keyPrefix}:TaggedSetting3"]);
 
             // Update a tagged setting's value
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 CreateSettingWithTags(
                     $"{keyPrefix}:TaggedSetting1",
                     "UpdatedValue1",
@@ -2094,7 +1918,7 @@ namespace Tests.AzureAppConfiguration
                     }));
 
             // Add a new setting with Development tag
-            await _configClient.SetConfigurationSettingAsync(
+            await _resources.SetConfigurationSettingAsync(
                 CreateSettingWithTags(
                     $"{keyPrefix}:TaggedSetting7",
                     "Value7",
@@ -2103,7 +1927,7 @@ namespace Tests.AzureAppConfiguration
                     }));
 
             // Update the sentinel key to trigger refresh
-            await _configClient.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting(testContext.SentinelKey, "Updated"));
 
             // Wait for cache to expire
             await Task.Delay(TimeSpan.FromSeconds(2));

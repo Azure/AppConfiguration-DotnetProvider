@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 //
 using Azure;
+using Azure.Core.Testing;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
@@ -338,82 +339,71 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Fact]
-        public void FailOverTests_NetworkTimeout()
+        public void FailOverTests_NetworkTimeout_FailsOverToSecondary()
         {
-            // Arrange
-            IConfigurationRefresher refresher = null;
-            var mockResponse = new Mock<Response>();
+            var transport = new MockTransport(_ => throw new TaskCanceledException("Simulated network timeout."));
+            ConfigurationClient primaryClient = CreateNetworkTimeoutClient(transport);
+            var secondaryClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            secondaryClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(selector => selector.KeyFilter == "TestKey*" && selector.LabelFilter == "label"),
+                    It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting> { kv }));
 
-            var client1 = new ConfigurationClient(TestHelpers.CreateMockEndpointString(),
-                new ConfigurationClientOptions()
-                {
-                    Retry =
-                    {
-                        NetworkTimeout = TimeSpan.FromTicks(1)
-                    }
-                });
-
-            var mockClient2 = new Mock<ConfigurationClient>();
-            mockClient2.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
-                       .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()));
-            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
-            mockClient2.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                       .Returns(Task.FromResult(Response.FromValue<ConfigurationSetting>(kv, mockResponse.Object)));
-            mockClient2.Setup(c => c.Equals(mockClient2)).Returns(true);
-
-            ConfigurationClientWrapper cw1 = new ConfigurationClientWrapper(TestHelpers.PrimaryConfigStoreEndpoint, client1);
-            ConfigurationClientWrapper cw2 = new ConfigurationClientWrapper(TestHelpers.SecondaryConfigStoreEndpoint, mockClient2.Object);
-
-            var clientList = new List<ConfigurationClientWrapper>() { cw1 };
-            var autoFailoverList = new List<ConfigurationClientWrapper>() { cw2 };
-            var configClientManager = new MockedConfigurationClientManager(clientList, autoFailoverList);
-
-            // Make sure the provider fails over and will load correctly using the second client
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
-                    options.ClientManager = configClientManager;
-                    options.Select("TestKey*");
-                    options.ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register("TestKey1", "label")
-                            .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                    });
+                    options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(primaryClient, secondaryClient.Object);
+                    options.Select("TestKey*", "label");
                 })
                 .Build();
 
-            // Make sure the provider fails on startup and throws the expected exception due to startup timeout
-            Exception exception = Assert.Throws<TimeoutException>(() =>
-            {
-                config = new ConfigurationBuilder()
+            Assert.Equal(kv.Value, config[kv.Key]);
+            Assert.Equal(2, transport.Requests.Count);
+            secondaryClient.Verify(c => c.GetConfigurationSettingsAsync(
+                It.Is<SettingSelector>(selector => selector.KeyFilter == "TestKey*" && selector.LabelFilter == "label"),
+                It.IsAny<CancellationToken>()), Times.Once());
+            secondaryClient.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void FailOverTests_NetworkTimeout_ThrowsWhenNoEndpointSucceeds()
+        {
+            var networkTimeout = new TaskCanceledException("Simulated network timeout.");
+            var transport = new MockTransport(_ => throw networkTimeout);
+            ConfigurationClient client = CreateNetworkTimeoutClient(transport);
+
+            TimeoutException exception = Assert.Throws<TimeoutException>(() =>
+                new ConfigurationBuilder()
                     .AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(TestHelpers.CreateMockEndpointString());
-                        options.Select("TestKey*");
-                        options.ConfigureRefresh(refreshOptions =>
-                        {
-                            refreshOptions.Register("TestKey1", "label")
-                                .SetRefreshInterval(TimeSpan.FromSeconds(1));
-                        });
+                        options.ClientManager = TestHelpers.CreateMockedConfigurationClientManager(client);
+                        options.Select("TestKey*", "label");
                         options.ConfigureStartupOptions(startup =>
                         {
                             startup.Timeout = TimeSpan.FromSeconds(5);
                         });
-                        options.ConfigureClientOptions(clientOptions =>
-                        {
-                            clientOptions.Retry.NetworkTimeout = TimeSpan.FromTicks(1);
-                        });
                     })
-                    .Build();
-            });
+                    .Build());
 
-            // Make sure the startup exception is due to network timeout
-            // Aggregate exception is nested due to how provider stores all startup exceptions thrown
-            Assert.True(exception.InnerException is AggregateException ae &&
-                ae.InnerException is AggregateException ae2 &&
-                ae2.InnerExceptions.All(ex => ex is TaskCanceledException) &&
-                ae2.InnerException is TaskCanceledException tce);
+            Assert.NotEmpty(transport.Requests);
+            AggregateException startupExceptions = Assert.IsType<AggregateException>(exception.InnerException);
+            Assert.NotEmpty(startupExceptions.InnerExceptions);
+            Assert.All(startupExceptions.Flatten().InnerExceptions, inner =>
+                Assert.Same(networkTimeout, Assert.IsType<TaskCanceledException>(inner)));
+        }
+
+        private static ConfigurationClient CreateNetworkTimeoutClient(MockTransport transport)
+        {
+            return new ConfigurationClient(TestHelpers.CreateMockEndpointString(), new ConfigurationClientOptions
+            {
+                Transport = transport,
+                Retry =
+                {
+                    // Two immediate failures exercise SDK aggregation without racing its retry delays against startup.
+                    MaxRetries = 1,
+                    Delay = TimeSpan.Zero
+                }
+            });
         }
 
         [Fact]
