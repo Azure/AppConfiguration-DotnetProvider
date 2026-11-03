@@ -81,6 +81,9 @@ namespace Tests.AzureAppConfiguration
             return _configurationClient.CreateSnapshotAsync(WaitUntil.Completed, name, snapshot, cancellationToken);
         }
 
+        /// <summary>
+        /// Attempts cleanup of all tracked resources, collecting service and transport failures while honoring caller cancellation.
+        /// </summary>
         public Task CleanupAsync(Action<string> output, CancellationToken cancellationToken = default)
         {
             if (output == null)
@@ -88,7 +91,7 @@ namespace Tests.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(output));
             }
 
-            return CleanupAsync(new List<RequestFailedException>(), output, cancellationToken);
+            return CleanupAsync(new List<Exception>(), output, cancellationToken);
         }
 
         public async Task CleanupStaleResourcesAsync(
@@ -99,7 +102,7 @@ namespace Tests.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(output));
             }
 
-            var failures = new List<RequestFailedException>();
+            var failures = new List<Exception>();
 
             foreach (string prefix in new[] { TestKeyPrefix + "-", FeatureManagementConstants.FeatureFlagMarker + TestKeyPrefix + "-" })
             {
@@ -150,7 +153,7 @@ namespace Tests.AzureAppConfiguration
         }
 
         private async Task CleanupAsync(
-            List<RequestFailedException> failures, Action<string> output, CancellationToken cancellationToken)
+            List<Exception> failures, Action<string> output, CancellationToken cancellationToken)
         {
             int settingCount = _settings.Count;
             int snapshotCount = _snapshots.Count;
@@ -222,11 +225,14 @@ namespace Tests.AzureAppConfiguration
         private static async Task<bool> TryCleanupAsync(
             Func<CancellationToken, Task> operation,
             string description,
-            List<RequestFailedException> failures,
+            List<Exception> failures,
             Action<string> output,
             bool ignoreNotFound,
             CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            Exception failure;
+
             try
             {
                 await operation(cancellationToken);
@@ -234,15 +240,34 @@ namespace Tests.AzureAppConfiguration
             }
             catch (RequestFailedException ex) when (ignoreNotFound && ex.Status == 404)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 output($"Resource already absent: {description}.");
                 return true;
             }
             catch (RequestFailedException ex)
             {
-                output($"Failed to {description}: {ex.Message}");
-                failures.Add(ex);
-                return false;
+                failure = ex;
             }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                failure = ex;
+            }
+            catch (AggregateException ex) when (IsRequestFailure(ex))
+            {
+                failure = ex;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            output($"Failed to {description}: {failure.Message}");
+            failures.Add(failure);
+            return false;
+        }
+
+        private static bool IsRequestFailure(AggregateException exception)
+        {
+            IReadOnlyCollection<Exception> innerExceptions = exception.Flatten().InnerExceptions;
+            return innerExceptions.Count > 0 &&
+                innerExceptions.All(inner => inner is RequestFailedException || inner is OperationCanceledException);
         }
 
         private static bool IsTestSnapshot(string name)

@@ -137,6 +137,156 @@ namespace Tests.AzureAppConfiguration
         }
 
         [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task CleanupContinuesAfterTransportTimeouts(bool aggregate, bool secretPolling)
+        {
+            Mock<ConfigurationClient> client = CreateConfigurationClient();
+            Mock<SecretClient> secrets = CreateSecretClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var output = new List<string>();
+            Exception failure = CreateTransportTimeout(aggregate);
+
+            foreach (string suffix in new[] { "failed", "other" })
+            {
+                await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-" + suffix, "value"));
+                await resources.CreateSnapshotAsync("snapshot-IntegrationTest-" + suffix, CreateSnapshot());
+                await resources.SetSecretAsync("IntegrationTest-" + suffix, "value");
+            }
+
+            client.Setup(c => c.DeleteConfigurationSettingAsync("IntegrationTest-failed", null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(failure);
+            client.Setup(c => c.ArchiveSnapshotAsync("snapshot-IntegrationTest-failed", It.IsAny<CancellationToken>()))
+                .ThrowsAsync(failure);
+
+            if (secretPolling)
+            {
+                var operation = new Mock<DeleteSecretOperation>(MockBehavior.Strict);
+                operation.Setup(o => o.WaitForCompletionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(new ValueTask<Response<DeletedSecret>>(Task.FromException<Response<DeletedSecret>>(failure)));
+                secrets.Setup(c => c.StartDeleteSecretAsync("IntegrationTest-failed", It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(operation.Object);
+            }
+            else
+            {
+                secrets.Setup(c => c.StartDeleteSecretAsync("IntegrationTest-failed", It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(failure);
+            }
+
+            AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() => resources.CleanupAsync(output.Add));
+
+            Assert.Equal(3, exception.InnerExceptions.Count);
+            Assert.All(exception.InnerExceptions, inner => Assert.Same(failure, inner));
+            client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-other", null, It.IsAny<CancellationToken>()), Times.Once());
+            client.Verify(c => c.ArchiveSnapshotAsync("snapshot-IntegrationTest-other", It.IsAny<CancellationToken>()), Times.Once());
+            secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-other", It.IsAny<CancellationToken>()), Times.Once());
+            Assert.Equal(3, output.Count(message => message.StartsWith("Failed to", StringComparison.Ordinal)));
+            Assert.Contains("3 resources remaining", output.Last());
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task CleanupPreservesCallerCancellation(bool staleSweep, bool aggregate)
+        {
+            Mock<ConfigurationClient> client = CreateConfigurationClient();
+            Mock<SecretClient> secrets = CreateSecretClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var output = new List<string>();
+            using var cancellation = new CancellationTokenSource();
+            Exception cancelled = new OperationCanceledException(cancellation.Token);
+            Exception failure = aggregate ? new AggregateException(new AggregateException(cancelled)) : cancelled;
+            await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-cancelled", "value"));
+            await resources.CreateSnapshotAsync("snapshot-IntegrationTest-other", CreateSnapshot());
+            await resources.SetSecretAsync("IntegrationTest-other", "value");
+
+            if (staleSweep)
+            {
+                client.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), cancellation.Token))
+                    .Callback(() => cancellation.Cancel())
+                    .Throws(failure);
+            }
+            else
+            {
+                client.Setup(c => c.DeleteConfigurationSettingAsync("IntegrationTest-cancelled", null, cancellation.Token))
+                    .Callback(() => cancellation.Cancel())
+                    .ThrowsAsync(failure);
+            }
+
+            OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                staleSweep
+                    ? resources.CleanupStaleResourcesAsync(DateTimeOffset.UtcNow, output.Add, cancellation.Token)
+                    : resources.CleanupAsync(output.Add, cancellation.Token));
+
+            Assert.Equal(cancellation.Token, exception.CancellationToken);
+            client.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()),
+                staleSweep ? Times.Once() : Times.Never());
+            client.Verify(c => c.GetSnapshotsAsync(It.IsAny<SnapshotSelector>(), It.IsAny<CancellationToken>()), Times.Never());
+            secrets.Verify(c => c.GetPropertiesOfSecretsAsync(It.IsAny<CancellationToken>()), Times.Never());
+            client.Verify(c => c.ArchiveSnapshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
+            secrets.Verify(c => c.StartDeleteSecretAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
+            Assert.Empty(output);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CleanupDoesNotStartRequestsWhenAlreadyCancelled(bool staleSweep)
+        {
+            Mock<ConfigurationClient> client = CreateConfigurationClient();
+            Mock<SecretClient> secrets = CreateSecretClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var output = new List<string>();
+            using var cancellation = new CancellationTokenSource();
+            await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-cancelled", "value"));
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                staleSweep
+                    ? resources.CleanupStaleResourcesAsync(DateTimeOffset.UtcNow, output.Add, cancellation.Token)
+                    : resources.CleanupAsync(output.Add, cancellation.Token));
+
+            client.Verify(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Never());
+            client.Verify(c => c.DeleteConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
+            Assert.Empty(output);
+        }
+
+        [Theory]
+        [InlineData("unexpected")]
+        [InlineData("mixedAggregate")]
+        [InlineData("emptyAggregate")]
+        public async Task CleanupDoesNotHandleUnexpectedFailures(string failureType)
+        {
+            Mock<ConfigurationClient> client = CreateConfigurationClient();
+            Mock<SecretClient> secrets = CreateSecretClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var output = new List<string>();
+            Exception failure = failureType switch
+            {
+                "unexpected" => new InvalidOperationException("Programming error."),
+                "mixedAggregate" => new AggregateException(new TaskCanceledException(), new InvalidOperationException("Programming error.")),
+                "emptyAggregate" => new AggregateException(new AggregateException()),
+                _ => throw new ArgumentException("Unknown failure type.", nameof(failureType))
+            };
+            await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-failed", "value"));
+            await resources.CreateSnapshotAsync("snapshot-IntegrationTest-other", CreateSnapshot());
+            await resources.SetSecretAsync("IntegrationTest-other", "value");
+            client.Setup(c => c.DeleteConfigurationSettingAsync("IntegrationTest-failed", null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(failure);
+
+            Exception exception = await Record.ExceptionAsync(() => resources.CleanupAsync(output.Add));
+
+            Assert.Same(failure, exception);
+            client.Verify(c => c.ArchiveSnapshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
+            secrets.Verify(c => c.StartDeleteSecretAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
+            Assert.Empty(output);
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async Task CleanupRetriesSecretDeletionConflicts(bool alreadyDeleted)
@@ -374,6 +524,57 @@ namespace Tests.AzureAppConfiguration
             client.Verify(c => c.DeleteConfigurationSettingAsync(flag, null, It.IsAny<CancellationToken>()), Times.Once());
             client.Verify(c => c.ArchiveSnapshotAsync("snapshot-IntegrationTest-old", It.IsAny<CancellationToken>()), Times.Once());
             secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-old", It.IsAny<CancellationToken>()), Times.Once());
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task StaleCleanupContinuesAfterTransportTimeoutDuringEnumeration(bool aggregate)
+        {
+            Mock<ConfigurationClient> client = CreateConfigurationClient();
+            Mock<SecretClient> secrets = CreateSecretClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var output = new List<string>();
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromHours(3));
+            DateTimeOffset old = cutoff.AddSeconds(-1);
+            string flag = FeatureManagementConstants.FeatureFlagMarker + "IntegrationTest-old";
+            Exception failure = CreateTransportTimeout(aggregate);
+            SetupStaleListings(client, secrets,
+                new[] { ConfigurationModelFactory.ConfigurationSetting(flag, "{}", lastModified: old) },
+                new[] { ConfigurationModelFactory.ConfigurationSnapshot(
+                    name: "snapshot-IntegrationTest-old", status: ConfigurationSnapshotStatus.Ready, createdOn: old) },
+                new[] { SecretModelFactory.SecretProperties(name: "IntegrationTest-old", createdOn: old) });
+
+            IEnumerable<Page<ConfigurationSetting>> GetPages()
+            {
+                yield return Page<ConfigurationSetting>.FromValues(
+                    new[] { ConfigurationModelFactory.ConfigurationSetting("IntegrationTest-partial", "value", lastModified: old) },
+                    "next", Mock.Of<Response>());
+                throw failure;
+            }
+
+            client.Setup(c => c.GetConfigurationSettingsAsync(
+                It.Is<SettingSelector>(selector => selector.KeyFilter == "IntegrationTest-*"), It.IsAny<CancellationToken>()))
+                .Returns(AsyncPageable<ConfigurationSetting>.FromPages(GetPages()));
+
+            AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() => resources.CleanupStaleResourcesAsync(cutoff, output.Add));
+
+            Assert.Same(failure, Assert.Single(exception.InnerExceptions));
+            client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-partial", null, It.IsAny<CancellationToken>()), Times.Once());
+            client.Verify(c => c.DeleteConfigurationSettingAsync(flag, null, It.IsAny<CancellationToken>()), Times.Once());
+            client.Verify(c => c.ArchiveSnapshotAsync("snapshot-IntegrationTest-old", It.IsAny<CancellationToken>()), Times.Once());
+            secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-old", It.IsAny<CancellationToken>()), Times.Once());
+            Assert.Single(output.Where(message => message.StartsWith("Failed to list settings", StringComparison.Ordinal)));
+            Assert.Contains("0 resources remaining", output.Last());
+        }
+
+        private static Exception CreateTransportTimeout(bool aggregate)
+        {
+            Exception timeout = new TaskCanceledException("Network timeout.");
+            return aggregate
+                ? new AggregateException(timeout, new AggregateException(
+                    new RequestFailedException(503, "Service unavailable."), new OperationCanceledException("Network timeout.")))
+                : timeout;
         }
 
         private static Mock<ConfigurationClient> CreateConfigurationClient()
