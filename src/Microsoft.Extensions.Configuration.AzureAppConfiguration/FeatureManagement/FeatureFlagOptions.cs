@@ -49,6 +49,7 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManage
 
         /// <summary>
         /// Sets the time after which feature flags can be refreshed.
+        /// Change checks use the key, label, and tag filters configured through <see cref="Select"/>.
         /// </summary>
         /// <param name="refreshInterval">
         /// Sets the minimum time interval between consecutive refresh operations for feature flags. Default value is 30 seconds. Must be greater than or equal to 1 second.
