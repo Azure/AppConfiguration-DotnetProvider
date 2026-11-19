@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $dotnet = & "$PSScriptRoot/build/resolve-dotnet.ps1"
 
-& $dotnet test "$PSScriptRoot\tests\Tests.AzureAppConfiguration\Tests.AzureAppConfiguration.csproj" --logger trx
+& $dotnet test "$PSScriptRoot\tests\Tests.AzureAppConfiguration\Tests.AzureAppConfiguration.csproj" --logger trx -maxcpucount:3
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
