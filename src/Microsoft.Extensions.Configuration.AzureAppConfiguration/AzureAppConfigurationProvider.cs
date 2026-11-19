@@ -369,9 +369,18 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration
                             return;
                         }
 
-                        // Get feature flag changes
-                        refreshFeatureFlag = await HaveFeatureFlagsChanged(_options.FeatureFlagSelectors, _watchedFeatureFlagPages, appConfigClient, cancellationToken).ConfigureAwait(false)
-                            || await HaveEnhancedFeatureFlagsChanged(_options.FeatureFlagSelectors, _watchedEnhancedFeatureFlagPages, appConfigClient, cancellationToken).ConfigureAwait(false);
+                        // Get feature flag changes, only for feature flags whose refresh interval has elapsed
+                        List<FeatureFlagSelector> refreshableFfSelectors = refreshableFfWatchers
+                            .Select(watcher => new FeatureFlagSelector
+                            {
+                                NameFilter = watcher.Key,
+                                LabelFilter = watcher.Label,
+                                TagFilters = watcher.Tags
+                            })
+                            .ToList();
+
+                        refreshFeatureFlag = await HaveFeatureFlagsChanged(refreshableFfSelectors, _watchedFeatureFlagPages, appConfigClient, cancellationToken).ConfigureAwait(false)
+                            || await HaveEnhancedFeatureFlagsChanged(refreshableFfSelectors, _watchedEnhancedFeatureFlagPages, appConfigClient, cancellationToken).ConfigureAwait(false);
 
                         if (refreshFeatureFlag)
                         {

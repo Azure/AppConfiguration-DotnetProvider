@@ -1136,6 +1136,74 @@ namespace Tests.AzureAppConfiguration
             Assert.Equal(2, config.GetSection("feature_management:feature_flags").GetChildren().Count());
         }
 
+        [Fact]
+        public async Task FeatureFlagsAreNotCheckedForChangesUntilTheirRefreshIntervalElapses()
+        {
+            var testKey1 = ConfigurationModelFactory.ConfigurationSetting("TestKey1", "v1", label: null, contentType: "text", eTag: new ETag("kv-1"));
+            var classicBeta = CreateClassicFeatureFlag("Beta", enabled: true, etag: "beta-1");
+            var loadCollection = new List<ConfigurationSetting> { testKey1, classicBeta };
+
+            var mockClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            var mockFeatureFlagClient = new Mock<FeatureFlagClient>(MockBehavior.Strict);
+
+            mockFeatureFlagClient.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(() => new MockFeatureFlagAsyncPageable());
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(s => s.KeyFilter != null && s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
+                    It.IsAny<CancellationToken>()))
+                .Returns(() => new MockAsyncPageable(new List<ConfigurationSetting> { classicBeta }));
+
+            mockClient.Setup(c => c.GetConfigurationSettingsAsync(
+                    It.Is<SettingSelector>(s => s.KeyFilter == null || !s.KeyFilter.StartsWith(FeatureManagementConstants.FeatureFlagMarker)),
+                    It.IsAny<CancellationToken>()))
+                .Returns(() => new MockAsyncPageable(loadCollection));
+
+            var unchangedPageable = new MockAsyncPageable(loadCollection);
+            unchangedPageable.UpdateCollection(loadCollection);
+
+            mockClient.Setup(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(unchangedPageable);
+
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string k, string l, CancellationToken ct) => Response.FromValue(testKey1, new MockResponse(200)));
+
+            // The individually watched key-value is unchanged on refresh.
+            mockClient.Setup(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((ConfigurationSetting s, bool onlyIfChanged, CancellationToken ct) => Response.FromValue(s, new MockResponse(304)));
+
+            var clientManager = new MockedConfigurationClientManager(new List<AppConfigurationClient>
+            {
+                new AppConfigurationClient(TestHelpers.PrimaryConfigStoreEndpoint, mockClient.Object, mockFeatureFlagClient.Object)
+            });
+
+            IConfigurationRefresher refresher = null;
+            var config = new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ClientManager = clientManager;
+                    options.ConfigurationSettingPageIterator = new MockConfigurationSettingPageIterator();
+                    options.FeatureFlagPageIterator = new MockFeatureFlagPageIterator();
+                    options.ConfigureRefresh(refresh => refresh.Register("TestKey1", refreshAll: true).SetRefreshInterval(RefreshInterval));
+                    options.UseFeatureFlags(ff => ff.SetRefreshInterval(TimeSpan.FromDays(1)));
+
+                    refresher = options.GetRefresher();
+                })
+                .Build();
+
+            Assert.Equal("v1", config["TestKey1"]);
+
+            // Only the individually watched key-value's refresh interval has elapsed.
+            Thread.Sleep(RefreshInterval);
+            await refresher.RefreshAsync();
+
+            mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
+
+            // Neither feature flags nor enhanced feature flags are checked for changes until their own refresh interval elapses.
+            mockClient.Verify(c => c.CheckConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockFeatureFlagClient.Verify(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         private EnhancedFeatureFlag CreateFeatureFlag(
             string name,
             bool enabled,
