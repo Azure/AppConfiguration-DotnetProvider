@@ -418,7 +418,7 @@ namespace Tests.AzureAppConfiguration
             IConfigurationRefresher refresher = null;
             var mockResponse = new MockResponse(200);
 
-            // Setup first client - succeeds on startup, fails with 404 (non-failoverable) on first refresh
+            // Setup first client - succeeds on startup, fails with 412 (non-failoverable) on first refresh
             var mockClient1 = new Mock<ConfigurationClient>();
             mockClient1.SetupSequence(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
                        .Returns(new MockAsyncPageable(Enumerable.Empty<ConfigurationSetting>().ToList()))
@@ -456,6 +456,8 @@ namespace Tests.AzureAppConfiguration
             var config = new ConfigurationBuilder()
                 .AddAzureAppConfiguration(options =>
                 {
+                    // Backoff expiration is not under test; allow for delays on busy CI agents.
+                    options.MinBackoffDuration = TimeSpan.FromMinutes(5);
                     options.ClientManager = configClientManager;
                     options.Select("TestKey*");
                     options.ConfigureRefresh(refreshOptions =>
@@ -484,7 +486,6 @@ namespace Tests.AzureAppConfiguration
             mockClient2.Verify(mc => mc.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
 
             // Second refresh - no clients should be called as all are backed off
-            await Task.Delay(1500);
             await refresher.TryRefreshAsync();
 
             // Verify that no additional calls were made to any client during the second refresh
