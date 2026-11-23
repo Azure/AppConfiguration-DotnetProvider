@@ -16,6 +16,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Tests.AzureAppConfiguration
 {
@@ -23,6 +26,12 @@ namespace Tests.AzureAppConfiguration
     {
         public static readonly Uri PrimaryConfigStoreEndpoint = new Uri("https://azure.azconfig.io");
         public static readonly Uri SecondaryConfigStoreEndpoint = new Uri("https://azure---wus.azconfig.io");
+
+        // Associates a mocked ConfigurationClient with the FeatureFlagClient that should be paired with it,
+        // so that existing tests can keep calling SetupMockFeatureFlagEndpoint(mockClient) before building
+        // the mocked client manager without having to thread the feature-flag client explicitly.
+        private static readonly ConditionalWeakTable<ConfigurationClient, FeatureFlagClient> _featureFlagClients =
+            new ConditionalWeakTable<ConfigurationClient, FeatureFlagClient>();
 
         static public ConfigurationClient CreateMockConfigurationClient(Uri endpoint, AzureAppConfigurationOptions options = null)
         {
@@ -33,15 +42,15 @@ namespace Tests.AzureAppConfiguration
             return new ConfigurationClient(endpoint, mockTokenCredential.Object, options.ClientOptions);
         }
 
-        static public IConfigurationClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
+        static public IAppConfigurationClientManager CreateMockedConfigurationClientManager(AzureAppConfigurationOptions options)
         {
             ConfigurationClient c1 = CreateMockConfigurationClient(PrimaryConfigStoreEndpoint, options);
             ConfigurationClient c2 = CreateMockConfigurationClient(SecondaryConfigStoreEndpoint, options);
 
-            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, c1);
-            ConfigurationClientWrapper w2 = new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, c2);
+            AppConfigurationClient w1 = new AppConfigurationClient(PrimaryConfigStoreEndpoint, c1, CreateMockFeatureFlagClient(PrimaryConfigStoreEndpoint, options));
+            AppConfigurationClient w2 = new AppConfigurationClient(SecondaryConfigStoreEndpoint, c2, CreateMockFeatureFlagClient(SecondaryConfigStoreEndpoint, options));
 
-            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1, w2 };
+            IList<AppConfigurationClient> clients = new List<AppConfigurationClient>() { w1, w2 };
 
             MockedConfigurationClientManager provider = new MockedConfigurationClientManager(clients);
 
@@ -50,10 +59,10 @@ namespace Tests.AzureAppConfiguration
 
         static public MockedConfigurationClientManager CreateMockedConfigurationClientManager(ConfigurationClient primaryClient, ConfigurationClient secondaryClient = null)
         {
-            ConfigurationClientWrapper w1 = new ConfigurationClientWrapper(PrimaryConfigStoreEndpoint, primaryClient);
-            ConfigurationClientWrapper w2 = secondaryClient != null ? new ConfigurationClientWrapper(SecondaryConfigStoreEndpoint, secondaryClient) : null;
+            AppConfigurationClient w1 = new AppConfigurationClient(PrimaryConfigStoreEndpoint, primaryClient, GetAssociatedFeatureFlagClient(PrimaryConfigStoreEndpoint, primaryClient));
+            AppConfigurationClient w2 = secondaryClient != null ? new AppConfigurationClient(SecondaryConfigStoreEndpoint, secondaryClient, GetAssociatedFeatureFlagClient(SecondaryConfigStoreEndpoint, secondaryClient)) : null;
 
-            IList<ConfigurationClientWrapper> clients = new List<ConfigurationClientWrapper>() { w1 };
+            IList<AppConfigurationClient> clients = new List<AppConfigurationClient>() { w1 };
 
             if (secondaryClient != null)
             {
@@ -65,11 +74,61 @@ namespace Tests.AzureAppConfiguration
             return provider;
         }
 
+        static private FeatureFlagClient CreateMockFeatureFlagClient(Uri endpoint, AzureAppConfigurationOptions options)
+        {
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            return new FeatureFlagClient(endpoint, mockTokenCredential.Object, options.FeatureFlagClientOptions);
+        }
+
+        // Creates a real (non-mocked) FeatureFlagClient for tests that don't exercise feature flags but
+        // still need a non-null feature-flag client to construct an AppConfigurationClient.
+        static public FeatureFlagClient CreateFeatureFlagClient(Uri endpoint)
+        {
+            var mockTokenCredential = new Mock<TokenCredential>();
+            mockTokenCredential.Setup(c => c.GetTokenAsync(It.IsAny<TokenRequestContext>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<AccessToken>(new AccessToken("", DateTimeOffset.Now.AddDays(2))));
+
+            return new FeatureFlagClient(endpoint, mockTokenCredential.Object, new FeatureFlagClientOptions());
+        }
+
+        static private FeatureFlagClient GetAssociatedFeatureFlagClient(Uri endpoint, ConfigurationClient client)
+        {
+            if (client != null && _featureFlagClients.TryGetValue(client, out FeatureFlagClient featureFlagClient))
+            {
+                return featureFlagClient;
+            }
+
+            return CreateFeatureFlagClient(endpoint);
+        }
+
         static public string CreateMockEndpointString(string endpoint = "https://azure.azconfig.io")
         {
             byte[] toEncodeAsBytes = Encoding.ASCII.GetBytes("secret");
             string returnValue = Convert.ToBase64String(toEncodeAsBytes);
             return $"Endpoint={endpoint};Id=b1d9b31;Secret={returnValue}";
+        }
+
+        /// <summary>
+        /// Sets up the standalone feature-flag endpoint to return the supplied feature flags (empty by
+        /// default) and associates the resulting <see cref="FeatureFlagClient"/> with the given
+        /// <see cref="ConfigurationClient"/> mock so that the mocked client manager pairs them. Returns the
+        /// shared pageable so that change detection across reloads is stable.
+        /// </summary>
+        static public MockFeatureFlagAsyncPageable SetupMockFeatureFlagEndpoint(Mock<ConfigurationClient> mockClient, List<FeatureFlag> flags = null)
+        {
+            var pageable = new MockFeatureFlagAsyncPageable(flags);
+
+            var mockFeatureFlagClient = new Mock<FeatureFlagClient>(MockBehavior.Strict);
+            mockFeatureFlagClient.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(pageable);
+
+            _featureFlagClients.Remove(mockClient.Object);
+            _featureFlagClients.Add(mockClient.Object, mockFeatureFlagClient.Object);
+
+            return pageable;
         }
 
         static public void SerializeSetting(ref Utf8JsonWriter json, ConfigurationSetting setting)
@@ -162,12 +221,18 @@ namespace Tests.AzureAppConfiguration
 
     class MockAsyncPageable : AsyncPageable<ConfigurationSetting>
     {
-        private readonly List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
-        private int _status;
+        private List<List<ConfigurationSetting>> _pages;
+        private List<MockResponse> _responses;
+        private int _status = 200;
+        private readonly int _itemsPerPage;
+        private List<ConfigurationSetting> _collection = new List<ConfigurationSetting>();
         private readonly TimeSpan? _delay;
 
-        public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null)
+        public MockAsyncPageable(List<ConfigurationSetting> collection, TimeSpan? delay = null, int itemsPerPage = 100, List<MockResponse> responses = null)
         {
+            _itemsPerPage = itemsPerPage;
+            _delay = delay;
+
             foreach (ConfigurationSetting setting in collection)
             {
                 var newSetting = new ConfigurationSetting(setting.Key, setting.Value, setting.Label, setting.ETag);
@@ -177,18 +242,35 @@ namespace Tests.AzureAppConfiguration
                 _collection.Add(newSetting);
             }
 
-            _status = 200;
-            _delay = delay;
+            if (responses != null)
+            {
+                _responses = responses;
+            }
+
+            SlicePages();
         }
 
-        public void UpdateCollection(List<ConfigurationSetting> newCollection)
+        private void SlicePages()
         {
-            if (_collection.Count() == newCollection.Count() &&
-                _collection.All(setting => newCollection.Any(newSetting =>
-                setting.Key == newSetting.Key &&
-                setting.Value == newSetting.Value &&
-                setting.Label == newSetting.Label &&
-                setting.ETag == newSetting.ETag)))
+            int pageCount = (_collection.Count + _itemsPerPage - 1) / _itemsPerPage;
+
+            _pages = new List<List<ConfigurationSetting>>();
+            for (int i = 0; i < pageCount; i++)
+            {
+                _pages.Add(_collection.Skip(i * _itemsPerPage).Take(_itemsPerPage).ToList());
+            }
+        }
+
+        public void UpdateCollection(List<ConfigurationSetting> newCollection, List<MockResponse> responses = null)
+        {
+            bool isUnchanged = _collection.Count == newCollection.Count &&
+                               _collection.All(setting => newCollection.Any(newSetting =>
+                                   setting.Key == newSetting.Key &&
+                                   setting.Value == newSetting.Value &&
+                                   setting.Label == newSetting.Label &&
+                                   setting.ETag == newSetting.ETag));
+
+            if (isUnchanged)
             {
                 _status = 304;
             }
@@ -206,6 +288,8 @@ namespace Tests.AzureAppConfiguration
 
                     _collection.Add(newSetting);
                 }
+
+                SlicePages();
             }
         }
 
@@ -216,7 +300,72 @@ namespace Tests.AzureAppConfiguration
                 await Task.Delay(_delay.Value);
             }
 
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(_status));
+            int pageIndex = 0;
+
+            while (pageIndex < _pages.Count)
+            {
+                List<ConfigurationSetting> pageItems = _pages[pageIndex];
+
+                MockResponse response;
+
+                if (_responses == null)
+                {
+                    response = new MockResponse(_status);
+                }
+                else
+                {
+                    response = _responses[pageIndex];
+                }
+
+                yield return Page<ConfigurationSetting>.FromValues(pageItems, null, response);
+                pageIndex++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// A mock <see cref="AsyncPageable{T}"/> for the standalone feature-flag endpoint
+    /// (<see cref="ConfigurationClient.GetFeatureFlagsAsync(FeatureFlagSelector, CancellationToken)"/>).
+    /// Yields a single page containing the supplied feature flags (empty by default). The page uses a
+    /// stable ETag so that change detection across reloads reports "no change" unless the collection is
+    /// explicitly updated via <see cref="UpdateCollection"/>.
+    /// </summary>
+    class MockFeatureFlagAsyncPageable : AsyncPageable<FeatureFlag>
+    {
+        private List<FeatureFlag> _collection;
+        private string _etag;
+        private readonly TimeSpan? _delay;
+
+        public MockFeatureFlagAsyncPageable(List<FeatureFlag> collection = null, TimeSpan? delay = null)
+        {
+            _collection = collection ?? new List<FeatureFlag>();
+            _delay = delay;
+            _etag = ComputeETag(_collection);
+        }
+
+        public void UpdateCollection(List<FeatureFlag> newCollection)
+        {
+            _collection = newCollection ?? new List<FeatureFlag>();
+            _etag = ComputeETag(_collection);
+        }
+
+        private static string ComputeETag(List<FeatureFlag> collection)
+        {
+            // Derive a deterministic ETag from the flag names + enabled state so that an unchanged
+            // collection keeps the same ETag and a changed collection produces a different one.
+            string content = string.Join("|", collection.Select(f => $"{f.Name}:{f.Enabled}"));
+
+            return "ff-" + content.GetHashCode().ToString("x8");
+        }
+
+        public override async IAsyncEnumerable<Page<FeatureFlag>> AsPages(string continuationToken = null, int? pageSizeHint = null)
+        {
+            if (_delay.HasValue)
+            {
+                await Task.Delay(_delay.Value);
+            }
+
+            yield return Page<FeatureFlag>.FromValues(_collection, null, new MockResponse(200, _etag));
         }
     }
 
@@ -233,18 +382,16 @@ namespace Tests.AzureAppConfiguration
         }
     }
 
-    class MockPageable : Pageable<ConfigurationSetting>
+    internal class MockFeatureFlagPageIterator : IFeatureFlagPageIterator
     {
-        private readonly List<ConfigurationSetting> _collection;
-
-        public MockPageable(List<ConfigurationSetting> collection)
+        public IAsyncEnumerable<Page<FeatureFlag>> IteratePages(AsyncPageable<FeatureFlag> pageable)
         {
-            _collection = collection;
+            return pageable.AsPages();
         }
 
-        public override IEnumerable<Page<ConfigurationSetting>> AsPages(string continuationToken = null, int? pageSizeHint = null)
+        public IAsyncEnumerable<Page<FeatureFlag>> IteratePages(AsyncPageable<FeatureFlag> pageable, IEnumerable<MatchConditions> matchConditions)
         {
-            yield return Page<ConfigurationSetting>.FromValues(_collection, null, new MockResponse(200));
+            return pageable.AsPages();
         }
     }
 }

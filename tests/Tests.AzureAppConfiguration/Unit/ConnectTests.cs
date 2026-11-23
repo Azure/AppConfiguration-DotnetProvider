@@ -3,6 +3,7 @@
 //
 using Azure.Core;
 using Azure.Data.AppConfiguration;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using System;
@@ -15,6 +16,53 @@ namespace Tests.AzureAppConfiguration
 {
     public class ConnectTests
     {
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ConnectTests_UsesFeatureFlagClientFactoryIfSpecified(bool useConnectionString)
+        {
+            var mockConfigurationClient = new Mock<ConfigurationClient>(MockBehavior.Strict);
+            mockConfigurationClient.Setup(c => c.GetConfigurationSettingsAsync(It.IsAny<SettingSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(new MockAsyncPageable(new List<ConfigurationSetting>()));
+
+            var mockFeatureFlagClient = new Mock<FeatureFlagClient>(MockBehavior.Strict);
+            var configurationClientFactory = new Mock<IAzureClientFactory<ConfigurationClient>>(MockBehavior.Strict);
+            var featureFlagClientFactory = new Mock<IAzureClientFactory<FeatureFlagClient>>(MockBehavior.Strict);
+
+            configurationClientFactory
+                .Setup(factory => factory.CreateClient(TestHelpers.PrimaryConfigStoreEndpoint.AbsoluteUri))
+                .Returns(mockConfigurationClient.Object);
+
+            featureFlagClientFactory
+                .Setup(factory => factory.CreateClient(TestHelpers.PrimaryConfigStoreEndpoint.AbsoluteUri))
+                .Returns(mockFeatureFlagClient.Object);
+
+            var credential = new Mock<TokenCredential>(MockBehavior.Strict);
+
+            new ConfigurationBuilder()
+                .AddAzureAppConfiguration(options =>
+                {
+                    options.ReplicaDiscoveryEnabled = false;
+
+                    if (useConnectionString)
+                    {
+                        options.Connect(TestHelpers.CreateMockEndpointString());
+                    }
+                    else
+                    {
+                        options.Connect(TestHelpers.PrimaryConfigStoreEndpoint, credential.Object);
+                    }
+
+                    options.SetClientFactory(configurationClientFactory.Object);
+                    options.SetFeatureFlagClientFactory(featureFlagClientFactory.Object);
+                })
+                .Build();
+
+            featureFlagClientFactory.Verify(
+                factory => factory.CreateClient(TestHelpers.PrimaryConfigStoreEndpoint.AbsoluteUri),
+                Times.Once);
+        }
+
         [Fact]
         public void ConnectTests_UsesClientInstanceIfSpecified()
         {
