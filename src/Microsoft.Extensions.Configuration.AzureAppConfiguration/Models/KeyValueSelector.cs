@@ -50,9 +50,8 @@ namespace Microsoft.Extensions.Configuration.AzureAppConfiguration.Models
                 return KeyFilter == selector.KeyFilter
                     && LabelFilter == selector.LabelFilter
                     && SnapshotName == selector.SnapshotName
-                    && (TagFilters == null
-                            ? selector.TagFilters == null
-                            : selector.TagFilters != null && new HashSet<string>(TagFilters).SetEquals(selector.TagFilters))
+                    && new HashSet<string>(TagFilters ?? Enumerable.Empty<string>())
+                        .SetEquals(selector.TagFilters ?? Enumerable.Empty<string>())
                     && IsFeatureFlagSelector == selector.IsFeatureFlagSelector;
             }
 
