@@ -22,7 +22,7 @@ using Xunit;
 namespace Tests.AzureAppConfiguration
 {
     /// <summary>
-    /// Shares Azure clients and performs one stale-resource sweep per integration test class.
+    /// Shares key-value, enhanced feature flag, and Key Vault clients and performs one stale-resource sweep per integration test class.
     /// </summary>
     public class IntegrationTestFixture : IAsyncLifetime
     {
@@ -38,6 +38,8 @@ namespace Tests.AzureAppConfiguration
             });
 
         public ConfigurationClient ConfigurationClient { get; private set; }
+
+        public FeatureFlagClient FeatureFlagClient { get; private set; }
 
         public SecretClient SecretClient { get; private set; }
 
@@ -64,7 +66,7 @@ namespace Tests.AzureAppConfiguration
 
             try
             {
-                var resources = new IntegrationTestResources(ConfigurationClient, SecretClient);
+                var resources = new IntegrationTestResources(ConfigurationClient, SecretClient, FeatureFlagClient);
                 await resources.CleanupStaleResourcesAsync(
                     DateTimeOffset.UtcNow.Subtract(TimeSpan.FromHours(3)),
                     _initializationLog.Add);
@@ -104,6 +106,10 @@ namespace Tests.AzureAppConfiguration
 
             AppConfigurationEndpoint = new Uri(appConfigStore.Data.Endpoint);
             ConfigurationClient = new ConfigurationClient(AppConfigurationEndpoint, Credential);
+            FeatureFlagClient = new FeatureFlagClient(
+                AppConfigurationEndpoint,
+                Credential,
+                new FeatureFlagClientOptions(FeatureFlagClientOptions.ServiceVersion.V2026_05_01_Preview));
 
             KeyVaultResource keyVault = await resourceGroup.GetKeyVaults().GetAsync(KeyVaultName, cancellationToken);
             KeyVaultEndpoint = keyVault.Data.Properties.VaultUri;

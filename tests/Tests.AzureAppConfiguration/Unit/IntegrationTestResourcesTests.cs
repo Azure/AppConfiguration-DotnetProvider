@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using EnhancedFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using Moq;
@@ -22,7 +23,8 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            Mock<FeatureFlagClient> featureFlags = CreateFeatureFlagClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
             var output = new List<string>();
             string key = "IntegrationTest-settings";
             string flag = FeatureManagementConstants.FeatureFlagMarker + "IntegrationTest-flag";
@@ -31,6 +33,9 @@ namespace Tests.AzureAppConfiguration
             await resources.SetConfigurationSettingAsync(new ConfigurationSetting(key, "updated"));
             await resources.SetConfigurationSettingAsync(new ConfigurationSetting(key, "labeled", "KeyVaultRef"));
             await resources.SetConfigurationSettingAsync(new ConfigurationSetting(flag, "{}"));
+            await resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = "IntegrationTest-enhanced" });
+            await resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(false) { Name = "IntegrationTest-enhanced" });
+            await resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = "IntegrationTest-enhanced", Label = "label" });
             await resources.CreateSnapshotAsync("snapshot-IntegrationTest-test", CreateSnapshot());
             await resources.SetSecretAsync("IntegrationTest-secret", "first");
             await resources.SetSecretAsync("IntegrationTest-secret", "updated");
@@ -43,19 +48,24 @@ namespace Tests.AzureAppConfiguration
             client.Verify(c => c.DeleteConfigurationSettingAsync(flag, null, It.IsAny<CancellationToken>()), Times.Once());
             client.Verify(c => c.DeleteConfigurationSettingAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
             client.Verify(c => c.ArchiveSnapshotAsync("snapshot-IntegrationTest-test", It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-enhanced", null, It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-enhanced", "label", It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-secret", It.IsAny<CancellationToken>()), Times.Once());
-            Assert.Contains(output, message => message.Contains("3 settings/feature flags, 1 snapshots, 1 secrets; 0 resources remaining"));
+            Assert.Contains(output, message => message.Contains("3 settings/feature flags, 2 enhanced feature flags, 1 snapshots, 1 secrets; 0 resources remaining"));
         }
 
         [Theory]
         [InlineData("setting")]
         [InlineData("snapshot")]
         [InlineData("secret")]
+        [InlineData("enhancedFeatureFlag")]
         public async Task FailedWritesRemainTracked(string resourceType)
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            Mock<FeatureFlagClient> featureFlags = CreateFeatureFlagClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
             var output = new List<string>();
             var failure = new RequestFailedException(503, "The response was lost.");
 
@@ -78,6 +88,12 @@ namespace Tests.AzureAppConfiguration
                         .ThrowsAsync(failure);
                     await Assert.ThrowsAsync<RequestFailedException>(() => resources.SetSecretAsync("IntegrationTest-failed", "value"));
                     break;
+                case "enhancedFeatureFlag":
+                    featureFlags.Setup(c => c.SetFeatureFlagAsync(It.IsAny<EnhancedFeatureFlag>(), false, It.IsAny<CancellationToken>()))
+                        .ThrowsAsync(failure);
+                    await Assert.ThrowsAsync<RequestFailedException>(() =>
+                        resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = "IntegrationTest-failed" }));
+                    break;
                 default:
                     throw new ArgumentException("Unknown resource type.", nameof(resourceType));
             }
@@ -90,6 +106,8 @@ namespace Tests.AzureAppConfiguration
                 resourceType == "snapshot" ? Times.Once() : Times.Never());
             secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-failed", It.IsAny<CancellationToken>()),
                 resourceType == "secret" ? Times.Once() : Times.Never());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-failed", null, It.IsAny<CancellationToken>()),
+                resourceType == "enhancedFeatureFlag" ? Times.Once() : Times.Never());
         }
 
         [Theory]
@@ -100,12 +118,14 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            Mock<FeatureFlagClient> featureFlags = CreateFeatureFlagClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
             var output = new List<string>();
 
             foreach (string suffix in new[] { "failed", "other" })
             {
                 await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-" + suffix, "value"));
+                await resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = "IntegrationTest-" + suffix });
                 await resources.CreateSnapshotAsync("snapshot-IntegrationTest-" + suffix, CreateSnapshot());
                 await resources.SetSecretAsync("IntegrationTest-" + suffix, "value");
             }
@@ -116,24 +136,27 @@ namespace Tests.AzureAppConfiguration
                 .ThrowsAsync(new RequestFailedException(status, "Snapshot archival failed."));
             secrets.Setup(c => c.StartDeleteSecretAsync("IntegrationTest-failed", It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new RequestFailedException(status, "Secret deletion failed."));
+            featureFlags.Setup(c => c.DeleteFeatureFlagAsync("IntegrationTest-failed", null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(status, "Enhanced feature flag deletion failed."));
 
             if (status == 404)
             {
                 await resources.CleanupAsync(output.Add);
-                Assert.Equal(3, output.Count(message => message.StartsWith("Resource already absent:", StringComparison.Ordinal)));
+                Assert.Equal(4, output.Count(message => message.StartsWith("Resource already absent:", StringComparison.Ordinal)));
             }
             else
             {
                 AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() => resources.CleanupAsync(output.Add));
-                Assert.Equal(3, exception.InnerExceptions.Count);
-                Assert.Equal(3, output.Count(message => message.StartsWith("Failed to", StringComparison.Ordinal)));
-                Assert.Contains(output, message => message.Contains("3 resources remaining"));
+                Assert.Equal(4, exception.InnerExceptions.Count);
+                Assert.Equal(4, output.Count(message => message.StartsWith("Failed to", StringComparison.Ordinal)));
+                Assert.Contains(output, message => message.Contains("4 resources remaining"));
             }
 
             client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-other", null, It.IsAny<CancellationToken>()), Times.Once());
             client.Verify(c => c.ArchiveSnapshotAsync("snapshot-IntegrationTest-other", It.IsAny<CancellationToken>()), Times.Once());
             secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-failed", It.IsAny<CancellationToken>()), Times.Once());
             secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-other", It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-other", null, It.IsAny<CancellationToken>()), Times.Once());
         }
 
         [Theory]
@@ -145,7 +168,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             Exception failure = CreateTransportTimeout(aggregate);
 
@@ -195,7 +218,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             using var cancellation = new CancellationTokenSource();
             Exception cancelled = new OperationCanceledException(cancellation.Token);
@@ -239,7 +262,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             using var cancellation = new CancellationTokenSource();
             await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-cancelled", "value"));
@@ -263,7 +286,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             Exception failure = failureType switch
             {
@@ -293,7 +316,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             var operation = new Mock<DeleteSecretOperation>(MockBehavior.Strict);
             operation.Setup(o => o.WaitForCompletionAsync(It.IsAny<CancellationToken>()))
@@ -329,7 +352,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             secrets.Setup(c => c.StartDeleteSecretAsync("IntegrationTest-conflict", It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new RequestFailedException(409, "Persistent conflict."));
@@ -350,7 +373,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             using var cancellation = new CancellationTokenSource();
             secrets.Setup(c => c.StartDeleteSecretAsync("IntegrationTest-secret", cancellation.Token))
@@ -368,7 +391,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
 
             await resources.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-failed", "value"));
@@ -390,7 +413,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             var completion = new TaskCompletionSource<Response<DeletedSecret>>(TaskCreationOptions.RunContinuationsAsynchronously);
             var operation = new Mock<DeleteSecretOperation>(MockBehavior.Strict);
@@ -414,18 +437,24 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var first = new IntegrationTestResources(client.Object, secrets.Object);
-            var second = new IntegrationTestResources(client.Object, secrets.Object);
+            Mock<FeatureFlagClient> featureFlags = CreateFeatureFlagClient();
+            var first = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
+            var second = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
             var output = new List<string>();
             await first.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-first", "value"));
             await second.SetConfigurationSettingAsync(new ConfigurationSetting("IntegrationTest-second", "value"));
+            await first.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = "IntegrationTest-first" });
+            await second.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = "IntegrationTest-second" });
 
             await first.CleanupAsync(output.Add);
 
             client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-first", null, It.IsAny<CancellationToken>()), Times.Once());
             client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-second", null, It.IsAny<CancellationToken>()), Times.Never());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-first", null, It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-second", null, It.IsAny<CancellationToken>()), Times.Never());
             await second.CleanupAsync(output.Add);
             client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-second", null, It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-second", null, It.IsAny<CancellationToken>()), Times.Once());
         }
 
         [Fact]
@@ -433,7 +462,8 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            Mock<FeatureFlagClient> featureFlags = CreateFeatureFlagClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
             var output = new List<string>();
             DateTimeOffset cutoff = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromHours(3));
             DateTimeOffset old = cutoff.AddSeconds(-1);
@@ -480,6 +510,17 @@ namespace Tests.AzureAppConfiguration
                     SecretModelFactory.SecretProperties(name: "IntegrationTestOther", createdOn: old)
                 });
 
+            featureFlags.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(CreatePageable(new[]
+                {
+                    ConfigurationModelFactory.FeatureFlag(name: "IntegrationTest-old", enabled: true, lastModified: old),
+                    ConfigurationModelFactory.FeatureFlag(name: "IntegrationTest-old", enabled: true, label: "label", lastModified: old),
+                    ConfigurationModelFactory.FeatureFlag(name: "IntegrationTest-fresh", enabled: true, lastModified: cutoff),
+                    ConfigurationModelFactory.FeatureFlag(name: "IntegrationTest-unknown-age", enabled: true),
+                    ConfigurationModelFactory.FeatureFlag(name: "Production-flag", enabled: true, lastModified: old),
+                    ConfigurationModelFactory.FeatureFlag(name: "IntegrationTestOther", enabled: true, lastModified: old)
+                }));
+
             await resources.CleanupStaleResourcesAsync(cutoff, output.Add);
 
             client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-old", "label", It.IsAny<CancellationToken>()), Times.Once());
@@ -495,6 +536,12 @@ namespace Tests.AzureAppConfiguration
                 It.Is<SnapshotSelector>(selector => selector.Status.Contains(ConfigurationSnapshotStatus.Ready)), It.IsAny<CancellationToken>()), Times.Once());
             secrets.Verify(c => c.StartDeleteSecretAsync("IntegrationTest-old", It.IsAny<CancellationToken>()), Times.Once());
             secrets.Verify(c => c.StartDeleteSecretAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.GetFeatureFlagsAsync(
+                It.Is<FeatureFlagSelector>(selector => selector.NameFilter == "IntegrationTest-*" && selector.LabelFilter == "*"),
+                It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-old", null, It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync("IntegrationTest-old", "label", It.IsAny<CancellationToken>()), Times.Once());
+            featureFlags.Verify(c => c.DeleteFeatureFlagAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Theory]
@@ -504,7 +551,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             DateTimeOffset cutoff = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromHours(3));
             DateTimeOffset old = cutoff.AddSeconds(-1);
@@ -533,7 +580,7 @@ namespace Tests.AzureAppConfiguration
         {
             Mock<ConfigurationClient> client = CreateConfigurationClient();
             Mock<SecretClient> secrets = CreateSecretClient();
-            var resources = new IntegrationTestResources(client.Object, secrets.Object);
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, CreateFeatureFlagClient().Object);
             var output = new List<string>();
             DateTimeOffset cutoff = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromHours(3));
             DateTimeOffset old = cutoff.AddSeconds(-1);
@@ -568,6 +615,31 @@ namespace Tests.AzureAppConfiguration
             Assert.Contains("0 resources remaining", output.Last());
         }
 
+        [Fact]
+        public async Task StaleEnhancedFeatureFlagListingFailureDoesNotPreventOtherCleanup()
+        {
+            Mock<ConfigurationClient> client = CreateConfigurationClient();
+            Mock<SecretClient> secrets = CreateSecretClient();
+            Mock<FeatureFlagClient> featureFlags = CreateFeatureFlagClient();
+            var resources = new IntegrationTestResources(client.Object, secrets.Object, featureFlags.Object);
+            var output = new List<string>();
+            DateTimeOffset cutoff = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromHours(3));
+            var failure = new RequestFailedException(503, "Feature flag listing failed.");
+            featureFlags.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+                .Throws(failure);
+            SetupStaleListings(client, secrets,
+                new[] { ConfigurationModelFactory.ConfigurationSetting("IntegrationTest-old", "value", lastModified: cutoff.AddSeconds(-1)) },
+                Array.Empty<ConfigurationSnapshot>(),
+                Array.Empty<SecretProperties>());
+
+            AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() =>
+                resources.CleanupStaleResourcesAsync(cutoff, output.Add));
+
+            Assert.Same(failure, Assert.Single(exception.InnerExceptions));
+            client.Verify(c => c.DeleteConfigurationSettingAsync("IntegrationTest-old", null, It.IsAny<CancellationToken>()), Times.Once());
+            Assert.Contains(output, message => message.StartsWith("Failed to list enhanced feature flags", StringComparison.Ordinal));
+        }
+
         private static Exception CreateTransportTimeout(bool aggregate)
         {
             Exception timeout = new TaskCanceledException("Network timeout.");
@@ -589,6 +661,19 @@ namespace Tests.AzureAppConfiguration
                 .ReturnsAsync(Mock.Of<CreateSnapshotOperation>());
             client.Setup(c => c.ArchiveSnapshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Response.FromValue(CreateSnapshot(), Mock.Of<Response>()));
+            return client;
+        }
+
+        private static Mock<FeatureFlagClient> CreateFeatureFlagClient()
+        {
+            var client = new Mock<FeatureFlagClient>(MockBehavior.Strict);
+            client.Setup(c => c.SetFeatureFlagAsync(It.IsAny<EnhancedFeatureFlag>(), false, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((EnhancedFeatureFlag flag, bool onlyIfUnchanged, CancellationToken token) =>
+                    Response.FromValue(flag, Mock.Of<Response>()));
+            client.Setup(c => c.DeleteFeatureFlagAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Mock.Of<Response>());
+            client.Setup(c => c.GetFeatureFlagsAsync(It.IsAny<FeatureFlagSelector>(), It.IsAny<CancellationToken>()))
+                .Returns(CreatePageable(Array.Empty<EnhancedFeatureFlag>()));
             return client;
         }
 
