@@ -5,6 +5,7 @@ using Azure;
 using Azure.Core;
 using Azure.Core.Pipeline;
 using Azure.Data.AppConfiguration;
+using EnhancedFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration;
@@ -30,6 +31,7 @@ namespace Tests.AzureAppConfiguration
     /// Integration tests for Azure App Configuration that connect to a real service.
     /// Uses Microsoft Entra ID to access an existing App Configuration store and Key Vault. Access keys are not required.
     /// Requires resource-read permissions, App Configuration data read/write permissions, and Key Vault secret permissions.
+    /// The App Configuration store must support the enhanced feature flag preview API.
     /// NOTE: Before running these tests locally, execute the GetAzureSubscription.ps1 script to create appsettings.Secrets.json.
     /// </summary>
     [Trait("Category", "Integration")]
@@ -59,6 +61,8 @@ namespace Tests.AzureAppConfiguration
 
         private readonly ConfigurationClient _configClient;
 
+        private readonly FeatureFlagClient _featureFlagClient;
+
         private readonly SecretClient _secretClient;
 
         private readonly Uri _appConfigEndpoint;
@@ -86,10 +90,11 @@ namespace Tests.AzureAppConfiguration
             _output = output;
             _defaultAzureCredential = fixture.Credential;
             _configClient = fixture.ConfigurationClient;
+            _featureFlagClient = fixture.FeatureFlagClient;
             _secretClient = fixture.SecretClient;
             _appConfigEndpoint = fixture.AppConfigurationEndpoint;
             _keyVaultEndpoint = fixture.KeyVaultEndpoint;
-            _resources = new IntegrationTestResources(_configClient, _secretClient);
+            _resources = new IntegrationTestResources(_configClient, _secretClient, _featureFlagClient);
 
             foreach (string message in fixture.InitializationLog)
             {
@@ -524,6 +529,306 @@ namespace Tests.AzureAppConfiguration
 
             // Assert
             Assert.Equal("True", config[$"FeatureManagement:{testContext.KeyPrefix}Feature"]);
+        }
+
+        [Fact]
+        public async Task EnhancedFeatureFlags_LoadEnabledAndDisabledFlags()
+        {
+            TestContext context = CreateTestContext("EnhancedLoad");
+            string enabledName = context.KeyPrefix + "Enabled";
+            string disabledName = context.KeyPrefix + "Disabled";
+
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = enabledName });
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(false) { Name = disabledName });
+
+            using var config = new ConfigurationManager();
+            config.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                options.Select(context.KeyPrefix + ":*");
+                options.UseFeatureFlags(ff => ff.Select(context.KeyPrefix + "*"));
+                options.ReplicaDiscoveryEnabled = false;
+                options.LoadBalancingEnabled = false;
+            });
+
+            IDictionary<string, string> states = GetMicrosoftSchemaFeatureFlagStates(config);
+            Assert.Equal(2, states.Count);
+            Assert.Equal("True", states[enabledName]);
+            Assert.Equal("False", states[disabledName]);
+            Assert.Null(config[$"FeatureManagement:{enabledName}"]);
+            Assert.Null(config[$"FeatureManagement:{disabledName}"]);
+        }
+
+        [Fact]
+        public async Task EnhancedFeatureFlags_RefreshAddedUpdatedAndDeletedFlags()
+        {
+            TestContext context = CreateTestContext("EnhancedRefresh");
+            string name = context.KeyPrefix + "Feature";
+            IConfigurationRefresher refresher = null;
+
+            using var config = new ConfigurationManager();
+            config.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                options.Select(context.KeyPrefix + ":*");
+                options.UseFeatureFlags(ff =>
+                {
+                    ff.Select(context.KeyPrefix + "*");
+                    ff.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                });
+                options.ReplicaDiscoveryEnabled = false;
+                options.LoadBalancingEnabled = false;
+                refresher = options.GetRefresher();
+            });
+
+            Assert.Empty(GetMicrosoftSchemaFeatureFlagStates(config));
+
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(false) { Name = name });
+            await RefreshUntilAsync(refresher,
+                () => GetMicrosoftSchemaFeatureFlagStates(config).TryGetValue(name, out string enabled) && enabled == "False",
+                "the added enhanced feature flag");
+            Assert.Single(GetMicrosoftSchemaFeatureFlagStates(config));
+
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = name });
+            await RefreshUntilAsync(refresher,
+                () => GetMicrosoftSchemaFeatureFlagStates(config).TryGetValue(name, out string enabled) && enabled == "True",
+                "the updated enhanced feature flag");
+            Assert.Single(GetMicrosoftSchemaFeatureFlagStates(config));
+
+            await _featureFlagClient.DeleteFeatureFlagAsync(name);
+            await RefreshUntilAsync(refresher,
+                () => GetMicrosoftSchemaFeatureFlagStates(config).Count == 0,
+                "removal of the last enhanced feature flag");
+            Assert.Empty(config.GetSection("feature_management:feature_flags").GetChildren());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("Selected")]
+        public async Task EnhancedFeatureFlags_SelectByNameLabelAndTags(string label)
+        {
+            TestContext context = CreateTestContext("EnhancedSelectors");
+            string namePrefix = context.KeyPrefix + "App";
+            string selectedName = namePrefix + "Selected";
+            string otherLabel = label == null ? "Other" : null;
+            var flags = new List<EnhancedFeatureFlag>
+            {
+                new EnhancedFeatureFlag(true) { Name = selectedName, Label = label },
+                new EnhancedFeatureFlag(false) { Name = selectedName, Label = otherLabel },
+                new EnhancedFeatureFlag(true) { Name = context.KeyPrefix + "ExcludedByName", Label = label },
+                new EnhancedFeatureFlag(true) { Name = namePrefix + "ExcludedByEnvironment", Label = label },
+                new EnhancedFeatureFlag(true) { Name = namePrefix + "ExcludedByApp", Label = label }
+            };
+
+            foreach (EnhancedFeatureFlag flag in flags)
+            {
+                flag.Tags.Add("Environment", "Development");
+                flag.Tags.Add("App", "TestApp");
+            }
+
+            flags[3].Tags["Environment"] = "Production";
+            flags[4].Tags["App"] = "OtherApp";
+
+            foreach (EnhancedFeatureFlag flag in flags)
+            {
+                await _resources.SetFeatureFlagAsync(flag);
+            }
+
+            using var config = new ConfigurationManager();
+            config.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                options.Select(context.KeyPrefix + ":*");
+                options.UseFeatureFlags(ff => ff.Select(
+                    namePrefix + "*", label ?? LabelFilter.Null,
+                    new[] { "Environment=Development", "App=TestApp" }));
+                options.ReplicaDiscoveryEnabled = false;
+                options.LoadBalancingEnabled = false;
+            });
+
+            IDictionary<string, string> states = GetMicrosoftSchemaFeatureFlagStates(config);
+            Assert.Single(states);
+            Assert.Equal("True", states[selectedName]);
+        }
+
+        [Fact]
+        public async Task EnhancedFeatureFlags_OverrideClassicFlagsAndRestoreThemAfterDeletion()
+        {
+            TestContext context = CreateTestContext("EnhancedMixed");
+            string sharedName = context.KeyPrefix + "Shared";
+            string classicName = context.KeyPrefix + "ClassicOnly";
+            string enhancedName = context.KeyPrefix + "EnhancedOnly";
+
+            foreach (string name in new[] { sharedName, classicName })
+            {
+                string value = JsonSerializer.Serialize(new
+                {
+                    id = name,
+                    enabled = true,
+                    variants = new[] { new { name = "Classic", configuration_value = "classic" } }
+                });
+
+                await _resources.SetConfigurationSettingAsync(
+                    new ConfigurationSetting(FeatureManagementConstants.FeatureFlagMarker + name, value)
+                    {
+                        ContentType = FeatureFlagContentType
+                    });
+            }
+
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(false) { Name = sharedName });
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(false) { Name = enhancedName });
+            IConfigurationRefresher refresher = null;
+
+            using var config = new ConfigurationManager();
+            config.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                options.Select(context.KeyPrefix + ":*");
+                options.UseFeatureFlags(ff =>
+                {
+                    ff.Select(context.KeyPrefix + "*");
+                    ff.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                });
+                options.ReplicaDiscoveryEnabled = false;
+                options.LoadBalancingEnabled = false;
+                refresher = options.GetRefresher();
+            });
+
+            IDictionary<string, string> states = GetMicrosoftSchemaFeatureFlagStates(config);
+            Assert.Equal(3, states.Count);
+            Assert.Equal("False", states[sharedName]);
+            Assert.Equal("True", states[classicName]);
+            Assert.Equal("False", states[enhancedName]);
+
+            await _featureFlagClient.DeleteFeatureFlagAsync(sharedName);
+            await RefreshUntilAsync(refresher,
+                () => GetMicrosoftSchemaFeatureFlagStates(config).TryGetValue(sharedName, out string enabled) && enabled == "True",
+                "the classic flag after deleting its enhanced override");
+
+            states = GetMicrosoftSchemaFeatureFlagStates(config);
+            Assert.Equal(3, states.Count);
+            Assert.Equal("True", states[sharedName]);
+            Assert.Equal("True", states[classicName]);
+            Assert.Equal("False", states[enhancedName]);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task EnhancedFeatureFlags_IsolateRefreshAndHonorFullReloads(bool registerAll)
+        {
+            TestContext context = CreateTestContext("EnhancedRefreshIsolation");
+            string classicName = context.KeyPrefix + "Feature";
+            string enhancedName = context.KeyPrefix + "Enhanced";
+            await SetupKeyValues(context);
+            await SetupFeatureFlags(context);
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(false) { Name = enhancedName });
+
+            var requestInspector = new RequestInspectionHandler();
+            using var transport = new HttpClientTransportWithRequestInspection(requestInspector);
+            using var config = new ConfigurationManager();
+            IConfigurationRefresher refresher = null;
+
+            config.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(_appConfigEndpoint, _defaultAzureCredential);
+                options.Select(context.KeyPrefix + ":*");
+                options.ConfigureClientOptions(clientOptions => clientOptions.Transport = transport);
+                options.UseFeatureFlags(ff =>
+                {
+                    ff.Select(context.KeyPrefix + "*");
+                    ff.SetRefreshInterval(TimeSpan.FromDays(1));
+                });
+                options.ConfigureRefresh(refresh =>
+                {
+                    if (registerAll)
+                    {
+                        refresh.RegisterAll();
+                    }
+                    else
+                    {
+                        refresh.Register(context.SentinelKey, refreshAll: true);
+                    }
+
+                    refresh.SetRefreshInterval(TimeSpan.FromSeconds(1));
+                });
+                options.ReplicaDiscoveryEnabled = false;
+                options.LoadBalancingEnabled = false;
+                refresher = options.GetRefresher();
+            });
+
+            bool IsClassicFeatureFlagRequest(Uri uri) => uri.AbsolutePath == "/kv" &&
+                Uri.UnescapeDataString(uri.Query).Contains(FeatureManagementConstants.FeatureFlagMarker);
+
+            bool IsEnhancedFeatureFlagRequest(Uri uri) => uri.AbsolutePath == "/ff";
+
+            bool IsKeyValueRefreshRequest(Uri uri) => registerAll
+                ? uri.AbsolutePath == "/kv" && !IsClassicFeatureFlagRequest(uri)
+                : Uri.UnescapeDataString(uri.AbsolutePath) == "/kv/" + context.SentinelKey;
+
+            Assert.Equal("False", config[$"FeatureManagement:{classicName}"]);
+            Assert.Equal("False", GetMicrosoftSchemaFeatureFlagStates(config)[enhancedName]);
+            requestInspector.RequestUris.Clear();
+
+            await RefreshUntilAsync(refresher,
+                () => requestInspector.RequestUris.Any(IsKeyValueRefreshRequest),
+                "the unchanged key-value refresh check");
+
+            Assert.DoesNotContain(requestInspector.RequestUris, IsClassicFeatureFlagRequest);
+            Assert.DoesNotContain(requestInspector.RequestUris, IsEnhancedFeatureFlagRequest);
+            Assert.Equal("False", config[$"FeatureManagement:{classicName}"]);
+            Assert.Equal("False", GetMicrosoftSchemaFeatureFlagStates(config)[enhancedName]);
+
+            await _resources.SetConfigurationSettingAsync(CreateFeatureFlagWithTags(classicName, true, null));
+            await _resources.SetFeatureFlagAsync(new EnhancedFeatureFlag(true) { Name = enhancedName });
+            await _resources.SetConfigurationSettingAsync(new ConfigurationSetting(context.SentinelKey, "Updated"));
+            requestInspector.RequestUris.Clear();
+
+            await RefreshUntilAsync(refresher,
+                () => config[$"FeatureManagement:{classicName}"] == "True" &&
+                    GetMicrosoftSchemaFeatureFlagStates(config).TryGetValue(enhancedName, out string enabled) && enabled == "True",
+                "both feature flag types after a full reload");
+
+            Assert.Equal("Updated", config[context.SentinelKey]);
+            Assert.Equal("True", config[$"FeatureManagement:{classicName}"]);
+            Assert.Equal("True", GetMicrosoftSchemaFeatureFlagStates(config)[enhancedName]);
+            Assert.Contains(requestInspector.RequestUris, IsClassicFeatureFlagRequest);
+            Assert.Contains(requestInspector.RequestUris, IsEnhancedFeatureFlagRequest);
+        }
+
+        private static IDictionary<string, string> GetMicrosoftSchemaFeatureFlagStates(IConfiguration configuration)
+        {
+            return configuration.GetSection("feature_management:feature_flags").GetChildren()
+                .ToDictionary(section => section["id"], section => section["enabled"], StringComparer.Ordinal);
+        }
+
+        private static async Task RefreshUntilAsync(
+            IConfigurationRefresher refresher,
+            Func<bool> isUpdated,
+            string expectedState,
+            CancellationToken cancellationToken = default)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(30));
+
+            try
+            {
+                do
+                {
+                    await refresher.RefreshAsync(timeout.Token);
+                    if (isUpdated())
+                    {
+                        return;
+                    }
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), timeout.Token);
+                }
+                while (true);
+            }
+            catch (OperationCanceledException ex) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Configuration did not reflect {expectedState} within 30 seconds.", ex);
+            }
         }
 
         [Fact]
@@ -1989,8 +2294,12 @@ namespace Tests.AzureAppConfiguration
         {
             public List<string> CorrelationContextHeaders { get; } = new List<string>();
 
+            public List<Uri> RequestUris { get; } = new List<Uri>();
+
             public void InspectRequest(HttpMessage message)
             {
+                RequestUris.Add(message.Request.Uri.ToUri());
+
                 if (message.Request.Headers.TryGetValue(RequestTracingConstants.CorrelationContextHeader, out string header))
                 {
                     CorrelationContextHeaders.Add(header);

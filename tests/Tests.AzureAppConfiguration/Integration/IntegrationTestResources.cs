@@ -3,6 +3,7 @@
 //
 using Azure;
 using Azure.Data.AppConfiguration;
+using EnhancedFeatureFlag = Azure.Data.AppConfiguration.FeatureFlag;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement;
 using System;
@@ -19,11 +20,13 @@ namespace Tests.AzureAppConfiguration
 
         private readonly ConfigurationClient _configurationClient;
         private readonly SecretClient _secretClient;
+        private readonly FeatureFlagClient _featureFlagClient;
         private readonly HashSet<(string Key, string Label)> _settings = new HashSet<(string Key, string Label)>();
+        private readonly HashSet<(string Name, string Label)> _featureFlags = new HashSet<(string Name, string Label)>();
         private readonly HashSet<string> _snapshots = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _secrets = new HashSet<string>(StringComparer.Ordinal);
 
-        public IntegrationTestResources(ConfigurationClient configurationClient, SecretClient secretClient)
+        public IntegrationTestResources(ConfigurationClient configurationClient, SecretClient secretClient, FeatureFlagClient featureFlagClient)
         {
             if (configurationClient == null)
             {
@@ -35,8 +38,14 @@ namespace Tests.AzureAppConfiguration
                 throw new ArgumentNullException(nameof(secretClient));
             }
 
+            if (featureFlagClient == null)
+            {
+                throw new ArgumentNullException(nameof(featureFlagClient));
+            }
+
             _configurationClient = configurationClient;
             _secretClient = secretClient;
+            _featureFlagClient = featureFlagClient;
         }
 
         public Task<Response<ConfigurationSetting>> SetConfigurationSettingAsync(
@@ -50,6 +59,18 @@ namespace Tests.AzureAppConfiguration
             // Track before sending: a failed response does not guarantee that the service rejected the write.
             _settings.Add((setting.Key, setting.Label));
             return _configurationClient.SetConfigurationSettingAsync(setting, cancellationToken: cancellationToken);
+        }
+
+        public Task<Response<EnhancedFeatureFlag>> SetFeatureFlagAsync(
+            EnhancedFeatureFlag featureFlag, CancellationToken cancellationToken = default)
+        {
+            if (featureFlag == null)
+            {
+                throw new ArgumentNullException(nameof(featureFlag));
+            }
+
+            _featureFlags.Add((featureFlag.Name, featureFlag.Label));
+            return _featureFlagClient.SetFeatureFlagAsync(featureFlag, cancellationToken: cancellationToken);
         }
 
         public Task<Response<KeyVaultSecret>> SetSecretAsync(
@@ -121,6 +142,24 @@ namespace Tests.AzureAppConfiguration
 
             await TryCleanupAsync(async token =>
             {
+                var selector = new FeatureFlagSelector
+                {
+                    NameFilter = TestKeyPrefix + "-*",
+                    LabelFilter = FeatureFlagSelector.Any
+                };
+
+                await foreach (EnhancedFeatureFlag featureFlag in _featureFlagClient.GetFeatureFlagsAsync(selector, token))
+                {
+                    if (featureFlag.Name.StartsWith(TestKeyPrefix + "-", StringComparison.Ordinal) &&
+                        featureFlag.LastModified < cutoffTime)
+                    {
+                        _featureFlags.Add((featureFlag.Name, featureFlag.Label));
+                    }
+                }
+            }, "list enhanced feature flags", failures, output, false, cancellationToken);
+
+            await TryCleanupAsync(async token =>
+            {
                 var selector = new SnapshotSelector
                 {
                     Status = { ConfigurationSnapshotStatus.Ready }
@@ -156,6 +195,7 @@ namespace Tests.AzureAppConfiguration
             List<Exception> failures, Action<string> output, CancellationToken cancellationToken)
         {
             int settingCount = _settings.Count;
+            int featureFlagCount = _featureFlags.Count;
             int snapshotCount = _snapshots.Count;
             int secretCount = _secrets.Count;
 
@@ -166,6 +206,16 @@ namespace Tests.AzureAppConfiguration
                     $"delete setting '{setting.Key}' (label '{setting.Label}')", failures, output, true, cancellationToken))
                 {
                     _settings.Remove(setting);
+                }
+            }
+
+            foreach ((string Name, string Label) featureFlag in _featureFlags.ToArray())
+            {
+                if (await TryCleanupAsync(
+                    token => _featureFlagClient.DeleteFeatureFlagAsync(featureFlag.Name, featureFlag.Label, token),
+                    $"delete enhanced feature flag '{featureFlag.Name}' (label '{featureFlag.Label}')", failures, output, true, cancellationToken))
+                {
+                    _featureFlags.Remove(featureFlag);
                 }
             }
 
@@ -190,8 +240,9 @@ namespace Tests.AzureAppConfiguration
             }
 
             output($"Resource cleanup completed: {settingCount - _settings.Count} settings/feature flags, " +
+                $"{featureFlagCount - _featureFlags.Count} enhanced feature flags, " +
                 $"{snapshotCount - _snapshots.Count} snapshots, {secretCount - _secrets.Count} secrets; " +
-                $"{_settings.Count + _snapshots.Count + _secrets.Count} resources remaining.");
+                $"{_settings.Count + _featureFlags.Count + _snapshots.Count + _secrets.Count} resources remaining.");
 
             if (failures.Count > 0)
             {

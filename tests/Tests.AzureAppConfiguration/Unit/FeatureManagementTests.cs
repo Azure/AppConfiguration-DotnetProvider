@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration.FeatureManagement
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text.Json;
@@ -1220,7 +1221,17 @@ namespace Tests.AzureAppConfiguration
             keyValuePageable.UpdateCollection(keyValues);
             featureFlagPageable.UpdateCollection(featureFlags);
 
-            await Task.Delay(RefreshInterval);
+            // Wait on the same clock as the provider rather than relying on timer resolution.
+            DateTimeOffset refreshDeadline = DateTimeOffset.UtcNow.Add(RefreshInterval);
+            Stopwatch refreshWait = Stopwatch.StartNew();
+
+            while (DateTimeOffset.UtcNow < refreshDeadline)
+            {
+                Assert.True(refreshWait.Elapsed < TimeSpan.FromSeconds(10),
+                    "The key-value refresh deadline was not reached within 10 seconds.");
+                await Task.Delay(50);
+            }
+
             await refresher.RefreshAsync();
 
             mockClient.Verify(c => c.GetConfigurationSettingAsync(It.IsAny<ConfigurationSetting>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
